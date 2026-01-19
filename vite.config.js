@@ -9,8 +9,11 @@ function readPackageName() {
 }
 
 export default defineConfig(({ command }) => {
+  // En dev: base "/"
   if (command === 'serve') return { base: '/' };
 
+  // En build: base "/<repo>/" para GitHub Pages
+  // Se puede sobreescribir con BASE=/mi-repo/ npm run build
   const repo = readPackageName();
   const base = process.env.BASE ?? `/${repo}/`;
 
