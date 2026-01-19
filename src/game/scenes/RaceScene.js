@@ -69,7 +69,11 @@ export class RaceScene extends Phaser.Scene {
       fontSize: '14px',
       color: '#ffffff'
     }).setScrollFactor(0).setDepth(10);
+    // iOS: multitouch (stick + botón a la vez)
+    this.input.addPointer(2);
 
+    // Controles táctiles visibles (solo móvil/touch, pero no molesta en desktop)
+    this.touch = this.createTouchControls();
     // Volver al menú
     this.keys.back.on('down', () => {
       this.scene.start('menu');
