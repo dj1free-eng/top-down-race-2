@@ -14,13 +14,19 @@ export class RaceScene extends Phaser.Scene {
 
     this.zoom = 1.0;
 
-    // Físicas arcade base (tuneo vendrá después)
-    this.accel = 520;       // px/s^2
-    this.maxFwd = 520;      // px/s
-    this.maxRev = 220;      // px/s
-    this.drag = 0.985;      // factor por frame
-    this.turnRate = 2.6;    // rad/s
-    this.turnMin = 0.35;    // mínimo giro a alta velocidad
+    // === Físicas afinadas (Iteración 6) ===
+    this.accel = 680;        // empuje motor
+    this.brakeForce = 980;   // freno real
+    this.engineBrake = 420;  // retención al soltar gas
+
+    this.maxFwd = 620;       // punta
+    this.maxRev = 220;       // marcha atrás limitada
+
+    this.linearDrag = 0.06;  // drag base (se aplica por dt)
+    this.turnRate = 3.2;     // giro a baja velocidad
+    this.turnMin = 0.30;     // giro mínimo a alta velocidad
+
+    this.slipFactor = 0.85;  // cuánto “resbala” lateralmente a alta vel
 
     this.hud = null;
   }
@@ -100,51 +106,83 @@ export class RaceScene extends Phaser.Scene {
 
     const left = this.keys.left.isDown || this.keys.left2.isDown || t.steer < -0.15;
     const right = this.keys.right.isDown || this.keys.right2.isDown || t.steer > 0.15;
-    // Velocidad actual
-    const vx = this.car.body.velocity.x;
-    const vy = this.car.body.velocity.y;
+    // === Movimiento afinado ===
+
+    const body = this.car.body;
+    const vx = body.velocity.x;
+    const vy = body.velocity.y;
     const speed = Math.sqrt(vx * vx + vy * vy);
 
-    // Aceleración (en dirección del coche)
-    var a = 0;
-    if (up && !down) a = this.accel;
-    else if (down && !up) a = -this.accel;
+    // Dirección del coche
+    const rot = this.car.rotation;
+    const dirX = Math.cos(rot);
+    const dirY = Math.sin(rot);
 
-    var maxSpeed = a >= 0 ? this.maxFwd : this.maxRev;
+    // Inputs
+    const t = this.touch || { steer: 0, throttle: 0, brake: 0 };
+    const throttle = up ? 1 : (t.throttle > 0.5 ? 1 : 0);
+    const brake = down ? 1 : (t.brake > 0.5 ? 1 : 0);
 
-    if (a !== 0) {
-      const ax = Math.cos(this.car.rotation) * a;
-      const ay = Math.sin(this.car.rotation) * a;
+    // Proyección de velocidad en el eje del coche (forward speed)
+    const fwdSpeed = vx * dirX + vy * dirY;
 
-      this.car.body.velocity.x += ax * dt;
-      this.car.body.velocity.y += ay * dt;
-
-      // clamp velocidad
-      const nvx = this.car.body.velocity.x;
-      const nvy = this.car.body.velocity.y;
-      const ns = Math.sqrt(nvx * nvx + nvy * nvy);
-      if (ns > maxSpeed) {
-        const s = maxSpeed / ns;
-        this.car.body.velocity.x *= s;
-        this.car.body.velocity.y *= s;
-      }
-    } else {
-      // Drag al soltar
-      const f = Math.pow(this.drag, dt * 60);
-      this.car.body.velocity.x *= f;
-      this.car.body.velocity.y *= f;
+    // --- Aceleración ---
+    if (throttle && !brake) {
+      body.velocity.x += dirX * this.accel * dt;
+      body.velocity.y += dirY * this.accel * dt;
     }
 
-    // Giro dependiente de velocidad
-    const speed01 = clamp(speed / this.maxFwd, 0, 1);
+    // --- Freno real ---
+    if (brake && fwdSpeed > -10) {
+      body.velocity.x -= dirX * this.brakeForce * dt;
+      body.velocity.y -= dirY * this.brakeForce * dt;
+    }
+
+    // --- Retención (soltar gas) ---
+    if (!throttle && !brake) {
+      const sign = fwdSpeed >= 0 ? 1 : -1;
+      const eb = Math.min(Math.abs(fwdSpeed), this.engineBrake * dt);
+      body.velocity.x -= dirX * eb * sign;
+      body.velocity.y -= dirY * eb * sign;
+    }
+
+    // --- Límite de velocidad ---
+    const newVx = body.velocity.x;
+    const newVy = body.velocity.y;
+    const newSpeed = Math.sqrt(newVx * newVx + newVy * newVy);
+
+    const maxSpeed = fwdSpeed >= 0 ? this.maxFwd : this.maxRev;
+    if (newSpeed > maxSpeed) {
+      const s = maxSpeed / newSpeed;
+      body.velocity.x *= s;
+      body.velocity.y *= s;
+    }
+
+    // --- Drag lineal suave ---
+    const drag = Math.max(0, 1 - this.linearDrag * dt * 60);
+    body.velocity.x *= drag;
+    body.velocity.y *= drag;
+
+    // --- Giro dependiente de velocidad + derrape ---
+    const speed01 = clamp(Math.abs(fwdSpeed) / this.maxFwd, 0, 1);
     const turnFactor = clamp(1 - speed01, this.turnMin, 1);
-    const turn = this.turnRate * turnFactor;
+    const steerInput =
+      (left ? -1 : 0) + (right ? 1 : 0) + clamp(t.steer, -1, 1);
 
-    if (left && !right) this.car.rotation -= turn * dt;
-    if (right && !left) this.car.rotation += turn * dt;
+    if (steerInput !== 0) {
+      this.car.rotation += steerInput * this.turnRate * turnFactor * dt;
+    }
 
+    // Reducir componente lateral (simula agarre / derrape)
+    const latX = -dirY;
+    const latY = dirX;
+    const latSpeed = body.velocity.x * latX + body.velocity.y * latY;
+    const slip = 1 - speed01 * (1 - this.slipFactor);
+
+    body.velocity.x -= latX * latSpeed * (1 - slip);
+    body.velocity.y -= latY * latSpeed * (1 - slip);
     // HUD
-    const kmh = speed * 0.12;
+    const kmh = Math.abs(fwdSpeed) * 0.12;
     this.hud.setText(
       'RaceScene (Fase 3 estable)\n' +
       'WASD / Flechas: conducir\n' +
