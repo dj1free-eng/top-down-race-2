@@ -88,11 +88,11 @@ export class RaceScene extends Phaser.Scene {
     const dt = Math.min(0.05, deltaMs / 1000);
 
     // Entradas unificadas
-    const up = this.keys.up.isDown || this.keys.up2.isDown || this.touch.throttle > 0.2;
-    const down = this.keys.down.isDown || this.keys.down2.isDown || this.touch.brake > 0.2;
-    const left = this.keys.left.isDown || this.keys.left2.isDown || this.touch.steer < -0.2;
-    const right = this.keys.right.isDown || this.keys.right2.isDown || this.touch.steer > 0.2;
+    const up = this.keys.up.isDown || this.keys.up2.isDown || this.touch.throttle > 0.5;
+const down = this.keys.down.isDown || this.keys.down2.isDown || this.touch.brake > 0.5;
 
+const left = this.keys.left.isDown || this.keys.left2.isDown || this.touch.steer < -0.15;
+const right = this.keys.right.isDown || this.keys.right2.isDown || this.touch.steer > 0.15;
     // Zoom
     if (Phaser.Input.Keyboard.JustDown(this.keys.zoomIn)) {
       this.zoom = clamp(this.zoom + 0.1, 0.6, 1.6);
