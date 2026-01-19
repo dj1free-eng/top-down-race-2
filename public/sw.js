@@ -1,5 +1,5 @@
 /* Static-cache SW (sin Workbox) — reproducible y fácil de depurar */
-const CACHE_VERSION = 'tdr2-v1';
+const CACHE_VERSION = 'tdr2-v2';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -9,7 +9,9 @@ const CORE_ASSETS = [
   './icons/icon-384.png',
   './icons/icon-512.png'
 ];
-
+  self.addEventListener('message', (event) => {
+  if (event?.data?.type === 'SKIP_WAITING') self.skipWaiting();
+});
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_VERSION).then((cache) => cache.addAll(CORE_ASSETS)));
   self.skipWaiting();
