@@ -172,8 +172,11 @@ export class RaceScene extends Phaser.Scene {
       body.velocity.y * body.velocity.y
     );
 
-    if (newSpeed > this.maxFwd) {
-      const s = this.maxFwd / newSpeed;
+    // Limitar velocidad según sentido (delante / atrás)
+    const maxSpeed = fwdSpeed >= 0 ? this.maxFwd : this.maxRev;
+
+    if (newSpeed > maxSpeed) {
+      const s = maxSpeed / newSpeed;
       body.velocity.x *= s;
       body.velocity.y *= s;
     }
@@ -185,7 +188,14 @@ export class RaceScene extends Phaser.Scene {
 
     if (left && !right) this.car.rotation -= turn;
     if (right && !left) this.car.rotation += turn;
+    // Derrape controlado: reducimos velocidad lateral en función de velocidad
+    const latX = -dirY;
+    const latY = dirX;
+    const latSpeed = body.velocity.x * latX + body.velocity.y * latY;
 
+    const slip = 1 - speed01 * (1 - this.slipFactor);
+    body.velocity.x -= latX * latSpeed * (1 - slip);
+    body.velocity.y -= latY * latSpeed * (1 - slip);
     // HUD
     const kmh = speed * 0.12;
     this.hud.setText(
