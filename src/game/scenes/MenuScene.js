@@ -1,3 +1,5 @@
+import Phaser from 'phaser';
+
 function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
 
 export class MenuScene extends Phaser.Scene {
@@ -10,7 +12,7 @@ export class MenuScene extends Phaser.Scene {
 
     const { width, height } = this.scale;
 
-    // Fondo sutil (grid/ruido “estilo UI” sin assets)
+    // Fondo sutil
     const g = this.add.graphics();
     g.fillStyle(0x141b33, 0.65);
     g.fillRect(0, 0, width, height);
@@ -73,8 +75,8 @@ export class MenuScene extends Phaser.Scene {
         .setStrokeStyle(1, 0xb7c0ff, 0.25)
         .setOrigin(0);
 
-      // “Header” del card
       const header = this.add.rectangle(0, 0, cardW, 44, 0x0b1020, 0.55).setOrigin(0);
+
       const tag = this.add.text(cardW - 16, 13, t.tag, {
         fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
         fontSize: '12px',
@@ -105,22 +107,21 @@ export class MenuScene extends Phaser.Scene {
         fontStyle: 'bold'
       });
 
-      // Área clicable
       bg.setInteractive({ useHandCursor: true });
+
       bg.on('pointerover', () => {
         bg.setFillStyle(0x0b1020, 0.50);
         bg.setStrokeStyle(1, 0x2bff88, 0.35);
       });
+
       bg.on('pointerout', () => {
         bg.setFillStyle(0x0b1020, 0.35);
         bg.setStrokeStyle(1, 0xb7c0ff, 0.25);
       });
 
       bg.on('pointerdown', () => {
-        // Guardamos selección (para RaceScene en Fase 3)
         this.registry.set('selectedTrack', t.key);
 
-        // Feedback (sin entrar a RaceScene aún)
         toast.setText(`Seleccionado: ${t.title}  —  (Carrera en Fase 3)`);
         this.tweens.killTweensOf(toast);
         toast.setAlpha(0);
@@ -134,7 +135,6 @@ export class MenuScene extends Phaser.Scene {
     makeCard(leftX, topY, tracks[0]);
     makeCard(leftX + cardW + gap, topY, tracks[1]);
 
-    // Nota inferior
     this.add.text(width / 2, Math.floor(height * 0.82), 'Tip: esto ya es PWA. Abre una vez, luego modo avión y recarga.', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
       fontSize: '12px',
