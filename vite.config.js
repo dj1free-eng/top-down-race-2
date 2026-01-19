@@ -17,7 +17,10 @@ export default defineConfig(({ command }) => {
   const repo = readPackageName();
   const base = process.env.BASE ?? `/${repo}/`;
 
-  return {
-    base
+    return {
+    base,
+    build: {
+      target: 'es2020'
+    }
   };
 });
