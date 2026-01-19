@@ -93,11 +93,13 @@ export class RaceScene extends Phaser.Scene {
       this.cameras.main.setZoom(this.zoom);
     }
 
-    const up = this.keys.up.isDown || this.keys.up2.isDown;
-    const down = this.keys.down.isDown || this.keys.down2.isDown;
-    const left = this.keys.left.isDown || this.keys.left2.isDown;
-    const right = this.keys.right.isDown || this.keys.right2.isDown;
+       const t = this.touch || { steer: 0, throttle: 0, brake: 0 };
 
+    const up = this.keys.up.isDown || this.keys.up2.isDown || t.throttle > 0.5;
+    const down = this.keys.down.isDown || this.keys.down2.isDown || t.brake > 0.5;
+
+    const left = this.keys.left.isDown || this.keys.left2.isDown || t.steer < -0.15;
+    const right = this.keys.right.isDown || this.keys.right2.isDown || t.steer > 0.15;
     // Velocidad actual
     const vx = this.car.body.velocity.x;
     const vy = this.car.body.velocity.y;
@@ -210,5 +212,252 @@ export class RaceScene extends Phaser.Scene {
 
     g.generateTexture('car', w + 4, h + 6);
     g.destroy();
+  }
+    createTouchControls() {
+    // UI táctil visible:
+    // - Izquierda: joystick (steer analógico)
+    // - Derecha: dos botones grandes (GAS / FRENO)
+
+    const state = {
+      steer: 0,
+      throttle: 0,
+      brake: 0,
+
+      leftId: -1,
+      rightId: -1,
+
+      leftActive: false,
+      rightThrottle: false,
+      rightBrake: false,
+
+      baseX: 0,
+      baseY: 0,
+      knobX: 0,
+      knobY: 0,
+
+      stickR: 0,
+      stickMax: 0,
+
+      rightX: 0,
+      throttleY: 0,
+      brakeY: 0,
+      btnW: 0,
+      btnH: 0
+    };
+
+    const ui = this.add.container(0, 0).setScrollFactor(0).setDepth(1000);
+
+    const build = () => {
+      ui.removeAll(true);
+
+      const w = this.scale.width;
+      const h = this.scale.height;
+      const pad = 16;
+
+      // Stick
+      const stickR = Math.max(54, Math.floor(Math.min(w, h) * 0.07));
+      const stickMax = stickR * 0.85;
+
+      const baseX = pad + stickR + 10;
+      const baseY = h - pad - stickR - 10;
+
+      state.baseX = baseX;
+      state.baseY = baseY;
+      state.knobX = baseX;
+      state.knobY = baseY;
+      state.stickR = stickR;
+      state.stickMax = stickMax;
+
+      // Botones derecha
+      const btnW = Math.max(110, Math.floor(w * 0.22));
+      const btnH = Math.max(78, Math.floor(h * 0.115));
+      const gap = 14;
+
+      const rightX = w - pad - btnW;
+      const throttleY = h - pad - btnH * 2 - gap;
+      const brakeY = h - pad - btnH;
+
+      state.rightX = rightX;
+      state.throttleY = throttleY;
+      state.brakeY = brakeY;
+      state.btnW = btnW;
+      state.btnH = btnH;
+
+      // Paneles de zona (para que siempre se vean)
+      const zoneG = this.add.graphics();
+      zoneG.fillStyle(0x000000, 0.14);
+
+      const leftW = Math.floor(w * 0.46) - 14;
+      const rightW = Math.floor(w * 0.46) - 14;
+
+      zoneG.fillRoundedRect(10, h - 230, leftW, 220, 18);
+      zoneG.lineStyle(2, 0xb7c0ff, 0.18);
+      zoneG.strokeRoundedRect(10, h - 230, leftW, 220, 18);
+
+      zoneG.fillRoundedRect(Math.floor(w * 0.54) + 4, h - 230, rightW, 220, 18);
+      zoneG.lineStyle(2, 0xb7c0ff, 0.18);
+      zoneG.strokeRoundedRect(Math.floor(w * 0.54) + 4, h - 230, rightW, 220, 18);
+
+      const leftLabel = this.add.text(22, h - 220, 'GIRO', {
+        fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+        fontSize: '12px',
+        color: '#b7c0ff',
+        fontStyle: 'bold'
+      });
+
+      const rightLabel = this.add.text(Math.floor(w * 0.54) + 16, h - 220, 'GAS / FRENO', {
+        fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+        fontSize: '12px',
+        color: '#b7c0ff',
+        fontStyle: 'bold'
+      });
+
+      const g = this.add.graphics();
+
+      const draw = () => {
+        g.clear();
+
+        // Base stick
+        g.fillStyle(0x0b1020, 0.35);
+        g.fillCircle(state.baseX, state.baseY, state.stickR + 10);
+        g.lineStyle(2, 0xb7c0ff, 0.25);
+        g.strokeCircle(state.baseX, state.baseY, state.stickR + 10);
+
+        // Knob stick
+        const knobR = Math.floor(state.stickR * 0.46);
+        g.fillStyle(0xffffff, state.leftActive ? 0.22 : 0.14);
+        g.fillCircle(state.knobX, state.knobY, knobR);
+        if (state.leftActive) {
+          g.lineStyle(2, 0x2bff88, 0.35);
+          g.strokeCircle(state.knobX, state.knobY, knobR);
+        }
+
+        // GAS
+        g.fillStyle(0x0b1020, state.rightThrottle ? 0.50 : 0.28);
+        g.fillRoundedRect(state.rightX, state.throttleY, state.btnW, state.btnH, 16);
+        g.lineStyle(2, state.rightThrottle ? 0x2bff88 : 0xb7c0ff, state.rightThrottle ? 0.55 : 0.22);
+        g.strokeRoundedRect(state.rightX, state.throttleY, state.btnW, state.btnH, 16);
+
+        // FRENO
+        g.fillStyle(0x0b1020, state.rightBrake ? 0.50 : 0.28);
+        g.fillRoundedRect(state.rightX, state.brakeY, state.btnW, state.btnH, 16);
+        g.lineStyle(2, state.rightBrake ? 0xff5a7a : 0xb7c0ff, state.rightBrake ? 0.55 : 0.22);
+        g.strokeRoundedRect(state.rightX, state.brakeY, state.btnW, state.btnH, 16);
+      };
+
+      const tText = this.add.text(state.rightX + state.btnW / 2, state.throttleY + state.btnH / 2, 'GAS', {
+        fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+        fontSize: '16px',
+        color: '#2bff88',
+        fontStyle: 'bold'
+      }).setOrigin(0.5);
+
+      const bText = this.add.text(state.rightX + state.btnW / 2, state.brakeY + state.btnH / 2, 'FRENO', {
+        fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+        fontSize: '16px',
+        color: '#ff5a7a',
+        fontStyle: 'bold'
+      }).setOrigin(0.5);
+
+      ui.add([zoneG, leftLabel, rightLabel, g, tText, bText]);
+
+      // Guardar draw para refrescar sin optional chaining
+      state._draw = draw;
+      state._draw();
+    };
+
+    build();
+    this.scale.on('resize', build);
+
+    const hitThrottle = (x, y) => {
+      return x >= state.rightX && x <= state.rightX + state.btnW &&
+             y >= state.throttleY && y <= state.throttleY + state.btnH;
+    };
+
+    const hitBrake = (x, y) => {
+      return x >= state.rightX && x <= state.rightX + state.btnW &&
+             y >= state.brakeY && y <= state.brakeY + state.btnH;
+    };
+
+    const updateStick = (x, y) => {
+      const dx = x - state.baseX;
+      const dy = y - state.baseY;
+      const d = Math.sqrt(dx * dx + dy * dy);
+
+      var nx = 0;
+      if (d > 0.0001) nx = dx / d;
+
+      const clamped = Math.min(d, state.stickMax);
+
+      // knob se mueve en dirección completa, pero steer solo usa X
+      const kx = state.baseX + (d > 0.0001 ? (dx / d) * clamped : 0);
+      const ky = state.baseY + (d > 0.0001 ? (dy / d) * clamped : 0);
+
+      state.knobX = kx;
+      state.knobY = ky;
+
+      // deadzone
+      const raw = (state.knobX - state.baseX) / state.stickMax;
+      state.steer = Math.abs(raw) < 0.12 ? 0 : clamp(raw, -1, 1);
+    };
+
+    this.input.on('pointerdown', (p) => {
+      const w = this.scale.width;
+
+      if (p.x < w * 0.5) {
+        state.leftId = p.id;
+        state.leftActive = true;
+        updateStick(p.x, p.y);
+      } else {
+        state.rightId = p.id;
+        state.rightThrottle = hitThrottle(p.x, p.y);
+        state.rightBrake = hitBrake(p.x, p.y);
+        state.throttle = state.rightThrottle ? 1 : 0;
+        state.brake = state.rightBrake ? 1 : 0;
+      }
+
+      if (state._draw) state._draw();
+    });
+
+    this.input.on('pointermove', (p) => {
+      if (!p.isDown) return;
+
+      if (state.leftId === p.id) {
+        state.leftActive = true;
+        updateStick(p.x, p.y);
+        if (state._draw) state._draw();
+        return;
+      }
+
+      if (state.rightId === p.id) {
+        state.rightThrottle = hitThrottle(p.x, p.y);
+        state.rightBrake = hitBrake(p.x, p.y);
+        state.throttle = state.rightThrottle ? 1 : 0;
+        state.brake = state.rightBrake ? 1 : 0;
+        if (state._draw) state._draw();
+      }
+    });
+
+    this.input.on('pointerup', (p) => {
+      if (state.leftId === p.id) {
+        state.leftId = -1;
+        state.leftActive = false;
+        state.steer = 0;
+        state.knobX = state.baseX;
+        state.knobY = state.baseY;
+      }
+
+      if (state.rightId === p.id) {
+        state.rightId = -1;
+        state.rightThrottle = false;
+        state.rightBrake = false;
+        state.throttle = 0;
+        state.brake = 0;
+      }
+
+      if (state._draw) state._draw();
+    });
+
+    return state;
   }
 }
