@@ -146,7 +146,15 @@ export class MenuScene extends Phaser.Scene {
       bg.on('pointerdown', () => {
         this.registry.set('selectedTrack', t.key);
 
-        toast.setText(`Seleccionado: ${t.title}  —  (Carrera en Fase 3)`);
+toast.setText(`Seleccionado: ${t.title}`);
+this.tweens.killTweensOf(toast);
+toast.setAlpha(0);
+this.tweens.add({ targets: toast, alpha: 1, duration: 120, yoyo: true, hold: 450 });
+
+// Entrar a carrera
+this.time.delayedCall(250, () => {
+  this.scene.start('race');
+});
         this.tweens.killTweensOf(toast);
         toast.setAlpha(0);
         this.tweens.add({ targets: toast, alpha: 1, duration: 140, yoyo: true, hold: 1100 });
