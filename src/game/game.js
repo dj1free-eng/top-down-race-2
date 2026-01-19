@@ -6,12 +6,10 @@ export function createGame(parentId = 'app') {
   return new Phaser.Game({
     type: Phaser.AUTO,
     parent: parentId,
-    width: 1280,
-    height: 720,
     backgroundColor: '#0b1020',
     scene: [BootScene, MenuScene],
     scale: {
-      mode: Phaser.Scale.FIT,
+      mode: Phaser.Scale.RESIZE,      // usa tamaño real del contenedor
       autoCenter: Phaser.Scale.CENTER_BOTH
     },
     render: {
