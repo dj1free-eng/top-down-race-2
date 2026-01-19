@@ -74,7 +74,8 @@ export class RaceScene extends Phaser.Scene {
       fontSize: '14px',
       color: '#ffffff'
     }).setScrollFactor(0).setDepth(10);
-
+// iOS: habilitar multitouch (stick + botones a la vez)
+this.input.addPointer(2);
     // Táctil: joystick simple (izquierda mover, derecha girar)
     this.touch = this.createTouchControls();
 
@@ -244,7 +245,7 @@ createTouchControls() {
     ui: null
   };
 
-  const ui = this.add.container(0, 0).setScrollFactor(0).setDepth(50);
+const ui = this.add.container(0, 0).setScrollFactor(0).setDepth(1000);
   state.ui = ui;
 
   const buildUI = () => {
@@ -283,7 +284,33 @@ createTouchControls() {
       fontSize: '12px',
       color: '#b7c0ff'
     }).setOrigin(0.5, 0);
+// Zonas visibles (para que sea imposible no ver controles)
+const zoneG = this.add.graphics();
+zoneG.fillStyle(0x000000, 0.14);
 
+// Zona izquierda (stick)
+zoneG.fillRoundedRect(10, h - 220, Math.floor(w * 0.45) - 20, 210, 18);
+zoneG.lineStyle(2, 0xb7c0ff, 0.18);
+zoneG.strokeRoundedRect(10, h - 220, Math.floor(w * 0.45) - 20, 210, 18);
+
+// Zona derecha (botones)
+zoneG.fillRoundedRect(Math.floor(w * 0.55) + 10, h - 220, Math.floor(w * 0.45) - 20, 210, 18);
+zoneG.lineStyle(2, 0xb7c0ff, 0.18);
+zoneG.strokeRoundedRect(Math.floor(w * 0.55) + 10, h - 220, Math.floor(w * 0.45) - 20, 210, 18);
+
+const leftLabel = this.add.text(24, h - 210, 'GIRO (JOYSTICK)', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '12px',
+  color: '#b7c0ff',
+  fontStyle: 'bold'
+});
+
+const rightLabel = this.add.text(Math.floor(w * 0.55) + 24, h - 210, 'GAS / FRENO', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '12px',
+  color: '#b7c0ff',
+  fontStyle: 'bold'
+});
     // Joystick graphics
     const g = this.add.graphics();
 
@@ -336,7 +363,7 @@ createTouchControls() {
       fontStyle: 'bold'
     }).setOrigin(0.5);
 
-    ui.add([g, hint, tText, bText]);
+ui.add([zoneG, leftLabel, rightLabel, g, hint, tText, bText]);
 
     // Guardamos geometría en state para hit-testing
     state._geom = {
