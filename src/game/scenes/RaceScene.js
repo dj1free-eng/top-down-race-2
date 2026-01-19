@@ -15,19 +15,16 @@ export class RaceScene extends Phaser.Scene {
     this.zoom = 1.0;
 
     // === Físicas afinadas (Iteración 6) ===
-    this.accel = 680;        // empuje motor
-    this.brakeForce = 980;   // freno real
-    this.engineBrake = 420;  // retención al soltar gas
-
-    this.maxFwd = 620;       // punta
-    this.maxRev = 220;       // marcha atrás limitada
-
-    this.linearDrag = 0.06;  // drag base (se aplica por dt)
-    this.turnRate = 3.2;     // giro a baja velocidad
-    this.turnMin = 0.30;     // giro mínimo a alta velocidad
-
-    this.slipFactor = 0.85;  // cuánto “resbala” lateralmente a alta vel
-
+        // Afinado
+    this.accel = 720;          // empuje motor
+    this.brakeForce = 1100;    // freno real
+    this.engineBrake = 520;    // retención al soltar gas
+    this.maxFwd = 620;         // punta
+    this.maxRev = 240;         // marcha atrás
+    this.linearDrag = 0.045;   // drag base
+    this.turnRate = 3.4;       // giro base
+    this.turnMin = 0.28;       // giro mínimo a alta velocidad
+    this.slipFactor = 0.86;    // 0..1 (más bajo = más derrape)
     this.hud = null;
   }
 
@@ -134,17 +131,36 @@ export class RaceScene extends Phaser.Scene {
     const vy = body.velocity.y;
     const speed = Math.sqrt(vx * vx + vy * vy);
 
-    // Aceleración simple
+    // Forward speed (para decidir freno / marcha atrás)
+    const fwdSpeed = vx * dirX + vy * dirY;
+
+    // Acelerar (solo hacia delante)
     if (up && !down) {
       body.velocity.x += dirX * this.accel * dt;
       body.velocity.y += dirY * this.accel * dt;
     }
 
+    // Freno / marcha atrás:
+    // - si vamos hacia delante o casi parados: frena fuerte
+    // - si ya estamos casi parados y seguimos pulsando: entra marcha atrás (lenta)
     if (down) {
-      body.velocity.x -= dirX * this.brakeForce * dt;
-      body.velocity.y -= dirY * this.brakeForce * dt;
+      if (fwdSpeed > 30) {
+        body.velocity.x -= dirX * this.brakeForce * dt;
+        body.velocity.y -= dirY * this.brakeForce * dt;
+      } else {
+        // marcha atrás suave
+        body.velocity.x -= dirX * (this.accel * 0.55) * dt;
+        body.velocity.y -= dirY * (this.accel * 0.55) * dt;
+      }
     }
 
+    // Retención al soltar (solo si no estás frenando ni acelerando)
+    if (!up && !down) {
+      const sign = fwdSpeed >= 0 ? 1 : -1;
+      const eb = Math.min(Math.abs(fwdSpeed), this.engineBrake * dt);
+      body.velocity.x -= dirX * eb * sign;
+      body.velocity.y -= dirY * eb * sign;
+    }
     // Drag
     const drag = Math.max(0, 1 - this.linearDrag * dt * 60);
     body.velocity.x *= drag;
