@@ -379,7 +379,7 @@ ui.add([zoneG, leftLabel, rightLabel, g, hint, tText, bText]);
     };
 
     draw();
-    state._draw = draw;
+if (state._draw) state._draw();
   };
 
   buildUI();
@@ -436,7 +436,7 @@ ui.add([zoneG, leftLabel, rightLabel, g, hint, tText, bText]);
       state.leftActive = true;
       updateStick(p.x, p.y);
     }
-    state._draw?.();
+if (state._draw) state._draw();
   });
 
   this.input.on('pointermove', (p) => {
@@ -474,7 +474,7 @@ ui.add([zoneG, leftLabel, rightLabel, g, hint, tText, bText]);
       state.throttle = 0;
       state.brake = 0;
     }
-    state._draw?.();
+if (state._draw) state._draw();
   });
 
   return state;
