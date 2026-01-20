@@ -1,4 +1,4 @@
-import Phaser from 'phaser';
+ import Phaser from 'phaser';
 
 function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
 function wrapPi(a) {
