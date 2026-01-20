@@ -22,7 +22,11 @@ export class RaceScene extends Phaser.Scene {
     this.zoom = 1.0;
 
 // === Car params (BaseSpec + Tuning) ===
-const baseSpec = CAR_SPECS.stock;
+// Selector simple de coche (cambia este id para probar)
+// Opciones: 'stock' | 'touring' | 'power'
+const CAR_ID = 'stock';
+
+const baseSpec = CAR_SPECS[CAR_ID] || CAR_SPECS.stock;
 
 // Tornillos por defecto (neutros)
 // (más adelante podrás cargarlos de localStorage o aplicar upgrades)
