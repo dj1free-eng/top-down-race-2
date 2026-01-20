@@ -16,15 +16,21 @@ export class RaceScene extends Phaser.Scene {
 
     // === Físicas afinadas (Iteración 6) ===
         // Afinado
-    this.accel = 720;          // empuje motor
-    this.brakeForce = 1100;    // freno real
-    this.engineBrake = 520;    // retención al soltar gas
-    this.maxFwd = 620;         // punta
-    this.maxRev = 240;         // marcha atrás
-    this.linearDrag = 0.045;   // drag base
-    this.turnRate = 3.4;       // giro base
-    this.turnMin = 0.28;       // giro mínimo a alta velocidad
-    this.slipFactor = 0.86;    // 0..1 (más bajo = más derrape)
+    this.accel = 640;          // menos explosiva
+this.maxFwd = 680;         // punta un poco mayor (tarda más en llegar)
+this.maxRev = 240;
+
+this.brakeForce = 980;     // freno firme, sin clavada absurda
+this.engineBrake = 260;    // MUCHÍSIMO menos retención (no se para de golpe)
+this.linearDrag = 0.030;   // menos drag base (desacelera menos inmediata)
+
+this.turnRate = 3.4;
+this.turnMin = 0.28;
+
+// Agarres laterales (clave del derrape coherente)
+this.gripCoast = 0.22;     // agarre lateral al soltar gas (más agarre = menos patinaje raro)
+this.gripDrive = 0.06;     // agarre lateral acelerando (menos agarre = derrape bajo carga)
+this.gripBrake = 0.14;     // agarre lateral frenando (intermedio)
     this.hud = null;
   }
 
@@ -188,14 +194,38 @@ export class RaceScene extends Phaser.Scene {
 
     if (left && !right) this.car.rotation -= turn;
     if (right && !left) this.car.rotation += turn;
-    // Derrape controlado: reducimos velocidad lateral en función de velocidad
-    const latX = -dirY;
-    const latY = dirX;
-    const latSpeed = body.velocity.x * latX + body.velocity.y * latY;
+// Derrape/agarre lateral coherente:
+// - Acelerando + girando: menos agarre => se “pasea”
+// - Soltando gas: más agarre => no hace ese desliz raro al parar
+const latX = -dirY;
+const latY = dirX;
+const latSpeed = body.velocity.x * latX + body.velocity.y * latY;
 
-    const slip = 1 - speed01 * (1 - this.slipFactor);
-    body.velocity.x -= latX * latSpeed * (1 - slip);
-    body.velocity.y -= latY * latSpeed * (1 - slip);
+// Intensidad de giro (teclado o stick)
+let steerAmt = 0;
+if (left && !right) steerAmt = -1;
+else if (right && !left) steerAmt = 1;
+
+// Si viene del stick, pesa también (por si no hay teclado)
+if (Math.abs(t.steer) > 0.15) steerAmt += clamp(t.steer, -1, 1);
+
+// Cuánta “carga” lateral estamos pidiendo: gira + vas rápido + aceleras
+const speed01 = clamp(Math.abs(fwdSpeed) / this.maxFwd, 0, 1);
+const turning = clamp(Math.abs(steerAmt), 0, 1);
+
+const driving = up && !down;     // acelerando
+const braking = down;            // frenando
+const coasting = !up && !down;   // soltando
+
+// Agarres por estado
+let grip = this.gripCoast;
+if (driving && turning > 0.2) grip = this.gripDrive;   // derrape bajo carga (clave)
+else if (braking) grip = this.gripBrake;
+
+// Aplicar agarre: reducimos parte de la velocidad lateral (no toda)
+const reduce = clamp(grip * (0.35 + 0.65 * speed01), 0, 0.35);
+body.velocity.x -= latX * latSpeed * reduce;
+body.velocity.y -= latY * latSpeed * reduce;
     // HUD
     const kmh = speed * 0.12;
     this.hud.setText(
