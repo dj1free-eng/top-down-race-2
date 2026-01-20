@@ -154,14 +154,12 @@ update(time, deltaMs) {
     t.brake > 0.5;
 
   const left =
-    this.keys.left.isDown ||
-    this.keys.left2.isDown ||
-    t.steer < -0.15;
+  this.keys.left.isDown ||
+  this.keys.left2.isDown;
 
-  const right =
-    this.keys.right.isDown ||
-    this.keys.right2.isDown ||
-    t.steer > 0.15;
+const right =
+  this.keys.right.isDown ||
+  this.keys.right2.isDown;
 
   const body = this.car.body;
 
