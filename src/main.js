@@ -1,3 +1,27 @@
+// === ERROR OVERLAY (diagnóstico iPhone) ===
+(function () {
+  function show(msg) {
+    try {
+      const pre = document.createElement('pre');
+      pre.style.cssText =
+        'position:fixed;inset:0;z-index:99999;margin:0;padding:12px;' +
+        'background:#0b1020;color:#ff6b6b;font:12px/1.35 ui-monospace,Menlo,Consolas,monospace;' +
+        'white-space:pre-wrap;overflow:auto;';
+      pre.textContent = msg;
+      document.body.appendChild(pre);
+    } catch {}
+  }
+
+  window.addEventListener('error', (e) => {
+    show('window.error:\n' + (e?.message || 'unknown') + '\n' + (e?.filename || '') + ':' + (e?.lineno || '') + ':' + (e?.colno || '') + '\n\n' + (e?.error?.stack || ''));
+  });
+
+  window.addEventListener('unhandledrejection', (e) => {
+    const r = e?.reason;
+    show('unhandledrejection:\n' + (r?.message || String(r)) + '\n\n' + (r?.stack || ''));
+  });
+})();
+
 import './style.css';
 import { createGame } from './game/game.js';
 
