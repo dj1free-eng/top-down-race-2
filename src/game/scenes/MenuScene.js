@@ -29,7 +29,15 @@ export class MenuScene extends Phaser.Scene {
 
     const root = this.add.container(0, 0);
     this._ui = root;
+// === DIAGNÓSTICO: salida temprana ===
+root.add(this.add.text(width / 2, height / 2, 'MENU OK', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '28px',
+  color: '#ffffff',
+  fontStyle: 'bold'
+}).setOrigin(0.5));
 
+return;
     // Fondo sutil
     const g = this.add.graphics();
     g.fillStyle(0x141b33, 0.65);
