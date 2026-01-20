@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { makeTrack01Oval } from '../tracks/track01_oval.js';
 import { buildTrackRibbon } from '../tracks/TrackBuilder.js';
+import { CAR_SPECS } from '../cars/carSpecs.js';
+import { resolveCarParams } from '../cars/resolveCarParams.js';
 function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
 function wrapPi(a) {
   while (a > Math.PI) a -= Math.PI * 2;
@@ -19,23 +21,39 @@ export class RaceScene extends Phaser.Scene {
 
     this.zoom = 1.0;
 
-    // === Físicas afinadas (Iteración 6) ===
-        // Afinado
-    this.accel = 640;          // menos explosiva
-this.maxFwd = 460;         // punta un poco mayor (tarda más en llegar)
-this.maxRev = 260;
+// === Car params (BaseSpec + Tuning) ===
+const baseSpec = CAR_SPECS.stock;
 
-this.brakeForce = 980;     // freno firme, sin clavada absurda
-this.engineBrake = 260;    // MUCHÍSIMO menos retención (no se para de golpe)
-this.linearDrag = 0.030;   // menos drag base (desacelera menos inmediata)
+// Tornillos por defecto (neutros)
+// (más adelante podrás cargarlos de localStorage o aplicar upgrades)
+this.tuning = {
+  accelMult: 1.0,
+  brakeMult: 1.0,
+  dragMult: 1.0,
+  turnRateMult: 1.0,
+  maxFwdAdd: 0,
+  maxRevAdd: 0,
+  turnMinAdd: 0
+};
 
-this.turnRate = 3.4;
-this.turnMin = 0.28;
+this.carParams = resolveCarParams(baseSpec, this.tuning);
 
-// Agarres laterales (clave del derrape coherente)
-this.gripCoast = 0.22;     // agarre lateral al soltar gas (más agarre = menos patinaje raro)
-this.gripDrive = 0.06;     // agarre lateral acelerando (menos agarre = derrape bajo carga)
-this.gripBrake = 0.14;     // agarre lateral frenando (intermedio)
+// Asignación FINAL a la física (una sola fuente de verdad)
+this.accel = this.carParams.accel;
+this.maxFwd = this.carParams.maxFwd;
+this.maxRev = this.carParams.maxRev;
+
+this.brakeForce = this.carParams.brakeForce;
+this.engineBrake = this.carParams.engineBrake; // si no existe en spec, lo añadimos en el paso 2
+this.linearDrag = this.carParams.linearDrag;
+
+this.turnRate = this.carParams.turnRate;
+this.turnMin = this.carParams.turnMin;
+
+// Agarres laterales (se mantienen porque forman parte del “feeling”)
+this.gripCoast = this.carParams.gripCoast;
+this.gripDrive = this.carParams.gripDrive;
+this.gripBrake = this.carParams.gripBrake;
     this.hud = null;
   }
 
