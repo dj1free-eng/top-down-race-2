@@ -89,7 +89,7 @@ this.gripBrake = 0.14;     // agarre lateral frenando (intermedio)
     });
   }
 
-    update(time, deltaMs) {
+      update(time, deltaMs) {
     const dt = Math.min(0.05, deltaMs / 1000);
 
     // Zoom
@@ -137,36 +137,17 @@ this.gripBrake = 0.14;     // agarre lateral frenando (intermedio)
     const vy = body.velocity.y;
     const speed = Math.sqrt(vx * vx + vy * vy);
 
-    // Forward speed (para decidir freno / marcha atrás)
-    const fwdSpeed = vx * dirX + vy * dirY;
-
-    // Acelerar (solo hacia delante)
+    // Aceleración simple
     if (up && !down) {
       body.velocity.x += dirX * this.accel * dt;
       body.velocity.y += dirY * this.accel * dt;
     }
 
-    // Freno / marcha atrás:
-    // - si vamos hacia delante o casi parados: frena fuerte
-    // - si ya estamos casi parados y seguimos pulsando: entra marcha atrás (lenta)
     if (down) {
-      if (fwdSpeed > 30) {
-        body.velocity.x -= dirX * this.brakeForce * dt;
-        body.velocity.y -= dirY * this.brakeForce * dt;
-      } else {
-        // marcha atrás suave
-        body.velocity.x -= dirX * (this.accel * 0.55) * dt;
-        body.velocity.y -= dirY * (this.accel * 0.55) * dt;
-      }
+      body.velocity.x -= dirX * this.brakeForce * dt;
+      body.velocity.y -= dirY * this.brakeForce * dt;
     }
 
-    // Retención al soltar (solo si no estás frenando ni acelerando)
-    if (!up && !down) {
-      const sign = fwdSpeed >= 0 ? 1 : -1;
-      const eb = Math.min(Math.abs(fwdSpeed), this.engineBrake * dt);
-      body.velocity.x -= dirX * eb * sign;
-      body.velocity.y -= dirY * eb * sign;
-    }
     // Drag
     const drag = Math.max(0, 1 - this.linearDrag * dt * 60);
     body.velocity.x *= drag;
@@ -178,11 +159,8 @@ this.gripBrake = 0.14;     // agarre lateral frenando (intermedio)
       body.velocity.y * body.velocity.y
     );
 
-    // Limitar velocidad según sentido (delante / atrás)
-    const maxSpeed = fwdSpeed >= 0 ? this.maxFwd : this.maxRev;
-
-    if (newSpeed > maxSpeed) {
-      const s = maxSpeed / newSpeed;
+    if (newSpeed > this.maxFwd) {
+      const s = this.maxFwd / newSpeed;
       body.velocity.x *= s;
       body.velocity.y *= s;
     }
@@ -194,38 +172,7 @@ this.gripBrake = 0.14;     // agarre lateral frenando (intermedio)
 
     if (left && !right) this.car.rotation -= turn;
     if (right && !left) this.car.rotation += turn;
-// Derrape/agarre lateral coherente:
-// - Acelerando + girando: menos agarre => se “pasea”
-// - Soltando gas: más agarre => no hace ese desliz raro al parar
-const latX = -dirY;
-const latY = dirX;
-const latSpeed = body.velocity.x * latX + body.velocity.y * latY;
 
-// Intensidad de giro (teclado o stick)
-let steerAmt = 0;
-if (left && !right) steerAmt = -1;
-else if (right && !left) steerAmt = 1;
-
-// Si viene del stick, pesa también (por si no hay teclado)
-if (Math.abs(t.steer) > 0.15) steerAmt += clamp(t.steer, -1, 1);
-
-// Cuánta “carga” lateral estamos pidiendo: gira + vas rápido + aceleras
-const speed01 = clamp(Math.abs(fwdSpeed) / this.maxFwd, 0, 1);
-const turning = clamp(Math.abs(steerAmt), 0, 1);
-
-const driving = up && !down;     // acelerando
-const braking = down;            // frenando
-const coasting = !up && !down;   // soltando
-
-// Agarres por estado
-let grip = this.gripCoast;
-if (driving && turning > 0.2) grip = this.gripDrive;   // derrape bajo carga (clave)
-else if (braking) grip = this.gripBrake;
-
-// Aplicar agarre: reducimos parte de la velocidad lateral (no toda)
-const reduce = clamp(grip * (0.35 + 0.65 * speed01), 0, 0.35);
-body.velocity.x -= latX * latSpeed * reduce;
-body.velocity.y -= latY * latSpeed * reduce;
     // HUD
     const kmh = speed * 0.12;
     this.hud.setText(
