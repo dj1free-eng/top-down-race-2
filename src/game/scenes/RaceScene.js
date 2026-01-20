@@ -1,7 +1,11 @@
 import Phaser from 'phaser';
 
 function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
-
+function wrapPi(a) {
+  while (a > Math.PI) a -= Math.PI * 2;
+  while (a < -Math.PI) a += Math.PI * 2;
+  return a;
+}
 export class RaceScene extends Phaser.Scene {
   constructor() {
     super('race');
@@ -194,10 +198,25 @@ if (newSpeed > maxSpeed) {
     // Giro
     const speed01 = clamp(speed / this.maxFwd, 0, 1);
     const turnFactor = clamp(1 - speed01, this.turnMin, 1);
-    const turn = this.turnRate * turnFactor * dt;
+    const maxTurn = this.turnRate * turnFactor; // rad/s
 
-    if (left && !right) this.car.rotation -= turn;
-    if (right && !left) this.car.rotation += turn;
+    // 1) Teclado: volante clásico (relativo al coche)
+    if (left && !right) this.car.rotation -= maxTurn * dt;
+    if (right && !left) this.car.rotation += maxTurn * dt;
+
+    // 2) Táctil: dirección absoluta (apuntas hacia dónde quieres ir)
+    // Solo si NO estás usando teclado izquierda/derecha.
+    const stickMag = Math.sqrt(t.stickX * t.stickX + t.stickY * t.stickY);
+
+    if (!left && !right && stickMag > 0.15) {
+      // En pantalla, +Y es hacia abajo. atan2(y, x) cuadra con el sistema de ángulos del juego.
+      const target = Math.atan2(t.stickY, t.stickX);
+
+      const diff = wrapPi(target - this.car.rotation);
+      const step = clamp(diff, -maxTurn * dt, maxTurn * dt);
+
+      this.car.rotation += step;
+    }
 
     // HUD
     const kmh = speed * 0.12;
@@ -283,7 +302,8 @@ if (newSpeed > maxSpeed) {
       steer: 0,
       throttle: 0,
       brake: 0,
-
+      stickX: 0,
+      stickY: 0,
       leftId: -1,
       rightId: -1,
 
@@ -458,8 +478,15 @@ if (newSpeed > maxSpeed) {
       state.knobY = ky;
 
       // deadzone
-      const raw = (state.knobX - state.baseX) / state.stickMax;
-      state.steer = Math.abs(raw) < 0.12 ? 0 : clamp(raw, -1, 1);
+            const rawX = (state.knobX - state.baseX) / state.stickMax;
+      const rawY = (state.knobY - state.baseY) / state.stickMax;
+
+      // deadzone
+      state.stickX = Math.abs(rawX) < 0.12 ? 0 : clamp(rawX, -1, 1);
+      state.stickY = Math.abs(rawY) < 0.12 ? 0 : clamp(rawY, -1, 1);
+
+      // mantenemos steer por compatibilidad (ya no lo usaremos para girar en touch)
+      state.steer = state.stickX;
     };
 
     this.input.on('pointerdown', (p) => {
