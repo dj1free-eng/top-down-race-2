@@ -24,7 +24,8 @@ export class RaceScene extends Phaser.Scene {
 
     this.hud = null;
   }
-init(data) {
+
+  init(data) {
   // 1) Resolver coche seleccionado (prioridad: data -> localStorage -> stock)
   this.carId = data?.carId || localStorage.getItem('tdr2:carId') || 'stock';
 
@@ -62,7 +63,6 @@ init(data) {
   this.gripDrive = this.carParams.gripDrive;
   this.gripBrake = this.carParams.gripBrake;
 }
-  create() {
     create() {
   console.log('>>> RaceScene.create() ENTER');
     // World bounds
