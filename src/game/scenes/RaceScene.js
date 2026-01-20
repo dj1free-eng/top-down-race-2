@@ -17,8 +17,8 @@ export class RaceScene extends Phaser.Scene {
     // === Físicas afinadas (Iteración 6) ===
         // Afinado
     this.accel = 640;          // menos explosiva
-this.maxFwd = 680;         // punta un poco mayor (tarda más en llegar)
-this.maxRev = 240;
+this.maxFwd = 620;         // punta un poco mayor (tarda más en llegar)
+this.maxRev = 260;
 
 this.brakeForce = 980;     // freno firme, sin clavada absurda
 this.engineBrake = 260;    // MUCHÍSIMO menos retención (no se para de golpe)
@@ -154,16 +154,21 @@ this.gripBrake = 0.14;     // agarre lateral frenando (intermedio)
     body.velocity.y *= drag;
 
     // Límite de velocidad
-    const newSpeed = Math.sqrt(
-      body.velocity.x * body.velocity.x +
-      body.velocity.y * body.velocity.y
-    );
+    // Límite de velocidad por sentido (delante vs atrás)
+const fwdSpeed = body.velocity.x * dirX + body.velocity.y * dirY;
 
-    if (newSpeed > this.maxFwd) {
-      const s = this.maxFwd / newSpeed;
-      body.velocity.x *= s;
-      body.velocity.y *= s;
-    }
+const newSpeed = Math.sqrt(
+  body.velocity.x * body.velocity.x +
+  body.velocity.y * body.velocity.y
+);
+
+const maxSpeed = fwdSpeed >= 0 ? this.maxFwd : this.maxRev;
+
+if (newSpeed > maxSpeed) {
+  const s = maxSpeed / newSpeed;
+  body.velocity.x *= s;
+  body.velocity.y *= s;
+}
 
     // Giro
     const speed01 = clamp(speed / this.maxFwd, 0, 1);
