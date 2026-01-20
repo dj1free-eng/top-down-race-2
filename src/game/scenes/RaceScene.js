@@ -21,48 +21,47 @@ export class RaceScene extends Phaser.Scene {
 
     this.zoom = 1.0;
 
-// === Car params (BaseSpec + Tuning) ===
-// Selector simple de coche (cambia este id para probar)
-// Opciones: 'stock' | 'touring' | 'power'
-const CAR_ID = 'stock';
 
-const data = this.scene.settings.data || {};
-const carId = data.carId || localStorage.getItem('tdr2:carId') || 'stock';
-const baseSpec = CAR_SPECS[carId] || CAR_SPECS.stock;
-
-// Tornillos por defecto (neutros)
-// (más adelante podrás cargarlos de localStorage o aplicar upgrades)
-this.tuning = {
-  accelMult: 1.0,
-  brakeMult: 1.0,
-  dragMult: 1.0,
-  turnRateMult: 1.0,
-  maxFwdAdd: 0,
-  maxRevAdd: 0,
-  turnMinAdd: 0
-};
-
-this.carParams = resolveCarParams(baseSpec, this.tuning);
-
-// Asignación FINAL a la física (una sola fuente de verdad)
-this.accel = this.carParams.accel;
-this.maxFwd = this.carParams.maxFwd;
-this.maxRev = this.carParams.maxRev;
-
-this.brakeForce = this.carParams.brakeForce;
-this.engineBrake = this.carParams.engineBrake; // si no existe en spec, lo añadimos en el paso 2
-this.linearDrag = this.carParams.linearDrag;
-
-this.turnRate = this.carParams.turnRate;
-this.turnMin = this.carParams.turnMin;
-
-// Agarres laterales (se mantienen porque forman parte del “feeling”)
-this.gripCoast = this.carParams.gripCoast;
-this.gripDrive = this.carParams.gripDrive;
-this.gripBrake = this.carParams.gripBrake;
     this.hud = null;
   }
+init(data) {
+  // 1) Resolver coche seleccionado (prioridad: data -> localStorage -> stock)
+  this.carId = data?.carId || localStorage.getItem('tdr2:carId') || 'stock';
 
+  // 2) Base spec
+  const baseSpec = CAR_SPECS[this.carId] || CAR_SPECS.stock;
+
+  // 3) Tornillos (neutros por defecto)
+  // (luego los podrás cargar de localStorage o aplicar upgrades)
+  this.tuning = {
+    accelMult: 1.0,
+    brakeMult: 1.0,
+    dragMult: 1.0,
+    turnRateMult: 1.0,
+    maxFwdAdd: 0,
+    maxRevAdd: 0,
+    turnMinAdd: 0
+  };
+
+  // 4) Params finales (fuente única de verdad)
+  this.carParams = resolveCarParams(baseSpec, this.tuning);
+
+  // 5) Asignación a físicas (lo que usa update())
+  this.accel = this.carParams.accel;
+  this.maxFwd = this.carParams.maxFwd;
+  this.maxRev = this.carParams.maxRev;
+
+  this.brakeForce = this.carParams.brakeForce;
+  this.engineBrake = this.carParams.engineBrake;
+  this.linearDrag = this.carParams.linearDrag;
+
+  this.turnRate = this.carParams.turnRate;
+  this.turnMin = this.carParams.turnMin;
+
+  this.gripCoast = this.carParams.gripCoast;
+  this.gripDrive = this.carParams.gripDrive;
+  this.gripBrake = this.carParams.gripBrake;
+}
   create() {
     // World bounds
     this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
