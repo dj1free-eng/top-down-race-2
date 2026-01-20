@@ -285,7 +285,7 @@ if (this.track && this.track.geom && this.track.geom.cells) {
     let g = this.track.gfxByCell.get(key);
     if (!g) {
       g = this.add.graphics();
-g.setDepth(1000); // FORZADO: encima de todo (diagnóstico)
+g.setDepth(1); // pista por debajo del coche
       this.track.gfxByCell.set(key, g);
     }
 
@@ -293,7 +293,7 @@ g.setDepth(1000); // FORZADO: encima de todo (diagnóstico)
 
     // Redibujamos (simple y robusto; optimizable luego)
     g.clear();
-g.fillStyle(0xff00ff, 1); // MAGENTA CHILLÓN (diagnóstico)
+g.fillStyle(this.trackAsphaltColor, 1);
 
     for (const poly of cellData.polys) {
       g.beginPath();
