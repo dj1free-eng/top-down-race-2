@@ -22,8 +22,8 @@ export class RaceScene extends Phaser.Scene {
     // === Físicas afinadas (Iteración 6) ===
         // Afinado
     this.accel = 640;          // menos explosiva
-this.maxFwd = 923;         // punta un poco mayor (tarda más en llegar)
-this.maxRev = 469;
+this.maxFwd = 460;         // punta un poco mayor (tarda más en llegar)
+this.maxRev = 260;
 
 this.brakeForce = 980;     // freno firme, sin clavada absurda
 this.engineBrake = 260;    // MUCHÍSIMO menos retención (no se para de golpe)
