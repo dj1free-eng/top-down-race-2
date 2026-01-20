@@ -3,20 +3,26 @@
 
 export const CAR_SPECS = {
   stock: {
-    id: 'stock',
-    name: 'Stock Kart',
+  id: 'stock',
+  name: 'Stock Kart',
 
-    // Velocidades máximas (px/s)
-    maxFwd: 620,
-    maxRev: 260,
+  // Velocidades máximas (px/s)
+  maxFwd: 460,
+  maxRev: 260,
 
-    // Dinámica longitudinal
-    accel: 520,        // aceleración base
-    brakeForce: 720,   // fuerza de frenado
-    linearDrag: 0.065, // resistencia base
+  // Dinámica longitudinal
+  accel: 640,
+  brakeForce: 980,
+  engineBrake: 260,
+  linearDrag: 0.030,
 
-    // Dirección
-    turnRate: 2.6,     // rad/s
-    turnMin: 0.25      // giro mínimo a alta velocidad
-  }
+  // Dirección
+  turnRate: 3.4,
+  turnMin: 0.28,
+
+  // Agarres laterales
+  gripCoast: 0.22,
+  gripDrive: 0.06,
+  gripBrake: 0.14
+}
 };
