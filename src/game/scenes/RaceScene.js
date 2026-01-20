@@ -221,7 +221,7 @@ update(time, deltaMs) {
 
   if (!left && !right && stickMag > 0.15 && (movingEnough || applyingPower)) {
     // OJO: aquí NO va +PI/2 en tu proyecto.
-const target = wrapPi(Math.atan2(t.stickY, t.stickX) - Math.PI / 2);
+const target = wrapPi(Math.atan2(t.stickY, t.stickX) + Math.PI / 2);
 
     const diff = wrapPi(target - this.car.rotation);
 
