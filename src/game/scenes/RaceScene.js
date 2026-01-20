@@ -507,6 +507,12 @@ if (d < dead) {
 
 // mantenemos steer por compatibilidad
 state.steer = state.stickX;
+      // Guardar ángulo objetivo estable del stick
+if (state.stickX === 0 && state.stickY === 0) {
+  state.targetAngle = null;
+} else {
+  state.targetAngle = Math.atan2(state.stickY, state.stickX);
+}
     };
 
     this.input.on('pointerdown', (p) => {
