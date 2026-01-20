@@ -221,9 +221,9 @@ update(time, deltaMs) {
 
   if (!left && !right && stickMag > 0.15 && (movingEnough || applyingPower)) {
     // OJO: aquí NO va +PI/2 en tu proyecto.
-const target = wrapPi(Math.atan2(t.stickY, t.stickX) + Math.PI);
-
-    const diff = wrapPi(target - this.car.rotation);
+const target = t.targetAngle;
+if (typeof target !== 'number') return; // por seguridad
+const diff = wrapPi(target - this.car.rotation);
 
     // Para cuando llega (evita que se quede corrigiendo infinitamente)
     const EPS = 0.02; // ~1.1º
