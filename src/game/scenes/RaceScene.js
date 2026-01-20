@@ -63,6 +63,8 @@ init(data) {
   this.gripBrake = this.carParams.gripBrake;
 }
   create() {
+    create() {
+  console.log('>>> RaceScene.create() ENTER');
     // World bounds
     this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
 
