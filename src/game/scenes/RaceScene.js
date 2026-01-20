@@ -74,7 +74,7 @@ this.gripBrake = 0.14;     // agarre lateral frenando (intermedio)
     this.carBody = body;
     this.carRig = rig;
     this.car = body; // para que tu update() siga funcionando sin tocar derrape
-
+this.targetHeading = this.car.rotation;
     // Cámara follow
     this.cameras.main.setBounds(0, 0, this.worldW, this.worldH);
 this.cameras.main.startFollow(this.carRig, true, 0.12, 0.12);
@@ -217,24 +217,25 @@ if (newSpeed > maxSpeed) {
     if (left && !right) this.car.rotation -= maxTurn * dt;
     if (right && !left) this.car.rotation += maxTurn * dt;
 
-    // 2) Táctil: dirección absoluta (apuntas hacia dónde quieres ir)
-    // Solo si NO estás usando teclado izquierda/derecha.
-    const stickMag = Math.sqrt(t.stickX * t.stickX + t.stickY * t.stickY);
+// 2) Táctil: el stick manda el alineamiento SOLO mientras está accionado
+const stickMag = Math.sqrt(t.stickX * t.stickX + t.stickY * t.stickY);
 
-    if (!left && !right && stickMag > 0.15) {
-      // En pantalla, +Y es hacia abajo. atan2(y, x) cuadra con el sistema de ángulos del juego.
-const target = Math.atan2(-t.stickY, t.stickX);
+if (!left && !right && stickMag > 0.15) {
+  // Tu stick ya está en el sistema correcto: arriba suele dar stickY negativo,
+  // y esta atan2 es la que te funcionaba antes.
+  const target = Math.atan2(t.stickY, t.stickX);
 
-      const diff = wrapPi(target - this.car.rotation);
+  const diff = wrapPi(target - this.car.rotation);
 
-// Si ya está alineado “suficiente”, no metas micro-correcciones
-const EPS = 0.02; // ~1.1º
-if (Math.abs(diff) < EPS) {
-  // opcional: clavar exactamente al target para que se quede fino
-  this.car.rotation = target;
-} else {
-  const step = clamp(diff, -maxTurn * dt, maxTurn * dt);
-  this.car.rotation += step;
+  // Si ya está alineado, NO sigas aplicando rotación (evita giro infinito / vibración)
+  const EPS = 0.02; // ~1.1º
+  if (Math.abs(diff) > EPS) {
+    const step = clamp(diff, -maxTurn * dt, maxTurn * dt);
+    this.car.rotation += step;
+  } else {
+    // opcional: clava exacto para que quede fino (sin “serruchar”)
+    this.car.rotation = target;
+  }
 }
     }
 
