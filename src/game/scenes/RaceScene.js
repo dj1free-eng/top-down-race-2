@@ -127,117 +127,129 @@ this.time.delayedCall(0, () => {
     });
   }
 
-      update(time, deltaMs) {
-    const dt = Math.min(0.05, deltaMs / 1000);
+update(time, deltaMs) {
+  const dt = Math.min(0.05, deltaMs / 1000);
 
-    // Zoom
-    if (Phaser.Input.Keyboard.JustDown(this.keys.zoomIn)) {
-      this.zoom = clamp(this.zoom + 0.1, 0.6, 1.6);
-      this.cameras.main.setZoom(this.zoom);
+  // Zoom
+  if (Phaser.Input.Keyboard.JustDown(this.keys.zoomIn)) {
+    this.zoom = clamp(this.zoom + 0.1, 0.6, 1.6);
+    this.cameras.main.setZoom(this.zoom);
+  }
+  if (Phaser.Input.Keyboard.JustDown(this.keys.zoomOut)) {
+    this.zoom = clamp(this.zoom - 0.1, 0.6, 1.6);
+    this.cameras.main.setZoom(this.zoom);
+  }
+
+  // Inputs
+  const t = this.touch || { steer: 0, throttle: 0, brake: 0, stickX: 0, stickY: 0 };
+
+  const up =
+    this.keys.up.isDown ||
+    this.keys.up2.isDown ||
+    t.throttle > 0.5;
+
+  const down =
+    this.keys.down.isDown ||
+    this.keys.down2.isDown ||
+    t.brake > 0.5;
+
+  const left =
+    this.keys.left.isDown ||
+    this.keys.left2.isDown ||
+    t.steer < -0.15;
+
+  const right =
+    this.keys.right.isDown ||
+    this.keys.right2.isDown ||
+    t.steer > 0.15;
+
+  const body = this.car.body;
+
+  // Dirección del coche
+  const rot = this.car.rotation;
+  const dirX = Math.cos(rot);
+  const dirY = Math.sin(rot);
+
+  // Velocidad actual
+  const vx = body.velocity.x;
+  const vy = body.velocity.y;
+  const speed = Math.sqrt(vx * vx + vy * vy);
+
+  // Aceleración / freno
+  if (up && !down) {
+    body.velocity.x += dirX * this.accel * dt;
+    body.velocity.y += dirY * this.accel * dt;
+  }
+  if (down) {
+    body.velocity.x -= dirX * this.brakeForce * dt;
+    body.velocity.y -= dirY * this.brakeForce * dt;
+  }
+
+  // Drag base
+  const drag = Math.max(0, 1 - this.linearDrag * dt * 60);
+  body.velocity.x *= drag;
+  body.velocity.y *= drag;
+
+  // Límite de velocidad por sentido (delante vs atrás)
+  const fwdSpeed = body.velocity.x * dirX + body.velocity.y * dirY;
+  const newSpeed = Math.sqrt(
+    body.velocity.x * body.velocity.x +
+    body.velocity.y * body.velocity.y
+  );
+  const maxSpeed = fwdSpeed >= 0 ? this.maxFwd : this.maxRev;
+
+  if (newSpeed > maxSpeed) {
+    const s = maxSpeed / newSpeed;
+    body.velocity.x *= s;
+    body.velocity.y *= s;
+  }
+
+  // Giro (depende de velocidad)
+  const speed01 = clamp(speed / this.maxFwd, 0, 1);
+  const turnFactor = clamp(1 - speed01, this.turnMin, 1);
+  const maxTurn = this.turnRate * turnFactor; // rad/s
+
+  // 1) Teclado: volante clásico (relativo)
+  if (left && !right) this.car.rotation -= maxTurn * dt;
+  if (right && !left) this.car.rotation += maxTurn * dt;
+
+  // 2) Táctil: SOLO gira mientras el stick está activo.
+  // Y NO permitimos girar en parado total (para evitar trompos “sobre el eje”).
+  const stickMag = Math.sqrt(t.stickX * t.stickX + t.stickY * t.stickY);
+  const movingEnough = speed > 8; // umbral pequeño (px/s)
+  const applyingPower = up || down; // gas o freno pulsados
+
+  if (!left && !right && stickMag > 0.15 && (movingEnough || applyingPower)) {
+    // OJO: aquí NO va +PI/2 en tu proyecto.
+    const target = Math.atan2(t.stickY, t.stickX);
+
+    const diff = wrapPi(target - this.car.rotation);
+
+    // Para cuando llega (evita que se quede corrigiendo infinitamente)
+    const EPS = 0.02; // ~1.1º
+    if (Math.abs(diff) > EPS) {
+      const step = clamp(diff, -maxTurn * dt, maxTurn * dt);
+      this.car.rotation += step;
+    } else {
+      this.car.rotation = target;
     }
-    if (Phaser.Input.Keyboard.JustDown(this.keys.zoomOut)) {
-      this.zoom = clamp(this.zoom - 0.1, 0.6, 1.6);
-      this.cameras.main.setZoom(this.zoom);
-    }
+  }
 
-    // Inputs
-    const t = this.touch || { steer: 0, throttle: 0, brake: 0 };
+  // HUD
+  const kmh = speed * 0.12;
+  this.hud.setText(
+    'RaceScene\n' +
+    'Vel: ' + kmh.toFixed(0) + ' km/h\n' +
+    'Zoom: ' + this.zoom.toFixed(1)
+  );
 
-    const up =
-      this.keys.up.isDown ||
-      this.keys.up2.isDown ||
-      t.throttle > 0.5;
-
-    const down =
-      this.keys.down.isDown ||
-      this.keys.down2.isDown ||
-      t.brake > 0.5;
-
-    const left =
-      this.keys.left.isDown ||
-      this.keys.left2.isDown ||
-      t.steer < -0.15;
-
-    const right =
-      this.keys.right.isDown ||
-      this.keys.right2.isDown ||
-      t.steer > 0.15;
-
-    const body = this.car.body;
-
-    // Dirección del coche
-    const rot = this.car.rotation;
-    const dirX = Math.cos(rot);
-    const dirY = Math.sin(rot);
-
-    // Velocidad actual
-    const vx = body.velocity.x;
-    const vy = body.velocity.y;
-    const speed = Math.sqrt(vx * vx + vy * vy);
-
-    // Aceleración simple
-    if (up && !down) {
-      body.velocity.x += dirX * this.accel * dt;
-      body.velocity.y += dirY * this.accel * dt;
-    }
-
-    if (down) {
-      body.velocity.x -= dirX * this.brakeForce * dt;
-      body.velocity.y -= dirY * this.brakeForce * dt;
-    }
-
-    // Drag
-    const drag = Math.max(0, 1 - this.linearDrag * dt * 60);
-    body.velocity.x *= drag;
-    body.velocity.y *= drag;
-
-    // Límite de velocidad
-    // Límite de velocidad por sentido (delante vs atrás)
-const fwdSpeed = body.velocity.x * dirX + body.velocity.y * dirY;
-
-const newSpeed = Math.sqrt(
-  body.velocity.x * body.velocity.x +
-  body.velocity.y * body.velocity.y
-);
-
-const maxSpeed = fwdSpeed >= 0 ? this.maxFwd : this.maxRev;
-
-if (newSpeed > maxSpeed) {
-  const s = maxSpeed / newSpeed;
-  body.velocity.x *= s;
-  body.velocity.y *= s;
-}
-
-    // Giro
-    const speed01 = clamp(speed / this.maxFwd, 0, 1);
-    const turnFactor = clamp(1 - speed01, this.turnMin, 1);
-    const maxTurn = this.turnRate * turnFactor; // rad/s
-
-    // 1) Teclado: volante clásico (relativo al coche)
-    if (left && !right) this.car.rotation -= maxTurn * dt;
-    if (right && !left) this.car.rotation += maxTurn * dt;
-
-// 2) Táctil: el stick manda el alineamiento SOLO mientras está accionado
-const stickMag = Math.sqrt(t.stickX * t.stickX + t.stickY * t.stickY);
-
-if (!left && !right && stickMag > 0.15) {
-  // Tu stick ya está en el sistema correcto: arriba suele dar stickY negativo,
-  // y esta atan2 es la que te funcionaba antes.
-const target = Math.atan2(t.stickY, t.stickX) + Math.PI / 2;
-
-  const diff = wrapPi(target - this.car.rotation);
-
-  // Si ya está alineado, NO sigas aplicando rotación (evita giro infinito / vibración)
-  const EPS = 0.02; // ~1.1º
-  if (Math.abs(diff) > EPS) {
-    const step = clamp(diff, -maxTurn * dt, maxTurn * dt);
-    this.car.rotation += step;
-  } else {
-    // opcional: clava exacto para que quede fino (sin “serruchar”)
-    this.car.rotation = target;
+  // Sincronizar rig visual con body físico
+  if (this.carRig && this.carBody) {
+    this.carRig.x = this.carBody.x;
+    this.carRig.y = this.carBody.y;
+    this.carRig.rotation = this.carBody.rotation;
   }
 }
-    }
 
     // HUD
     const kmh = speed * 0.12;
