@@ -234,7 +234,7 @@ update(time, deltaMs) {
       this.car.rotation = target;
     }
   }
-}
+
   // HUD
   const kmh = speed * 0.12;
   this.hud.setText(
@@ -250,22 +250,6 @@ update(time, deltaMs) {
     this.carRig.rotation = this.carBody.rotation;
   }
 }
-
-    // HUD
-    const kmh = speed * 0.12;
-    this.hud.setText(
-      'RaceScene\n' +
-      'Vel: ' + kmh.toFixed(0) + ' km/h\n' +
-      'Zoom: ' + this.zoom.toFixed(1)
-    );
-           // === C) Sincronizar rig visual con body físico ===
-    if (this.carRig && this.carBody) {
-      this.carRig.x = this.carBody.x;
-      this.carRig.y = this.carBody.y;
-      this.carRig.rotation = this.carBody.rotation;
-    }
-  
-  }
 
   ensureBgTexture() {
     if (this.textures.exists('bgGrid')) return;
