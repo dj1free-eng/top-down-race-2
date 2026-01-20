@@ -26,7 +26,9 @@ export class RaceScene extends Phaser.Scene {
 // Opciones: 'stock' | 'touring' | 'power'
 const CAR_ID = 'stock';
 
-const baseSpec = CAR_SPECS[CAR_ID] || CAR_SPECS.stock;
+const data = this.scene.settings.data || {};
+const carId = data.carId || localStorage.getItem('tdr2:carId') || 'stock';
+const baseSpec = CAR_SPECS[carId] || CAR_SPECS.stock;
 
 // Tornillos por defecto (neutros)
 // (más adelante podrás cargarlos de localStorage o aplicar upgrades)
