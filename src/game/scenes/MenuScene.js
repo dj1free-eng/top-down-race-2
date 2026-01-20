@@ -1,12 +1,13 @@
 import Phaser from 'phaser';
 import { CAR_SPECS } from '../cars/carSpecs.js';
-console.log('CAR_SPECS OK:', CAR_SPECS);
+
 function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
     super('menu');
     this._ui = null;
+    this.selectedCarId = 'stock';
   }
 
   create() {
@@ -29,15 +30,7 @@ export class MenuScene extends Phaser.Scene {
 
     const root = this.add.container(0, 0);
     this._ui = root;
-// === DIAGNÓSTICO: salida temprana ===
-root.add(this.add.text(width / 2, height / 2, 'MENU OK', {
-  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-  fontSize: '28px',
-  color: '#ffffff',
-  fontStyle: 'bold'
-}).setOrigin(0.5));
 
-return;
     // Fondo sutil
     const g = this.add.graphics();
     g.fillStyle(0x141b33, 0.65);
@@ -52,7 +45,7 @@ return;
 
     const isPortrait = height >= width;
 
-    // Logo + títulos (un poco más compactos en portrait)
+    // Logo + títulos
     const logoY = Math.floor(height * (isPortrait ? 0.16 : 0.22));
     const titleY = Math.floor(height * (isPortrait ? 0.29 : 0.36));
 
@@ -71,82 +64,81 @@ return;
       color: '#b7c0ff'
     }).setOrigin(0.5));
 
-    // === Selector de coche (simple) ===
-/* const cars = Object.values(CAR_SPECS);
+    // ===== Selector de coche (píldoras) =====
+    const cars = Object.values(CAR_SPECS || {});
+    try {
+      this.selectedCarId = localStorage.getItem('tdr2:carId') || 'stock';
+    } catch {
+      this.selectedCarId = 'stock';
+    }
 
-// Coche seleccionado (persistente)
-let savedCarId = null;
-try { savedCarId = localStorage.getItem('tdr2:carId'); } catch(e) {}
-this.selectedCarId = savedCarId || 'stock';
+    const carLabel = this.add.text(width / 2, titleY + 54, 'Elige coche', {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: '13px',
+      color: '#b7c0ff'
+    }).setOrigin(0.5);
+    root.add(carLabel);
 
-// Título
-const carLabel = this.add.text(width / 2, titleY + 54, 'Elige coche', {
-  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-  fontSize: '13px',
-  color: '#b7c0ff'
-}).setOrigin(0.5);
-root.add(carLabel);
+    const pillRow = this.add.container(0, 0);
+    root.add(pillRow);
 
-// Pills (botones) centrados
-const pillH = 34;
-const pillPadX = 14;
-const pillGap = 10;
+    const pillH = 34;
+    const pillPadX = 14;
+    const pillGap = 10;
 
-const pillRow = this.add.container(0, 0);
-root.add(pillRow);
+    const pills = [];
 
-const pills = [];
+    const drawPill = (gg, w, selected) => {
+      gg.clear();
+      gg.fillStyle(0x0b1020, selected ? 0.65 : 0.35);
+      gg.fillRoundedRect(0, 0, w, pillH, 16);
+      gg.lineStyle(1, selected ? 0x2bff88 : 0xb7c0ff, selected ? 0.65 : 0.25);
+      gg.strokeRoundedRect(0, 0, w, pillH, 16);
+    };
 
-const drawPill = (g, w, selected) => {
-  g.clear();
-  g.fillStyle(0x0b1020, selected ? 0.65 : 0.35);
-  g.fillRoundedRect(0, 0, w, pillH, 16);
-  g.lineStyle(1, selected ? 0x2bff88 : 0xb7c0ff, selected ? 0.65 : 0.25);
-  g.strokeRoundedRect(0, 0, w, pillH, 16);
-};
+    cars.forEach((c) => {
+      const label = c?.name || c?.id || 'car';
+      const textObj = this.add.text(pillPadX, 8, label, {
+        fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+        fontSize: '13px',
+        color: '#ffffff'
+      });
 
-cars.forEach((c) => {
-  const label = c.name || c.id;
-  const textObj = this.add.text(pillPadX, 8, label, {
-    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-    fontSize: '13px',
-    color: '#ffffff'
-  });
+      const w = Math.max(120, textObj.width + pillPadX * 2);
 
-  const w = Math.max(120, textObj.width + pillPadX * 2);
+      const gg = this.add.graphics();
+      drawPill(gg, w, c.id === this.selectedCarId);
 
-  const gPill = this.add.graphics();
-  drawPill(gPill, w, c.id === this.selectedCarId);
+      const hit = this.add.rectangle(0, 0, w, pillH, 0x000000, 0.001)
+        .setOrigin(0)
+        .setInteractive({ useHandCursor: true });
 
-  const hit = this.add.rectangle(0, 0, w, pillH, 0x000000, 0.001)
-    .setOrigin(0)
-    .setInteractive({ useHandCursor: true });
+      const pill = this.add.container(0, 0, [gg, textObj, hit]);
 
-  const pill = this.add.container(0, 0, [gPill, textObj, hit]);
+      hit.on('pointerdown', () => {
+        this.selectedCarId = c.id;
+        try { localStorage.setItem('tdr2:carId', c.id); } catch {}
+        pills.forEach(p => drawPill(p.g, p.w, p.id === this.selectedCarId));
+      });
 
-  hit.on('pointerdown', () => {
-    this.selectedCarId = c.id;
-try { localStorage.setItem('tdr2:carId', c.id); } catch(e) {}
-    pills.forEach(p => drawPill(p.g, p.w, p.id === this.selectedCarId));
-  });
+      pills.push({ id: c.id, g: gg, w });
+      pillRow.add(pill);
+    });
 
-  pills.push({ id: c.id, g: gPill, w });
-  pillRow.add(pill);
-});
+    // Layout horizontal centrado
+    const totalW = pills.reduce((sum, p) => sum + p.w, 0) + pillGap * Math.max(0, pills.length - 1);
+    let xCursor = -Math.floor(totalW / 2);
 
-// Layout horizontal centrado
-const totalW = pills.reduce((sum, p) => sum + p.w, 0) + pillGap * (pills.length - 1);
-let xCursor = -Math.floor(totalW / 2);
+    pillRow.setPosition(width / 2, titleY + 78);
 
-pillRow.setPosition(width / 2, titleY + 78);
+    pills.forEach((p, idx) => {
+      const pill = pillRow.list[idx];
+      pill.x = xCursor;
+      pill.y = 0;
+      xCursor += p.w + pillGap;
+    });
 
-pills.forEach((p, idx) => {
-  const pill = pillRow.list[idx];
-  pill.x = xCursor;
-  pill.y = 0;
-  xCursor += p.w + pillGap;
-});
-    */
+    // ===== Cards de circuitos =====
     const tracks = [
       {
         key: 'track01',
@@ -169,13 +161,13 @@ pills.forEach((p, idx) => {
     }).setOrigin(0.5).setAlpha(0);
     root.add(toast);
 
-    // Cards responsive
     const pad = 16;
     const cardW = clamp(Math.floor(width - pad * 2), 260, isPortrait ? 520 : 460);
     const cardH = 170;
     const gap = 14;
 
-    const topY = Math.floor(height * (isPortrait ? 0.38 : 0.48));
+    // OJO: como ahora metimos selector de coche arriba, bajamos un pelín el topY
+    const topY = Math.floor(height * (isPortrait ? 0.43 : 0.52));
 
     const makeCard = (x, y, t) => {
       const container = this.add.container(x, y);
@@ -231,18 +223,15 @@ pills.forEach((p, idx) => {
       bg.on('pointerdown', () => {
         this.registry.set('selectedTrack', t.key);
 
-toast.setText(`Seleccionado: ${t.title}`);
-this.tweens.killTweensOf(toast);
-toast.setAlpha(0);
-this.tweens.add({ targets: toast, alpha: 1, duration: 120, yoyo: true, hold: 450 });
-
-// Entrar a carrera
-this.time.delayedCall(250, () => {
-this.scene.start('race', { carId: this.selectedCarId });
-});
+        toast.setText(`Seleccionado: ${t.title}`);
         this.tweens.killTweensOf(toast);
         toast.setAlpha(0);
-        this.tweens.add({ targets: toast, alpha: 1, duration: 140, yoyo: true, hold: 1100 });
+        this.tweens.add({ targets: toast, alpha: 1, duration: 120, yoyo: true, hold: 450 });
+
+        // Entrar a carrera
+        this.time.delayedCall(250, () => {
+          this.scene.start('race', { carId: this.selectedCarId, trackKey: t.key });
+        });
       });
 
       container.add([bg, header, title, tag, desc, cta]);
@@ -250,16 +239,14 @@ this.scene.start('race', { carId: this.selectedCarId });
     };
 
     if (isPortrait) {
-      // Vertical: cards apiladas
       const x = Math.floor((width - cardW) / 2);
       const c1 = makeCard(x, topY, tracks[0]);
       const c2 = makeCard(x, topY + cardH + gap, tracks[1]);
       root.add([c1, c2]);
     } else {
-      // Horizontal: dos columnas
       const gapH = 18;
-      const totalW = cardW * 2 + gapH;
-      const leftX = Math.floor(width / 2 - totalW / 2);
+      const totalCardsW = cardW * 2 + gapH;
+      const leftX = Math.floor(width / 2 - totalCardsW / 2);
       const c1 = makeCard(leftX, topY, tracks[0]);
       const c2 = makeCard(leftX + cardW + gapH, topY, tracks[1]);
       root.add([c1, c2]);
