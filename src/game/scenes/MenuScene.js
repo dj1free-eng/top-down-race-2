@@ -127,8 +127,13 @@ export class MenuScene extends Phaser.Scene {
     });
 
     // Layout horizontal centrado
-    const totalW = pills.reduce((sum, p) => sum + p.w, 0) + pillGap * Math.max(0, pills.length - 1);
-    let xCursor = -Math.floor(totalW / 2);
+    let totalW = 0;
+for (let i = 0; i < pills.length; i++) {
+  totalW += pills[i].w;
+}
+totalW += pillGap * (pills.length - 1);
+
+let xCursor = -Math.floor(totalW / 2);
 
     pillRow.setPosition(width / 2, titleY + 78);
 
