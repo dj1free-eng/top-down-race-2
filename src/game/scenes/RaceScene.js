@@ -137,18 +137,7 @@ this.cameras.main.startFollow(this.carRig, true, 0.12, 0.12);
       color: '#ffffff'
     })
       .setScrollFactor(0).setDepth(10);
-    // --- Anti-debug visual: oculta Graphics del mundo (grid / marcadores) ---
-this.time.delayedCall(0, () => {
-  this.children.list.forEach((obj) => {
-    if (!obj) return;
 
-    // Ocultamos Graphics que pertenecen al mundo (scrollFactor 1)
-    // El HUD y controles táctiles usan scrollFactor 0, así que no se tocan
-    if (obj.type === 'Graphics' && obj.scrollFactorX === 1 && obj.scrollFactorY === 1) {
-      obj.setVisible(false);
-    }
-  });
-});
     // iOS: multitouch (stick + botón a la vez)
     this.input.addPointer(2);
 
