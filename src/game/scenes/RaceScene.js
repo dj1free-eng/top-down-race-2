@@ -223,12 +223,19 @@ if (newSpeed > maxSpeed) {
 
     if (!left && !right && stickMag > 0.15) {
       // En pantalla, +Y es hacia abajo. atan2(y, x) cuadra con el sistema de ángulos del juego.
-      const target = Math.atan2(t.stickY, t.stickX);
+const target = Math.atan2(-t.stickY, t.stickX);
 
       const diff = wrapPi(target - this.car.rotation);
-      const step = clamp(diff, -maxTurn * dt, maxTurn * dt);
 
-      this.car.rotation += step;
+// Si ya está alineado “suficiente”, no metas micro-correcciones
+const EPS = 0.02; // ~1.1º
+if (Math.abs(diff) < EPS) {
+  // opcional: clavar exactamente al target para que se quede fino
+  this.car.rotation = target;
+} else {
+  const step = clamp(diff, -maxTurn * dt, maxTurn * dt);
+  this.car.rotation += step;
+}
     }
 
     // HUD
