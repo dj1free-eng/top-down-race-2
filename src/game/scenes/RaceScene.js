@@ -223,7 +223,7 @@ const stickMag = Math.sqrt(t.stickX * t.stickX + t.stickY * t.stickY);
 if (!left && !right && stickMag > 0.15) {
   // Tu stick ya está en el sistema correcto: arriba suele dar stickY negativo,
   // y esta atan2 es la que te funcionaba antes.
-  const target = Math.atan2(t.stickY, t.stickX);
+const target = Math.atan2(t.stickY, t.stickX) + Math.PI / 2;
 
   const diff = wrapPi(target - this.car.rotation);
 
