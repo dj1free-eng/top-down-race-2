@@ -234,7 +234,7 @@ update(time, deltaMs) {
       this.car.rotation = target;
     }
   }
-
+}
   // HUD
   const kmh = speed * 0.12;
   this.hud.setText(
