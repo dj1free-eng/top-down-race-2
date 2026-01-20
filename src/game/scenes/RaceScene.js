@@ -76,6 +76,38 @@ this.gripBrake = 0.14;     // agarre lateral frenando (intermedio)
     this.carRig = rig;
     this.car = body; // para que tu update() siga funcionando sin tocar derrape
 this.targetHeading = this.car.rotation;
+    // === Track 01 (óvalo) + TrackBuilder ribbon + culling ===
+const t01 = makeTrack01Oval();
+
+// Asegura mundo grande si aún no lo tenías así
+this.worldW = t01.worldW;
+this.worldH = t01.worldH;
+this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
+this.cameras.main.setBounds(0, 0, this.worldW, this.worldH);
+
+// Recolocar coche al start del track
+this.car.setPosition(t01.start.x, t01.start.y);
+this.car.rotation = t01.start.r;
+
+// Construimos geometría de pista
+this.track = {
+  meta: t01,
+  geom: buildTrackRibbon({
+    centerline: t01.centerline,
+    trackWidth: t01.trackWidth,
+    sampleStepPx: 12,  // dentro de 10–20
+    cellSize: 400
+  }),
+  // pool de graphics por celda
+  gfxByCell: new Map(),
+  activeCells: new Set(),
+  cullRadiusCells: 2
+};
+
+// Render: asfalto como ribbon (polígonos)
+this.trackAsphaltColor = 0x2a2f3a;
+
+// Debug opcional (si quieres luego): this.trackDebug = true/false
     // Cámara follow
     this.cameras.main.setBounds(0, 0, this.worldW, this.worldH);
 this.cameras.main.startFollow(this.carRig, true, 0.12, 0.12);
@@ -233,7 +265,58 @@ const diff = wrapPi(target - this.car.rotation);
       this.car.rotation = target;
     }
   }
+// === Track culling render (solo celdas cercanas) ===
+if (this.track && this.track.geom && this.track.geom.cells) {
+  const cellSize = this.track.geom.cellSize;
+  const cx = Math.floor(this.car.x / cellSize);
+  const cy = Math.floor(this.car.y / cellSize);
 
+  const want = new Set();
+  const R = this.track.cullRadiusCells;
+
+  for (let yy = cy - R; yy <= cy + R; yy++) {
+    for (let xx = cx - R; xx <= cx + R; xx++) {
+      want.add(`${xx},${yy}`);
+    }
+  }
+
+  // Ocultar celdas que ya no se quieren
+  for (const key of this.track.activeCells) {
+    if (!want.has(key)) {
+      const g = this.track.gfxByCell.get(key);
+      if (g) g.setVisible(false);
+    }
+  }
+
+  // Mostrar/crear las que sí se quieren
+  for (const key of want) {
+    const cellData = this.track.geom.cells.get(key);
+    if (!cellData) continue;
+
+    let g = this.track.gfxByCell.get(key);
+    if (!g) {
+      g = this.add.graphics();
+      g.setDepth(-5); // detrás del coche
+      this.track.gfxByCell.set(key, g);
+    }
+
+    if (!g.visible) g.setVisible(true);
+
+    // Redibujamos (simple y robusto; optimizable luego)
+    g.clear();
+    g.fillStyle(this.trackAsphaltColor, 1);
+
+    for (const poly of cellData.polys) {
+      g.beginPath();
+      g.moveTo(poly[0].x, poly[0].y);
+      for (let i = 1; i < poly.length; i++) g.lineTo(poly[i].x, poly[i].y);
+      g.closePath();
+      g.fillPath();
+    }
+  }
+
+  this.track.activeCells = want;
+}
   // HUD
   const kmh = speed * 0.12;
   this.hud.setText(
