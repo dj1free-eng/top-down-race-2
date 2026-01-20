@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { CAR_SPECS } from '../cars/carSpecs.js';
-
+import { resolveCarParams } from '../cars/resolveCarParams.js';
 function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
 
 export class MenuScene extends Phaser.Scene {
