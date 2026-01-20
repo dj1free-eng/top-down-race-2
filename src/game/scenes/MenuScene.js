@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-
+import { CAR_SPECS } from '../cars/carSpecs.js';
 function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
 
 export class MenuScene extends Phaser.Scene {
@@ -62,6 +62,80 @@ export class MenuScene extends Phaser.Scene {
       color: '#b7c0ff'
     }).setOrigin(0.5));
 
+    // === Selector de coche (simple) ===
+const cars = Object.values(CAR_SPECS);
+
+// Coche seleccionado (persistente)
+this.selectedCarId = localStorage.getItem('tdr2:carId') || 'stock';
+
+// Título
+const carLabel = this.add.text(width / 2, titleY + 54, 'Elige coche', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '13px',
+  color: '#b7c0ff'
+}).setOrigin(0.5);
+root.add(carLabel);
+
+// Pills (botones) centrados
+const pillH = 34;
+const pillPadX = 14;
+const pillGap = 10;
+
+const pillRow = this.add.container(0, 0);
+root.add(pillRow);
+
+const pills = [];
+
+const drawPill = (g, w, selected) => {
+  g.clear();
+  g.fillStyle(0x0b1020, selected ? 0.65 : 0.35);
+  g.fillRoundedRect(0, 0, w, pillH, 16);
+  g.lineStyle(1, selected ? 0x2bff88 : 0xb7c0ff, selected ? 0.65 : 0.25);
+  g.strokeRoundedRect(0, 0, w, pillH, 16);
+};
+
+cars.forEach((c) => {
+  const label = c.name || c.id;
+  const textObj = this.add.text(pillPadX, 8, label, {
+    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: '13px',
+    color: '#ffffff'
+  });
+
+  const w = Math.max(120, textObj.width + pillPadX * 2);
+
+  const gPill = this.add.graphics();
+  drawPill(gPill, w, c.id === this.selectedCarId);
+
+  const hit = this.add.rectangle(0, 0, w, pillH, 0x000000, 0.001)
+    .setOrigin(0)
+    .setInteractive({ useHandCursor: true });
+
+  const pill = this.add.container(0, 0, [gPill, textObj, hit]);
+
+  hit.on('pointerdown', () => {
+    this.selectedCarId = c.id;
+    localStorage.setItem('tdr2:carId', c.id);
+    pills.forEach(p => drawPill(p.g, p.w, p.id === this.selectedCarId));
+  });
+
+  pills.push({ id: c.id, g: gPill, w });
+  pillRow.add(pill);
+});
+
+// Layout horizontal centrado
+const totalW = pills.reduce((sum, p) => sum + p.w, 0) + pillGap * (pills.length - 1);
+let xCursor = -Math.floor(totalW / 2);
+
+pillRow.setPosition(width / 2, titleY + 78);
+
+pills.forEach((p, idx) => {
+  const pill = pillRow.list[idx];
+  pill.x = xCursor;
+  pill.y = 0;
+  xCursor += p.w + pillGap;
+});
+    
     const tracks = [
       {
         key: 'track01',
@@ -153,7 +227,7 @@ this.tweens.add({ targets: toast, alpha: 1, duration: 120, yoyo: true, hold: 450
 
 // Entrar a carrera
 this.time.delayedCall(250, () => {
-  this.scene.start('race');
+this.scene.start('race', { carId: this.selectedCarId });
 });
         this.tweens.killTweensOf(toast);
         toast.setAlpha(0);
