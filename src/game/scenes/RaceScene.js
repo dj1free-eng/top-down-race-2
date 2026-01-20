@@ -494,16 +494,19 @@ const target = wrapPi(Math.atan2(t.stickY, t.stickX) + Math.PI);
       state.knobX = kx;
       state.knobY = ky;
 
-      // deadzone
-            const rawX = (state.knobX - state.baseX) / state.stickMax;
-      const rawY = (state.knobY - state.baseY) / state.stickMax;
+// stick estable: dirección unitaria + deadzone por distancia
+const dead = state.stickMax * 0.18;
 
-      // deadzone
-      state.stickX = Math.abs(rawX) < 0.12 ? 0 : clamp(rawX, -1, 1);
-      state.stickY = Math.abs(rawY) < 0.12 ? 0 : clamp(rawY, -1, 1);
+if (d < dead) {
+  state.stickX = 0;
+  state.stickY = 0;
+} else {
+  state.stickX = dx / d;
+  state.stickY = dy / d;
+}
 
-      // mantenemos steer por compatibilidad (ya no lo usaremos para girar en touch)
-      state.steer = state.stickX;
+// mantenemos steer por compatibilidad
+state.steer = state.stickX;
     };
 
     this.input.on('pointerdown', (p) => {
