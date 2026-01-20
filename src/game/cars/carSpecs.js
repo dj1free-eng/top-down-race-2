@@ -25,4 +25,47 @@ export const CAR_SPECS = {
   gripDrive: 0.06,
   gripBrake: 0.14
 }
+    ,touring: {
+    id: 'touring',
+    name: 'Touring (suave y estable)',
+
+    // Un pelín más de punta y suavidad
+    maxFwd: 520,
+    maxRev: 260,
+
+    accel: 580,
+    brakeForce: 920,
+    engineBrake: 220,
+    linearDrag: 0.034,
+
+    turnRate: 3.1,
+    turnMin: 0.26,
+
+    // Más agarre acelerando = menos derrape bajo carga
+    gripCoast: 0.24,
+    gripDrive: 0.10,
+    gripBrake: 0.16
+  },
+
+  power: {
+    id: 'power',
+    name: 'Power (más nervioso)',
+
+    // Más punta y más empuje
+    maxFwd: 600,
+    maxRev: 260,
+
+    accel: 760,
+    brakeForce: 1050,
+    engineBrake: 260,
+    linearDrag: 0.028,
+
+    turnRate: 3.6,
+    turnMin: 0.30,
+
+    // Menos grip al acelerar = derrape más “picante”
+    gripCoast: 0.22,
+    gripDrive: 0.05,
+    gripBrake: 0.14
+  }
 };
