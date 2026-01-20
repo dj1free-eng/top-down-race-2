@@ -67,7 +67,9 @@ export class MenuScene extends Phaser.Scene {
 const cars = Object.values(CAR_SPECS);
 
 // Coche seleccionado (persistente)
-this.selectedCarId = localStorage.getItem('tdr2:carId') || 'stock';
+let savedCarId = null;
+try { savedCarId = localStorage.getItem('tdr2:carId'); } catch(e) {}
+this.selectedCarId = savedCarId || 'stock';
 
 // Título
 const carLabel = this.add.text(width / 2, titleY + 54, 'Elige coche', {
@@ -116,7 +118,7 @@ cars.forEach((c) => {
 
   hit.on('pointerdown', () => {
     this.selectedCarId = c.id;
-    localStorage.setItem('tdr2:carId', c.id);
+try { localStorage.setItem('tdr2:carId', c.id); } catch(e) {}
     pills.forEach(p => drawPill(p.g, p.w, p.id === this.selectedCarId));
   });
 
