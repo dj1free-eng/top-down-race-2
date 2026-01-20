@@ -64,7 +64,7 @@ export class MenuScene extends Phaser.Scene {
     }).setOrigin(0.5));
 
     // === Selector de coche (simple) ===
-const cars = Object.values(CAR_SPECS);
+/* const cars = Object.values(CAR_SPECS);
 
 // Coche seleccionado (persistente)
 let savedCarId = null;
@@ -138,7 +138,7 @@ pills.forEach((p, idx) => {
   pill.y = 0;
   xCursor += p.w + pillGap;
 });
-    
+    */
     const tracks = [
       {
         key: 'track01',
