@@ -158,18 +158,22 @@ export function buildTrackRibbon({
     }
   };
 
-  // Creamos quads (li, ri, r(i+1), l(i+1)) como polígono de 4 puntos
-  for (let i = 0; i < left.length - 1; i++) {
-    const l0 = left[i], r0 = right[i];
-    const l1 = left[i + 1], r1 = right[i + 1];
+// Creamos quads (li, ri, r(next), l(next)) como polígono de 4 puntos
+// IMPORTANTE: cerramos el último segmento (último -> primero)
+const count = left.length;
+for (let i = 0; i < count; i++) {
+  const j = (i + 1) % count;
 
-    addPolyToCells([
-      { x: l0[0], y: l0[1] },
-      { x: r0[0], y: r0[1] },
-      { x: r1[0], y: r1[1] },
-      { x: l1[0], y: l1[1] }
-    ]);
-  }
+  const l0 = left[i], r0 = right[i];
+  const l1 = left[j], r1 = right[j];
+
+  addPolyToCells([
+    { x: l0[0], y: l0[1] },
+    { x: r0[0], y: r0[1] },
+    { x: r1[0], y: r1[1] },
+    { x: l1[0], y: l1[1] }
+  ]);
+}
 
   return { center: cl, left, right, cells, cellSize };
 }
