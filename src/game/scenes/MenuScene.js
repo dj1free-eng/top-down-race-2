@@ -119,6 +119,7 @@ export class MenuScene extends Phaser.Scene {
         this.selectedCarId = c.id;
         try { localStorage.setItem('tdr2:carId', c.id); } catch {}
         pills.forEach(p => drawPill(p.g, p.w, p.id === this.selectedCarId));
+     renderCarStats();
       });
 
       pills.push({ id: c.id, g: gg, w });
@@ -137,7 +138,56 @@ export class MenuScene extends Phaser.Scene {
       pill.y = 0;
       xCursor += p.w + pillGap;
     });
+// === Stats del coche seleccionado ===
+const neutralTuning = {
+  accelMult: 1.0,
+  brakeMult: 1.0,
+  dragMult: 1.0,
+  turnRateMult: 1.0,
+  maxFwdAdd: 0,
+  maxRevAdd: 0,
+  turnMinAdd: 0
+};
 
+const statsBoxW = cardW;
+const statsBoxH = 110;
+
+const statsX = Math.floor((width - statsBoxW) / 2);
+const statsY = titleY + 118; // debajo de las pills
+
+const statsBg = this.add.rectangle(statsX, statsY, statsBoxW, statsBoxH, 0x0b1020, 0.28)
+  .setOrigin(0)
+  .setStrokeStyle(1, 0xb7c0ff, 0.18);
+
+const statsText = this.add.text(statsX + 16, statsY + 12, '', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '13px',
+  color: '#ffffff',
+  lineSpacing: 6
+});
+
+root.add(statsBg);
+root.add(statsText);
+
+const renderCarStats = () => {
+  const carId = this.selectedCarId || 'stock';
+  const baseSpec = CAR_SPECS[carId] || CAR_SPECS.stock;
+  const p = resolveCarParams(baseSpec, neutralTuning);
+
+  // Nota: tu HUD usa kmh = speed * 0.12, así que para “punta aprox” usamos maxFwd * 0.12
+  const topKmh = (p.maxFwd * 0.12).toFixed(0);
+  const revKmh = (p.maxRev * 0.12).toFixed(0);
+
+  statsText.setText(
+    `Coche: ${p.name || carId}\n` +
+    `Punta aprox: ${topKmh} km/h   |   Marcha atrás: ${revKmh} km/h\n` +
+    `Aceleración: ${p.accel}   |   Freno: ${p.brakeForce}\n` +
+    `Giro: ${p.turnRate}   |   Derrape (drive): ${p.gripDrive}`
+  );
+};
+
+// Pintar una vez al entrar
+renderCarStats();
     // ===== Cards de circuitos =====
     const tracks = [
       {
