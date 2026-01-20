@@ -1,5 +1,5 @@
 /* Static-cache SW (sin Workbox) — reproducible y fácil de depurar */
-const CACHE_VERSION = 'tdr2-v2';
+const CACHE_VERSION = 'tdr2-v3';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -41,17 +41,20 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
-  // Navegación: network-first con fallback a index cacheado
+  // Navegación: network-first con fallback a index cacheado (clave por URL real)
   if (isNavigationRequest(req)) {
     event.respondWith(
       (async () => {
+        const cache = await caches.open(CACHE_VERSION);
+        const indexUrl = new URL('./index.html', self.location.href).toString();
+
         try {
           const fresh = await fetch(req);
-          const cache = await caches.open(CACHE_VERSION);
-          cache.put('./index.html', fresh.clone());
+          // Guardamos SIEMPRE el index bajo una clave absoluta estable
+          cache.put(indexUrl, fresh.clone());
           return fresh;
         } catch {
-          const cached = await caches.match('./index.html');
+          const cached = await cache.match(indexUrl);
           return cached || new Response('Offline', { status: 503, headers: { 'Content-Type': 'text/plain' } });
         }
       })()
