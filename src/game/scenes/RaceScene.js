@@ -46,13 +46,34 @@ this.gripBrake = 0.14;     // agarre lateral frenando (intermedio)
     this.add.tileSprite(0, 0, this.worldW, this.worldH, 'bgGrid').setOrigin(0);
 
     // Coche
-    this.car = this.physics.add.sprite(4000, 2500, 'car');
-    this.car.setCollideWorldBounds(true);
-    this.car.setBounce(0);
+        // === Car rig: body físico + sprite visual adelantado ===
+    // Body físico (invisible)
+    const body = this.physics.add.image(4000, 2500, null);
+    body.setCircle(14); // radio físico
+    body.setCollideWorldBounds(true);
+    body.setBounce(0);
+    body.setDrag(0, 0);
+
+    // Sprite visual (visible) dentro de un container
+    const carSprite = this.add.sprite(0, 0, 'car');
+
+    // Offset hacia delante (punta del coche)
+    // +X porque el coche mira hacia la derecha cuando rotation = 0 en este proyecto
+    carSprite.x = 12;   // cuanto más, más “eje delantero”
+    carSprite.y = 0;
+
+    // Container que seguirá al body y rotará con él
+    const rig = this.add.container(body.x, body.y, [carSprite]);
+    rig.setDepth(5);
+
+    // Guardar referencias
+    this.carBody = body;
+    this.carRig = rig;
+    this.car = body; // para que tu update() siga funcionando sin tocar derrape
 
     // Cámara follow
     this.cameras.main.setBounds(0, 0, this.worldW, this.worldH);
-    this.cameras.main.startFollow(this.car, true, 0.12, 0.12);
+this.cameras.main.startFollow(this.carRig, true, 0.12, 0.12);
     this.cameras.main.setZoom(this.zoom);
 
     // Input teclado
@@ -185,6 +206,13 @@ if (newSpeed > maxSpeed) {
       'Vel: ' + kmh.toFixed(0) + ' km/h\n' +
       'Zoom: ' + this.zoom.toFixed(1)
     );
+           // === C) Sincronizar rig visual con body físico ===
+    if (this.carRig && this.carBody) {
+      this.carRig.x = this.carBody.x;
+      this.carRig.y = this.carBody.y;
+      this.carRig.rotation = this.carBody.rotation;
+    }
+  
   }
 
   ensureBgTexture() {
