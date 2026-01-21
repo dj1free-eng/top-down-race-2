@@ -754,6 +754,7 @@ if (state.stickX === 0 && state.stickY === 0) {
         state.steer = 0;
         state.stickX = 0;
         state.stickY = 0;
+        state.targetAngle = null;
         state.knobX = state.baseX;
         state.knobY = state.baseY;
       }
