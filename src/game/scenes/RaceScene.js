@@ -521,6 +521,20 @@ if (this.finishLine?.a && this.finishLine?.b && this.finishLine?.normal) {
 this.prevCarX = this.car.x;
 this.prevCarY = this.car.y;
 
+    // === HUD ===
+const kmh = speed * 0.12;
+
+if (this.hud) {
+  const u = this.upgrades || { engine: 0, brakes: 0, tires: 0 };
+
+  this.hud.setText(
+    'RaceScene\n' +
+    `Car: ${this.carId || 'stock'} | Upg E${u.engine} B${u.brakes} T${u.tires}\n` +
+    'Vel: ' + kmh.toFixed(0) + ' km/h\n' +
+    'Zoom: ' + (this.zoom ?? 1).toFixed(1)
+  );
+}
+
     // Sincronizar rig visual con body físico
     if (this.carRig && this.carBody) {
       this.carRig.x = this.carBody.x;
