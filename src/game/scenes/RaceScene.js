@@ -128,32 +128,47 @@ export class RaceScene extends Phaser.Scene {
       return true;
     };
   }
+  // Debug overlay seguro: evita crasheos si no existe _dbg
+  _ensureDebugOverlay() {
+    if (this._dbg) return;
 
+    // Texto debug discreto arriba (solo si lo necesitas)
+    this._dbg = this.add.text(12, 28, '', {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: '12px',
+      color: '#ffcc66'
+    }).setScrollFactor(0).setDepth(5001);
+  }
+
+  _dbgSet(text) {
+    // Nunca debe romper el juego
+    if (this._dbg && this._dbg.setText) this._dbg.setText(text);
+  }
+  
 create() {
   
     // World bounds
-    this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
+    this.physics.world.setBounds(0, 0, this.worldW,     // Debug overlay (seguro)
+    this._ensureDebugOverlay();
 
     // Texturas procedurales
-      // Texturas procedurales (con debug robusto)
-  try {
-    this._dbg.setText('DEBUG: before ensureBgTexture()');
-    this.ensureBgTexture();
-    this._dbg.setText('DEBUG: after ensureBgTexture()');
-  } catch (e) {
-    this._dbg.setText('DEBUG: ensureBgTexture ERROR:\n' + (e?.message || String(e)));
-    throw e;
-  }
+    try {
+      this._dbgSet('DEBUG: before ensureBgTexture()');
+      this.ensureBgTexture();
+      this._dbgSet('DEBUG: after ensureBgTexture()');
+    } catch (e) {
+      this._dbgSet('DEBUG: ensureBgTexture ERROR:\n' + (e?.message || String(e)));
+      throw e;
+    }
 
-  try {
-    this._dbg.setText(this._dbg.text + '\nDEBUG: before ensureCarTexture()');
-    this.ensureCarTexture();
-    this._dbg.setText(this._dbg.text + '\nDEBUG: after ensureCarTexture()');
-  } catch (e) {
-    this._dbg.setText('DEBUG: ensureCarTexture ERROR:\n' + (e?.message || String(e)));
-    throw e;
-  }
-
+    try {
+      this._dbgSet((this._dbg?.text || '') + '\nDEBUG: before ensureCarTexture()');
+      this.ensureCarTexture();
+      this._dbgSet((this._dbg?.text || '') + '\nDEBUG: after ensureCarTexture()');
+    } catch (e) {
+      this._dbgSet('DEBUG: ensureCarTexture ERROR:\n' + (e?.message || String(e)));
+      throw e;
+    }
 // Fondo (césped)
 this.bg = this.add.tileSprite(0, 0, this.worldW, this.worldH, 'grass')
   .setOrigin(0, 0)
@@ -168,7 +183,8 @@ if (!this._bgKeyDbg) {
     color: '#ff2d2d'
   }).setScrollFactor(0).setDepth(5000);
 }
-this._bgKeyDbg.setText(`BG texture: ${this.bg.texture?.key || '???'}`);
+const bgKey = this.bg?.texture?.key || '???';
+this._bgKeyDbg.setText(`BG texture: ${bgKey}`);
 
     // === Car rig: body físico + sprite visual adelantado ===
     const body = this.physics.add.image(4000, 2500, null);
@@ -446,10 +462,11 @@ this.prevCarY = this.car.y;
     if (right && !left) this.car.rotation += maxTurn * dt;
 
     // 2) Táctil: alineamiento por stick (solo si hay stick activo)
-const stickMag = Math.sqrt(t.stickX * t.stickX + t.stickY * t.stickY);
-const movingEnough = speed > 8; // umbral pequeño (px/s)
-if (!left && !right && stickMag > 0.15 && movingEnough) {
-const target = Math.atan2(t.stickY, t.stickX);
+    const stickMag = Math.sqrt(t.stickX * t.stickX + t.stickY * t.stickY);
+    const movingEnough = speed > 8; // umbral pequeño (px/s)
+
+    if (!left && !right && stickMag > 0.15 && movingEnough) {
+      const target = Math.atan2(t.stickY, t.stickX);
       const diff = wrapPi(target - this.car.rotation);
 
       const EPS = 0.02;
