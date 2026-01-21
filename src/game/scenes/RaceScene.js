@@ -3,12 +3,14 @@ import { makeTrack01Oval } from '../tracks/track01_oval.js';
 import { buildTrackRibbon } from '../tracks/TrackBuilder.js';
 import { CAR_SPECS } from '../cars/carSpecs.js';
 import { resolveCarParams } from '../cars/resolveCarParams.js';
+
 function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
 function wrapPi(a) {
   while (a > Math.PI) a -= Math.PI * 2;
   while (a < -Math.PI) a += Math.PI * 2;
   return a;
 }
+
 export class RaceScene extends Phaser.Scene {
   constructor() {
     super('race');
@@ -18,110 +20,116 @@ export class RaceScene extends Phaser.Scene {
 
     this.car = null;
     this.keys = null;
-
     this.zoom = 1.0;
 
-
     this.hud = null;
+
+    // Upgrades/UI refs
+    this.carId = 'stock';
+    this.upgrades = { engine: 0, brakes: 0, tires: 0 };
+    this.UPGRADE_CAPS = { engine: 3, brakes: 3, tires: 3 };
+
+    this.upUI = null;
+    this.upTxt = null;
+    this._saveUpgrades = null;
+    this.buyUpgrade = null;
+
+    // Car rig
+    this.carBody = null;
+    this.carRig = null;
   }
 
   init(data) {
-  // 1) Resolver coche seleccionado (prioridad: data -> localStorage -> stock)
-  this.carId = data?.carId || localStorage.getItem('tdr2:carId') || 'stock';
+    // 1) Resolver coche seleccionado (prioridad: data -> localStorage -> stock)
+    this.carId = data?.carId || localStorage.getItem('tdr2:carId') || 'stock';
 
-  // 2) Base spec
-  const baseSpec = CAR_SPECS[this.carId] || CAR_SPECS.stock;
-  // === UPGRADES: cargar niveles por coche ===
-  // Guardamos por coche para que cada uno tenga sus mejoras aparte.
-  const upgradesKey = `tdr2:upgrades:${this.carId}`;
+    // 2) Base spec
+    const baseSpec = CAR_SPECS[this.carId] || CAR_SPECS.stock;
 
-  const defaultUpgrades = { engine: 0, brakes: 0, tires: 0 };
+    // === UPGRADES: cargar niveles por coche ===
+    const upgradesKey = `tdr2:upgrades:${this.carId}`;
+    const defaultUpgrades = { engine: 0, brakes: 0, tires: 0 };
 
-  try {
-    this.upgrades = JSON.parse(localStorage.getItem(upgradesKey) || 'null') || defaultUpgrades;
-  } catch {
-    this.upgrades = defaultUpgrades;
+    try {
+      this.upgrades = JSON.parse(localStorage.getItem(upgradesKey) || 'null') || defaultUpgrades;
+    } catch {
+      this.upgrades = defaultUpgrades;
+    }
+
+    // Convierte niveles -> “tornillos”
+    const tuningFromUpgrades = (u) => {
+      const engineLv = u.engine || 0;
+      const brakesLv = u.brakes || 0;
+      const tiresLv  = u.tires  || 0;
+
+      return {
+        // Motor
+        accelMult: 1.0 + engineLv * 0.08, // +8% por nivel
+        maxFwdAdd: engineLv * 35,         // +35 px/s por nivel
+
+        // Frenos
+        brakeMult: 1.0 + brakesLv * 0.10, // +10% por nivel
+
+        // Otros neutros (por ahora)
+        dragMult: 1.0,
+        turnRateMult: 1.0,
+        turnMinAdd: 0,
+        maxRevAdd: 0,
+
+        // Neumáticos (si tu resolveCarParams los usa, perfecto; si no, se ignoran sin romper)
+        gripDriveAdd: tiresLv * 0.02,
+        gripCoastAdd: tiresLv * 0.01,
+        gripBrakeAdd: tiresLv * 0.015
+      };
+    };
+
+    // Tuning derivado desde upgrades
+    this.tuning = tuningFromUpgrades(this.upgrades);
+
+    // Helper para aplicar params al “motor”
+    this.applyCarParams = () => {
+      this.carParams = resolveCarParams(baseSpec, this.tuning);
+
+      this.accel = this.carParams.accel;
+      this.maxFwd = this.carParams.maxFwd;
+      this.maxRev = this.carParams.maxRev;
+
+      this.brakeForce = this.carParams.brakeForce;
+      this.engineBrake = this.carParams.engineBrake;
+      this.linearDrag = this.carParams.linearDrag;
+
+      this.turnRate = this.carParams.turnRate;
+      this.turnMin = this.carParams.turnMin;
+
+      this.gripCoast = this.carParams.gripCoast;
+      this.gripDrive = this.carParams.gripDrive;
+      this.gripBrake = this.carParams.gripBrake;
+    };
+
+    this.applyCarParams();
+
+    // Guardar upgrades
+    this._saveUpgrades = () => {
+      try { localStorage.setItem(upgradesKey, JSON.stringify(this.upgrades)); } catch {}
+    };
+
+    // Comprar upgrades
+    this.buyUpgrade = (kind) => {
+      const cap = this.UPGRADE_CAPS[kind] ?? 0;
+      const cur = this.upgrades[kind] ?? 0;
+      if (cur >= cap) return false;
+
+      this.upgrades[kind] = cur + 1;
+      this._saveUpgrades();
+
+      this.tuning = tuningFromUpgrades(this.upgrades);
+      this.applyCarParams();
+
+      return true;
+    };
   }
 
-  // Definición simple de niveles (0..3)
-  // Puedes ajustar números cuando quieras.
-  this.UPGRADE_CAPS = { engine: 3, brakes: 3, tires: 3 };
-
-  // Convierte niveles -> tornillos
-  const tuningFromUpgrades = (u) => {
-    const engineLv = u.engine || 0;
-    const brakesLv = u.brakes || 0;
-    const tiresLv = u.tires || 0;
-
-    return {
-      // Motor: más accel + algo de punta
-      accelMult: 1.0 + engineLv * 0.08,     // +8% por nivel
-      maxFwdAdd: engineLv * 35,             // +35 px/s por nivel
-
-      // Frenos
-      brakeMult: 1.0 + brakesLv * 0.10,     // +10% por nivel
-
-      // Drag / dirección se dejan neutros en upgrades base (por ahora)
-      dragMult: 1.0,
-      turnRateMult: 1.0,
-      turnMinAdd: 0,
-      maxRevAdd: 0, // marcha atrás no cambia
-
-      // Neumáticos: más agarre (sobre todo en drive)
-      gripDriveAdd: tiresLv * 0.02,
-      gripCoastAdd: tiresLv * 0.01,
-      gripBrakeAdd: tiresLv * 0.015
-    };
-  };
-
-  // Guardamos tuning “derivado” (lo usaremos luego también al comprar upgrades)
-  this.tuning = tuningFromUpgrades(this.upgrades);
-
-  // Función helper: recalcular params + asignar a físicas
-  this.applyCarParams = () => {
-    this.carParams = resolveCarParams(baseSpec, this.tuning);
-
-    this.accel = this.carParams.accel;
-    this.maxFwd = this.carParams.maxFwd;
-    this.maxRev = this.carParams.maxRev;
-
-    this.brakeForce = this.carParams.brakeForce;
-    this.engineBrake = this.carParams.engineBrake;
-    this.linearDrag = this.carParams.linearDrag;
-
-    this.turnRate = this.carParams.turnRate;
-    this.turnMin = this.carParams.turnMin;
-
-    this.gripCoast = this.carParams.gripCoast;
-    this.gripDrive = this.carParams.gripDrive;
-    this.gripBrake = this.carParams.gripBrake;
-  };
-
-  // Aplicar una vez al entrar
-  this.applyCarParams();
-
-  // Guardar función para comprar upgrades durante la carrera
-  this._saveUpgrades = () => {
-    try { localStorage.setItem(upgradesKey, JSON.stringify(this.upgrades)); } catch {}
-  };
-
-  // Comprar (subir nivel) y reaplicar
-  this.buyUpgrade = (kind) => {
-    const cap = this.UPGRADE_CAPS[kind] ?? 0;
-    const cur = this.upgrades[kind] ?? 0;
-    if (cur >= cap) return false;
-
-    this.upgrades[kind] = cur + 1;
-    this._saveUpgrades();
-
-    // Recalcular tuning y aplicar
-    this.tuning = tuningFromUpgrades(this.upgrades);
-    this.applyCarParams();
-    return true;
-  };
-}
-    create() {
-  console.log('>>> RaceScene.create() ENTER');
+  create() {
     // World bounds
     this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
 
@@ -132,67 +140,53 @@ export class RaceScene extends Phaser.Scene {
     // Fondo
     this.add.tileSprite(0, 0, this.worldW, this.worldH, 'bgGrid').setOrigin(0);
 
-    // Coche
-        // === Car rig: body físico + sprite visual adelantado ===
-    // Body físico (invisible)
+    // === Car rig: body físico + sprite visual adelantado ===
     const body = this.physics.add.image(4000, 2500, null);
-    body.setCircle(14); // radio físico
+    body.setCircle(14);
     body.setCollideWorldBounds(true);
     body.setBounce(0);
     body.setDrag(0, 0);
 
-    // Sprite visual (visible) dentro de un container
     const carSprite = this.add.sprite(0, 0, 'car');
-
-    // Offset hacia delante (punta del coche)
-    // +X porque el coche mira hacia la derecha cuando rotation = 0 en este proyecto
-    carSprite.x = 12;   // cuanto más, más “eje delantero”
+    carSprite.x = 12;
     carSprite.y = 0;
 
-    // Container que seguirá al body y rotará con él
     const rig = this.add.container(body.x, body.y, [carSprite]);
     rig.setDepth(5);
 
-    // Guardar referencias
     this.carBody = body;
     this.carRig = rig;
-    this.car = body; // para que tu update() siga funcionando sin tocar derrape
-this.targetHeading = this.car.rotation;
+    this.car = body; // para tu update()
+
     // === Track 01 (óvalo) + TrackBuilder ribbon + culling ===
-const t01 = makeTrack01Oval();
+    const t01 = makeTrack01Oval();
 
-// Asegura mundo grande si aún no lo tenías así
-this.worldW = t01.worldW;
-this.worldH = t01.worldH;
-this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
-this.cameras.main.setBounds(0, 0, this.worldW, this.worldH);
-
-// Recolocar coche al start del track
-this.car.setPosition(t01.start.x, t01.start.y);
-this.car.rotation = t01.start.r;
-
-// Construimos geometría de pista
-this.track = {
-  meta: t01,
-  geom: buildTrackRibbon({
-    centerline: t01.centerline,
-    trackWidth: t01.trackWidth,
-    sampleStepPx: 12,  // dentro de 10–20
-    cellSize: 400
-  }),
-  // pool de graphics por celda
-  gfxByCell: new Map(),
-  activeCells: new Set(),
-  cullRadiusCells: 2
-};
-
-// Render: asfalto como ribbon (polígonos)
-this.trackAsphaltColor = 0x2a2f3a;
-
-// Debug opcional (si quieres luego): this.trackDebug = true/false
-    // Cámara follow
+    this.worldW = t01.worldW;
+    this.worldH = t01.worldH;
+    this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
     this.cameras.main.setBounds(0, 0, this.worldW, this.worldH);
-this.cameras.main.startFollow(this.carRig, true, 0.12, 0.12);
+
+    // Recolocar coche al start del track
+    this.car.setPosition(t01.start.x, t01.start.y);
+    this.car.rotation = t01.start.r;
+
+    this.track = {
+      meta: t01,
+      geom: buildTrackRibbon({
+        centerline: t01.centerline,
+        trackWidth: t01.trackWidth,
+        sampleStepPx: 12,
+        cellSize: 400
+      }),
+      gfxByCell: new Map(),
+      activeCells: new Set(),
+      cullRadiusCells: 2
+    };
+
+    this.trackAsphaltColor = 0x2a2f3a;
+
+    // Cámara follow
+    this.cameras.main.startFollow(this.carRig, true, 0.12, 0.12);
     this.cameras.main.setZoom(this.zoom);
 
     // Input teclado
@@ -212,54 +206,65 @@ this.cameras.main.startFollow(this.carRig, true, 0.12, 0.12);
       back: Phaser.Input.Keyboard.KeyCodes.ESC
     });
 
-// HUD principal
-this.hud = this.add.text(12, 12, '', {
-  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-  fontSize: '14px',
-  color: '#ffffff'
-}).setScrollFactor(0).setDepth(1100);
-
-
+    // HUD principal (arriba-izquierda)
+    this.hud = this.add.text(12, 12, '', {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: '14px',
+      color: '#ffffff'
+    }).setScrollFactor(0).setDepth(1100);
 
     // iOS: multitouch (stick + botón a la vez)
     this.input.addPointer(2);
 
-    // Controles táctiles visibles (solo móvil/touch, pero no molesta en desktop)
+    // Controles táctiles
     this.touch = this.createTouchControls();
 
-          // === UI Upgrades (táctil) ===
-    // === UI Upgrades (táctil) ===
-// La ponemos ARRIBA-DERECHA y por encima de los controles táctiles
-const pad = 12;
-const boxW = 210;
-const boxH = 128;
+    // === UI Upgrades (arriba-derecha) ===
+    this.buildUpgradesUI();
 
-const uiX = this.scale.width - pad - boxW;
-const uiY = pad;
+    // Volver al menú
+    this.keys.back.on('down', () => {
+      this.scene.start('menu');
+    });
+  }
 
-this.upUI = this.add.container(0, 0).setScrollFactor(0).setDepth(1200);
+  buildUpgradesUI() {
+    // Si ya existía (por reinicio de escena) la destruimos
+    if (this.upUI) {
+      this.upUI.destroy(true);
+      this.upUI = null;
+      this.upTxt = null;
+    }
 
-const bg = this.add.rectangle(uiX, uiY, boxW, boxH, 0x0b1020, 0.45)
-  .setOrigin(0)
-  .setStrokeStyle(1, 0xb7c0ff, 0.18);
+    const pad = 12;
+    const boxW = 220;
+    const boxH = 134;
+
+    const uiX = this.scale.width - pad - boxW;
+    const uiY = pad;
+
+    this.upUI = this.add.container(0, 0).setScrollFactor(0).setDepth(1200);
+
+    const bg = this.add.rectangle(uiX, uiY, boxW, boxH, 0x0b1020, 0.45)
       .setOrigin(0)
       .setStrokeStyle(1, 0xb7c0ff, 0.18);
 
     const title = this.add.text(uiX + 12, uiY + 10, 'UPGRADES', {
-  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-  fontSize: '12px',
-  color: '#b7c0ff',
-  fontStyle: 'bold'
-});
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: '12px',
+      color: '#b7c0ff',
+      fontStyle: 'bold'
+    });
 
-const txt = this.add.text(uiX + 12, uiY + 30, '', {
-  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-  fontSize: '12px',
-  color: '#ffffff',
-  lineSpacing: 4
-});
+    this.upTxt = this.add.text(uiX + 12, uiY + 30, '', {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: '12px',
+      color: '#ffffff',
+      lineSpacing: 4
+    });
+
     const makeBtn = (x, y, label, onClick) => {
-      const bw = 62, bh = 28;
+      const bw = 66, bh = 28;
 
       const r = this.add.rectangle(x, y, bw, bh, 0x0b1020, 0.35)
         .setOrigin(0)
@@ -273,226 +278,203 @@ const txt = this.add.text(uiX + 12, uiY + 30, '', {
       }).setOrigin(0.5);
 
       r.setInteractive({ useHandCursor: true });
-
       r.on('pointerdown', () => onClick());
+
       return [r, t];
     };
 
-    const refreshUpText = () => {
+    const refresh = () => {
       const u = this.upgrades || { engine: 0, brakes: 0, tires: 0 };
-      txt.setText(
-        `Motor: ${u.engine}/${this.UPGRADE_CAPS.engine}\n` +
+      this.upTxt.setText(
+        `Motor:  ${u.engine}/${this.UPGRADE_CAPS.engine}\n` +
         `Frenos: ${u.brakes}/${this.UPGRADE_CAPS.brakes}\n` +
-        `Neum.: ${u.tires}/${this.UPGRADE_CAPS.tires}`
+        `Neum.:  ${u.tires}/${this.UPGRADE_CAPS.tires}`
       );
     };
 
-    const btnY = uiY + 88;
-const [b1, t1] = makeBtn(uiX + 12,  btnY, 'MOTOR+', () => { this.buyUpgrade('engine'); refreshUpText(); });
-const [b2, t2] = makeBtn(uiX + 76,  btnY, 'FRENO+', () => { this.buyUpgrade('brakes'); refreshUpText(); });
-const [b3, t3] = makeBtn(uiX + 140, btnY, 'NEUM+',  () => { this.buyUpgrade('tires');  refreshUpText(); });
+    const btnY = uiY + 92;
+    const [b1, t1] = makeBtn(uiX + 12,  btnY, 'MOTOR+', () => { if (this.buyUpgrade) this.buyUpgrade('engine'); refresh(); });
+    const [b2, t2] = makeBtn(uiX + 80,  btnY, 'FRENO+', () => { if (this.buyUpgrade) this.buyUpgrade('brakes'); refresh(); });
+    const [b3, t3] = makeBtn(uiX + 148, btnY, 'NEUM+',  () => { if (this.buyUpgrade) this.buyUpgrade('tires');  refresh(); });
 
-    this.upUI.add([bg, title, txt, b1, t1, b2, t2, b3, t3]);
-    refreshUpText();
-    // Volver al menú
-    this.keys.back.on('down', () => {
-      this.scene.start('menu');
-    });
+    this.upUI.add([bg, title, this.upTxt, b1, t1, b2, t2, b3, t3]);
+    refresh();
+
+    // Reposicionar si rota/cambia tamaño
+    this.scale.off('resize', this._onResizeUpUI);
+    this._onResizeUpUI = () => this.buildUpgradesUI();
+    this.scale.on('resize', this._onResizeUpUI);
   }
 
-update(time, deltaMs) {
-  const dt = Math.min(0.05, deltaMs / 1000);
+  update(time, deltaMs) {
+    const dt = Math.min(0.05, deltaMs / 1000);
 
-  // Zoom
-  if (Phaser.Input.Keyboard.JustDown(this.keys.zoomIn)) {
-    this.zoom = clamp(this.zoom + 0.1, 0.6, 1.6);
-    this.cameras.main.setZoom(this.zoom);
-  }
-  if (Phaser.Input.Keyboard.JustDown(this.keys.zoomOut)) {
-    this.zoom = clamp(this.zoom - 0.1, 0.6, 1.6);
-    this.cameras.main.setZoom(this.zoom);
-  }
-
-  // Inputs
-  const t = this.touch || { steer: 0, throttle: 0, brake: 0, stickX: 0, stickY: 0 };
-
-  const up =
-    this.keys.up.isDown ||
-    this.keys.up2.isDown ||
-    t.throttle > 0.5;
-
-  const down =
-    this.keys.down.isDown ||
-    this.keys.down2.isDown ||
-    t.brake > 0.5;
-
-  const left =
-  this.keys.left.isDown ||
-  this.keys.left2.isDown;
-
-const right =
-  this.keys.right.isDown ||
-  this.keys.right2.isDown;
-
-  const body = this.car.body;
-
-  // Dirección del coche
-  const rot = this.car.rotation;
-  const dirX = Math.cos(rot);
-  const dirY = Math.sin(rot);
-
-  // Velocidad actual
-  const vx = body.velocity.x;
-  const vy = body.velocity.y;
-  const speed = Math.sqrt(vx * vx + vy * vy);
-
-  // Aceleración / freno
-  if (up && !down) {
-    body.velocity.x += dirX * this.accel * dt;
-    body.velocity.y += dirY * this.accel * dt;
-  }
-  if (down) {
-    body.velocity.x -= dirX * this.brakeForce * dt;
-    body.velocity.y -= dirY * this.brakeForce * dt;
-  }
-
-  // Drag base
-  const drag = Math.max(0, 1 - this.linearDrag * dt * 60);
-  body.velocity.x *= drag;
-  body.velocity.y *= drag;
-
-  // Límite de velocidad por sentido (delante vs atrás)
-  const fwdSpeed = body.velocity.x * dirX + body.velocity.y * dirY;
-  const newSpeed = Math.sqrt(
-    body.velocity.x * body.velocity.x +
-    body.velocity.y * body.velocity.y
-  );
-  const maxSpeed = fwdSpeed >= 0 ? this.maxFwd : this.maxRev;
-
-  if (newSpeed > maxSpeed) {
-    const s = maxSpeed / newSpeed;
-    body.velocity.x *= s;
-    body.velocity.y *= s;
-  }
-
-  // Giro (depende de velocidad)
-  const speed01 = clamp(speed / this.maxFwd, 0, 1);
-  const turnFactor = clamp(1 - speed01, this.turnMin, 1);
-  const maxTurn = this.turnRate * turnFactor; // rad/s
-
-  // 1) Teclado: volante clásico (relativo)
-  if (left && !right) this.car.rotation -= maxTurn * dt;
-  if (right && !left) this.car.rotation += maxTurn * dt;
-
-  // 2) Táctil: SOLO gira mientras el stick está activo.
-  // Y NO permitimos girar en parado total (para evitar trompos “sobre el eje”).
-  const stickMag = Math.sqrt(t.stickX * t.stickX + t.stickY * t.stickY);
-  const movingEnough = speed > 8; // umbral pequeño (px/s)
-  const applyingPower = up || down; // gas o freno pulsados
-
-  if (!left && !right && stickMag > 0.15 && (movingEnough || applyingPower)) {
-    // OJO: aquí NO va +PI/2 en tu proyecto.
-const target = t.targetAngle;
-if (typeof target !== 'number') return; // por seguridad
-const diff = wrapPi(target - this.car.rotation);
-
-    // Para cuando llega (evita que se quede corrigiendo infinitamente)
-    const EPS = 0.02; // ~1.1º
-    if (Math.abs(diff) > EPS) {
-      const step = clamp(diff, -maxTurn * dt, maxTurn * dt);
-      this.car.rotation += step;
-    } else {
-      this.car.rotation = target;
+    // Zoom
+    if (Phaser.Input.Keyboard.JustDown(this.keys.zoomIn)) {
+      this.zoom = clamp(this.zoom + 0.1, 0.6, 1.6);
+      this.cameras.main.setZoom(this.zoom);
     }
-  }
-// === Track culling render (solo celdas cercanas) ===
-if (this.track && this.track.geom && this.track.geom.cells) {
-  const cellSize = this.track.geom.cellSize;
-  const cx = Math.floor(this.car.x / cellSize);
-  const cy = Math.floor(this.car.y / cellSize);
-
-  const want = new Set();
-  const R = this.track.cullRadiusCells;
-
-  for (let yy = cy - R; yy <= cy + R; yy++) {
-    for (let xx = cx - R; xx <= cx + R; xx++) {
-      want.add(`${xx},${yy}`);
-    }
-  }
-
-  // Ocultar celdas que ya no se quieren
-  for (const key of this.track.activeCells) {
-    if (!want.has(key)) {
-      const g = this.track.gfxByCell.get(key);
-      if (g) g.setVisible(false);
-    }
-  }
-
-  // Mostrar/crear las que sí se quieren
-  for (const key of want) {
-    const cellData = this.track.geom.cells.get(key);
-    if (!cellData) continue;
-
-    let g = this.track.gfxByCell.get(key);
-    if (!g) {
-      g = this.add.graphics();
-g.setDepth(1); // pista por debajo del coche
-      this.track.gfxByCell.set(key, g);
+    if (Phaser.Input.Keyboard.JustDown(this.keys.zoomOut)) {
+      this.zoom = clamp(this.zoom - 0.1, 0.6, 1.6);
+      this.cameras.main.setZoom(this.zoom);
     }
 
-    if (!g.visible) g.setVisible(true);
+    // Inputs
+    const t = this.touch || { steer: 0, throttle: 0, brake: 0, stickX: 0, stickY: 0 };
 
-    // Redibujamos (simple y robusto; optimizable luego)
-    g.clear();
-g.fillStyle(this.trackAsphaltColor, 1);
+    const up =
+      this.keys.up.isDown ||
+      this.keys.up2.isDown ||
+      t.throttle > 0.5;
 
-    for (const poly of cellData.polys) {
-      g.beginPath();
-      g.moveTo(poly[0].x, poly[0].y);
-      for (let i = 1; i < poly.length; i++) g.lineTo(poly[i].x, poly[i].y);
-      g.closePath();
-      g.fillPath();
+    const down =
+      this.keys.down.isDown ||
+      this.keys.down2.isDown ||
+      t.brake > 0.5;
+
+    const left =
+      this.keys.left.isDown ||
+      this.keys.left2.isDown;
+
+    const right =
+      this.keys.right.isDown ||
+      this.keys.right2.isDown;
+
+    const body = this.car.body;
+
+    // Dirección del coche
+    const rot = this.car.rotation;
+    const dirX = Math.cos(rot);
+    const dirY = Math.sin(rot);
+
+    // Velocidad actual
+    const vx = body.velocity.x;
+    const vy = body.velocity.y;
+    const speed = Math.sqrt(vx * vx + vy * vy);
+
+    // Aceleración / freno
+    if (up && !down) {
+      body.velocity.x += dirX * this.accel * dt;
+      body.velocity.y += dirY * this.accel * dt;
     }
-  }
+    if (down) {
+      body.velocity.x -= dirX * this.brakeForce * dt;
+      body.velocity.y -= dirY * this.brakeForce * dt;
+    }
 
-  this.track.activeCells = want;
-}
-// HUD
-const kmh = speed * 0.12;
+    // Drag base
+    const drag = Math.max(0, 1 - this.linearDrag * dt * 60);
+    body.velocity.x *= drag;
+    body.velocity.y *= drag;
 
-// (Opcional) Si quieres mostrar upgrades también en el HUD principal:
-const u = this.upgrades || { engine: 0, brakes: 0, tires: 0 };
-
-this.hud.setText(
-  'RaceScene\n' +
-  `Car: ${this.carId} | Upg E${u.engine} B${u.brakes} T${u.tires}\n` +
-  'Vel: ' + kmh.toFixed(0) + ' km/h\n' +
-  'Zoom: ' + this.zoom.toFixed(1)
-);
-      // === HUD UPGRADES (debajo, sin solapar) ===
-  const u = this.upgrades || { engine: 0, brakes: 0, tires: 0 };
-
-  if (this.upgHud) {
-    this.upgHud.setText(
-      `UPGRADES\n` +
-      `Motor: ${u.engine}/3\n` +
-      `Frenos: ${u.brakes}/3\n` +
-      `Neum.: ${u.tires}/3`
+    // Límite de velocidad por sentido
+    const fwdSpeed = body.velocity.x * dirX + body.velocity.y * dirY;
+    const newSpeed = Math.sqrt(
+      body.velocity.x * body.velocity.x +
+      body.velocity.y * body.velocity.y
     );
-  }
-    'RaceScene\n' +
-        `Car: ${this.carId}  |  Upg E${u.engine} B${u.brakes} T${u.tires}\n` +
-    'Vel: ' + kmh.toFixed(0) + ' km/h\n' +
-    'Zoom: ' + this.zoom.toFixed(1)
-  );
+    const maxSpeed = fwdSpeed >= 0 ? this.maxFwd : this.maxRev;
 
-  // Sincronizar rig visual con body físico
-  if (this.carRig && this.carBody) {
-    this.carRig.x = this.carBody.x;
-    this.carRig.y = this.carBody.y;
-    this.carRig.rotation = this.carBody.rotation;
+    if (newSpeed > maxSpeed) {
+      const s = maxSpeed / newSpeed;
+      body.velocity.x *= s;
+      body.velocity.y *= s;
+    }
+
+    // Giro (depende de velocidad)
+    const speed01 = clamp(speed / this.maxFwd, 0, 1);
+    const turnFactor = clamp(1 - speed01, this.turnMin, 1);
+    const maxTurn = this.turnRate * turnFactor; // rad/s
+
+    // 1) Teclado: volante clásico
+    if (left && !right) this.car.rotation -= maxTurn * dt;
+    if (right && !left) this.car.rotation += maxTurn * dt;
+
+    // 2) Táctil: alineamiento por stick (solo si hay stick activo)
+    const stickMag = Math.sqrt(t.stickX * t.stickX + t.stickY * t.stickY);
+    if (!left && !right && stickMag > 0.15) {
+      const target = Math.atan2(t.stickY, t.stickX) + Math.PI / 2;
+      const diff = wrapPi(target - this.car.rotation);
+
+      const EPS = 0.02;
+      if (Math.abs(diff) > EPS) {
+        const step = clamp(diff, -maxTurn * dt, maxTurn * dt);
+        this.car.rotation += step;
+      } else {
+        this.car.rotation = target;
+      }
+    }
+
+    // === Track culling render (solo celdas cercanas) ===
+    if (this.track && this.track.geom && this.track.geom.cells) {
+      const cellSize = this.track.geom.cellSize;
+      const cx = Math.floor(this.car.x / cellSize);
+      const cy = Math.floor(this.car.y / cellSize);
+
+      const want = new Set();
+      const R = this.track.cullRadiusCells;
+
+      for (let yy = cy - R; yy <= cy + R; yy++) {
+        for (let xx = cx - R; xx <= cx + R; xx++) {
+          want.add(`${xx},${yy}`);
+        }
+      }
+
+      // Ocultar celdas que ya no se quieren
+      for (const key of this.track.activeCells) {
+        if (!want.has(key)) {
+          const g = this.track.gfxByCell.get(key);
+          if (g) g.setVisible(false);
+        }
+      }
+
+      // Mostrar/crear las que sí se quieren
+      for (const key of want) {
+        const cellData = this.track.geom.cells.get(key);
+        if (!cellData) continue;
+
+        let g = this.track.gfxByCell.get(key);
+        if (!g) {
+          g = this.add.graphics();
+          g.setDepth(1);
+          this.track.gfxByCell.set(key, g);
+        }
+
+        if (!g.visible) g.setVisible(true);
+
+        g.clear();
+        g.fillStyle(this.trackAsphaltColor, 1);
+
+        for (const poly of cellData.polys) {
+          g.beginPath();
+          g.moveTo(poly[0].x, poly[0].y);
+          for (let i = 1; i < poly.length; i++) g.lineTo(poly[i].x, poly[i].y);
+          g.closePath();
+          g.fillPath();
+        }
+      }
+
+      this.track.activeCells = want;
+    }
+
+    // HUD
+    const kmh = speed * 0.12;
+    const u = this.upgrades || { engine: 0, brakes: 0, tires: 0 };
+
+    this.hud.setText(
+      'RaceScene\n' +
+      `Car: ${this.carId} | Upg E${u.engine} B${u.brakes} T${u.tires}\n` +
+      'Vel: ' + kmh.toFixed(0) + ' km/h\n' +
+      'Zoom: ' + this.zoom.toFixed(1)
+    );
+
+    // Sincronizar rig visual con body físico
+    if (this.carRig && this.carBody) {
+      this.carRig.x = this.carBody.x;
+      this.carRig.y = this.carBody.y;
+      this.carRig.rotation = this.carBody.rotation;
+    }
   }
-}
 
   ensureBgTexture() {
     if (this.textures.exists('bgGrid')) return;
@@ -500,10 +482,8 @@ this.hud.setText(
     const size = 256;
     const rt = this.make.renderTexture({ width: size, height: size }, false);
 
-    // fondo oscuro
     rt.fill(0x0b1020, 1);
 
-    // grid suave
     const g = this.add.graphics();
     g.lineStyle(1, 0xffffff, 0.06);
     for (let i = 0; i <= size; i += 64) {
@@ -511,7 +491,6 @@ this.hud.setText(
       g.lineBetween(0, i, size, i);
     }
 
-    // puntitos ruido
     g.fillStyle(0xffffff, 0.03);
     for (let k = 0; k < 220; k++) {
       g.fillRect(Math.random() * size, Math.random() * size, 2, 2);
@@ -530,34 +509,26 @@ this.hud.setText(
     const w = 44, h = 26;
     const g = this.add.graphics();
 
-    // sombra
     g.fillStyle(0x000000, 0.25);
     g.fillRoundedRect(2, 4, w, h, 10);
 
-    // cuerpo
     g.fillStyle(0xffffff, 0.95);
     g.fillRoundedRect(0, 0, w, h, 10);
 
-    // cabina
     g.fillStyle(0x141b33, 0.9);
     g.fillRoundedRect(16, 6, 18, 14, 6);
 
-    // morro
     g.fillStyle(0x2bff88, 0.95);
     g.fillRoundedRect(34, 9, 10, 8, 4);
 
-    // contorno
     g.lineStyle(2, 0x0b1020, 0.6);
     g.strokeRoundedRect(0, 0, w, h, 10);
 
     g.generateTexture('car', w + 4, h + 6);
     g.destroy();
   }
-    createTouchControls() {
-    // UI táctil visible:
-    // - Izquierda: joystick (steer analógico)
-    // - Derecha: dos botones grandes (GAS / FRENO)
 
+  createTouchControls() {
     const state = {
       steer: 0,
       throttle: 0,
@@ -595,7 +566,6 @@ this.hud.setText(
       const h = this.scale.height;
       const pad = 16;
 
-      // Stick
       const stickR = Math.max(54, Math.floor(Math.min(w, h) * 0.07));
       const stickMax = stickR * 0.85;
 
@@ -609,7 +579,6 @@ this.hud.setText(
       state.stickR = stickR;
       state.stickMax = stickMax;
 
-      // Botones derecha
       const btnW = Math.max(110, Math.floor(w * 0.22));
       const btnH = Math.max(78, Math.floor(h * 0.115));
       const gap = 14;
@@ -624,7 +593,6 @@ this.hud.setText(
       state.btnW = btnW;
       state.btnH = btnH;
 
-      // Paneles de zona (para que siempre se vean)
       const zoneG = this.add.graphics();
       zoneG.fillStyle(0x000000, 0.14);
 
@@ -658,13 +626,11 @@ this.hud.setText(
       const draw = () => {
         g.clear();
 
-        // Base stick
         g.fillStyle(0x0b1020, 0.35);
         g.fillCircle(state.baseX, state.baseY, state.stickR + 10);
         g.lineStyle(2, 0xb7c0ff, 0.25);
         g.strokeCircle(state.baseX, state.baseY, state.stickR + 10);
 
-        // Knob stick
         const knobR = Math.floor(state.stickR * 0.46);
         g.fillStyle(0xffffff, state.leftActive ? 0.22 : 0.14);
         g.fillCircle(state.knobX, state.knobY, knobR);
@@ -673,13 +639,11 @@ this.hud.setText(
           g.strokeCircle(state.knobX, state.knobY, knobR);
         }
 
-        // GAS
         g.fillStyle(0x0b1020, state.rightThrottle ? 0.50 : 0.28);
         g.fillRoundedRect(state.rightX, state.throttleY, state.btnW, state.btnH, 16);
         g.lineStyle(2, state.rightThrottle ? 0x2bff88 : 0xb7c0ff, state.rightThrottle ? 0.55 : 0.22);
         g.strokeRoundedRect(state.rightX, state.throttleY, state.btnW, state.btnH, 16);
 
-        // FRENO
         g.fillStyle(0x0b1020, state.rightBrake ? 0.50 : 0.28);
         g.fillRoundedRect(state.rightX, state.brakeY, state.btnW, state.btnH, 16);
         g.lineStyle(2, state.rightBrake ? 0xff5a7a : 0xb7c0ff, state.rightBrake ? 0.55 : 0.22);
@@ -702,7 +666,6 @@ this.hud.setText(
 
       ui.add([zoneG, leftLabel, rightLabel, g, tText, bText]);
 
-      // Guardar draw para refrescar sin optional chaining
       state._draw = draw;
       state._draw();
     };
@@ -710,52 +673,34 @@ this.hud.setText(
     build();
     this.scale.on('resize', build);
 
-    const hitThrottle = (x, y) => {
-      return x >= state.rightX && x <= state.rightX + state.btnW &&
-             y >= state.throttleY && y <= state.throttleY + state.btnH;
-    };
+    const hitThrottle = (x, y) =>
+      x >= state.rightX && x <= state.rightX + state.btnW &&
+      y >= state.throttleY && y <= state.throttleY + state.btnH;
 
-    const hitBrake = (x, y) => {
-      return x >= state.rightX && x <= state.rightX + state.btnW &&
-             y >= state.brakeY && y <= state.brakeY + state.btnH;
-    };
+    const hitBrake = (x, y) =>
+      x >= state.rightX && x <= state.rightX + state.btnW &&
+      y >= state.brakeY && y <= state.brakeY + state.btnH;
 
     const updateStick = (x, y) => {
       const dx = x - state.baseX;
       const dy = y - state.baseY;
       const d = Math.sqrt(dx * dx + dy * dy);
 
-      var nx = 0;
-      if (d > 0.0001) nx = dx / d;
-
       const clamped = Math.min(d, state.stickMax);
 
-      // knob se mueve en dirección completa, pero steer solo usa X
       const kx = state.baseX + (d > 0.0001 ? (dx / d) * clamped : 0);
       const ky = state.baseY + (d > 0.0001 ? (dy / d) * clamped : 0);
 
       state.knobX = kx;
       state.knobY = ky;
 
-// stick estable: dirección unitaria + deadzone por distancia
-const dead = state.stickMax * 0.18;
+      const rawX = (state.knobX - state.baseX) / state.stickMax;
+      const rawY = (state.knobY - state.baseY) / state.stickMax;
 
-if (d < dead) {
-  state.stickX = 0;
-  state.stickY = 0;
-} else {
-  state.stickX = dx / d;
-  state.stickY = dy / d;
-}
+      state.stickX = Math.abs(rawX) < 0.12 ? 0 : clamp(rawX, -1, 1);
+      state.stickY = Math.abs(rawY) < 0.12 ? 0 : clamp(rawY, -1, 1);
 
-// mantenemos steer por compatibilidad
-state.steer = state.stickX;
-      // Guardar ángulo objetivo estable del stick
-if (state.stickX === 0 && state.stickY === 0) {
-  state.targetAngle = null;
-} else {
-  state.targetAngle = Math.atan2(state.stickY, state.stickX);
-}
+      state.steer = state.stickX;
     };
 
     this.input.on('pointerdown', (p) => {
@@ -800,6 +745,8 @@ if (state.stickX === 0 && state.stickY === 0) {
         state.leftId = -1;
         state.leftActive = false;
         state.steer = 0;
+        state.stickX = 0;
+        state.stickY = 0;
         state.knobX = state.baseX;
         state.knobY = state.baseY;
       }
