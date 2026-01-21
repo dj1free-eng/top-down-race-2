@@ -200,7 +200,16 @@ if (finish?.a && finish?.b) {
 } else {
   console.warn('No se encontró finish/finishLine en el track:', t01);
 }
+// === META: datos + estado de vueltas ===
+this.finishLine = t01.finishLine || t01.finish; // según cómo lo llames en el track
+this.lapCount = 0;
 
+// Guardamos "de qué lado" veníamos para detectar cruce con cambio de signo
+this.lastFinishSide = null;
+
+// Para evaluar cruce entre frame anterior y actual (segmento de movimiento)
+this.prevCarX = this.car.x;
+this.prevCarY = this.car.y;
     // Cámara follow
     this.cameras.main.startFollow(this.carRig, true, 0.12, 0.12);
     this.cameras.main.setZoom(this.zoom);
@@ -473,13 +482,59 @@ const target = Math.atan2(t.stickY, t.stickX);
 
       this.track.activeCells = want;
     }
+// === VUELTAS: detectar cruce de línea de meta ===
+if (this.finishLine?.a && this.finishLine?.b && this.finishLine?.normal) {
+  const a = this.finishLine.a;
+  const b = this.finishLine.b;
+  const n = this.finishLine.normal; // normal apuntando "hacia delante" de carrera
 
+  const x0 = this.prevCarX;
+  const y0 = this.prevCarY;
+  const x1 = this.car.x;
+  const y1 = this.car.y;
+
+  // Distancia firmada a la recta de meta (usando normal)
+  const side0 = (x0 - a.x) * n.x + (y0 - a.y) * n.y;
+  const side1 = (x1 - a.x) * n.x + (y1 - a.y) * n.y;
+
+  // Comprobamos si el punto está "a la altura" del segmento AB (proyección 0..1)
+  const abx = b.x - a.x;
+  const aby = b.y - a.y;
+  const len2 = abx * abx + aby * aby;
+
+  const proj0 = len2 > 0 ? ((x0 - a.x) * abx + (y0 - a.y) * aby) / len2 : -1;
+  const proj1 = len2 > 0 ? ((x1 - a.x) * abx + (y1 - a.y) * aby) / len2 : -1;
+
+  const within0 = proj0 >= 0 && proj0 <= 1;
+  const within1 = proj1 >= 0 && proj1 <= 1;
+
+  // Inicializar lado la primera vez
+  if (this.lastFinishSide === null) this.lastFinishSide = side1;
+
+  // Cruce válido: veníamos "antes" (lado negativo) y pasamos a "después" (lado positivo),
+  // y el movimiento pasa por la zona del segmento.
+  const crossedForward = (side0 < 0 && side1 >= 0);
+  const crossedInSegment = within0 || within1;
+
+  if (crossedForward && crossedInSegment) {
+    this.lapCount += 1;
+    // Evita dobles conteos si te quedas encima
+    this.lastFinishSide = side1 + 0.0001;
+  } else {
+    this.lastFinishSide = side1;
+  }
+
+  // Actualizar prev para el próximo frame
+  this.prevCarX = x1;
+  this.prevCarY = y1;
+}
     // HUD
     const kmh = speed * 0.12;
     const u = this.upgrades || { engine: 0, brakes: 0, tires: 0 };
 
     this.hud.setText(
       'RaceScene\n' +
+      `Vueltas: ${this.lapCount}\n` +
       `Car: ${this.carId} | Upg E${u.engine} B${u.brakes} T${u.tires}\n` +
       'Vel: ' + kmh.toFixed(0) + ' km/h\n' +
       'Zoom: ' + this.zoom.toFixed(1)
