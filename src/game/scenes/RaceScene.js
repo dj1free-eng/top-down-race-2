@@ -469,16 +469,33 @@ const target = Math.atan2(t.stickY, t.stickX);
 
         if (!g.visible) g.setVisible(true);
 
-        g.clear();
-        g.fillStyle(this.trackAsphaltColor, 1);
+g.clear();
 
-        for (const poly of cellData.polys) {
-          g.beginPath();
-          g.moveTo(poly[0].x, poly[0].y);
-          for (let i = 1; i < poly.length; i++) g.lineTo(poly[i].x, poly[i].y);
-          g.closePath();
-          g.fillPath();
-        }
+// Asfalto base (por ahora plano)
+g.fillStyle(this.trackAsphaltColor, 1);
+
+// Borde/arcén
+g.lineStyle(10, 0x9aa3b2, 0.10); // borde suave (gris claro, poco alfa)
+const innerLineW = 4;
+const innerLineColor = 0x0b1020; // línea interior oscura para “separación”
+const innerLineAlpha = 0.25;
+
+for (const poly of cellData.polys) {
+  g.beginPath();
+  g.moveTo(poly[0].x, poly[0].y);
+  for (let i = 1; i < poly.length; i++) g.lineTo(poly[i].x, poly[i].y);
+  g.closePath();
+
+  g.fillPath();      // relleno asfalto
+  g.strokePath();    // borde exterior suave
+
+  // línea interior (se pinta después del borde)
+  g.lineStyle(innerLineW, innerLineColor, innerLineAlpha);
+  g.strokePath();
+
+  // restaura borde para el siguiente polígono
+  g.lineStyle(10, 0x9aa3b2, 0.10);
+}
       }
 
       this.track.activeCells = want;
