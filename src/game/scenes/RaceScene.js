@@ -475,6 +475,17 @@ g.fillStyle(this.trackAsphaltColor, 1);
   const kmh = speed * 0.12;
   const u = this.upgrades || { engine: 0, brakes: 0, tires: 0 };
   this.hud.setText(
+      // === HUD UPGRADES (debajo, sin solapar) ===
+  const u = this.upgrades || { engine: 0, brakes: 0, tires: 0 };
+
+  if (this.upgHud) {
+    this.upgHud.setText(
+      `UPGRADES\n` +
+      `Motor: ${u.engine}/3\n` +
+      `Frenos: ${u.brakes}/3\n` +
+      `Neum.: ${u.tires}/3`
+    );
+  }
     'RaceScene\n' +
         `Car: ${this.carId}  |  Upg E${u.engine} B${u.brakes} T${u.tires}\n` +
     'Vel: ' + kmh.toFixed(0) + ' km/h\n' +
