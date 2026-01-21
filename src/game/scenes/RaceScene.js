@@ -176,17 +176,6 @@ this.bg = this.add.tileSprite(0, 0, this.worldW, this.worldH, 'grass')
   .setScrollFactor(1)
   .setDepth(0);
 
-// DEBUG VISUAL (temporal): confirma qué textura está usando el fondo
-if (!this._bgKeyDbg) {
-  this._bgKeyDbg = this.add.text(12, 44, '', {
-    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-    fontSize: '14px',
-    color: '#ff2d2d'
-  }).setScrollFactor(0).setDepth(5000);
-}
-const bgKey = this.bg?.texture?.key || '???';
-this._bgKeyDbg.setText(`BG texture: ${bgKey}`);
-
     // === Car rig: body físico + sprite visual adelantado ===
     const body = this.physics.add.image(4000, 2500, null);
     body.setCircle(14);
