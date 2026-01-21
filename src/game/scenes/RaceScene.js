@@ -603,8 +603,8 @@ if (this.hud) {
     const rt2 = this.make.renderTexture({ width: size, height: size }, false);
 
     // base verde
-    rt2.fill(0x1f5f2e, 1);
-
+ //   rt2.fill(0x1f5f2e, 1);
+rt2.fill(0xff0000, 1); // rojo cantoso PRUEBA
     const gg = this.add.graphics();
 
     // motas claras
