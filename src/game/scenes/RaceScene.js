@@ -219,29 +219,7 @@ this.hud = this.add.text(12, 12, '', {
   color: '#ffffff'
 }).setScrollFactor(0).setDepth(1100);
 
-// HUD upgrades (por ahora igual que lo tenías, caja + texto)
-// HUD upgrades (arriba-derecha)
-const upgMargin = 12;
-const upgW = 260;
-const upgH = 96;
 
-// Esquina superior derecha (anclado a pantalla)
-const upgX = this.scale.width - upgMargin;
-const upgY = 12;
-
-this.upgHudBg = this.add.rectangle(upgX, upgY, upgW, upgH, 0x0b1020, 0.45)
-  .setOrigin(1, 0) // ancla en la esquina superior derecha del rectángulo
-  .setStrokeStyle(1, 0xb7c0ff, 0.18)
-  .setScrollFactor(0)
-  .setDepth(1099);
-
-// Texto dentro de la caja (con padding)
-this.upgHud = this.add.text(upgX - upgW + 12, upgY + 8, '', {
-  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-  fontSize: '13px',
-  color: '#b7c0ff',
-  lineSpacing: 4
-}).setScrollFactor(0).setDepth(1100);
 
     // iOS: multitouch (stick + botón a la vez)
     this.input.addPointer(2);
@@ -250,30 +228,36 @@ this.upgHud = this.add.text(upgX - upgW + 12, upgY + 8, '', {
     this.touch = this.createTouchControls();
 
           // === UI Upgrades (táctil) ===
-    this.upUI = this.add.container(0, 0).setScrollFactor(0).setDepth(900);
+    // === UI Upgrades (táctil) ===
+// La ponemos ARRIBA-DERECHA y por encima de los controles táctiles
+const pad = 12;
+const boxW = 210;
+const boxH = 128;
 
-    const pad = 12;
-    const boxW = 210;
-    const boxH = 128;
+const uiX = this.scale.width - pad - boxW;
+const uiY = pad;
 
-    const bg = this.add.rectangle(pad, pad, boxW, boxH, 0x0b1020, 0.45)
+this.upUI = this.add.container(0, 0).setScrollFactor(0).setDepth(1200);
+
+const bg = this.add.rectangle(uiX, uiY, boxW, boxH, 0x0b1020, 0.45)
+  .setOrigin(0)
+  .setStrokeStyle(1, 0xb7c0ff, 0.18);
       .setOrigin(0)
       .setStrokeStyle(1, 0xb7c0ff, 0.18);
 
-    const title = this.add.text(pad + 12, pad + 10, 'UPGRADES', {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '12px',
-      color: '#b7c0ff',
-      fontStyle: 'bold'
-    });
+    const title = this.add.text(uiX + 12, uiY + 10, 'UPGRADES', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '12px',
+  color: '#b7c0ff',
+  fontStyle: 'bold'
+});
 
-    const txt = this.add.text(pad + 12, pad + 30, '', {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '12px',
-      color: '#ffffff',
-      lineSpacing: 4
-    });
-
+const txt = this.add.text(uiX + 12, uiY + 30, '', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '12px',
+  color: '#ffffff',
+  lineSpacing: 4
+});
     const makeBtn = (x, y, label, onClick) => {
       const bw = 62, bh = 28;
 
@@ -303,10 +287,10 @@ this.upgHud = this.add.text(upgX - upgW + 12, upgY + 8, '', {
       );
     };
 
-    const btnY = pad + 88;
-    const [b1, t1] = makeBtn(pad + 12,  btnY, 'MOTOR+', () => { this.buyUpgrade('engine'); refreshUpText(); });
-    const [b2, t2] = makeBtn(pad + 76,  btnY, 'FRENO+', () => { this.buyUpgrade('brakes'); refreshUpText(); });
-    const [b3, t3] = makeBtn(pad + 140, btnY, 'NEUM+',  () => { this.buyUpgrade('tires');  refreshUpText(); });
+    const btnY = uiY + 88;
+const [b1, t1] = makeBtn(uiX + 12,  btnY, 'MOTOR+', () => { this.buyUpgrade('engine'); refreshUpText(); });
+const [b2, t2] = makeBtn(uiX + 76,  btnY, 'FRENO+', () => { this.buyUpgrade('brakes'); refreshUpText(); });
+const [b3, t3] = makeBtn(uiX + 140, btnY, 'NEUM+',  () => { this.buyUpgrade('tires');  refreshUpText(); });
 
     this.upUI.add([bg, title, txt, b1, t1, b2, t2, b3, t3]);
     refreshUpText();
@@ -473,10 +457,18 @@ g.fillStyle(this.trackAsphaltColor, 1);
 
   this.track.activeCells = want;
 }
-  // HUD
-  const kmh = speed * 0.12;
-  const u = this.upgrades || { engine: 0, brakes: 0, tires: 0 };
-  this.hud.setText(
+// HUD
+const kmh = speed * 0.12;
+
+// (Opcional) Si quieres mostrar upgrades también en el HUD principal:
+const u = this.upgrades || { engine: 0, brakes: 0, tires: 0 };
+
+this.hud.setText(
+  'RaceScene\n' +
+  `Car: ${this.carId} | Upg E${u.engine} B${u.brakes} T${u.tires}\n` +
+  'Vel: ' + kmh.toFixed(0) + ' km/h\n' +
+  'Zoom: ' + this.zoom.toFixed(1)
+);
       // === HUD UPGRADES (debajo, sin solapar) ===
   const u = this.upgrades || { engine: 0, brakes: 0, tires: 0 };
 
