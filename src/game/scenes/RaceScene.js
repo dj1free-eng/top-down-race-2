@@ -220,13 +220,23 @@ this.hud = this.add.text(12, 12, '', {
 }).setScrollFactor(0).setDepth(1100);
 
 // HUD upgrades (por ahora igual que lo tenías, caja + texto)
-this.upgHudBg = this.add.rectangle(12, 60, 240, 90, 0x0b1020, 0.45)
-  .setOrigin(0, 0)
+// HUD upgrades (arriba-derecha)
+const upgMargin = 12;
+const upgW = 260;
+const upgH = 96;
+
+// Esquina superior derecha (anclado a pantalla)
+const upgX = this.scale.width - upgMargin;
+const upgY = 12;
+
+this.upgHudBg = this.add.rectangle(upgX, upgY, upgW, upgH, 0x0b1020, 0.45)
+  .setOrigin(1, 0) // ancla en la esquina superior derecha del rectángulo
   .setStrokeStyle(1, 0xb7c0ff, 0.18)
   .setScrollFactor(0)
   .setDepth(1099);
 
-this.upgHud = this.add.text(20, 66, '', {
+// Texto dentro de la caja (con padding)
+this.upgHud = this.add.text(upgX - upgW + 12, upgY + 8, '', {
   fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
   fontSize: '13px',
   color: '#b7c0ff',
