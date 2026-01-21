@@ -586,8 +586,12 @@ const kmh = speed * 0.12;
 if (this.hud) {
   const u = this.upgrades || { engine: 0, brakes: 0, tires: 0 };
 
+  // Debug dentro del HUD (sin textos nuevos en pantalla)
+  const bgKey = this.bg?.texture?.key || '(no bg ref)';
+
   this.hud.setText(
     'RaceScene\n' +
+    `BG: ${bgKey}\n` +
     `Vueltas: ${this.lapCount}\n` +
     `Car: ${this.carId || 'stock'} | Upg E${u.engine} B${u.brakes} T${u.tires}\n` +
     'Vel: ' + kmh.toFixed(0) + ' km/h\n' +
