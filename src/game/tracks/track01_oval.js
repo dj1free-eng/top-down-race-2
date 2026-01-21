@@ -27,32 +27,51 @@ export function makeTrack01Oval() {
   // Ancho pista
   const trackWidth = 300;
 
-  // Punto de salida (arriba del óvalo)
-  // Nota: en tu proyecto rotation=0 mira a la derecha, y +Y es hacia abajo.
-const start = {
-  x: cx,
-  y: cy - ry,
-  r: 0
-};
+  // =========================================================
+  // START + META (meta un poco más adelante que el start)
+  // En este proyecto: rotation=0 mira a la derecha, +Y hacia abajo.
+  // En el punto más alto del óvalo, la dirección de carrera es hacia la DERECHA.
+  // =========================================================
+
+  // Punto más alto del óvalo
+  const topX = cx;
+  const topY = cy - ry;
+
+  // Dirección de carrera ahí: hacia la derecha
+  const heading = 0; // rad
+
+  // Separación a lo largo de la pista (pixeles). Ajusta a gusto.
+  const startBackPx = 90;   // el coche sale 90px ANTES de la meta
+  const finishFwdPx = 0;    // meta en el punto alto (puedes poner 20 si la quieres aún más adelante)
+
+  // Vector dirección (tangente)
+  const dirX = Math.cos(heading);
+  const dirY = Math.sin(heading);
+
+  // Start un poco antes (hacia la izquierda, porque "antes" es -dir)
+  const start = {
+    x: topX - dirX * startBackPx,
+    y: topY - dirY * startBackPx,
+    r: heading
+  };
+
+  // Meta un poco después del punto alto (opcional)
+  const finishX = topX + dirX * finishFwdPx;
+  const finishY = topY + dirY * finishFwdPx;
+
   // ===== Línea de meta =====
-  // La definimos como un segmento que cruza la pista, PERPENDICULAR a la dirección del coche.
-  // Dirección del coche:
-  const dirX = Math.cos(start.r);
-  const dirY = Math.sin(start.r);
+  // Segmento que cruza la pista, perpendicular a la dirección de carrera.
+  // Normal (perpendicular a dir)
+  const nX = -dirY;
+  const nY = dirX;
 
-  // Perpendicular (a la izquierda del avance):
-  const perpX = -dirY;
-  const perpY = dirX;
-
-  // Mitad de longitud del segmento (un pelín más ancho que la pista)
-  const halfLen = (trackWidth * 0.65);
-
-  const finishLine = {
-    a: { x: start.x + perpX * halfLen, y: start.y + perpY * halfLen },
-    b: { x: start.x - perpX * halfLen, y: start.y - perpY * halfLen },
-
-    // Esto te servirá luego para saber "de qué lado venías" al cruzar
-    normal: { x: dirX, y: dirY }
+  const half = trackWidth * 0.55; // un pelín más ancho que la pista
+  const finish = {
+    x: finishX,
+    y: finishY,
+    a: { x: finishX - nX * half, y: finishY - nY * half },
+    b: { x: finishX + nX * half, y: finishY + nY * half },
+    heading
   };
 
   return {
@@ -63,6 +82,6 @@ const start = {
     centerline,
     trackWidth,
     start,
-    finishLine
+    finish
   };
 }
