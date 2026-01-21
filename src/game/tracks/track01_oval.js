@@ -29,12 +29,11 @@ export function makeTrack01Oval() {
 
   // Punto de salida (arriba del óvalo)
   // Nota: en tu proyecto rotation=0 mira a la derecha, y +Y es hacia abajo.
-  const start = {
-    x: cx,
-    y: cy - ry,
-    r: Math.PI / 2 // mirando hacia abajo
-  };
-
+const start = {
+  x: cx,
+  y: cy - ry,
+  r: 0
+};
   // ===== Línea de meta =====
   // La definimos como un segmento que cruza la pista, PERPENDICULAR a la dirección del coche.
   // Dirección del coche:
