@@ -145,10 +145,11 @@ export class RaceScene extends Phaser.Scene {
     if (this._dbg && this._dbg.setText) this._dbg.setText(text);
   }
   
-create() {
-  
+  create() {
     // World bounds
-    this.physics.world.setBounds(0, 0, this.worldW,     // Debug overlay (seguro)
+    this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
+
+    // Debug overlay (seguro)
     this._ensureDebugOverlay();
 
     // Texturas procedurales
