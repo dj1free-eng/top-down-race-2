@@ -224,7 +224,8 @@ renderUI() {
   root.add(toast);
 
   // Bajamos el bloque de circuitos por el selector+stats
-  const topY = Math.floor(height * (isPortrait ? 0.50 : 0.56));
+const cardsTopMin = statsY + statsBoxH + 16; // 16px de margen debajo de stats
+const topY = Math.max(cardsTopMin, Math.floor(height * (isPortrait ? 0.50 : 0.56)));
 
   function makeCard(x, y, t) {
     const container = self.add.container(x, y);
