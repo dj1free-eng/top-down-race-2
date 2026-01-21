@@ -138,7 +138,8 @@ export class RaceScene extends Phaser.Scene {
     this.ensureCarTexture();
 
     // Fondo
-    this.add.tileSprite(0, 0, this.worldW, this.worldH, 'bgGrid').setOrigin(0);
+// Fondo (césped)
+this.add.tileSprite(0, 0, this.worldW, this.worldH, 'grass').setOrigin(0);
 
     // === Car rig: body físico + sprite visual adelantado ===
     const body = this.physics.add.image(4000, 2500, null);
@@ -545,9 +546,15 @@ if (this.hud) {
   }
 
   ensureBgTexture() {
-    if (this.textures.exists('bgGrid')) return;
+  // Creamos bgGrid (si lo sigues usando en algún sitio) y grass (nuevo fondo)
+  if (this.textures.exists('bgGrid') && this.textures.exists('grass')) return;
 
-    const size = 256;
+  const size = 256;
+
+  // =========================
+  // 1) bgGrid (tu textura actual)
+  // =========================
+  if (!this.textures.exists('bgGrid')) {
     const rt = this.make.renderTexture({ width: size, height: size }, false);
 
     rt.fill(0x0b1020, 1);
@@ -570,6 +577,45 @@ if (this.hud) {
     rt.saveTexture('bgGrid');
     rt.destroy();
   }
+
+  // =========================
+  // 2) grass (nuevo fondo césped)
+  // =========================
+  if (!this.textures.exists('grass')) {
+    const rt2 = this.make.renderTexture({ width: size, height: size }, false);
+
+    // base verde
+    rt2.fill(0x1f5f2e, 1);
+
+    const gg = this.add.graphics();
+
+    // motas claras
+    gg.fillStyle(0x2f7a3e, 0.35);
+    for (let i = 0; i < 500; i++) {
+      gg.fillRect(Math.random() * size, Math.random() * size, 2, 2);
+    }
+
+    // motas oscuras
+    gg.fillStyle(0x164722, 0.28);
+    for (let i = 0; i < 380; i++) {
+      gg.fillRect(Math.random() * size, Math.random() * size, 2, 2);
+    }
+
+    // “rayitas” tipo brizna
+    gg.lineStyle(1, 0x3a8a4b, 0.18);
+    for (let i = 0; i < 220; i++) {
+      const x = Math.random() * size;
+      const y = Math.random() * size;
+      gg.lineBetween(x, y, x + (Math.random() * 10 - 5), y + (Math.random() * 10 - 5));
+    }
+
+    rt2.draw(gg, 0, 0);
+    gg.destroy();
+
+    rt2.saveTexture('grass');
+    rt2.destroy();
+  }
+}
 
   ensureCarTexture() {
     if (this.textures.exists('car')) return;
