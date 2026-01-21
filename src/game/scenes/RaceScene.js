@@ -218,6 +218,27 @@ this.cameras.main.startFollow(this.carRig, true, 0.12, 0.12);
       fontSize: '14px',
       color: '#ffffff'
     })
+      // HUD principal (ya lo tienes)
+this.hud = this.add.text(12, 12, '', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '14px',
+  color: '#ffffff'
+}).setScrollFactor(0).setDepth(1100);
+
+// === HUD UPGRADES (debajo, sin solapar) ===
+this.upgHudBg = this.add.rectangle(12, 60, 240, 90, 0x0b1020, 0.45)
+  .setOrigin(0, 0)
+  .setStrokeStyle(1, 0xb7c0ff, 0.18)
+  .setScrollFactor(0)
+  .setDepth(1099);
+
+this.upgHud = this.add.text(20, 66, '', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '13px',
+  color: '#b7c0ff',
+  lineSpacing: 4
+}).setScrollFactor(0).setDepth(1100);
+      
       .setScrollFactor(0).setDepth(10);
 
     // iOS: multitouch (stick + botón a la vez)
