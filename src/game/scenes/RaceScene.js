@@ -182,8 +182,24 @@ export class RaceScene extends Phaser.Scene {
       activeCells: new Set(),
       cullRadiusCells: 2
     };
+      this.trackAsphaltColor = 0x2a2f3a;
+  
+    // === DEBUG: línea de meta (roja) ===
+// OJO: según tu track puede llamarse finish o finishLine.
+// Probamos ambos para que lo veas sí o sí.
+const finish = t01.finish || t01.finishLine;
 
-    this.trackAsphaltColor = 0x2a2f3a;
+if (finish?.a && finish?.b) {
+  this.finishGfx = this.add.graphics();
+  this.finishGfx.lineStyle(6, 0xff2d2d, 1);
+  this.finishGfx.beginPath();
+  this.finishGfx.moveTo(finish.a.x, finish.a.y);
+  this.finishGfx.lineTo(finish.b.x, finish.b.y);
+  this.finishGfx.strokePath();
+  this.finishGfx.setDepth(50); // por encima de la pista
+} else {
+  console.warn('No se encontró finish/finishLine en el track:', t01);
+}
 
     // Cámara follow
     this.cameras.main.startFollow(this.carRig, true, 0.12, 0.12);
