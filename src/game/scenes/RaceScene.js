@@ -391,8 +391,9 @@ export class RaceScene extends Phaser.Scene {
     if (right && !left) this.car.rotation += maxTurn * dt;
 
     // 2) Táctil: alineamiento por stick (solo si hay stick activo)
-    const stickMag = Math.sqrt(t.stickX * t.stickX + t.stickY * t.stickY);
-    if (!left && !right && stickMag > 0.15) {
+const stickMag = Math.sqrt(t.stickX * t.stickX + t.stickY * t.stickY);
+const movingEnough = speed > 8; // umbral pequeño (px/s)
+if (!left && !right && stickMag > 0.15 && movingEnough) {
       const target = Math.atan2(t.stickY, t.stickX) + Math.PI / 2;
       const diff = wrapPi(target - this.car.rotation);
 
