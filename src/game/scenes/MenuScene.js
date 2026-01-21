@@ -309,10 +309,12 @@ const topY = Math.max(cardsTopMin, Math.floor(height * (isPortrait ? 0.50 : 0.56
     root.add([c1, c2]);
   }
 
-  root.add(this.add.text(width / 2, Math.floor(height * 0.84), 'Tip: abre una vez, luego modo avión y recarga (PWA).', {
-    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-    fontSize: '12px',
-    color: '#b7c0ff'
-  }).setOrigin(0.5));
+  const tip = this.add.text(width / 2, height - 18, 'Tip: abre una vez, luego modo avión y recarga (PWA).', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '12px',
+  color: '#b7c0ff'
+}).setOrigin(0.5);
+
+root.add(tip);
 }
 }
