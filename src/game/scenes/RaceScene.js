@@ -563,6 +563,7 @@ if (this.hud) {
   }
 
   ensureBgTexture() {
+    console.log('ensureBgTexture ejecutándose', this.textures.getTextureKeys());
   // Creamos bgGrid (si lo sigues usando en algún sitio) y grass (nuevo fondo)
   if (this.textures.exists('bgGrid') && this.textures.exists('grass')) return;
 
