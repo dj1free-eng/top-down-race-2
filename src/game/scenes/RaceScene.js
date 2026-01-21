@@ -701,6 +701,13 @@ export class RaceScene extends Phaser.Scene {
       state.stickY = Math.abs(rawY) < 0.12 ? 0 : clamp(rawY, -1, 1);
 
       state.steer = state.stickX;
+      // Ángulo objetivo del stick (para dirección absoluta)
+if (state.stickX === 0 && state.stickY === 0) {
+  state.targetAngle = null;
+} else {
+  // Corrección -90º para que "arriba" del stick sea "arriba" en el coche
+  state.targetAngle = Math.atan2(state.stickY, state.stickX) - (Math.PI / 2);
+}
     };
 
     this.input.on('pointerdown', (p) => {
