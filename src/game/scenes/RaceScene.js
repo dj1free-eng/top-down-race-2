@@ -394,7 +394,7 @@ export class RaceScene extends Phaser.Scene {
 const stickMag = Math.sqrt(t.stickX * t.stickX + t.stickY * t.stickY);
 const movingEnough = speed > 8; // umbral pequeño (px/s)
 if (!left && !right && stickMag > 0.15 && movingEnough) {
-      const target = Math.atan2(t.stickY, t.stickX) + Math.PI / 2;
+const target = Math.atan2(t.stickY, t.stickX);
       const diff = wrapPi(target - this.car.rotation);
 
       const EPS = 0.02;
