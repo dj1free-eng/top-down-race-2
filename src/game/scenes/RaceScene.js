@@ -130,18 +130,42 @@ export class RaceScene extends Phaser.Scene {
   }
 
 create() {
+  // DEBUG EN PANTALLA (si ves esto, este create() está corriendo)
+  if (!this._dbg) {
+    this._dbg = this.add.text(12, 12, 'DEBUG: create() start', {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: '16px',
+      color: '#ff2d2d',
+      backgroundColor: '#000000'
+    }).setScrollFactor(0).setDepth(5000);
+  } else {
+    this._dbg.setText('DEBUG: create() start (reused)');
+  }
 
   
     // World bounds
     this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
 
     // Texturas procedurales
+      // Texturas procedurales (con debug robusto)
+  try {
+    this._dbg.setText('DEBUG: before ensureBgTexture()');
     this.ensureBgTexture();
+    this._dbg.setText('DEBUG: after ensureBgTexture()');
+  } catch (e) {
+    this._dbg.setText('DEBUG: ensureBgTexture ERROR:\n' + (e?.message || String(e)));
+    throw e;
+  }
+
+  try {
+    this._dbg.setText(this._dbg.text + '\nDEBUG: before ensureCarTexture()');
     this.ensureCarTexture();
-this._dbg.setText(
-  'DEBUG: create() OK\n' +
-  'Textures: ' + this.textures.getTextureKeys().slice(0, 12).join(', ')
-);
+    this._dbg.setText(this._dbg.text + '\nDEBUG: after ensureCarTexture()');
+  } catch (e) {
+    this._dbg.setText('DEBUG: ensureCarTexture ERROR:\n' + (e?.message || String(e)));
+    throw e;
+  }
+
     // Fondo
 // Fondo (césped)
 this.add.tileSprite(0, 0, this.worldW, this.worldH, 'grass').setOrigin(0);
