@@ -31,37 +31,94 @@ export class RaceScene extends Phaser.Scene {
 
   // 2) Base spec
   const baseSpec = CAR_SPECS[this.carId] || CAR_SPECS.stock;
+  // === UPGRADES: cargar niveles por coche ===
+  // Guardamos por coche para que cada uno tenga sus mejoras aparte.
+  const upgradesKey = `tdr2:upgrades:${this.carId}`;
 
-  // 3) Tornillos (neutros por defecto)
-  // (luego los podrás cargar de localStorage o aplicar upgrades)
-  this.tuning = {
-    accelMult: 1.0,
-    brakeMult: 1.0,
-    dragMult: 1.0,
-    turnRateMult: 1.0,
-    maxFwdAdd: 0,
-    maxRevAdd: 0,
-    turnMinAdd: 0
+  const defaultUpgrades = { engine: 0, brakes: 0, tires: 0 };
+
+  try {
+    this.upgrades = JSON.parse(localStorage.getItem(upgradesKey) || 'null') || defaultUpgrades;
+  } catch {
+    this.upgrades = defaultUpgrades;
+  }
+
+  // Definición simple de niveles (0..3)
+  // Puedes ajustar números cuando quieras.
+  this.UPGRADE_CAPS = { engine: 3, brakes: 3, tires: 3 };
+
+  // Convierte niveles -> tornillos
+  const tuningFromUpgrades = (u) => {
+    const engineLv = u.engine || 0;
+    const brakesLv = u.brakes || 0;
+    const tiresLv = u.tires || 0;
+
+    return {
+      // Motor: más accel + algo de punta
+      accelMult: 1.0 + engineLv * 0.08,     // +8% por nivel
+      maxFwdAdd: engineLv * 35,             // +35 px/s por nivel
+
+      // Frenos
+      brakeMult: 1.0 + brakesLv * 0.10,     // +10% por nivel
+
+      // Drag / dirección se dejan neutros en upgrades base (por ahora)
+      dragMult: 1.0,
+      turnRateMult: 1.0,
+      turnMinAdd: 0,
+      maxRevAdd: 0, // marcha atrás no cambia
+
+      // Neumáticos: más agarre (sobre todo en drive)
+      gripDriveAdd: tiresLv * 0.02,
+      gripCoastAdd: tiresLv * 0.01,
+      gripBrakeAdd: tiresLv * 0.015
+    };
   };
 
-  // 4) Params finales (fuente única de verdad)
-  this.carParams = resolveCarParams(baseSpec, this.tuning);
+  // Guardamos tuning “derivado” (lo usaremos luego también al comprar upgrades)
+  this.tuning = tuningFromUpgrades(this.upgrades);
 
-  // 5) Asignación a físicas (lo que usa update())
-  this.accel = this.carParams.accel;
-  this.maxFwd = this.carParams.maxFwd;
-  this.maxRev = this.carParams.maxRev;
+  // Función helper: recalcular params + asignar a físicas
+  this.applyCarParams = () => {
+    this.carParams = resolveCarParams(baseSpec, this.tuning);
 
-  this.brakeForce = this.carParams.brakeForce;
-  this.engineBrake = this.carParams.engineBrake;
-  this.linearDrag = this.carParams.linearDrag;
+    this.accel = this.carParams.accel;
+    this.maxFwd = this.carParams.maxFwd;
+    this.maxRev = this.carParams.maxRev;
 
-  this.turnRate = this.carParams.turnRate;
-  this.turnMin = this.carParams.turnMin;
+    this.brakeForce = this.carParams.brakeForce;
+    this.engineBrake = this.carParams.engineBrake;
+    this.linearDrag = this.carParams.linearDrag;
 
-  this.gripCoast = this.carParams.gripCoast;
-  this.gripDrive = this.carParams.gripDrive;
-  this.gripBrake = this.carParams.gripBrake;
+    this.turnRate = this.carParams.turnRate;
+    this.turnMin = this.carParams.turnMin;
+
+    this.gripCoast = this.carParams.gripCoast;
+    this.gripDrive = this.carParams.gripDrive;
+    this.gripBrake = this.carParams.gripBrake;
+  };
+
+  // Aplicar una vez al entrar
+  this.applyCarParams();
+
+  // Guardar función para comprar upgrades durante la carrera
+  this._saveUpgrades = () => {
+    try { localStorage.setItem(upgradesKey, JSON.stringify(this.upgrades)); } catch {}
+  };
+
+  // Comprar (subir nivel) y reaplicar
+  this.buyUpgrade = (kind) => {
+    const cap = this.UPGRADE_CAPS[kind] ?? 0;
+    const cur = this.upgrades[kind] ?? 0;
+    if (cur >= cap) return false;
+
+    this.upgrades[kind] = cur + 1;
+    this._saveUpgrades();
+
+    // Recalcular tuning y aplicar
+    this.tuning = tuningFromUpgrades(this.upgrades);
+    this.applyCarParams();
+    return true;
+  };
 }
     create() {
   console.log('>>> RaceScene.create() ENTER');
@@ -168,6 +225,68 @@ this.cameras.main.startFollow(this.carRig, true, 0.12, 0.12);
 
     // Controles táctiles visibles (solo móvil/touch, pero no molesta en desktop)
     this.touch = this.createTouchControls();
+
+          // === UI Upgrades (táctil) ===
+    this.upUI = this.add.container(0, 0).setScrollFactor(0).setDepth(900);
+
+    const pad = 12;
+    const boxW = 210;
+    const boxH = 128;
+
+    const bg = this.add.rectangle(pad, pad, boxW, boxH, 0x0b1020, 0.45)
+      .setOrigin(0)
+      .setStrokeStyle(1, 0xb7c0ff, 0.18);
+
+    const title = this.add.text(pad + 12, pad + 10, 'UPGRADES', {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: '12px',
+      color: '#b7c0ff',
+      fontStyle: 'bold'
+    });
+
+    const txt = this.add.text(pad + 12, pad + 30, '', {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: '12px',
+      color: '#ffffff',
+      lineSpacing: 4
+    });
+
+    const makeBtn = (x, y, label, onClick) => {
+      const bw = 62, bh = 28;
+
+      const r = this.add.rectangle(x, y, bw, bh, 0x0b1020, 0.35)
+        .setOrigin(0)
+        .setStrokeStyle(1, 0x2bff88, 0.20);
+
+      const t = this.add.text(x + bw / 2, y + bh / 2, label, {
+        fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+        fontSize: '12px',
+        color: '#2bff88',
+        fontStyle: 'bold'
+      }).setOrigin(0.5);
+
+      r.setInteractive({ useHandCursor: true });
+
+      r.on('pointerdown', () => onClick());
+      return [r, t];
+    };
+
+    const refreshUpText = () => {
+      const u = this.upgrades || { engine: 0, brakes: 0, tires: 0 };
+      txt.setText(
+        `Motor: ${u.engine}/${this.UPGRADE_CAPS.engine}\n` +
+        `Frenos: ${u.brakes}/${this.UPGRADE_CAPS.brakes}\n` +
+        `Neum.: ${u.tires}/${this.UPGRADE_CAPS.tires}`
+      );
+    };
+
+    const btnY = pad + 88;
+    const [b1, t1] = makeBtn(pad + 12,  btnY, 'MOTOR+', () => { this.buyUpgrade('engine'); refreshUpText(); });
+    const [b2, t2] = makeBtn(pad + 76,  btnY, 'FRENO+', () => { this.buyUpgrade('brakes'); refreshUpText(); });
+    const [b3, t3] = makeBtn(pad + 140, btnY, 'NEUM+',  () => { this.buyUpgrade('tires');  refreshUpText(); });
+
+    this.upUI.add([bg, title, txt, b1, t1, b2, t2, b3, t3]);
+    refreshUpText();
     // Volver al menú
     this.keys.back.on('down', () => {
       this.scene.start('menu');
@@ -335,6 +454,7 @@ g.fillStyle(this.trackAsphaltColor, 1);
   const kmh = speed * 0.12;
   this.hud.setText(
     'RaceScene\n' +
+        `Car: ${this.carId}  |  Upg E${u.engine} B${u.brakes} T${u.tires}\n` +
     'Vel: ' + kmh.toFixed(0) + ' km/h\n' +
     'Zoom: ' + this.zoom.toFixed(1)
   );
