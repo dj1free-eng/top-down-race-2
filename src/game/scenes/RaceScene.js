@@ -145,21 +145,26 @@ export class RaceScene extends Phaser.Scene {
     if (this._dbg && this._dbg.setText) this._dbg.setText(text);
   }
   
-  create() {
-    // World bounds
-    this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
-
-    // Debug overlay (seguro)
+    create() {
+    // 0) Debug overlay (seguro)
     this._ensureDebugOverlay();
 
-    // Texturas procedurales
+    // 1) Track meta primero (define world real)
+    const t01 = makeTrack01Oval();
+
+    this.worldW = t01.worldW;
+    this.worldH = t01.worldH;
+
+    this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
+    this.cameras.main.setBounds(0, 0, this.worldW, this.worldH);
+
+    // 2) Texturas procedurales (no deben romper la escena)
     try {
       this._dbgSet('DEBUG: before ensureBgTexture()');
       this.ensureBgTexture();
-      this._dbgSet('DEBUG: after ensureBgTexture()');
+      this._dbgSet((this._dbg?.text || '') + '\nDEBUG: after ensureBgTexture()');
     } catch (e) {
       this._dbgSet('DEBUG: ensureBgTexture ERROR:\n' + (e?.message || String(e)));
-      throw e;
     }
 
     try {
@@ -168,20 +173,31 @@ export class RaceScene extends Phaser.Scene {
       this._dbgSet((this._dbg?.text || '') + '\nDEBUG: after ensureCarTexture()');
     } catch (e) {
       this._dbgSet('DEBUG: ensureCarTexture ERROR:\n' + (e?.message || String(e)));
-      throw e;
     }
-// Fondo (césped)
-this.bg = this.add.tileSprite(0, 0, this.worldW, this.worldH, 'grass')
-  .setOrigin(0, 0)
-  .setScrollFactor(1)
-  .setDepth(0);
 
-    // === Car rig: body físico + sprite visual adelantado ===
-    const body = this.physics.add.image(4000, 2500, null);
+    // 3) Fondo (usa el world definitivo)
+    // Nota: scrollFactor debe ser 1 (world), NO 0 (UI)
+    const bgKey = this.textures.exists('grass') ? 'grass' : (this.textures.exists('bgGrid') ? 'bgGrid' : null);
+
+    if (bgKey) {
+      this.bg = this.add.tileSprite(0, 0, this.worldW, this.worldH, bgKey)
+        .setOrigin(0, 0)
+        .setScrollFactor(1)
+        .setDepth(0);
+    } else {
+      // fallback si no hay textura (para que SIEMPRE veas algo)
+      this.add.rectangle(0, 0, this.worldW, this.worldH, 0x111111, 1)
+        .setOrigin(0, 0)
+        .setDepth(0);
+    }
+
+    // 4) Coche (body físico + rig visual)
+    const body = this.physics.add.image(t01.start.x, t01.start.y, null);
     body.setCircle(14);
     body.setCollideWorldBounds(true);
     body.setBounce(0);
     body.setDrag(0, 0);
+    body.rotation = t01.start.r;
 
     const carSprite = this.add.sprite(0, 0, 'car');
     carSprite.x = 12;
@@ -192,20 +208,9 @@ this.bg = this.add.tileSprite(0, 0, this.worldW, this.worldH, 'grass')
 
     this.carBody = body;
     this.carRig = rig;
-    this.car = body; // para tu update()
+    this.car = body; // compat con tu update()
 
-    // === Track 01 (óvalo) + TrackBuilder ribbon + culling ===
-    const t01 = makeTrack01Oval();
-
-    this.worldW = t01.worldW;
-    this.worldH = t01.worldH;
-    this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
-    this.cameras.main.setBounds(0, 0, this.worldW, this.worldH);
-
-    // Recolocar coche al start del track
-    this.car.setPosition(t01.start.x, t01.start.y);
-    this.car.rotation = t01.start.r;
-
+    // 5) Track ribbon (geom + culling state)
     this.track = {
       meta: t01,
       geom: buildTrackRibbon({
@@ -218,39 +223,34 @@ this.bg = this.add.tileSprite(0, 0, this.worldW, this.worldH, 'grass')
       activeCells: new Set(),
       cullRadiusCells: 2
     };
-      this.trackAsphaltColor = 0x2a2f3a;
-  
-    // === DEBUG: línea de meta (roja) ===
-// OJO: según tu track puede llamarse finish o finishLine.
-// Probamos ambos para que lo veas sí o sí.
-const finish = t01.finish || t01.finishLine;
 
-if (finish?.a && finish?.b) {
-  this.finishGfx = this.add.graphics();
-  this.finishGfx.lineStyle(6, 0xff2d2d, 1);
-  this.finishGfx.beginPath();
-  this.finishGfx.moveTo(finish.a.x, finish.a.y);
-  this.finishGfx.lineTo(finish.b.x, finish.b.y);
-  this.finishGfx.strokePath();
-  this.finishGfx.setDepth(50); // por encima de la pista
-} else {
-  console.warn('No se encontró finish/finishLine en el track:', t01);
-}
-// === META: datos + estado de vueltas ===
-this.finishLine = t01.finishLine || t01.finish; // según cómo lo llames en el track
-this.lapCount = 0;
+    this.trackAsphaltColor = 0x2a2f3a;
 
-// Guardamos "de qué lado" veníamos para detectar cruce con cambio de signo
-this.lastFinishSide = null;
+    // 6) Meta y vueltas (datos)
+    this.finishLine = t01.finishLine || t01.finish;
+    this.lapCount = 0;
+    this.lastFinishSide = null;
+    this.prevCarX = this.car.x;
+    this.prevCarY = this.car.y;
+    this._lapCooldownMs = 0;
 
-// Para evaluar cruce entre frame anterior y actual (segmento de movimiento)
-this.prevCarX = this.car.x;
-this.prevCarY = this.car.y;
-    // Cámara follow
+    // Debug: línea de meta (si existe)
+    const finish = t01.finish || t01.finishLine;
+    if (finish?.a && finish?.b) {
+      this.finishGfx = this.add.graphics();
+      this.finishGfx.lineStyle(6, 0xff2d2d, 1);
+      this.finishGfx.beginPath();
+      this.finishGfx.moveTo(finish.a.x, finish.a.y);
+      this.finishGfx.lineTo(finish.b.x, finish.b.y);
+      this.finishGfx.strokePath();
+      this.finishGfx.setDepth(50);
+    }
+
+    // 7) Cámara
     this.cameras.main.startFollow(this.carRig, true, 0.12, 0.12);
     this.cameras.main.setZoom(this.zoom);
 
-    // Input teclado
+    // 8) Input teclado
     this.keys = this.input.keyboard.addKeys({
       up: Phaser.Input.Keyboard.KeyCodes.W,
       down: Phaser.Input.Keyboard.KeyCodes.S,
@@ -267,6 +267,34 @@ this.prevCarY = this.car.y;
       back: Phaser.Input.Keyboard.KeyCodes.ESC
     });
 
+    // 9) HUD (si tu código original lo crea más abajo, esto sigue siendo compatible)
+    if (!this.hud) {
+      this.hud = this.add.text(12, 12, '', {
+        fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+        fontSize: '14px',
+        color: '#ffffff'
+      }).setScrollFactor(0).setDepth(1100);
+    }
+
+    // 10) iOS multitouch + controles táctiles
+    this.input.addPointer(2);
+    this.touch = this.createTouchControls();
+
+    // 11) UI Upgrades
+    this.buildUpgradesUI();
+
+    // 12) Volver al menú
+    if (this.keys?.back) {
+      this.keys.back.on('down', () => this.scene.start('menu'));
+    }
+
+    // Flag para update()
+    this._trackReady = true;
+
+    // Fallback visual: si algo rompe, que veas algo fijo en la posición del coche
+    // (si lo ves, el render/cámara van, y el fallo es del update/culling)
+    this._aliveMarker = this.add.rectangle(this.car.x, this.car.y, 180, 110, 0xff00ff, 0.18).setDepth(9999);
+  }
     // HUD principal (arriba-izquierda)
     this.hud = this.add.text(12, 12, '', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
@@ -368,15 +396,29 @@ this.prevCarY = this.car.y;
   }
 
   update(time, deltaMs) {
-    const dt = Math.min(0.05, deltaMs / 1000);
+    const dt = Math.min(0.05, (deltaMs || 0) / 1000);
 
-    // Zoom
-    if (Phaser.Input.Keyboard.JustDown(this.keys.zoomIn)) {
-      this.zoom = clamp(this.zoom + 0.1, 0.6, 1.6);
+    // Guardas duras: si create() no terminó, no reventamos el loop.
+    if (!this.cameras?.main) return;
+
+    // Si no hay coche todavía, como mínimo no crashees.
+    if (!this.car || !this.car.body) {
+      // Mantén vivo cualquier debug overlay
+      if (this._dbgSet) this._dbgSet('DEBUG: update() sin car/body');
+      return;
+    }
+
+    // Keys pueden no existir si create() se cortó antes de input
+    const keys = this.keys || {};
+    const justDown = Phaser?.Input?.Keyboard?.JustDown;
+
+    // Zoom (solo si existen teclas)
+    if (justDown && keys.zoomIn && justDown(keys.zoomIn)) {
+      this.zoom = clamp((this.zoom ?? 1) + 0.1, 0.6, 1.6);
       this.cameras.main.setZoom(this.zoom);
     }
-    if (Phaser.Input.Keyboard.JustDown(this.keys.zoomOut)) {
-      this.zoom = clamp(this.zoom - 0.1, 0.6, 1.6);
+    if (justDown && keys.zoomOut && justDown(keys.zoomOut)) {
+      this.zoom = clamp((this.zoom ?? 1) - 0.1, 0.6, 1.6);
       this.cameras.main.setZoom(this.zoom);
     }
 
@@ -384,47 +426,56 @@ this.prevCarY = this.car.y;
     const t = this.touch || { steer: 0, throttle: 0, brake: 0, stickX: 0, stickY: 0 };
 
     const up =
-      this.keys.up.isDown ||
-      this.keys.up2.isDown ||
-      t.throttle > 0.5;
+      (keys.up?.isDown) ||
+      (keys.up2?.isDown) ||
+      (t.throttle > 0.5);
 
     const down =
-      this.keys.down.isDown ||
-      this.keys.down2.isDown ||
-      t.brake > 0.5;
+      (keys.down?.isDown) ||
+      (keys.down2?.isDown) ||
+      (t.brake > 0.5);
 
     const left =
-      this.keys.left.isDown ||
-      this.keys.left2.isDown;
+      (keys.left?.isDown) ||
+      (keys.left2?.isDown);
 
     const right =
-      this.keys.right.isDown ||
-      this.keys.right2.isDown;
+      (keys.right?.isDown) ||
+      (keys.right2?.isDown);
 
     const body = this.car.body;
 
     // Dirección del coche
-    const rot = this.car.rotation;
+    const rot = this.car.rotation || 0;
     const dirX = Math.cos(rot);
     const dirY = Math.sin(rot);
 
     // Velocidad actual
-    const vx = body.velocity.x;
-    const vy = body.velocity.y;
+    const vx = body.velocity?.x || 0;
+    const vy = body.velocity?.y || 0;
     const speed = Math.sqrt(vx * vx + vy * vy);
+
+    // Params (por si init no llegó a setearlos aún)
+    const accel = this.accel ?? 0;
+    const brakeForce = this.brakeForce ?? 0;
+    const linearDrag = this.linearDrag ?? 0;
+    const maxFwd = this.maxFwd ?? 1;
+    const maxRev = this.maxRev ?? 1;
+    const turnRate = this.turnRate ?? 0;
+    const turnMin = this.turnMin ?? 0.1;
 
     // Aceleración / freno
     if (up && !down) {
-      body.velocity.x += dirX * this.accel * dt;
-      body.velocity.y += dirY * this.accel * dt;
+      body.velocity.x += dirX * accel * dt;
+      body.velocity.y += dirY * accel * dt;
     }
     if (down) {
-      body.velocity.x -= dirX * this.brakeForce * dt;
-      body.velocity.y -= dirY * this.brakeForce * dt;
+      body.velocity.x -= dirX * brakeForce * dt;
+      body.velocity.y -= dirY * brakeForce * dt;
     }
 
     // Drag base
-    const drag = Math.max(0, 1 - this.linearDrag * dt * 60);
+    const drag = Math.max(0, 1 - linearDrag * dt * 60);
     body.velocity.x *= drag;
     body.velocity.y *= drag;
 
@@ -434,7 +485,7 @@ this.prevCarY = this.car.y;
       body.velocity.x * body.velocity.x +
       body.velocity.y * body.velocity.y
     );
-    const maxSpeed = fwdSpeed >= 0 ? this.maxFwd : this.maxRev;
+    const maxSpeed = fwdSpeed >= 0 ? maxFwd : maxRev;
 
     if (newSpeed > maxSpeed) {
       const s = maxSpeed / newSpeed;
@@ -443,9 +494,9 @@ this.prevCarY = this.car.y;
     }
 
     // Giro (depende de velocidad)
-    const speed01 = clamp(speed / this.maxFwd, 0, 1);
-    const turnFactor = clamp(1 - speed01, this.turnMin, 1);
-    const maxTurn = this.turnRate * turnFactor; // rad/s
+    const speed01 = clamp(speed / maxFwd, 0, 1);
+    const turnFactor = clamp(1 - speed01, turnMin, 1);
+    const maxTurn = turnRate * turnFactor; // rad/s
 
     // 1) Teclado: volante clásico
     if (left && !right) this.car.rotation -= maxTurn * dt;
@@ -453,7 +504,7 @@ this.prevCarY = this.car.y;
 
     // 2) Táctil: alineamiento por stick (solo si hay stick activo)
     const stickMag = Math.sqrt(t.stickX * t.stickX + t.stickY * t.stickY);
-    const movingEnough = speed > 8; // umbral pequeño (px/s)
+    const movingEnough = speed > 8;
 
     if (!left && !right && stickMag > 0.15 && movingEnough) {
       const target = Math.atan2(t.stickY, t.stickX);
@@ -469,136 +520,149 @@ this.prevCarY = this.car.y;
     }
 
     // === Track culling render (solo celdas cercanas) ===
-    if (this.track && this.track.geom && this.track.geom.cells) {
-      const cellSize = this.track.geom.cellSize;
-      const cx = Math.floor(this.car.x / cellSize);
-      const cy = Math.floor(this.car.y / cellSize);
+    // IMPORTANTE: si aquí explota, no debe tumbar el update entero.
+    try {
+      if (this.track?.geom?.cells) {
+        const cellSize = this.track.geom.cellSize;
+        const cx = Math.floor(this.car.x / cellSize);
+        const cy = Math.floor(this.car.y / cellSize);
 
-      const want = new Set();
-      const R = this.track.cullRadiusCells;
+        const want = new Set();
+        const R = this.track.cullRadiusCells ?? 2;
 
-      for (let yy = cy - R; yy <= cy + R; yy++) {
-        for (let xx = cx - R; xx <= cx + R; xx++) {
-          want.add(`${xx},${yy}`);
-        }
-      }
-
-      // Ocultar celdas que ya no se quieren
-      for (const key of this.track.activeCells) {
-        if (!want.has(key)) {
-          const g = this.track.gfxByCell.get(key);
-          if (g) g.setVisible(false);
-        }
-      }
-
-      // Mostrar/crear las que sí se quieren
-      for (const key of want) {
-        const cellData = this.track.geom.cells.get(key);
-        if (!cellData) continue;
-
-        let g = this.track.gfxByCell.get(key);
-        if (!g) {
-          g = this.add.graphics();
-          g.setDepth(1);
-          this.track.gfxByCell.set(key, g);
+        for (let yy = cy - R; yy <= cy + R; yy++) {
+          for (let xx = cx - R; xx <= cx + R; xx++) {
+            want.add(`${xx},${yy}`);
+          }
         }
 
-        if (!g.visible) g.setVisible(true);
+        // Ocultar celdas que ya no se quieren
+        for (const key of (this.track.activeCells || [])) {
+          if (!want.has(key)) {
+            const g = this.track.gfxByCell.get(key);
+            if (g) g.setVisible(false);
+          }
+        }
 
-g.clear();
+        // Mostrar/crear las que sí se quieren
+        for (const key of want) {
+          const cellData = this.track.geom.cells.get(key);
+          if (!cellData || !cellData.polys || cellData.polys.length === 0) continue;
 
-// Asfalto base (por ahora plano)
-g.fillStyle(this.trackAsphaltColor, 1);
+          let g = this.track.gfxByCell.get(key);
+          if (!g) {
+            g = this.add.graphics();
+            g.setDepth(1);
+            this.track.gfxByCell.set(key, g);
+          }
 
-// Borde/arcén
-g.lineStyle(10, 0x9aa3b2, 0.10); // borde suave (gris claro, poco alfa)
-const innerLineW = 4;
-const innerLineColor = 0x0b1020; // línea interior oscura para “separación”
-const innerLineAlpha = 0.25;
+          if (!g.visible) g.setVisible(true);
 
-for (const poly of cellData.polys) {
-  g.beginPath();
-  g.moveTo(poly[0].x, poly[0].y);
-  for (let i = 1; i < poly.length; i++) g.lineTo(poly[i].x, poly[i].y);
-  g.closePath();
+          g.clear();
 
-  g.fillPath();      // relleno asfalto
-  g.strokePath();    // borde exterior suave
+          // Asfalto base
+          g.fillStyle(this.trackAsphaltColor ?? 0x2a2f3a, 1);
 
-  // línea interior (se pinta después del borde)
-  g.lineStyle(innerLineW, innerLineColor, innerLineAlpha);
-  g.strokePath();
+          // Borde/arcén
+          g.lineStyle(10, 0x9aa3b2, 0.10);
+          const innerLineW = 4;
+          const innerLineColor = 0x0b1020;
+          const innerLineAlpha = 0.25;
 
-  // restaura borde para el siguiente polígono
-  g.lineStyle(10, 0x9aa3b2, 0.10);
-}
+          for (const poly of cellData.polys) {
+            if (!poly || poly.length < 3) continue;
+
+            g.beginPath();
+            g.moveTo(poly[0].x, poly[0].y);
+            for (let i = 1; i < poly.length; i++) g.lineTo(poly[i].x, poly[i].y);
+            g.closePath();
+
+            g.fillPath();
+            g.strokePath();
+
+            g.lineStyle(innerLineW, innerLineColor, innerLineAlpha);
+            g.strokePath();
+
+            g.lineStyle(10, 0x9aa3b2, 0.10);
+          }
+        }
+
+        this.track.activeCells = want;
       }
-
-      this.track.activeCells = want;
+    } catch (e) {
+      if (this._dbgSet) this._dbgSet('DEBUG: track render ERROR:\n' + (e?.message || String(e)));
     }
-// === VUELTAS: detectar cruce de línea de meta (robusto) ===
-if (this.finishLine?.a && this.finishLine?.b && this.finishLine?.normal) {
-  const a = this.finishLine.a;
-  const b = this.finishLine.b;
-  const n = this.finishLine.normal;
 
-  const x0 = (this.prevCarX ?? this.car.x);
-  const y0 = (this.prevCarY ?? this.car.y);
-  const x1 = this.car.x;
-  const y1 = this.car.y;
+    // === VUELTAS: detectar cruce de línea de meta (robusto) ===
+    try {
+      if (this.finishLine?.a && this.finishLine?.b && this.finishLine?.normal) {
+        const a = this.finishLine.a;
+        const b = this.finishLine.b;
+        const n = this.finishLine.normal;
 
-  const side0 = (x0 - a.x) * n.x + (y0 - a.y) * n.y;
-  const side1 = (x1 - a.x) * n.x + (y1 - a.y) * n.y;
+        const x0 = (this.prevCarX ?? this.car.x);
+        const y0 = (this.prevCarY ?? this.car.y);
+        const x1 = this.car.x;
+        const y1 = this.car.y;
 
-  const abx = b.x - a.x;
-  const aby = b.y - a.y;
-  const len2 = abx * abx + aby * aby;
-  const proj1 = len2 > 0 ? ((x1 - a.x) * abx + (y1 - a.y) * aby) / len2 : -1;
-  const within = proj1 >= 0 && proj1 <= 1;
+        const side0 = (x0 - a.x) * n.x + (y0 - a.y) * n.y;
+        const side1 = (x1 - a.x) * n.x + (y1 - a.y) * n.y;
 
-  const crossed = (side0 === 0) ? (side1 !== 0) : ((side0 > 0) !== (side1 > 0));
+        const abx = b.x - a.x;
+        const aby = b.y - a.y;
+        const len2 = abx * abx + aby * aby;
+        const proj1 = len2 > 0 ? ((x1 - a.x) * abx + (y1 - a.y) * aby) / len2 : -1;
+        const within = proj1 >= 0 && proj1 <= 1;
 
-  const vx = this.car.body.velocity.x;
-  const vy = this.car.body.velocity.y;
-  const forward = (vx * n.x + vy * n.y) > 0;
+        const crossed = (side0 === 0) ? (side1 !== 0) : ((side0 > 0) !== (side1 > 0));
 
-  if (this._lapCooldownMs == null) this._lapCooldownMs = 0;
-  this._lapCooldownMs = Math.max(0, this._lapCooldownMs - deltaMs);
+        const vvx = body.velocity?.x || 0;
+        const vvy = body.velocity?.y || 0;
+        const forward = (vvx * n.x + vvy * n.y) > 0;
 
-  if (within && crossed && forward && this._lapCooldownMs === 0) {
-    this.lapCount += 1;
-    this._lapCooldownMs = 700;
-  }
-}
+        if (this._lapCooldownMs == null) this._lapCooldownMs = 0;
+        this._lapCooldownMs = Math.max(0, this._lapCooldownMs - (deltaMs || 0));
 
-// Actualizar prev SIEMPRE (esté o no esté la meta)
-this.prevCarX = this.car.x;
-this.prevCarY = this.car.y;
+        if (within && crossed && forward && this._lapCooldownMs === 0) {
+          this.lapCount = (this.lapCount || 0) + 1;
+          this._lapCooldownMs = 700;
+        }
+      }
+    } catch (e) {
+      if (this._dbgSet) this._dbgSet('DEBUG: lap ERROR:\n' + (e?.message || String(e)));
+    }
+
+    // Actualizar prev SIEMPRE
+    this.prevCarX = this.car.x;
+    this.prevCarY = this.car.y;
 
     // === HUD ===
-const kmh = speed * 0.12;
+    const kmh = speed * 0.12;
+    if (this.hud?.setText) {
+      const u = this.upgrades || { engine: 0, brakes: 0, tires: 0 };
+      const bgKey = this.bg?.texture?.key || '(no bg ref)';
 
-if (this.hud) {
-  const u = this.upgrades || { engine: 0, brakes: 0, tires: 0 };
-
-  // Debug dentro del HUD (sin textos nuevos en pantalla)
-  const bgKey = this.bg?.texture?.key || '(no bg ref)';
-
-  this.hud.setText(
-    'RaceScene\n' +
-    `BG: ${bgKey}\n` +
-    `Vueltas: ${this.lapCount}\n` +
-    `Car: ${this.carId || 'stock'} | Upg E${u.engine} B${u.brakes} T${u.tires}\n` +
-    'Vel: ' + kmh.toFixed(0) + ' km/h\n' +
-    'Zoom: ' + (this.zoom ?? 1).toFixed(1)
-  );
-}
+      this.hud.setText(
+        'RaceScene\n' +
+        `BG: ${bgKey}\n` +
+        `Vueltas: ${this.lapCount || 0}\n` +
+        `Car: ${this.carId || 'stock'} | Upg E${u.engine} B${u.brakes} T${u.tires}\n` +
+        'Vel: ' + kmh.toFixed(0) + ' km/h\n' +
+        'Zoom: ' + (this.zoom ?? 1).toFixed(1)
+      );
+    }
 
     // Sincronizar rig visual con body físico
     if (this.carRig && this.carBody) {
       this.carRig.x = this.carBody.x;
       this.carRig.y = this.carBody.y;
       this.carRig.rotation = this.carBody.rotation;
+    }
+
+    // Si dejaste el marker de "alive" en create(), mantenlo sobre el coche
+    if (this._aliveMarker) {
+      this._aliveMarker.x = this.car.x;
+      this._aliveMarker.y = this.car.y;
     }
   }
 
