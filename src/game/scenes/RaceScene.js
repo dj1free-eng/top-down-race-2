@@ -212,20 +212,14 @@ this.cameras.main.startFollow(this.carRig, true, 0.12, 0.12);
       back: Phaser.Input.Keyboard.KeyCodes.ESC
     });
 
-    // HUD
-    this.hud = this.add.text(12, 12, '', {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '14px',
-      color: '#ffffff'
-    })
-      // HUD principal (ya lo tienes)
+// HUD principal
 this.hud = this.add.text(12, 12, '', {
   fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
   fontSize: '14px',
   color: '#ffffff'
 }).setScrollFactor(0).setDepth(1100);
 
-// === HUD UPGRADES (debajo, sin solapar) ===
+// HUD upgrades (por ahora igual que lo tenías, caja + texto)
 this.upgHudBg = this.add.rectangle(12, 60, 240, 90, 0x0b1020, 0.45)
   .setOrigin(0, 0)
   .setStrokeStyle(1, 0xb7c0ff, 0.18)
@@ -238,8 +232,6 @@ this.upgHud = this.add.text(20, 66, '', {
   color: '#b7c0ff',
   lineSpacing: 4
 }).setScrollFactor(0).setDepth(1100);
-      
-      .setScrollFactor(0).setDepth(10);
 
     // iOS: multitouch (stick + botón a la vez)
     this.input.addPointer(2);
