@@ -529,7 +529,7 @@ if (this.hud) {
 
   this.hud.setText(
     'RaceScene\n' +
-    `Vuelta: ${this.lap}/${this.totalLaps}\n` +
+    `Vueltas: ${this.lapCount}\n` +
     `Car: ${this.carId || 'stock'} | Upg E${u.engine} B${u.brakes} T${u.tires}\n` +
     'Vel: ' + kmh.toFixed(0) + ' km/h\n' +
     'Zoom: ' + (this.zoom ?? 1).toFixed(1)
