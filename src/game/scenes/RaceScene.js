@@ -452,6 +452,7 @@ g.fillStyle(this.trackAsphaltColor, 1);
 }
   // HUD
   const kmh = speed * 0.12;
+  const u = this.upgrades || { engine: 0, brakes: 0, tires: 0 };
   this.hud.setText(
     'RaceScene\n' +
         `Car: ${this.carId}  |  Upg E${u.engine} B${u.brakes} T${u.tires}\n` +
