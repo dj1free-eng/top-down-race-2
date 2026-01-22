@@ -347,10 +347,7 @@ this._fitHud = () => {
   // Flag para update()
   this._trackReady = true;
 
-  // Fallback visual (temporal)
-  this._aliveMarker = this.add
-    .rectangle(this.car.x, this.car.y, 180, 110, 0xff00ff, 0.18)
-    .setDepth(9999);
+
 }
 
 
@@ -704,11 +701,7 @@ const bgKey = this.bgKey || '(no bg ref)';
       this.carRig.rotation = this.carBody.rotation;
     }
 
-    // Si dejaste el marker de "alive" en create(), mantenlo sobre el coche
-    if (this._aliveMarker) {
-      this._aliveMarker.x = this.car.x;
-      this._aliveMarker.y = this.car.y;
-    }
+
   }
 
   ensureBgTexture() {
