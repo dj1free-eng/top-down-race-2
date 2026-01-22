@@ -133,11 +133,13 @@ export class RaceScene extends Phaser.Scene {
     if (this._dbg) return;
 
     // Texto debug discreto arriba (solo si lo necesitas)
-    this._dbg = this.add.text(12, 116, '', {
+this._dbg = this.add.text(12, 160, '', {
   fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-  fontSize: '11px',
+  fontSize: '10px',
   color: '#ffcc66',
-  lineSpacing: 2
+  lineSpacing: 2,
+  backgroundColor: 'rgba(0,0,0,0.55)',
+  padding: { left: 6, right: 6, top: 4, bottom: 4 }
 }).setScrollFactor(0).setDepth(5001);
   }
 
@@ -664,78 +666,74 @@ this._fitHud = () => {
   }
 
   ensureBgTexture() {
-    console.log('TEXTURES:', this.textures.getTextureKeys());
-  // Creamos bgGrid (si lo sigues usando en algún sitio) y grass (nuevo fondo)
+  // Si ya existen, no rehacer
   if (this.textures.exists('bgGrid') && this.textures.exists('grass')) return;
 
   const size = 256;
 
   // =========================
-  // 1) bgGrid (tu textura actual)
+  // 1) bgGrid (alternativa segura)
   // =========================
   if (!this.textures.exists('bgGrid')) {
-    const rt = this.make.renderTexture({ width: size, height: size }, false);
-
-    rt.fill(0x0b1020, 1);
-
     const g = this.add.graphics();
+
+    // fondo
+    g.fillStyle(0x0b1020, 1);
+    g.fillRect(0, 0, size, size);
+
+    // rejilla
     g.lineStyle(1, 0xffffff, 0.06);
     for (let i = 0; i <= size; i += 64) {
       g.lineBetween(i, 0, i, size);
       g.lineBetween(0, i, size, i);
     }
 
+    // motas
     g.fillStyle(0xffffff, 0.03);
     for (let k = 0; k < 220; k++) {
       g.fillRect(Math.random() * size, Math.random() * size, 2, 2);
     }
 
-    rt.draw(g, 0, 0);
+    // IMPORTANTE: genera la textura con un key estable
+    g.generateTexture('bgGrid', size, size);
     g.destroy();
-
-    rt.saveTexture('bgGrid');
-    rt.destroy();
   }
 
   // =========================
-  // 2) grass (nuevo fondo césped)
+  // 2) grass (césped seguro)
   // =========================
   if (!this.textures.exists('grass')) {
-    const rt2 = this.make.renderTexture({ width: size, height: size }, false);
+    const g = this.add.graphics();
 
-    // base verde
- //   rt2.fill(0x1f5f2e, 1);
-rt2.fill(0xff0000, 1); // rojo cantoso PRUEBA
-    const gg = this.add.graphics();
+    // base verde (aquí ya quitamos el rojo)
+    g.fillStyle(0x1f5f2e, 1);
+    g.fillRect(0, 0, size, size);
 
     // motas claras
-    gg.fillStyle(0x2f7a3e, 0.35);
+    g.fillStyle(0x2f7a3e, 0.35);
     for (let i = 0; i < 500; i++) {
-      gg.fillRect(Math.random() * size, Math.random() * size, 2, 2);
+      g.fillRect(Math.random() * size, Math.random() * size, 2, 2);
     }
 
     // motas oscuras
-    gg.fillStyle(0x164722, 0.28);
+    g.fillStyle(0x164722, 0.28);
     for (let i = 0; i < 380; i++) {
-      gg.fillRect(Math.random() * size, Math.random() * size, 2, 2);
+      g.fillRect(Math.random() * size, Math.random() * size, 2, 2);
     }
 
-    // “rayitas” tipo brizna
-    gg.lineStyle(1, 0x3a8a4b, 0.18);
+    // “briznas”
+    g.lineStyle(1, 0x3a8a4b, 0.18);
     for (let i = 0; i < 220; i++) {
       const x = Math.random() * size;
       const y = Math.random() * size;
-      gg.lineBetween(x, y, x + (Math.random() * 10 - 5), y + (Math.random() * 10 - 5));
+      g.lineBetween(x, y, x + (Math.random() * 10 - 5), y + (Math.random() * 10 - 5));
     }
 
-    rt2.draw(gg, 0, 0);
-    gg.destroy();
-
-    rt2.saveTexture('grass');
-    rt2.destroy();
+    // key estable
+    g.generateTexture('grass', size, size);
+    g.destroy();
   }
 }
-
   ensureCarTexture() {
     if (this.textures.exists('car')) return;
 
