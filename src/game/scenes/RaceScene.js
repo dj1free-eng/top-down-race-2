@@ -188,9 +188,8 @@ if (bgKey) {
     .setOrigin(0, 0)
     .setScrollFactor(1)
     .setDepth(0);
+  this.bgKey = bgKey;
 
-  // Forzamos el key correcto (evita UUIDs internos)
-  this.bgWorld.setTexture(bgKey);
 } else {
   this.bgWorld = null;
   this.add.rectangle(0, 0, this.worldW, this.worldH, 0x111111, 1)
@@ -643,7 +642,7 @@ this._fitHud = () => {
     const kmh = speed * 0.12;
     if (this.hud?.setText) {
       const u = this.upgrades || { engine: 0, brakes: 0, tires: 0 };
-const bgKey = this.bgWorld?.texture?.key || this.bg?.texture?.key || '(no bg ref)';
+const bgKey = this.bgKey || '(no bg ref)';
 
       this.hud.setText(
         'RaceScene\n' +
