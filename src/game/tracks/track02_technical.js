@@ -65,8 +65,6 @@ export function makeTrack02Technical() {
     { x: 1200, y: 2600 },
     { x: 1120, y: 2520 },
 
-    // --- Cierre del loop (volver a inicio)
-    { x: 1100, y: 2500 }
   ];
 
   // Ancho fijo (tu TrackBuilder actual recibe un número en tu RaceScene)
@@ -107,7 +105,7 @@ export function makeTrack02Technical() {
     return { a, b, normal: fwd };
   })();
 
-  return {
+    return {
     id: 'track02',
     name: 'Track 02 — Technical',
     worldW,
@@ -115,6 +113,7 @@ export function makeTrack02Technical() {
     centerline,
     trackWidth,
     start,
-    finishLine
+    finishLine,
+    closed: true
   };
 }
