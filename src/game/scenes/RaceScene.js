@@ -603,26 +603,15 @@ for (const key of want) {
     tile.tilePositionX = x;
     tile.tilePositionY = y;
 
-    // 2) Mask con forma de pista (union de polígonos)
-    const maskG = this.make.graphics({ x: 0, y: 0, add: false });
-    maskG.fillStyle(0xffffff, 1);
-
-    for (const poly of cellData.polys) {
-      if (!poly || poly.length < 3) continue;
-      maskG.beginPath();
-      maskG.moveTo(poly[0].x, poly[0].y);
-      for (let i = 1; i < poly.length; i++) maskG.lineTo(poly[i].x, poly[i].y);
-      maskG.closePath();
-      maskG.fillPath();
-    }
-
-    const mask = maskG.createGeometryMask();
-    tile.setMask(mask);
+// 2) Mask con forma de pista (TEST: desactivada para verificar si la máscara está “matando” el asfalto)
+const maskG = null;
+const mask = null;
+// tile.setMask(mask);
 
 // 3) Borde encima (DESACTIVADO temporalmente para eliminar cuadrícula)
 const stroke = null;
 
-cell = { tile, stroke: null, maskG, mask };
+cell = { tile, stroke, maskG: null, mask: null };
     this.track.gfxByCell.set(key, cell);
   }
 
