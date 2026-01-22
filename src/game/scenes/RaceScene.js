@@ -165,11 +165,14 @@ if (bgKey) {
 
     // 4) Coche (body físico + rig visual)
     const body = this.physics.add.image(t01.start.x, t01.start.y, null);
-    body.setCircle(14);
-    body.setCollideWorldBounds(true);
-    body.setBounce(0);
-    body.setDrag(0, 0);
-    body.rotation = t01.start.r;
+body.setCircle(14);
+body.setCollideWorldBounds(true);
+body.setBounce(0);
+body.setDrag(0, 0);
+body.rotation = t01.start.r;
+
+// 👇 CLAVE: evita que se renderice la textura missing
+body.setVisible(false);
 
     const carSprite = this.add.sprite(0, 0, 'car');
     carSprite.x = 12;
