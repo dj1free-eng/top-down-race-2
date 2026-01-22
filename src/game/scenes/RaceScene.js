@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { makeTrack01Oval } from '../tracks/track01_oval.js';
+import { makeTrack02Technical } from '../tracks/track02_technical.js';
 import { buildTrackRibbon } from '../tracks/TrackBuilder.js';
 import { CAR_SPECS } from '../cars/carSpecs.js';
 import { resolveCarParams } from '../cars/resolveCarParams.js';
@@ -180,7 +181,7 @@ export class RaceScene extends Phaser.Scene {
   create() {
 
     // 1) Track meta primero (define world real)
-    const t01 = makeTrack01Oval();
+const t01 = makeTrack02Technical();
 
     this.worldW = t01.worldW;
     this.worldH = t01.worldH;
