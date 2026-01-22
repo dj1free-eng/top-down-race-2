@@ -189,9 +189,11 @@ export class RaceScene extends Phaser.Scene {
     this.cameras.main.setBounds(0, 0, this.worldW, this.worldH);
 
 // 2) Texturas procedurales (no deben romper la escena)
+// IMPORTANTE: el asfalto se regenera siempre para evitar que se quede
+// “enganchada” una textura vieja (en iOS esto pasa mucho al reiniciar escenas).
 try { this.ensureBgTexture(); } catch (e) {}
 try {
-  this.ensureAsphaltTexture();
+  this.ensureAsphaltTexture(true); // <- fuerza recreación
   this._dbg('asphalt OK');
 } catch (e) {
   this._dbg('asphalt ERROR');
@@ -603,21 +605,65 @@ for (const key of want) {
     tile.tilePositionX = x;
     tile.tilePositionY = y;
 
-// 2) Mask con forma de pista (TEST: desactivada para verificar si la máscara está “matando” el asfalto)
-const maskG = null;
-const mask = null;
-// tile.setMask(mask);
+    // 2) Mask con forma de pista (unión de polígonos)
+    // Nota: los puntos de poly vienen en coords de mundo, por eso pintamos en ese mismo espacio.
+    const maskG = this.make.graphics({ x: 0, y: 0, add: false });
+    maskG.fillStyle(0xffffff, 1);
 
-// 3) Borde encima (DESACTIVADO temporalmente para eliminar cuadrícula)
-const stroke = null;
+    for (const poly of cellData.polys) {
+      if (!poly || poly.length < 3) continue;
+      maskG.beginPath();
+      maskG.moveTo(poly[0].x, poly[0].y);
+      for (let i = 1; i < poly.length; i++) maskG.lineTo(poly[i].x, poly[i].y);
+      maskG.closePath();
+      maskG.fillPath();
+    }
 
-cell = { tile, stroke, maskG: null, mask: null };
+    const mask = maskG.createGeometryMask();
+    tile.setMask(mask);
+
+    // 3) Borde de pista (visible, sin "rejilla")
+    // Lo dibujamos una vez (geom estática por celda)
+    const stroke = this.add.graphics().setScrollFactor(1).setDepth(12);
+
+    // Exterior claro
+    const outerW = 8;
+    const outerC = 0xaab3c2;
+    const outerA = 0.28;
+
+    // Interior oscuro (da "canto")
+    const innerW = 3;
+    const innerC = 0x0b1020;
+    const innerA = 0.45;
+
+    stroke.clear();
+    for (const poly of cellData.polys) {
+      if (!poly || poly.length < 3) continue;
+
+      // Exterior
+      stroke.lineStyle(outerW, outerC, outerA);
+      stroke.beginPath();
+      stroke.moveTo(poly[0].x, poly[0].y);
+      for (let i = 1; i < poly.length; i++) stroke.lineTo(poly[i].x, poly[i].y);
+      stroke.closePath();
+      stroke.strokePath();
+
+      // Interior
+      stroke.lineStyle(innerW, innerC, innerA);
+      stroke.beginPath();
+      stroke.moveTo(poly[0].x, poly[0].y);
+      for (let i = 1; i < poly.length; i++) stroke.lineTo(poly[i].x, poly[i].y);
+      stroke.closePath();
+      stroke.strokePath();
+    }
+
+    cell = { tile, stroke, maskG, mask };
     this.track.gfxByCell.set(key, cell);
   }
 
   // Mostrar celda
   if (!cell.tile.visible) cell.tile.setVisible(true);
-  if (!cell.stroke.visible) cell.stroke.setVisible(true);
+  if (cell.stroke && !cell.stroke.visible) cell.stroke.setVisible(true);
 }
 
         this.track.activeCells = want;
@@ -696,12 +742,12 @@ const bgKey = this.bgKey || '(no bg ref)';
   ensureBgTexture() {
   const size = 256;
 
-  // Si existen, las recreamos para evitar “keys raras”/caché interno
-  if (
-  this.textures.exists('bgGrid') &&
-  this.textures.exists('grass') &&
-  this.textures.exists('asphalt')
-) return;
+    // Estas dos sí son “fondo”. El asfalto se genera aparte.
+    if (this.textures.exists('bgGrid') && this.textures.exists('grass')) return;
+
+    // Si venimos de pruebas anteriores, forzamos regeneración limpia
+    if (this.textures.exists('bgGrid')) this.textures.remove('bgGrid');
+    if (this.textures.exists('grass')) this.textures.remove('grass');
 
   // =========================
   // 1) bgGrid (grid verde/oscuro)
@@ -760,45 +806,13 @@ const bgKey = this.bgKey || '(no bg ref)';
     g.generateTexture('grass', size, size);
     g.destroy();
   }
-    // =========================
-// 3) asphalt (textura pista)
-// =========================
-if (!this.textures.exists('asphalt')) {
-  const size = 256;
-  const rt = this.make.renderTexture({ width: size, height: size }, false);
-
-  // base asfalto
-  rt.fill(0x2a2f3a, 1);
-
-  const g = this.add.graphics();
-
-  // grano fino claro
-  g.fillStyle(0x3a3f4a, 0.25);
-  for (let i = 0; i < 600; i++) {
-    g.fillRect(Math.random() * size, Math.random() * size, 1, 1);
-  }
-
-  // grano oscuro
-  g.fillStyle(0x1b1f26, 0.35);
-  for (let i = 0; i < 450; i++) {
-    g.fillRect(Math.random() * size, Math.random() * size, 1, 1);
-  }
-
-  // pequeñas vetas longitudinales (sensación de rodadura)
-  g.lineStyle(1, 0x20242c, 0.15);
-  for (let i = 0; i < 40; i++) {
-    const y = Math.random() * size;
-    g.lineBetween(0, y, size, y + Math.random() * 6 - 3);
-  }
-
-  rt.draw(g, 0, 0);
-  g.destroy();
-
-  rt.saveTexture('asphalt');
-  rt.destroy();
 }
-}
-  ensureAsphaltTexture() {
+  ensureAsphaltTexture(forceRegen = false) {
+  // Si alguna vez se generó mal (o quedó en caché del runtime),
+  // lo borramos y lo recreamos.
+  if (forceRegen && this.textures.exists('asphalt')) {
+    this.textures.remove('asphalt');
+  }
   if (this.textures.exists('asphalt')) return;
 
   const size = 256;
@@ -810,28 +824,37 @@ if (!this.textures.exists('asphalt')) {
   const g = this.add.graphics();
 
   // Grano fino (claros)
-  g.fillStyle(0xffffff, 0.05);
-  for (let i = 0; i < 900; i++) {
+  g.fillStyle(0xffffff, 0.045);
+  for (let i = 0; i < 1100; i++) {
     const x = Math.random() * size;
     const y = Math.random() * size;
-    const s = Math.random() < 0.85 ? 1 : 2;
+    const s = Math.random() < 0.9 ? 1 : 2;
     g.fillRect(x, y, s, s);
   }
 
   // Grano fino (oscuros)
-  g.fillStyle(0x000000, 0.06);
-  for (let i = 0; i < 700; i++) {
+  g.fillStyle(0x000000, 0.055);
+  for (let i = 0; i < 900; i++) {
     const x = Math.random() * size;
     const y = Math.random() * size;
     g.fillRect(x, y, 1, 1);
   }
 
-  // Micro “rayas” de arrastre muy sutiles
-  g.lineStyle(1, 0xffffff, 0.03);
-  for (let i = 0; i < 140; i++) {
+  // Micro “rayas” de rodadura (muy sutiles)
+  g.lineStyle(1, 0x000000, 0.045);
+  for (let i = 0; i < 160; i++) {
+    const y = Math.random() * size;
+    g.lineBetween(0, y, size, y + (Math.random() * 8 - 4));
+  }
+
+  // Pequeñas “manchas” (parches) para romper la uniformidad
+  g.fillStyle(0xffffff, 0.03);
+  for (let i = 0; i < 24; i++) {
     const x = Math.random() * size;
     const y = Math.random() * size;
-    g.lineBetween(x, y, x + 18 + Math.random() * 20, y + (Math.random() * 6 - 3));
+    const w = 16 + Math.random() * 36;
+    const h = 10 + Math.random() * 26;
+    g.fillRoundedRect(x, y, w, h, 6);
   }
 
   rt.draw(g, 0, 0);
