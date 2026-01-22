@@ -731,6 +731,43 @@ const bgKey = this.bgKey || '(no bg ref)';
     g.generateTexture('grass', size, size);
     g.destroy();
   }
+    // =========================
+// 3) asphalt (textura pista)
+// =========================
+if (!this.textures.exists('asphalt')) {
+  const size = 256;
+  const rt = this.make.renderTexture({ width: size, height: size }, false);
+
+  // base asfalto
+  rt.fill(0x2a2f3a, 1);
+
+  const g = this.add.graphics();
+
+  // grano fino claro
+  g.fillStyle(0x3a3f4a, 0.25);
+  for (let i = 0; i < 600; i++) {
+    g.fillRect(Math.random() * size, Math.random() * size, 1, 1);
+  }
+
+  // grano oscuro
+  g.fillStyle(0x1b1f26, 0.35);
+  for (let i = 0; i < 450; i++) {
+    g.fillRect(Math.random() * size, Math.random() * size, 1, 1);
+  }
+
+  // pequeñas vetas longitudinales (sensación de rodadura)
+  g.lineStyle(1, 0x20242c, 0.15);
+  for (let i = 0; i < 40; i++) {
+    const y = Math.random() * size;
+    g.lineBetween(0, y, size, y + Math.random() * 6 - 3);
+  }
+
+  rt.draw(g, 0, 0);
+  g.destroy();
+
+  rt.saveTexture('asphalt');
+  rt.destroy();
+}
 }
   ensureAsphaltTexture() {
   if (this.textures.exists('asphalt')) return;
