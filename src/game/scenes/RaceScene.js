@@ -267,8 +267,7 @@ export class RaceScene extends Phaser.Scene {
       back: Phaser.Input.Keyboard.KeyCodes.ESC
     });
 
-    // 9) HUD (si tu código original lo crea más abajo, esto sigue siendo compatible)
-    if (!this.hud) {
+
       // HUD (caja + texto legible)
 const hudX = 12;
 const hudY = 12;
