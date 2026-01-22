@@ -166,7 +166,7 @@ export class RaceScene extends Phaser.Scene {
 
   return { count, offenders };
 }
- _dbg(msg) {
+  _dbg(msg) {
   if (!this._dbgText) {
     this._dbgText = this.add.text(12, 130, '', {
       fontFamily: 'monospace',
@@ -178,8 +178,13 @@ export class RaceScene extends Phaser.Scene {
   }
   this._dbgText.setText(msg);
 }
+    _hudLog(msg) {
+    // Logs en pantalla (mata-logs friendly)
+    try { this._dbg(String(msg)); } catch {}
+  }
   create() {
-
+    // Alias compatible con código viejo
+    this._dbgSet = (m) => this._dbg(m);
     // 1) Track meta primero (define world real)
 const t01 = makeTrack02Technical();
 
@@ -257,7 +262,7 @@ this.track = {
   activeCells: new Set(),
   cullRadiusCells: 2
 };
-
+this._hudLog(`[track geom] cells=${this.track.geom?.cells?.size ?? 'null'}`);
 // Debug (temporal)
 console.log('[track geom] cells:', this.track.geom?.cells?.size);
     this.trackAsphaltColor = 0x2a2f3a;
@@ -570,7 +575,8 @@ if (!this._trackOnce) {
   this._trackOnce = true;
   const key = `${cx},${cy}`;
   const cd = this.track.geom.cells.get(key);
-  console.log('[track test] car cell', key, 'has polys:', cd?.polys?.length, 'cellData?', !!cd);
+
+  this._hudLog(`[track test] carCell=${key} polys=${cd?.polys?.length ?? 'null'} cellData=${!!cd}`);
 }
         const want = new Set();
         const R = this.track.cullRadiusCells ?? 2;
