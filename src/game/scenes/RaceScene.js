@@ -370,8 +370,7 @@ this._fitHud = () => {
 
     // Si no hay coche todavía, como mínimo no crashees.
     if (!this.car || !this.car.body) {
-      // Mantén vivo cualquier debug overlay
-      if (this._dbgSet) this._dbgSet('DEBUG: update() sin car/body');
+
       return;
     }
 
@@ -557,7 +556,6 @@ this._fitHud = () => {
         this.track.activeCells = want;
       }
     } catch (e) {
-      if (this._dbgSet) this._dbgSet('DEBUG: track render ERROR:\n' + (e?.message || String(e)));
     }
 
     // === VUELTAS: detectar cruce de línea de meta (robusto) ===
@@ -596,7 +594,6 @@ this._fitHud = () => {
         }
       }
     } catch (e) {
-      if (this._dbgSet) this._dbgSet('DEBUG: lap ERROR:\n' + (e?.message || String(e)));
     }
 
     // Actualizar prev SIEMPRE
