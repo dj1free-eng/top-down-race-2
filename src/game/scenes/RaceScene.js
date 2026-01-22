@@ -578,8 +578,17 @@ this._fitHud = () => {
           if (!want.has(key)) {
             const cell = this.track.gfxByCell.get(key);
 if (cell) {
+  // ocultar
   cell.tile?.setVisible(false);
   cell.stroke?.setVisible(false);
+
+  // liberar máscara (importante en móvil)
+  if (cell.tile) cell.tile.clearMask(true);
+  cell.mask?.destroy?.();
+  cell.maskG?.destroy?.();
+
+  cell.mask = null;
+  cell.maskG = null;
 }
           }
         }
