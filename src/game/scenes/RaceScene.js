@@ -666,46 +666,43 @@ this._fitHud = () => {
   }
 
   ensureBgTexture() {
-  // Si ya existen, no rehacer
-  if (this.textures.exists('bgGrid') && this.textures.exists('grass')) return;
-
   const size = 256;
 
+  // Si existen, las recreamos para evitar “keys raras”/caché interno
+  if (this.textures.exists('bgGrid')) this.textures.remove('bgGrid');
+  if (this.textures.exists('grass')) this.textures.remove('grass');
+
   // =========================
-  // 1) bgGrid (alternativa segura)
+  // 1) bgGrid (grid verde/oscuro)
   // =========================
-  if (!this.textures.exists('bgGrid')) {
+  {
     const g = this.add.graphics();
 
-    // fondo
     g.fillStyle(0x0b1020, 1);
     g.fillRect(0, 0, size, size);
 
-    // rejilla
     g.lineStyle(1, 0xffffff, 0.06);
     for (let i = 0; i <= size; i += 64) {
       g.lineBetween(i, 0, i, size);
       g.lineBetween(0, i, size, i);
     }
 
-    // motas
     g.fillStyle(0xffffff, 0.03);
     for (let k = 0; k < 220; k++) {
       g.fillRect(Math.random() * size, Math.random() * size, 2, 2);
     }
 
-    // IMPORTANTE: genera la textura con un key estable
     g.generateTexture('bgGrid', size, size);
     g.destroy();
   }
 
   // =========================
-  // 2) grass (césped seguro)
+  // 2) grass (césped)
   // =========================
-  if (!this.textures.exists('grass')) {
+  {
     const g = this.add.graphics();
 
-    // base verde (aquí ya quitamos el rojo)
+    // base verde (quita el rojo ya)
     g.fillStyle(0x1f5f2e, 1);
     g.fillRect(0, 0, size, size);
 
@@ -729,7 +726,6 @@ this._fitHud = () => {
       g.lineBetween(x, y, x + (Math.random() * 10 - 5), y + (Math.random() * 10 - 5));
     }
 
-    // key estable
     g.generateTexture('grass', size, size);
     g.destroy();
   }
