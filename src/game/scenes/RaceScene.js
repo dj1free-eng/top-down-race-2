@@ -180,7 +180,7 @@ this._dbg = this.add.text(12, 160, '', {
 
     // 3) Fondo (usa el world definitivo)
     // Nota: scrollFactor debe ser 1 (world), NO 0 (UI)
-    const bgKey = this.textures.exists('grass') ? 'grass' : (this.textures.exists('bgGrid') ? 'bgGrid' : null);
+const bgKey = 'grass';
 
     if (bgKey) {
       this.bg = this.add.tileSprite(0, 0, this.worldW, this.worldH, bgKey)
