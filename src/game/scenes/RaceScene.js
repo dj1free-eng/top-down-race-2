@@ -139,8 +139,9 @@ export class RaceScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
     this.cameras.main.setBounds(0, 0, this.worldW, this.worldH);
 
-    // 2) Texturas procedurales (no deben romper la escena)
+// 2) Texturas procedurales (no deben romper la escena)
 try { this.ensureBgTexture(); } catch (e) {}
+try { this.ensureAsphaltTexture(); } catch (e) {}
 try { this.ensureCarTexture(); } catch (e) {}
 
 // 3) Fondo del mundo (NO usar this.bg para evitar colisiones)
@@ -694,6 +695,48 @@ const bgKey = this.bgKey || '(no bg ref)';
     g.generateTexture('grass', size, size);
     g.destroy();
   }
+}
+  ensureAsphaltTexture() {
+  if (this.textures.exists('asphalt')) return;
+
+  const size = 256;
+  const rt = this.make.renderTexture({ width: size, height: size }, false);
+
+  // Base asfalto (gris oscuro)
+  rt.fill(0x2a2f3a, 1);
+
+  const g = this.add.graphics();
+
+  // Grano fino (claros)
+  g.fillStyle(0xffffff, 0.05);
+  for (let i = 0; i < 900; i++) {
+    const x = Math.random() * size;
+    const y = Math.random() * size;
+    const s = Math.random() < 0.85 ? 1 : 2;
+    g.fillRect(x, y, s, s);
+  }
+
+  // Grano fino (oscuros)
+  g.fillStyle(0x000000, 0.06);
+  for (let i = 0; i < 700; i++) {
+    const x = Math.random() * size;
+    const y = Math.random() * size;
+    g.fillRect(x, y, 1, 1);
+  }
+
+  // Micro “rayas” de arrastre muy sutiles
+  g.lineStyle(1, 0xffffff, 0.03);
+  for (let i = 0; i < 140; i++) {
+    const x = Math.random() * size;
+    const y = Math.random() * size;
+    g.lineBetween(x, y, x + 18 + Math.random() * 20, y + (Math.random() * 6 - 3));
+  }
+
+  rt.draw(g, 0, 0);
+  g.destroy();
+
+  rt.saveTexture('asphalt');
+  rt.destroy();
 }
   ensureCarTexture() {
     if (this.textures.exists('car')) return;
