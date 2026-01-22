@@ -671,8 +671,11 @@ const bgKey = this.bgKey || '(no bg ref)';
   const size = 256;
 
   // Si existen, las recreamos para evitar “keys raras”/caché interno
-  if (this.textures.exists('bgGrid')) this.textures.remove('bgGrid');
-  if (this.textures.exists('grass')) this.textures.remove('grass');
+  if (
+  this.textures.exists('bgGrid') &&
+  this.textures.exists('grass') &&
+  this.textures.exists('asphalt')
+) return;
 
   // =========================
   // 1) bgGrid (grid verde/oscuro)
