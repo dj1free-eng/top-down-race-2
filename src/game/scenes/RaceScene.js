@@ -619,15 +619,19 @@ cell = { tile, stroke, maskG: null, mask: null };
     this.track.gfxByCell.set(key, cell);
   }
 
-  // Mostrar celda
-  if (!cell.tile.visible) cell.tile.setVisible(true);
-  if (!cell.stroke.visible) cell.stroke.setVisible(true);
+// Mostrar celda
+if (cell.tile && !cell.tile.visible) cell.tile.setVisible(true);
+if (cell.stroke && !cell.stroke.visible) cell.stroke.setVisible(true);
 }
 
         this.track.activeCells = want;
       }
-    } catch (e) {
-    }
+} catch (e) {
+  if (!this._cullErrLogged) {
+    this._cullErrLogged = true;
+    console.error('[Track culling render] ERROR:', e);
+  }
+}
 
     // === VUELTAS: detectar cruce de línea de meta (robusto) ===
     try {
