@@ -311,17 +311,24 @@ this._fitHud = () => {
     // 11) UI Upgrades
     this.buildUpgradesUI();
 
-    // 12) Volver al menú
-    if (this.keys?.back) {
-      this.keys.back.on('down', () => this.scene.start('menu'));
-    }
-        
-// 🔎 Detecta y apaga cualquier objeto con textura missing (cuadrícula verde)
-this._hideMissingTextures();
+  // 12) Volver al menú
+  if (this.keys?.back) {
+    this.keys.back.on('down', () => this.scene.start('menu'));
+  }
 
-// Y por si algo se crea después (por resize/UI), lo re-chequeamos una vez más
-this.time.delayedCall(250, () => this._hideMissingTextures());
-this.time.delayedCall(800, () => this._hideMissingTextures());
+  // =================================================
+  // 👇 AQUÍ VA EL PUNTO B (ESTO ES LO QUE AÑADES)
+  // =================================================
+
+  // 🔎 Detecta y apaga cualquier objeto con textura missing
+  this._hideMissingTextures();
+
+  // Re-chequeo por si algo aparece tras resize / UI
+  this.time.delayedCall(250, () => this._hideMissingTextures());
+  this.time.delayedCall(800, () => this._hideMissingTextures());
+
+} // 👈 ESTA LLAVE CIERRA create()
+        
     // Flag para update()
     this._trackReady = true;
 
