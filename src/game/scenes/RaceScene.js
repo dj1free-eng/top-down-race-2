@@ -244,21 +244,22 @@ body.setVisible(false);
     this.carRig = rig;
     this.car = body; // compat con tu update()
 
-    // 5) Track ribbon (geom + culling state)
-    this.track = {
-      meta: t01,
-      geom: buildTrackRibbon({
-        centerline: t01.centerline,
-        trackWidth: t01.trackWidth,
-        sampleStepPx: 12,
-        cellSize: 400
-      }),
-      console.log('[track geom] cells:', this.track.geom.cells?.size);
-      gfxByCell: new Map(),
-      activeCells: new Set(),
-      cullRadiusCells: 2
-    };
+// 5) Track ribbon (geom + culling state)
+this.track = {
+  meta: t01,
+  geom: buildTrackRibbon({
+    centerline: t01.centerline,
+    trackWidth: t01.trackWidth,
+    sampleStepPx: 12,
+    cellSize: 400
+  }),
+  gfxByCell: new Map(),
+  activeCells: new Set(),
+  cullRadiusCells: 2
+};
 
+// Debug (temporal)
+console.log('[track geom] cells:', this.track.geom?.cells?.size);
     this.trackAsphaltColor = 0x2a2f3a;
 
     // 6) Meta y vueltas (datos)
