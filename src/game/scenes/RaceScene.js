@@ -207,7 +207,7 @@ if (bgKey) {
   this.bgWorld = this.add.tileSprite(0, 0, this.worldW, this.worldH, bgKey)
     .setOrigin(0, 0)
     .setScrollFactor(1)
-    .setDepth(0);
+    .setDepth(-100);
   this.bgKey = bgKey;
 
 } else {
@@ -233,7 +233,7 @@ body.setVisible(false);
     carSprite.y = 0;
 
     const rig = this.add.container(body.x, body.y, [carSprite]);
-    rig.setDepth(5);
+    rig.setDepth(30);
 
     this.carBody = body;
     this.carRig = rig;
@@ -600,7 +600,7 @@ for (const key of want) {
     const tile = this.add.tileSprite(x, y, cellSize, cellSize, 'asphalt')
       .setOrigin(0, 0)
       .setScrollFactor(1)
-      .setDepth(1);
+      .setDepth(10);
 
     // Anclar el patrón al mundo (para que no “navegue” raro al moverte)
     tile.tilePositionX = x;
