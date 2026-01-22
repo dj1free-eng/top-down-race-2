@@ -165,7 +165,19 @@ export class RaceScene extends Phaser.Scene {
 
   return { count, offenders };
 }
-      create() {
+ _dbg(msg) {
+  if (!this._dbgText) {
+    this._dbgText = this.add.text(12, 130, '', {
+      fontFamily: 'monospace',
+      fontSize: '11px',
+      color: '#ffcc66',
+      backgroundColor: 'rgba(0,0,0,0.6)',
+      padding: { x: 6, y: 4 }
+    }).setScrollFactor(0).setDepth(5000);
+  }
+  this._dbgText.setText(msg);
+}
+  create() {
 
     // 1) Track meta primero (define world real)
     const t01 = makeTrack01Oval();
@@ -178,7 +190,12 @@ export class RaceScene extends Phaser.Scene {
 
 // 2) Texturas procedurales (no deben romper la escena)
 try { this.ensureBgTexture(); } catch (e) {}
-try { this.ensureAsphaltTexture(); } catch (e) {}
+try {
+  this.ensureAsphaltTexture();
+  this._dbg('asphalt OK');
+} catch (e) {
+  this._dbg('asphalt ERROR');
+}
 try { this.ensureCarTexture(); } catch (e) {}
 
 // 3) Fondo del mundo (NO usar this.bg para evitar colisiones)
