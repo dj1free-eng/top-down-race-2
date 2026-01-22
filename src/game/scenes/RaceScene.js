@@ -261,9 +261,7 @@ this.track = {
   activeCells: new Set(),
   cullRadiusCells: 2
 };
-this._hudLog(`[track geom] cells=${this.track.geom?.cells?.size ?? 'null'}`);
-// Debug (temporal)
-console.log('[track geom] cells:', this.track.geom?.cells?.size);
+this._hudLog(`[track geom] cells=${this.track.geom?.cells?.size ?? '
     this.trackAsphaltColor = 0x2a2f3a;
 
     // 6) Meta y vueltas (datos)
@@ -572,10 +570,26 @@ this._fitHud = () => {
         const cy = Math.floor(this.car.y / cellSize);
 if (!this._trackOnce) {
   this._trackOnce = true;
-  const key = `${cx},${cy}`;
-  const cd = this.track.geom.cells.get(key);
 
-  this._hudLog(`[track test] carCell=${key} polys=${cd?.polys?.length ?? 'null'} cellData=${!!cd}`);
+  const key = `${cx},${cy}`;
+  const geom = this.track?.geom;
+  const cellsSize = geom?.cells?.size;
+
+  const cd = geom?.cells?.get(key);
+
+  const polysLen = cd?.polys?.length ?? null;
+  const poly0 = (cd?.polys && cd.polys.length) ? cd.polys[0] : null;
+  const p0 = (Array.isArray(poly0) && poly0.length) ? poly0[0] : null;
+
+  this._hudLog(
+    `[track test] carCell=${key} cells=${cellsSize} cellData=${!!cd} polysLen=${polysLen}`
+  );
+
+  // “forma” del primer punto del primer poly: esto detecta si viene como {x,y}, [x,y], number, etc.
+  this._hudLog(
+    `[track test] poly0Type=${poly0 ? (Array.isArray(poly0) ? 'array' : typeof poly0) : 'null'} ` +
+    `p0=${p0 ? JSON.stringify(p0) : 'null'}`
+  );
 }
         const want = new Set();
         const R = this.track.cullRadiusCells ?? 2;
