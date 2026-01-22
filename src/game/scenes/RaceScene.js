@@ -506,53 +506,89 @@ this._fitHud = () => {
         // Ocultar celdas que ya no se quieren
         for (const key of (this.track.activeCells || [])) {
           if (!want.has(key)) {
-            const g = this.track.gfxByCell.get(key);
-            if (g) g.setVisible(false);
+            const cell = this.track.gfxByCell.get(key);
+if (cell) {
+  cell.tile?.setVisible(false);
+  cell.stroke?.setVisible(false);
+}
           }
         }
 
-        // Mostrar/crear las que sí se quieren
-        for (const key of want) {
-          const cellData = this.track.geom.cells.get(key);
-          if (!cellData || !cellData.polys || cellData.polys.length === 0) continue;
+// Mostrar/crear las que sí se quieren (ASPHALT TEXTURE + MASK + BORDES)
+for (const key of want) {
+  const cellData = this.track.geom.cells.get(key);
+  if (!cellData || !cellData.polys || cellData.polys.length === 0) continue;
 
-          let g = this.track.gfxByCell.get(key);
-          if (!g) {
-            g = this.add.graphics();
-            g.setDepth(1);
-            this.track.gfxByCell.set(key, g);
-          }
+  let cell = this.track.gfxByCell.get(key);
 
-          if (!g.visible) g.setVisible(true);
+  // Crear celda si no existe
+  if (!cell) {
+    const [ix, iy] = key.split(',').map(Number);
+    const x = ix * cellSize;
+    const y = iy * cellSize;
 
-          g.clear();
+    // 1) Tile del asfalto
+    const tile = this.add.tileSprite(x, y, cellSize, cellSize, 'asphalt')
+      .setOrigin(0, 0)
+      .setScrollFactor(1)
+      .setDepth(1);
 
-          // Asfalto base
-          g.fillStyle(this.trackAsphaltColor ?? 0x2a2f3a, 1);
+    // Anclar el patrón al mundo (para que no “navegue” raro al moverte)
+    tile.tilePositionX = x;
+    tile.tilePositionY = y;
 
-          // Borde/arcén
-          g.lineStyle(10, 0x9aa3b2, 0.10);
-          const innerLineW = 4;
-          const innerLineColor = 0x0b1020;
-          const innerLineAlpha = 0.25;
+    // 2) Mask con forma de pista (union de polígonos)
+    const maskG = this.make.graphics({ x: 0, y: 0, add: false });
+    maskG.fillStyle(0xffffff, 1);
 
-          for (const poly of cellData.polys) {
-            if (!poly || poly.length < 3) continue;
+    for (const poly of cellData.polys) {
+      if (!poly || poly.length < 3) continue;
+      maskG.beginPath();
+      maskG.moveTo(poly[0].x, poly[0].y);
+      for (let i = 1; i < poly.length; i++) maskG.lineTo(poly[i].x, poly[i].y);
+      maskG.closePath();
+      maskG.fillPath();
+    }
 
-            g.beginPath();
-            g.moveTo(poly[0].x, poly[0].y);
-            for (let i = 1; i < poly.length; i++) g.lineTo(poly[i].x, poly[i].y);
-            g.closePath();
+    const mask = maskG.createGeometryMask();
+    tile.setMask(mask);
 
-            g.fillPath();
-            g.strokePath();
+    // 3) Borde encima (más visible que antes)
+    const stroke = this.add.graphics().setDepth(2);
 
-            g.lineStyle(innerLineW, innerLineColor, innerLineAlpha);
-            g.strokePath();
+    // Pintamos el borde UNA vez (la geometría por celda es estática)
+    stroke.clear();
+    stroke.lineStyle(10, 0x9aa3b2, 0.30);        // antes 0.10 (se veía poco)
+    const innerLineW = 4;
+    const innerLineColor = 0x0b1020;
+    const innerLineAlpha = 0.45;                // antes 0.25
 
-            g.lineStyle(10, 0x9aa3b2, 0.10);
-          }
-        }
+    for (const poly of cellData.polys) {
+      if (!poly || poly.length < 3) continue;
+
+      stroke.beginPath();
+      stroke.moveTo(poly[0].x, poly[0].y);
+      for (let i = 1; i < poly.length; i++) stroke.lineTo(poly[i].x, poly[i].y);
+      stroke.closePath();
+
+      stroke.strokePath();
+
+      // línea interior para dar “canto”
+      stroke.lineStyle(innerLineW, innerLineColor, innerLineAlpha);
+      stroke.strokePath();
+
+      // restaurar borde exterior
+      stroke.lineStyle(10, 0x9aa3b2, 0.30);
+    }
+
+    cell = { tile, stroke, maskG, mask };
+    this.track.gfxByCell.set(key, cell);
+  }
+
+  // Mostrar celda
+  if (!cell.tile.visible) cell.tile.setVisible(true);
+  if (!cell.stroke.visible) cell.stroke.setVisible(true);
+}
 
         this.track.activeCells = want;
       }
