@@ -187,7 +187,14 @@ export class RaceScene extends Phaser.Scene {
 
     this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
     this.cameras.main.setBounds(0, 0, this.worldW, this.worldH);
+// Producción: asegurar que NO hay debug gráfico de físicas (si se creó en algún momento)
+this.physics.world.drawDebug = false;
 
+if (this.physics.world.debugGraphic) {
+  this.physics.world.debugGraphic.clear();
+  this.physics.world.debugGraphic.destroy();
+  this.physics.world.debugGraphic = null;
+}
 // 2) Texturas procedurales (no deben romper la escena)
 try { this.ensureBgTexture(); } catch (e) {}
 try {
@@ -198,18 +205,15 @@ try {
 }
 try { this.ensureCarTexture(); } catch (e) {}
 
-// 3) Fondo del mundo (NO usar this.bg para evitar colisiones)
-const bgKey = this.textures.exists('grass')
-  ? 'grass'
-  : (this.textures.exists('bgGrid') ? 'bgGrid' : null);
+// 3) Fondo del mundo: SOLO grass (sin bgGrid en producción)
+const bgKey = this.textures.exists('grass') ? 'grass' : null;
 
 if (bgKey) {
   this.bgWorld = this.add.tileSprite(0, 0, this.worldW, this.worldH, bgKey)
     .setOrigin(0, 0)
     .setScrollFactor(1)
-    .setDepth(-100);
+    .setDepth(0); // césped debajo del asfalto (asfalto está en depth 10)
   this.bgKey = bgKey;
-
 } else {
   this.bgWorld = null;
   this.add.rectangle(0, 0, this.worldW, this.worldH, 0x111111, 1)
@@ -693,150 +697,46 @@ const bgKey = this.bgKey || '(no bg ref)';
 
   }
   ensureBgTexture() {
-    const size = 256;
-
-    // Siempre recreamos grass/bgGrid para evitar “texturas zombis” tras hot-reloads / caches raras
-    if (this.textures.exists('bgGrid')) this.textures.remove('bgGrid');
-    if (this.textures.exists('grass')) this.textures.remove('grass');
-
-    // =========================
-    // 1) bgGrid (solo para debug / fallback)
-    // =========================
-    {
-      const g = this.add.graphics();
-
-      g.fillStyle(0x0b1020, 1);
-      g.fillRect(0, 0, size, size);
-
-      g.lineStyle(1, 0xffffff, 0.06);
-      for (let i = 0; i <= size; i += 64) {
-        g.lineBetween(i, 0, i, size);
-        g.lineBetween(0, i, size, i);
-      }
-
-      g.fillStyle(0xffffff, 0.03);
-      for (let k = 0; k < 220; k++) {
-        g.fillRect(Math.random() * size, Math.random() * size, 2, 2);
-      }
-
-      g.generateTexture('bgGrid', size, size);
-      g.destroy();
-    }
-
-    // =========================
-    // 2) grass (césped base)
-    // =========================
-    {
-      const g = this.add.graphics();
-
-      // base verde
-      g.fillStyle(0x1f5f2e, 1);
-      g.fillRect(0, 0, size, size);
-
-      // motas claras
-      g.fillStyle(0x2f7a3e, 0.35);
-      for (let i = 0; i < 520; i++) {
-        g.fillRect(Math.random() * size, Math.random() * size, 2, 2);
-      }
-
-      // motas oscuras
-      g.fillStyle(0x164722, 0.28);
-      for (let i = 0; i < 420; i++) {
-        g.fillRect(Math.random() * size, Math.random() * size, 2, 2);
-      }
-
-      // “briznas”
-      g.lineStyle(1, 0x3a8a4b, 0.16);
-      for (let i = 0; i < 220; i++) {
-        const x = Math.random() * size;
-        const y = Math.random() * size;
-        g.lineBetween(x, y, x + (Math.random() * 10 - 5), y + (Math.random() * 10 - 5));
-      }
-
-      g.generateTexture('grass', size, size);
-      g.destroy();
-    }
-  }
-
-    g.fillStyle(0xffffff, 0.03);
-    for (let k = 0; k < 220; k++) {
-      g.fillRect(Math.random() * size, Math.random() * size, 2, 2);
-    }
-
-    g.generateTexture('bgGrid', size, size);
-    g.destroy();
-  }
-
-  // =========================
-  // 2) grass (césped)
-  // =========================
-  {
-    const g = this.add.graphics();
-
-    // base verde (quita el rojo ya)
-    g.fillStyle(0x1f5f2e, 1);
-    g.fillRect(0, 0, size, size);
-
-    // motas claras
-    g.fillStyle(0x2f7a3e, 0.35);
-    for (let i = 0; i < 500; i++) {
-      g.fillRect(Math.random() * size, Math.random() * size, 2, 2);
-    }
-
-    // motas oscuras
-    g.fillStyle(0x164722, 0.28);
-    for (let i = 0; i < 380; i++) {
-      g.fillRect(Math.random() * size, Math.random() * size, 2, 2);
-    }
-
-    // “briznas”
-    g.lineStyle(1, 0x3a8a4b, 0.18);
-    for (let i = 0; i < 220; i++) {
-      const x = Math.random() * size;
-      const y = Math.random() * size;
-      g.lineBetween(x, y, x + (Math.random() * 10 - 5), y + (Math.random() * 10 - 5));
-    }
-
-    g.generateTexture('grass', size, size);
-    g.destroy();
-  }
-    // =========================
-// 3) asphalt (textura pista)
-// =========================
-if (!this.textures.exists('asphalt')) {
   const size = 256;
-  const rt = this.make.renderTexture({ width: size, height: size }, false);
 
-  // base asfalto
-  rt.fill(0x2a2f3a, 1);
+  // Producción: solo 'grass'. Eliminamos cualquier rastro de 'bgGrid'.
+  if (this.textures.exists('grass')) this.textures.remove('grass');
+  if (this.textures.exists('bgGrid')) this.textures.remove('bgGrid');
 
   const g = this.add.graphics();
 
-  // grano fino claro
-  g.fillStyle(0x3a3f4a, 0.25);
-  for (let i = 0; i < 600; i++) {
-    g.fillRect(Math.random() * size, Math.random() * size, 1, 1);
-  }
+  // Base verde
+  g.fillStyle(0x1a6a2a, 1);
+  g.fillRect(0, 0, size, size);
 
-  // grano oscuro
-  g.fillStyle(0x1b1f26, 0.35);
-  for (let i = 0; i < 450; i++) {
-    g.fillRect(Math.random() * size, Math.random() * size, 1, 1);
-  }
+  // Ruido de variación (manchitas)
+  for (let i = 0; i < 900; i++) {
+    const alpha = 0.06 + Math.random() * 0.08;
+    const col = Math.random() > 0.5 ? 0x134e20 : 0x2b8c3b;
 
-  // pequeñas vetas longitudinales (sensación de rodadura)
-  g.lineStyle(1, 0x20242c, 0.15);
-  for (let i = 0; i < 40; i++) {
+    g.fillStyle(col, alpha);
+    const x = Math.random() * size;
     const y = Math.random() * size;
-    g.lineBetween(0, y, size, y + Math.random() * 6 - 3);
+    const w = 2 + Math.random() * 3;
+    const h = 2 + Math.random() * 3;
+    g.fillRect(x, y, w, h);
   }
 
-  rt.draw(g, 0, 0);
-  g.destroy();
+  // Briznas suaves
+  g.lineStyle(1, 0x0f3a18, 0.10);
+  for (let i = 0; i < 180; i++) {
+    const x = Math.random() * size;
+    const y = Math.random() * size;
+    g.lineBetween(
+      x,
+      y,
+      x + (Math.random() * 10 - 5),
+      y - (6 + Math.random() * 12)
+    );
+  }
 
-  rt.saveTexture('asphalt');
-  rt.destroy();
-}
+  g.generateTexture('grass', size, size);
+  g.destroy();
 }
   ensureAsphaltTexture() {
     const key = 'asphalt';
