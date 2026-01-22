@@ -178,21 +178,25 @@ this._dbg = this.add.text(12, 160, '', {
       this._dbgSet('DEBUG: ensureCarTexture ERROR:\n' + (e?.message || String(e)));
     }
 
-    // 3) Fondo (usa el world definitivo)
-    // Nota: scrollFactor debe ser 1 (world), NO 0 (UI)
-const bgKey = 'grass';
+// 3) Fondo del mundo (NO usar this.bg para evitar colisiones)
+const bgKey = this.textures.exists('grass')
+  ? 'grass'
+  : (this.textures.exists('bgGrid') ? 'bgGrid' : null);
 
-    if (bgKey) {
-      this.bg = this.add.tileSprite(0, 0, this.worldW, this.worldH, bgKey)
-        .setOrigin(0, 0)
-        .setScrollFactor(1)
-        .setDepth(0);
-    } else {
-      // fallback si no hay textura (para que SIEMPRE veas algo)
-      this.add.rectangle(0, 0, this.worldW, this.worldH, 0x111111, 1)
-        .setOrigin(0, 0)
-        .setDepth(0);
-    }
+if (bgKey) {
+  this.bgWorld = this.add.tileSprite(0, 0, this.worldW, this.worldH, bgKey)
+    .setOrigin(0, 0)
+    .setScrollFactor(1)
+    .setDepth(0);
+
+  // Forzamos el key correcto (evita UUIDs internos)
+  this.bgWorld.setTexture(bgKey);
+} else {
+  this.bgWorld = null;
+  this.add.rectangle(0, 0, this.worldW, this.worldH, 0x111111, 1)
+    .setOrigin(0, 0)
+    .setDepth(0);
+}
 
     // 4) Coche (body físico + rig visual)
     const body = this.physics.add.image(t01.start.x, t01.start.y, null);
