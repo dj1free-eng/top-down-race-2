@@ -643,7 +643,7 @@ this._fitHud = () => {
     const kmh = speed * 0.12;
     if (this.hud?.setText) {
       const u = this.upgrades || { engine: 0, brakes: 0, tires: 0 };
-      const bgKey = this.bg?.texture?.key || '(no bg ref)';
+const bgKey = this.bgWorld?.texture?.key || this.bg?.texture?.key || '(no bg ref)';
 
       this.hud.setText(
         'RaceScene\n' +
