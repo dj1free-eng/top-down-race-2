@@ -622,35 +622,10 @@ for (const key of want) {
     const mask = maskG.createGeometryMask();
     tile.setMask(mask);
 
-    // 3) Borde encima (más visible que antes)
-    const stroke = this.add.graphics().setDepth(2);
+// 3) Borde encima (DESACTIVADO temporalmente para eliminar cuadrícula)
+const stroke = null;
 
-    // Pintamos el borde UNA vez (la geometría por celda es estática)
-    stroke.clear();
-    stroke.lineStyle(10, 0x9aa3b2, 0.30);        // antes 0.10 (se veía poco)
-    const innerLineW = 4;
-    const innerLineColor = 0x0b1020;
-    const innerLineAlpha = 0.45;                // antes 0.25
-
-    for (const poly of cellData.polys) {
-      if (!poly || poly.length < 3) continue;
-
-      stroke.beginPath();
-      stroke.moveTo(poly[0].x, poly[0].y);
-      for (let i = 1; i < poly.length; i++) stroke.lineTo(poly[i].x, poly[i].y);
-      stroke.closePath();
-
-      stroke.strokePath();
-
-      // línea interior para dar “canto”
-      stroke.lineStyle(innerLineW, innerLineColor, innerLineAlpha);
-      stroke.strokePath();
-
-      // restaurar borde exterior
-      stroke.lineStyle(10, 0x9aa3b2, 0.30);
-    }
-
-    cell = { tile, stroke, maskG, mask };
+cell = { tile, stroke: null, maskG, mask };
     this.track.gfxByCell.set(key, cell);
   }
 
