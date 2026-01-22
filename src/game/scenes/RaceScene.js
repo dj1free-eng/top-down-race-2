@@ -253,6 +253,7 @@ body.setVisible(false);
         sampleStepPx: 12,
         cellSize: 400
       }),
+      console.log('[track geom] cells:', this.track.geom.cells?.size);
       gfxByCell: new Map(),
       activeCells: new Set(),
       cullRadiusCells: 2
@@ -564,7 +565,12 @@ this._fitHud = () => {
         const cellSize = this.track.geom.cellSize;
         const cx = Math.floor(this.car.x / cellSize);
         const cy = Math.floor(this.car.y / cellSize);
-
+if (!this._trackOnce) {
+  this._trackOnce = true;
+  const key = `${cx},${cy}`;
+  const cd = this.track.geom.cells.get(key);
+  console.log('[track test] car cell', key, 'has polys:', cd?.polys?.length, 'cellData?', !!cd);
+}
         const want = new Set();
         const R = this.track.cullRadiusCells ?? 2;
 
