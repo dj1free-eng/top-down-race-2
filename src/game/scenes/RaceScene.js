@@ -327,15 +327,14 @@ this._fitHud = () => {
   this.time.delayedCall(250, () => this._hideMissingTextures());
   this.time.delayedCall(800, () => this._hideMissingTextures());
 
-} // 👈 ESTA LLAVE CIERRA create()
-        
-    // Flag para update()
-    this._trackReady = true;
+  // Flag para update()
+  this._trackReady = true;
 
-    // Fallback visual: si algo rompe, que veas algo fijo en la posición del coche
-    // (si lo ves, el render/cámara van, y el fallo es del update/culling)
-    this._aliveMarker = this.add.rectangle(this.car.x, this.car.y, 180, 110, 0xff00ff, 0.18).setDepth(9999);
-  }
+  // Fallback visual (temporal)
+  this._aliveMarker = this.add
+    .rectangle(this.car.x, this.car.y, 180, 110, 0xff00ff, 0.18)
+    .setDepth(9999);
+}
 
 
   buildUpgradesUI() {
