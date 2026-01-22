@@ -607,15 +607,47 @@ for (const key of want) {
     tile.tilePositionX = x;
     tile.tilePositionY = y;
 
-// 2) Mask con forma de pista (TEST: desactivada para verificar si la máscara está “matando” el asfalto)
-const maskG = null;
-const mask = null;
-// tile.setMask(mask);
+// 2) Mask con forma de pista (obligatoria: si no, el tile pinta un cuadrado)
+// Creamos un Graphics "no visible" que define la forma de la pista dentro de esta celda.
+const maskG = this.make.graphics({ x, y, add: false });
+maskG.clear();
+maskG.fillStyle(0xffffff, 1);
+
+for (const poly of cellData.polys) {
+  if (!poly || poly.length < 3) continue;
+
+  maskG.beginPath();
+
+  // poly puede venir en coords locales (0..cellSize) o en coords mundo.
+  // Si parece estar en mundo, la convertimos a local restando (x,y).
+  const p0 = poly[0];
+  const looksWorld =
+    (p0.x > cellSize * 1.5) || (p0.y > cellSize * 1.5) ||
+    (p0.x < -cellSize * 0.5) || (p0.y < -cellSize * 0.5);
+
+  const x0 = looksWorld ? (p0.x - x) : p0.x;
+  const y0 = looksWorld ? (p0.y - y) : p0.y;
+
+  maskG.moveTo(x0, y0);
+
+  for (let i = 1; i < poly.length; i++) {
+    const p = poly[i];
+    const lx = looksWorld ? (p.x - x) : p.x;
+    const ly = looksWorld ? (p.y - y) : p.y;
+    maskG.lineTo(lx, ly);
+  }
+
+  maskG.closePath();
+  maskG.fillPath();
+}
+
+const mask = maskG.createGeometryMask();
+tile.setMask(mask);
 
 // 3) Borde encima (DESACTIVADO temporalmente para eliminar cuadrícula)
 const stroke = null;
 
-cell = { tile, stroke, maskG: null, mask: null };
+cell = { tile, stroke, maskG, mask };
     this.track.gfxByCell.set(key, cell);
   }
 
