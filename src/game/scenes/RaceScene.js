@@ -269,12 +269,29 @@ export class RaceScene extends Phaser.Scene {
 
     // 9) HUD (si tu código original lo crea más abajo, esto sigue siendo compatible)
     if (!this.hud) {
-      this.hud = this.add.text(12, 12, '', {
-        fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-        fontSize: '14px',
-        color: '#ffffff'
-      }).setScrollFactor(0).setDepth(1100);
-    }
+      // HUD (caja + texto legible)
+const hudX = 12;
+const hudY = 12;
+
+this.hudBox = this.add.rectangle(hudX, hudY, 340, 98, 0x000000, 0.55)
+  .setOrigin(0, 0)
+  .setScrollFactor(0)
+  .setDepth(1099)
+  .setStrokeStyle(1, 0xffffff, 0.12);
+
+this.hud = this.add.text(hudX + 10, hudY + 8, '', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '13px',
+  color: '#ffffff',
+  lineSpacing: 3
+}).setScrollFactor(0).setDepth(1100);
+
+// Ajuste automático del alto de la caja según el texto (para que no tape)
+this._fitHud = () => {
+  const w = 340;
+  const h = Math.max(68, (this.hud.height || 0) + 16);
+  this.hudBox.setSize(w, h);
+};
 
     // 10) iOS multitouch + controles táctiles
     this.input.addPointer(2);
