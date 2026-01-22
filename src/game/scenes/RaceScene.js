@@ -128,29 +128,7 @@ export class RaceScene extends Phaser.Scene {
       return true;
     };
   }
-  // Debug overlay seguro: evita crasheos si no existe _dbg
-  _ensureDebugOverlay() {
-    if (this._dbg) return;
-
-    // Texto debug discreto arriba (solo si lo necesitas)
-this._dbg = this.add.text(12, 160, '', {
-  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-  fontSize: '10px',
-  color: '#ffcc66',
-  lineSpacing: 2,
-  backgroundColor: 'rgba(0,0,0,0.55)',
-  padding: { left: 6, right: 6, top: 4, bottom: 4 }
-}).setScrollFactor(0).setDepth(5001);
-  }
-
-  _dbgSet(text) {
-    // Nunca debe romper el juego
-    if (this._dbg && this._dbg.setText) this._dbg.setText(text);
-  }
-  
-    create() {
-    // 0) Debug overlay (seguro)
-    this._ensureDebugOverlay();
+      create() {
 
     // 1) Track meta primero (define world real)
     const t01 = makeTrack01Oval();
@@ -162,21 +140,8 @@ this._dbg = this.add.text(12, 160, '', {
     this.cameras.main.setBounds(0, 0, this.worldW, this.worldH);
 
     // 2) Texturas procedurales (no deben romper la escena)
-    try {
-      this._dbgSet('DEBUG: before ensureBgTexture()');
-      this.ensureBgTexture();
-      this._dbgSet((this._dbg?.text || '') + '\nDEBUG: after ensureBgTexture()');
-    } catch (e) {
-      this._dbgSet('DEBUG: ensureBgTexture ERROR:\n' + (e?.message || String(e)));
-    }
-
-    try {
-      this._dbgSet((this._dbg?.text || '') + '\nDEBUG: before ensureCarTexture()');
-      this.ensureCarTexture();
-      this._dbgSet((this._dbg?.text || '') + '\nDEBUG: after ensureCarTexture()');
-    } catch (e) {
-      this._dbgSet('DEBUG: ensureCarTexture ERROR:\n' + (e?.message || String(e)));
-    }
+try { this.ensureBgTexture(); } catch (e) {}
+try { this.ensureCarTexture(); } catch (e) {}
 
 // 3) Fondo del mundo (NO usar this.bg para evitar colisiones)
 const bgKey = this.textures.exists('grass')
