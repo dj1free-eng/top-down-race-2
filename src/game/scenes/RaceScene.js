@@ -228,15 +228,14 @@ if (bgKey) {
 }
 
     // 4) Coche (body físico + rig visual)
-    const body = this.physics.add.image(t01.start.x, t01.start.y, null);
+    // Cuerpo físico SIN sprite (evita __MISSING)
+const body = this.physics.add.sprite(t01.start.x, t01.start.y, '__BODY__');
+body.setVisible(false);
 body.setCircle(14);
 body.setCollideWorldBounds(true);
 body.setBounce(0);
 body.setDrag(0, 0);
 body.rotation = t01.start.r;
-
-// 👇 CLAVE: evita que se renderice la textura missing
-body.setVisible(false);
 
     const carSprite = this.add.sprite(0, 0, 'car');
     carSprite.x = 12;
@@ -861,6 +860,13 @@ const bgKey = this.bgKey || '(no bg ref)';
 
 
   ensureCarTexture() {
+    if (!this.textures.exists('__BODY__')) {
+  const g = this.add.graphics();
+  g.fillStyle(0xffffff, 0.001);
+  g.fillRect(0, 0, 2, 2);
+  g.generateTexture('__BODY__', 2, 2);
+  g.destroy();
+}
     if (this.textures.exists('car')) return;
 
     const w = 44, h = 26;
