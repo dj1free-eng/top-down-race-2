@@ -295,27 +295,7 @@ export class RaceScene extends Phaser.Scene {
     // (si lo ves, el render/cámara van, y el fallo es del update/culling)
     this._aliveMarker = this.add.rectangle(this.car.x, this.car.y, 180, 110, 0xff00ff, 0.18).setDepth(9999);
   }
-    // HUD principal (arriba-izquierda)
-    this.hud = this.add.text(12, 12, '', {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '14px',
-      color: '#ffffff'
-    }).setScrollFactor(0).setDepth(1100);
 
-    // iOS: multitouch (stick + botón a la vez)
-    this.input.addPointer(2);
-
-    // Controles táctiles
-    this.touch = this.createTouchControls();
-
-    // === UI Upgrades (arriba-derecha) ===
-    this.buildUpgradesUI();
-
-    // Volver al menú
-    this.keys.back.on('down', () => {
-      this.scene.start('menu');
-    });
-  }
 
   buildUpgradesUI() {
     // Si ya existía (por reinicio de escena) la destruimos
