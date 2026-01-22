@@ -128,6 +128,43 @@ export class RaceScene extends Phaser.Scene {
       return true;
     };
   }
+  _hideMissingTextures() {
+  const missKeys = new Set(['__MISSING', '__missing', 'missing', 'MISSING']);
+  let count = 0;
+  const offenders = [];
+
+  for (const obj of this.children.list) {
+    // Muchos objetos no tienen texture/frame
+    const key1 = obj?.texture?.key;
+    const key2 = obj?.frame?.texture?.key;
+
+    const isMissing =
+      (typeof key1 === 'string' && missKeys.has(key1)) ||
+      (typeof key2 === 'string' && missKeys.has(key2));
+
+    if (isMissing) {
+      count++;
+      // guardamos info útil
+      offenders.push(
+        `${obj.constructor?.name || 'Object'} key=${key1 || key2 || '??'}`
+      );
+
+      // lo ocultamos para que deje de “ensuciar” la pantalla
+      if (obj.setVisible) obj.setVisible(false);
+      if (obj.setActive) obj.setActive(false);
+    }
+  }
+
+  // Te lo saco por pantalla (y también consola por si acaso)
+  const msg = count
+    ? `MISSING FOUND: ${count}\n${offenders.slice(0, 6).join('\n')}`
+    : `MISSING FOUND: 0`;
+
+  console.log(msg);
+  if (this._dbgSet) this._dbgSet(msg);
+
+  return { count, offenders };
+}
       create() {
 
     // 1) Track meta primero (define world real)
@@ -278,7 +315,13 @@ this._fitHud = () => {
     if (this.keys?.back) {
       this.keys.back.on('down', () => this.scene.start('menu'));
     }
+        
+// 🔎 Detecta y apaga cualquier objeto con textura missing (cuadrícula verde)
+this._hideMissingTextures();
 
+// Y por si algo se crea después (por resize/UI), lo re-chequeamos una vez más
+this.time.delayedCall(250, () => this._hideMissingTextures());
+this.time.delayedCall(800, () => this._hideMissingTextures());
     // Flag para update()
     this._trackReady = true;
 
