@@ -133,11 +133,12 @@ export class RaceScene extends Phaser.Scene {
     if (this._dbg) return;
 
     // Texto debug discreto arriba (solo si lo necesitas)
-    this._dbg = this.add.text(12, 28, '', {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '12px',
-      color: '#ffcc66'
-    }).setScrollFactor(0).setDepth(5001);
+    this._dbg = this.add.text(12, 116, '', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '11px',
+  color: '#ffcc66',
+  lineSpacing: 2
+}).setScrollFactor(0).setDepth(5001);
   }
 
   _dbgSet(text) {
