@@ -254,7 +254,7 @@ this.track = {
   geom: buildTrackRibbon({
     centerline: t01.centerline,
     trackWidth: t01.trackWidth,
-    sampleStepPx: 12,
+    sampleStepPx: 18,
     cellSize: 400
   }),
   gfxByCell: new Map(),
