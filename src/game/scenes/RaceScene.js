@@ -261,7 +261,7 @@ this.track = {
   activeCells: new Set(),
   cullRadiusCells: 2
 };
-this._hudLog(`[track geom] cells=${this.track.geom?.cells?.size ?? '
+this._hudLog(`[track geom] cells=${this.track.geom?.cells?.size ?? 'null'}`);
     this.trackAsphaltColor = 0x2a2f3a;
 
     // 6) Meta y vueltas (datos)
