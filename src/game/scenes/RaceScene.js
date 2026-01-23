@@ -690,8 +690,6 @@ for (const poly of cellData.polys) {
 
 const mask = maskG.createGeometryMask();
 tile.setMask(mask);
-const mask = maskG.createGeometryMask();
-tile.setMask(mask);
 
 // 3) Borde encima (DESACTIVADO temporalmente para eliminar cuadrícula)
 const stroke = null;
@@ -712,7 +710,7 @@ if (cell.stroke && !cell.stroke.visible) cell.stroke.setVisible(true);
   this._cullErrLogged = true;
   this._hudLog(`[Track culling render] ERROR: ${e?.message || e}`);
 }
-
+    }
 
     // === VUELTAS: detectar cruce de línea de meta (robusto) ===
     try {
