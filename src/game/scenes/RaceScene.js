@@ -709,9 +709,9 @@ if (cell.stroke && !cell.stroke.visible) cell.stroke.setVisible(true);
       }
 } catch (e) {
   if (!this._cullErrLogged) {
-    this._cullErrLogged = true;
-    console.error('[Track culling render] ERROR:', e);
-  }
+  this._cullErrLogged = true;
+  this._hudLog(`[Track culling render] ERROR: ${e?.message || e}`);
+}
 }
 
     // === VUELTAS: detectar cruce de línea de meta (robusto) ===
