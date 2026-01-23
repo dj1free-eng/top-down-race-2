@@ -576,16 +576,24 @@ if (!this._trackOnce) {
 
   const key = `${cx},${cy}`;
   const geom = this.track?.geom;
-  const cellsSize = geom?.cells?.size ?? null;
 
+  const cellsSize = geom?.cells?.size ?? null;
   const cd = geom?.cells?.get(key);
 
-  const polysLen = cd?.polys?.length ?? null;
+  const polysLen = cd?.polys?.length ?? 0;
   const poly0 = (cd?.polys && cd.polys.length) ? cd.polys[0] : null;
-  const p0 = (Array.isArray(poly0) && poly0.length) ? poly0[0] : null;
+  const p0raw = (Array.isArray(poly0) && poly0.length) ? poly0[0] : null;
 
-  this._trackDiag = `cells=${cellsSize} carCell=${key} cellData=${!!cd} polysLen=${polysLen}`;
-  this._trackDiag2 = `poly0Type=${poly0 ? (Array.isArray(poly0) ? 'array' : typeof poly0) : 'null'} p0=${p0 ? JSON.stringify(p0) : 'null'}`;
+  // Formato punto: {x,y} o [x,y] o null
+  let p0s = 'null';
+  if (p0raw && typeof p0raw.x === 'number' && typeof p0raw.y === 'number') {
+    p0s = `{x:${p0raw.x.toFixed(1)},y:${p0raw.y.toFixed(1)}}`;
+  } else if (Array.isArray(p0raw) && p0raw.length >= 2) {
+    p0s = `[${Number(p0raw[0]).toFixed(1)},${Number(p0raw[1]).toFixed(1)}]`;
+  }
+
+  this._trackDiag = `[track] cells=${cellsSize} carCell=${key} hasCell=${!!cd} polys=${polysLen} p0=${p0s}`;
+  this._hudLog(this._trackDiag);
 }
 
   // “forma” del primer punto del primer poly: esto detecta si viene como {x,y}, [x,y], number, etc.
