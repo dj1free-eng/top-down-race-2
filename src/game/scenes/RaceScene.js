@@ -648,14 +648,23 @@ const maskG = this.make.graphics({ x, y, add: false });
 maskG.clear();
 maskG.fillStyle(0xffffff, 1);
 
+// Helper: soporta puntos {x,y} y arrays [x,y]
+const getXY = (pt) => {
+  if (!pt) return { x: NaN, y: NaN };
+  if (typeof pt.x === 'number' && typeof pt.y === 'number') return { x: pt.x, y: pt.y };
+  if (Array.isArray(pt) && pt.length >= 2) return { x: pt[0], y: pt[1] };
+  return { x: NaN, y: NaN };
+};
+
 for (const poly of cellData.polys) {
   if (!poly || poly.length < 3) continue;
 
-  maskG.beginPath();
+  const p0raw = poly[0];
+  const p0 = getXY(p0raw);
+  if (!Number.isFinite(p0.x) || !Number.isFinite(p0.y)) continue;
 
   // poly puede venir en coords locales (0..cellSize) o en coords mundo.
   // Si parece estar en mundo, la convertimos a local restando (x,y).
-  const p0 = poly[0];
   const looksWorld =
     (p0.x > cellSize * 1.5) || (p0.y > cellSize * 1.5) ||
     (p0.x < -cellSize * 0.5) || (p0.y < -cellSize * 0.5);
@@ -663,12 +672,15 @@ for (const poly of cellData.polys) {
   const x0 = looksWorld ? (p0.x - x) : p0.x;
   const y0 = looksWorld ? (p0.y - y) : p0.y;
 
+  maskG.beginPath();
   maskG.moveTo(x0, y0);
 
   for (let i = 1; i < poly.length; i++) {
-    const p = poly[i];
-    const lx = looksWorld ? (p.x - x) : p.x;
-    const ly = looksWorld ? (p.y - y) : p.y;
+    const pi = getXY(poly[i]);
+    if (!Number.isFinite(pi.x) || !Number.isFinite(pi.y)) continue;
+
+    const lx = looksWorld ? (pi.x - x) : pi.x;
+    const ly = looksWorld ? (pi.y - y) : pi.y;
     maskG.lineTo(lx, ly);
   }
 
@@ -676,6 +688,8 @@ for (const poly of cellData.polys) {
   maskG.fillPath();
 }
 
+const mask = maskG.createGeometryMask();
+tile.setMask(mask);
 const mask = maskG.createGeometryMask();
 tile.setMask(mask);
 
