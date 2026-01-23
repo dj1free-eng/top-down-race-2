@@ -396,6 +396,30 @@ this._zoomBtnMinus = makeZoomBtn(zoomBtnX, zoomBtnY + 38, '−', () => {
 
     // 11) UI Upgrades
     this.buildUpgradesUI();
+// =================================================
+// UI CAMERA (HUD no afectado por zoom del mundo)
+// =================================================
+this.uiCam = this.cameras.add(0, 0, this.scale.width, this.scale.height);
+this.uiCam.setScroll(0, 0);
+this.uiCam.setZoom(1);
+
+// 1) La cámara principal NO debe renderizar UI
+this.cameras.main.ignore([
+  this.hudBox,
+  this.hud,
+  this.upUI,
+  this._dbgText // puede ser undefined ahora; no pasa nada
+].filter(Boolean));
+
+// 2) La cámara UI NO debe renderizar mundo (lo que ya existe ahora)
+if (this.bgWorld) this.uiCam.ignore(this.bgWorld);
+if (this.carRig) this.uiCam.ignore(this.carRig);
+if (this.finishGfx) this.uiCam.ignore(this.finishGfx);
+
+// Mantener tamaño si rota/cambia viewport
+this.scale.on('resize', (gameSize) => {
+  this.uiCam.setSize(gameSize.width, gameSize.height);
+});
 
   // 12) Volver al menú
   if (this.keys?.back) {
@@ -701,6 +725,10 @@ const tile = this.add.image(x, y, 'asphalt')
 
         // 2) Mask con forma de pista
         const maskG = this.make.graphics({ x, y, add: false });
+   // UI camera no debe renderizar chunks ni su máscara
+this.uiCam?.ignore?.(tile);
+this.uiCam?.ignore?.(maskG);
+    
         maskG.clear();
         maskG.fillStyle(0xffffff, 1);
 
