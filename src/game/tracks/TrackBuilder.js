@@ -89,14 +89,25 @@ export function buildTrackRibbon({
   sampleStepPx = 12,
   cellSize = 400
 }) {
+  // Normaliza input: acepta [{x,y}] o [[x,y]]
+  const src = (centerline || []).map((p) => {
+    if (Array.isArray(p)) return p;
+    if (p && typeof p.x === 'number' && typeof p.y === 'number') return [p.x, p.y];
+    return [NaN, NaN];
+  });
+
   // 1) Suavizado Catmull-Rom -> nube densa
   const dense = [];
-  const n = centerline.length;
+  const n = src.length;
   const closed = true;
+
+  if (n < 2) {
+    return { center: [], left: [], right: [], cells: new Map(), cellSize };
+  }
 
   const get = (idx) => {
     const i = (idx + n) % n;
-    return centerline[i];
+    return src[i];
   };
 
   // Generamos puntos densos entre cada par p1->p2
