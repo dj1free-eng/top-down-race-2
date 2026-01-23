@@ -262,6 +262,9 @@ this.track = {
   cullRadiusCells: 2
 };
 this._hudLog(`[track geom] cells=${this.track.geom?.cells?.size ?? 'null'}`);
+ this._trackCells = this.track.geom?.cells?.size ?? null;
+this._trackDiag = `cells=${this._trackCells}`;
+this._trackDiag2 = '';
     this.trackAsphaltColor = 0x2a2f3a;
 
     // 6) Meta y vueltas (datos)
@@ -573,7 +576,7 @@ if (!this._trackOnce) {
 
   const key = `${cx},${cy}`;
   const geom = this.track?.geom;
-  const cellsSize = geom?.cells?.size;
+  const cellsSize = geom?.cells?.size ?? null;
 
   const cd = geom?.cells?.get(key);
 
@@ -581,9 +584,9 @@ if (!this._trackOnce) {
   const poly0 = (cd?.polys && cd.polys.length) ? cd.polys[0] : null;
   const p0 = (Array.isArray(poly0) && poly0.length) ? poly0[0] : null;
 
-  this._hudLog(
-    `[track test] carCell=${key} cells=${cellsSize} cellData=${!!cd} polysLen=${polysLen}`
-  );
+  this._trackDiag = `cells=${cellsSize} carCell=${key} cellData=${!!cd} polysLen=${polysLen}`;
+  this._trackDiag2 = `poly0Type=${poly0 ? (Array.isArray(poly0) ? 'array' : typeof poly0) : 'null'} p0=${p0 ? JSON.stringify(p0) : 'null'}`;
+}
 
   // “forma” del primer punto del primer poly: esto detecta si viene como {x,y}, [x,y], number, etc.
   this._hudLog(
@@ -761,13 +764,15 @@ if (cell.stroke && !cell.stroke.visible) cell.stroke.setVisible(true);
 const bgKey = this.bgKey || '(no bg ref)';
 
       this.hud.setText(
-        'RaceScene\n' +
-        `BG: ${bgKey}\n` +
-        `Vueltas: ${this.lapCount || 0}\n` +
-        `Car: ${this.carId || 'stock'} | Upg E${u.engine} B${u.brakes} T${u.tires}\n` +
-        'Vel: ' + kmh.toFixed(0) + ' km/h\n' +
-        'Zoom: ' + (this.zoom ?? 1).toFixed(1)
-      );
+  'RaceScene\n' +
+  `BG: ${bgKey}\n` +
+  `Vueltas: ${this.lapCount || 0}\n` +
+  `Car: ${this.carId || 'stock'} | Upg E${u.engine} B${u.brakes} T${u.tires}\n` +
+  'Vel: ' + kmh.toFixed(0) + ' km/h\n' +
+  'Zoom: ' + (this.zoom ?? 1).toFixed(1) + '\n' +
+  `Track: ${this._trackDiag || ''}\n` +
+  `Track2: ${this._trackDiag2 || ''}`
+);
     }
 
     // Sincronizar rig visual con body físico
