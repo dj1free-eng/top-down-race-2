@@ -17,12 +17,10 @@ Nunca se asume nada “de memoria” si puede haber cambiado.
 ---
 
 ## Problema actual (prioridad #1)
-Render del circuito:
-- Césped OK
-- Asfalto con textura: OK “parcial”
-- Problema pendiente: se sigue viendo rejilla / fondo detrás en huecos al mover/culling
-Objetivo: que el asfalto sea sólido, sin “huecos” y con borde visible.
-
+ESTADO ACTUAL (enero 2026)
+- Problema de rejilla/huecos: resuelto (ya no se ve rejilla).
+- Estamos usando el circuito técnico (Track 02) en lugar del óvalo (Track 01) para testear visibilidad/render/celdas de la pista.
+- Objetivo inmediato: validar que el render por celdas es estable en Track 02 y dejar listo el cambio rápido entre Track 01 y Track 02 desde el menú (si aún no está fino).
 ---
 
 ## Archivos clave (para pedir fragmentos)
