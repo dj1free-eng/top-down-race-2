@@ -69,7 +69,7 @@ export function makeTrack02Technical() {
 
   // Ancho fijo (tu TrackBuilder actual recibe un número en tu RaceScene)
   // Si luego quieres ancho variable por sectores, lo hacemos, pero primero estabilidad.
-  const trackWidth = 520;
+  const trackWidth = 360;
 
   // Start: en la recta principal (orientación hacia el siguiente punto)
   const start = { x: centerline[0].x, y: centerline[0].y, r: 0 };
@@ -84,26 +84,24 @@ export function makeTrack02Technical() {
   // Finish line: cruzando la recta principal cerca del inicio.
   // La ponemos perpendicular al primer segmento y con normal apuntando “hacia delante”.
   const finishLine = (() => {
-    const p0 = centerline[0];
-    const p1 = centerline[1];
+  // Mejor usar un segmento más interior de la recta principal
+  const p0 = centerline[1];
+  const p1 = centerline[2];
 
-    const dx = p1.x - p0.x;
-    const dy = p1.y - p0.y;
+  const dx = p1.x - p0.x;
+  const dy = p1.y - p0.y;
 
-    // normal "forward" (dirección de avance)
-    const fwd = norm(dx, dy);
+  const fwd = norm(dx, dy);
+  const perp = norm(-dy, dx);
 
-    // perpendicular para construir el segmento de meta
-    const perp = norm(-dy, dx);
+  const half = trackWidth * 0.75; // un pelín más que el ancho
+  const mid = { x: p0.x + dx * 0.55, y: p0.y + dy * 0.55 }; // más centrada en la recta
 
-    const half = trackWidth * 0.65; // un poco más que el ancho para asegurar cruce
-    const mid = { x: p0.x + dx * 0.15, y: p0.y + dy * 0.15 };
+  const a = { x: mid.x - perp.x * half, y: mid.y - perp.y * half };
+  const b = { x: mid.x + perp.x * half, y: mid.y + perp.y * half };
 
-    const a = { x: mid.x - perp.x * half, y: mid.y - perp.y * half };
-    const b = { x: mid.x + perp.x * half, y: mid.y + perp.y * half };
-
-    return { a, b, normal: fwd };
-  })();
+  return { a, b, normal: fwd };
+})();
 
     return {
     id: 'track02',
