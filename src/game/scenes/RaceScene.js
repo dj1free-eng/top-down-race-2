@@ -564,166 +564,147 @@ this._fitHud = () => {
       }
     }
 
-    // === Track culling render (solo celdas cercanas) ===
-    // IMPORTANTE: si aquí explota, no debe tumbar el update entero.
-    try {
-      if (this.track?.geom?.cells) {
-        const cellSize = this.track.geom.cellSize;
-        const cx = Math.floor(this.car.x / cellSize);
-        const cy = Math.floor(this.car.y / cellSize);
-if (!this._trackOnce) {
-  this._trackOnce = true;
-
-  const key = `${cx},${cy}`;
+// === Track culling render (solo celdas cercanas) ===
+// IMPORTANTE: si aquí explota, no debe tumbar el update entero.
+try {
   const geom = this.track?.geom;
+  const cells = geom?.cells;
 
-  const cellsSize = geom?.cells?.size ?? null;
-  const cd = geom?.cells?.get(key);
+  if (cells && this.car) {
+    const cellSize = geom.cellSize;
+    const cx = Math.floor(this.car.x / cellSize);
+    const cy = Math.floor(this.car.y / cellSize);
 
-  const polysLen = cd?.polys?.length ?? 0;
-  const poly0 = (cd?.polys && cd.polys.length) ? cd.polys[0] : null;
-  const p0raw = (Array.isArray(poly0) && poly0.length) ? poly0[0] : null;
+    // Diagnóstico 1 sola vez (sin variables fuera de scope)
+    if (!this._trackOnce) {
+      this._trackOnce = true;
 
-  // Formato punto: {x,y} o [x,y] o null
-  let p0s = 'null';
-  if (p0raw && typeof p0raw.x === 'number' && typeof p0raw.y === 'number') {
-    p0s = `{x:${p0raw.x.toFixed(1)},y:${p0raw.y.toFixed(1)}}`;
-  } else if (Array.isArray(p0raw) && p0raw.length >= 2) {
-    p0s = `[${Number(p0raw[0]).toFixed(1)},${Number(p0raw[1]).toFixed(1)}]`;
-  }
+      const key0 = `${cx},${cy}`;
+      const cd0 = cells.get(key0);
 
-  this._trackDiag = `[track] cells=${cellsSize} carCell=${key} hasCell=${!!cd} polys=${polysLen} p0=${p0s}`;
-  this._hudLog(this._trackDiag);
-}
+      const polysLen0 = cd0?.polys?.length ?? 0;
+      const poly0 = (cd0?.polys && cd0.polys.length) ? cd0.polys[0] : null;
+      const p0raw = (Array.isArray(poly0) && poly0.length) ? poly0[0] : null;
 
-  // “forma” del primer punto del primer poly: esto detecta si viene como {x,y}, [x,y], number, etc.
-  this._hudLog(
-    `[track test] poly0Type=${poly0 ? (Array.isArray(poly0) ? 'array' : typeof poly0) : 'null'} ` +
-    `p0=${p0 ? JSON.stringify(p0) : 'null'}`
-  );
-}
-        const want = new Set();
-        const R = this.track.cullRadiusCells ?? 2;
+      let p0s = 'null';
+      if (p0raw && typeof p0raw.x === 'number' && typeof p0raw.y === 'number') {
+        p0s = `{x:${p0raw.x.toFixed(1)},y:${p0raw.y.toFixed(1)}}`;
+      } else if (Array.isArray(p0raw) && p0raw.length >= 2) {
+        p0s = `[${Number(p0raw[0]).toFixed(1)},${Number(p0raw[1]).toFixed(1)}]`;
+      }
 
-        for (let yy = cy - R; yy <= cy + R; yy++) {
-          for (let xx = cx - R; xx <= cx + R; xx++) {
-            want.add(`${xx},${yy}`);
+      const cellsSize = cells.size ?? null;
+      this._trackDiag = `[track] cells=${cellsSize} carCell=${key0} hasCell=${!!cd0} polys=${polysLen0} p0=${p0s}`;
+      this._hudLog(this._trackDiag);
+    }
+
+    const want = new Set();
+    const R = this.track.cullRadiusCells ?? 2;
+
+    for (let yy = cy - R; yy <= cy + R; yy++) {
+      for (let xx = cx - R; xx <= cx + R; xx++) {
+        want.add(`${xx},${yy}`);
+      }
+    }
+
+    // Ocultar celdas que ya no se quieren
+    for (const k of (this.track.activeCells || [])) {
+      if (!want.has(k)) {
+        const cell = this.track.gfxByCell.get(k);
+        if (cell) {
+          cell.tile?.clearMask?.(true);
+          cell.mask?.destroy?.();
+          cell.maskG?.destroy?.();
+          cell.tile?.destroy?.();
+          cell.stroke?.destroy?.();
+          this.track.gfxByCell.delete(k);
+        }
+      }
+    }
+
+    // Mostrar/crear las que sí se quieren (ASPHALT TEXTURE + MASK)
+    for (const k of want) {
+      const cellData = cells.get(k);
+      if (!cellData || !cellData.polys || cellData.polys.length === 0) continue;
+
+      let cell = this.track.gfxByCell.get(k);
+
+      if (!cell) {
+        const [ix, iy] = k.split(',').map(Number);
+        const x = ix * cellSize;
+        const y = iy * cellSize;
+
+        // 1) Tile del asfalto
+        const tile = this.add.tileSprite(x, y, cellSize, cellSize, 'asphalt')
+          .setOrigin(0, 0)
+          .setScrollFactor(1)
+          .setDepth(10);
+
+        tile.tilePositionX = x;
+        tile.tilePositionY = y;
+
+        // 2) Mask con forma de pista
+        const maskG = this.make.graphics({ x, y, add: false });
+        maskG.clear();
+        maskG.fillStyle(0xffffff, 1);
+
+        const getXY = (pt) => {
+          if (!pt) return { x: NaN, y: NaN };
+          if (typeof pt.x === 'number' && typeof pt.y === 'number') return { x: pt.x, y: pt.y };
+          if (Array.isArray(pt) && pt.length >= 2) return { x: pt[0], y: pt[1] };
+          return { x: NaN, y: NaN };
+        };
+
+        for (const poly of cellData.polys) {
+          if (!poly || poly.length < 3) continue;
+
+          const p0 = getXY(poly[0]);
+          if (!Number.isFinite(p0.x) || !Number.isFinite(p0.y)) continue;
+
+          const looksWorld =
+            (p0.x > cellSize * 1.5) || (p0.y > cellSize * 1.5) ||
+            (p0.x < -cellSize * 0.5) || (p0.y < -cellSize * 0.5);
+
+          const x0 = looksWorld ? (p0.x - x) : p0.x;
+          const y0 = looksWorld ? (p0.y - y) : p0.y;
+
+          maskG.beginPath();
+          maskG.moveTo(x0, y0);
+
+          for (let i = 1; i < poly.length; i++) {
+            const pi = getXY(poly[i]);
+            if (!Number.isFinite(pi.x) || !Number.isFinite(pi.y)) continue;
+
+            const lx = looksWorld ? (pi.x - x) : pi.x;
+            const ly = looksWorld ? (pi.y - y) : pi.y;
+            maskG.lineTo(lx, ly);
           }
+
+          maskG.closePath();
+          maskG.fillPath();
         }
 
-// Ocultar celdas que ya no se quieren
-for (const key of (this.track.activeCells || [])) {
-  if (!want.has(key)) {
-    const cell = this.track.gfxByCell.get(key);
+        const mask = maskG.createGeometryMask();
+        tile.setMask(mask);
 
-    if (cell) {
-      // Destruir TODO para evitar tiles sin máscara al volver
-      cell.tile?.clearMask?.(true);
-      cell.mask?.destroy?.();
-      cell.maskG?.destroy?.();
+        const stroke = null; // bordes desactivados
+        cell = { tile, stroke, maskG, mask };
 
-      cell.tile?.destroy?.();
-      cell.stroke?.destroy?.();
-
-      this.track.gfxByCell.delete(key);
-    }
-  }
-}
-
-// Mostrar/crear las que sí se quieren (ASPHALT TEXTURE + MASK + BORDES)
-for (const key of want) {
-  const cellData = this.track.geom.cells.get(key);
-  if (!cellData || !cellData.polys || cellData.polys.length === 0) continue;
-
-  let cell = this.track.gfxByCell.get(key);
-
-  // Crear celda si no existe
-  if (!cell) {
-    const [ix, iy] = key.split(',').map(Number);
-    const x = ix * cellSize;
-    const y = iy * cellSize;
-
-    // 1) Tile del asfalto
-    const tile = this.add.tileSprite(x, y, cellSize, cellSize, 'asphalt')
-      .setOrigin(0, 0)
-      .setScrollFactor(1)
-      .setDepth(10);
-
-    // Anclar el patrón al mundo (para que no “navegue” raro al moverte)
-    tile.tilePositionX = x;
-    tile.tilePositionY = y;
-
-// 2) Mask con forma de pista (obligatoria: si no, el tile pinta un cuadrado)
-// Creamos un Graphics "no visible" que define la forma de la pista dentro de esta celda.
-const maskG = this.make.graphics({ x, y, add: false });
-maskG.clear();
-maskG.fillStyle(0xffffff, 1);
-
-// Helper: soporta puntos {x,y} y arrays [x,y]
-const getXY = (pt) => {
-  if (!pt) return { x: NaN, y: NaN };
-  if (typeof pt.x === 'number' && typeof pt.y === 'number') return { x: pt.x, y: pt.y };
-  if (Array.isArray(pt) && pt.length >= 2) return { x: pt[0], y: pt[1] };
-  return { x: NaN, y: NaN };
-};
-
-for (const poly of cellData.polys) {
-  if (!poly || poly.length < 3) continue;
-
-  const p0raw = poly[0];
-  const p0 = getXY(p0raw);
-  if (!Number.isFinite(p0.x) || !Number.isFinite(p0.y)) continue;
-
-  // poly puede venir en coords locales (0..cellSize) o en coords mundo.
-  // Si parece estar en mundo, la convertimos a local restando (x,y).
-  const looksWorld =
-    (p0.x > cellSize * 1.5) || (p0.y > cellSize * 1.5) ||
-    (p0.x < -cellSize * 0.5) || (p0.y < -cellSize * 0.5);
-
-  const x0 = looksWorld ? (p0.x - x) : p0.x;
-  const y0 = looksWorld ? (p0.y - y) : p0.y;
-
-  maskG.beginPath();
-  maskG.moveTo(x0, y0);
-
-  for (let i = 1; i < poly.length; i++) {
-    const pi = getXY(poly[i]);
-    if (!Number.isFinite(pi.x) || !Number.isFinite(pi.y)) continue;
-
-    const lx = looksWorld ? (pi.x - x) : pi.x;
-    const ly = looksWorld ? (pi.y - y) : pi.y;
-    maskG.lineTo(lx, ly);
-  }
-
-  maskG.closePath();
-  maskG.fillPath();
-}
-
-const mask = maskG.createGeometryMask();
-tile.setMask(mask);
-
-// 3) Borde encima (DESACTIVADO temporalmente para eliminar cuadrícula)
-const stroke = null;
-
-cell = { tile, stroke, maskG, mask };
-    this.track.gfxByCell.set(key, cell);
-  }
-
-// Mostrar celda
-if (cell.tile && !cell.tile.visible) cell.tile.setVisible(true);
-if (cell.stroke && !cell.stroke.visible) cell.stroke.setVisible(true);
-}
-
-        this.track.activeCells = want;
+        this.track.gfxByCell.set(k, cell);
       }
+
+      if (cell.tile && !cell.tile.visible) cell.tile.setVisible(true);
+      if (cell.stroke && !cell.stroke.visible) cell.stroke.setVisible(true);
+    }
+
+    this.track.activeCells = want;
+  }
 } catch (e) {
   if (!this._cullErrLogged) {
     this._cullErrLogged = true;
     this._hudLog(`[cull ERROR] ${e?.message || e}`);
   }
 }
-    }
-
     // === VUELTAS: detectar cruce de línea de meta (robusto) ===
     try {
       if (this.finishLine?.a && this.finishLine?.b && this.finishLine?.normal) {
