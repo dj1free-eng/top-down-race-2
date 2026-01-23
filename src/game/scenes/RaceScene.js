@@ -408,8 +408,15 @@ this.cameras.main.ignore([
   this.hudBox,
   this.hud,
   this.upUI,
-  this._dbgText // puede ser undefined ahora; no pasa nada
+  this._dbgText,
+
+  // Botones de zoom (rect + texto)
+  this._zoomBtnPlus?.r,
+  this._zoomBtnPlus?.t,
+  this._zoomBtnMinus?.r,
+  this._zoomBtnMinus?.t
 ].filter(Boolean));
+
 
 // 2) La cámara UI NO debe renderizar mundo (lo que ya existe ahora)
 if (this.bgWorld) this.uiCam.ignore(this.bgWorld);
