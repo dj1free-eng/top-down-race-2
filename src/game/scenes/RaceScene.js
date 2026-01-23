@@ -275,6 +275,7 @@ this.track = {
   activeCells: new Set(),
   cullRadiusCells: 2
 };
+    this._cullEnabled = true;
 this._hudLog(`[track geom] cells=${this.track.geom?.cells?.size ?? 'null'}`);
  this._trackCells = this.track.geom?.cells?.size ?? null;
 this._trackDiag = `cells=${this._trackCells}`;
@@ -307,20 +308,23 @@ this._trackDiag2 = '';
 
     // 8) Input teclado
     this.keys = this.input.keyboard.addKeys({
-      up: Phaser.Input.Keyboard.KeyCodes.W,
-      down: Phaser.Input.Keyboard.KeyCodes.S,
-      left: Phaser.Input.Keyboard.KeyCodes.A,
-      right: Phaser.Input.Keyboard.KeyCodes.D,
+  up: Phaser.Input.Keyboard.KeyCodes.W,
+  down: Phaser.Input.Keyboard.KeyCodes.S,
+  left: Phaser.Input.Keyboard.KeyCodes.A,
+  right: Phaser.Input.Keyboard.KeyCodes.D,
 
-      up2: Phaser.Input.Keyboard.KeyCodes.UP,
-      down2: Phaser.Input.Keyboard.KeyCodes.DOWN,
-      left2: Phaser.Input.Keyboard.KeyCodes.LEFT,
-      right2: Phaser.Input.Keyboard.KeyCodes.RIGHT,
+  up2: Phaser.Input.Keyboard.KeyCodes.UP,
+  down2: Phaser.Input.Keyboard.KeyCodes.DOWN,
+  left2: Phaser.Input.Keyboard.KeyCodes.LEFT,
+  right2: Phaser.Input.Keyboard.KeyCodes.RIGHT,
 
-      zoomIn: Phaser.Input.Keyboard.KeyCodes.E,
-      zoomOut: Phaser.Input.Keyboard.KeyCodes.Q,
-      back: Phaser.Input.Keyboard.KeyCodes.ESC
-    });
+  zoomIn: Phaser.Input.Keyboard.KeyCodes.E,
+  zoomOut: Phaser.Input.Keyboard.KeyCodes.Q,
+  back: Phaser.Input.Keyboard.KeyCodes.ESC,
+
+  // DEBUG: alternar culling
+  toggleCull: Phaser.Input.Keyboard.KeyCodes.C
+});
 
 
       // HUD (caja + texto legible)
@@ -557,7 +561,11 @@ this.scale.on('resize', (gameSize) => {
       this.zoom = clamp((this.zoom ?? 1) - 0.1, 0.6, 1.6);
       this.cameras.main.setZoom(this.zoom);
     }
-
+// DEBUG: toggle culling (ON / OFF)
+if (justDown && keys.toggleCull && justDown(keys.toggleCull)) {
+  this._cullEnabled = !this._cullEnabled;
+  this._hudLog(`[culling] ${this._cullEnabled ? 'ON' : 'OFF'}`);
+}
     // Inputs
     const t = this.touch || { steer: 0, throttle: 0, brake: 0, stickX: 0, stickY: 0 };
 
