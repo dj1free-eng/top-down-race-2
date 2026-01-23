@@ -648,14 +648,13 @@ try {
         const x = ix * cellSize;
         const y = iy * cellSize;
 
-        // 1) Tile del asfalto
-        const tile = this.add.tileSprite(x, y, cellSize, cellSize, 'asphalt')
-          .setOrigin(0, 0)
-          .setScrollFactor(1)
-          .setDepth(10);
+// 1) Imagen de asfalto (NO tileSprite: evita costuras con mask + cámara)
+const tile = this.add.image(x, y, 'asphalt')
+  .setOrigin(0, 0)
+  .setDisplaySize(cellSize, cellSize)
+  .setScrollFactor(1)
+  .setDepth(10);
 
-        tile.tilePositionX = x;
-        tile.tilePositionY = y;
 
         // 2) Mask con forma de pista
         const maskG = this.make.graphics({ x, y, add: false });
