@@ -341,11 +341,54 @@ this.hud = this.add.text(hudX + 10, hudY + 8, '', {
 }).setScrollFactor(0).setDepth(1100);
 
 // Ajuste automático del alto de la caja según el texto (para que no tape)
+// Ajuste automático del alto de la caja según el texto (para que no tape)
 this._fitHud = () => {
   const w = 340;
   const h = Math.max(68, (this.hud.height || 0) + 16);
   this.hudBox.setSize(w, h);
 };
+
+// =================================================
+// DEBUG_ZOOM_UI (táctil) — borrar cuando no haga falta
+// =================================================
+const makeZoomBtn = (x, y, label, onClick) => {
+  const bw = 44, bh = 32;
+
+  const r = this.add.rectangle(x, y, bw, bh, 0x000000, 0.55)
+    .setOrigin(0, 0)
+    .setScrollFactor(0)
+    .setDepth(1101)
+    .setStrokeStyle(1, 0xffffff, 0.18);
+
+  const t = this.add.text(x + bw / 2, y + bh / 2, label, {
+    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: '18px',
+    color: '#ffffff',
+    fontStyle: 'bold'
+  }).setOrigin(0.5).setScrollFactor(0).setDepth(1102);
+
+  r.setInteractive({ useHandCursor: true });
+  r.on('pointerdown', () => onClick());
+
+  return { r, t };
+};
+
+// Colócalos a la derecha del HUD
+const zoomBtnX = hudX + 340 + 10;
+const zoomBtnY = hudY;
+
+// + (zoom in)
+this._zoomBtnPlus = makeZoomBtn(zoomBtnX, zoomBtnY, '+', () => {
+  this.zoom = clamp((this.zoom ?? 1) + 0.1, 0.6, 1.6);
+  this.cameras.main.setZoom(this.zoom);
+});
+
+// − (zoom out)
+this._zoomBtnMinus = makeZoomBtn(zoomBtnX, zoomBtnY + 38, '−', () => {
+  this.zoom = clamp((this.zoom ?? 1) - 0.1, 0.6, 1.6);
+  this.cameras.main.setZoom(this.zoom);
+});
+
 
     // 10) iOS multitouch + controles táctiles
     this.input.addPointer(2);
