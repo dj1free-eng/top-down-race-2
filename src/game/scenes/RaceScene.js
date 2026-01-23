@@ -40,12 +40,25 @@ export class RaceScene extends Phaser.Scene {
     this.carRig = null;
   }
 
-  init(data) {
+    init(data) {
     // 1) Resolver coche seleccionado (prioridad: data -> localStorage -> stock)
     this.carId = data?.carId || localStorage.getItem('tdr2:carId') || 'stock';
 
+    // 1.1) Resolver circuito seleccionado (prioridad: data -> localStorage -> track02)
+    const incomingTrack = data?.trackKey;
+    const savedTrack = localStorage.getItem('tdr2:trackKey');
+
+    const valid = (k) => (k === 'track01' || k === 'track02');
+
+    this.trackKey = valid(incomingTrack)
+      ? incomingTrack
+      : (valid(savedTrack) ? savedTrack : 'track02');
+
+    localStorage.setItem('tdr2:trackKey', this.trackKey);
+
     // 2) Base spec
     const baseSpec = CAR_SPECS[this.carId] || CAR_SPECS.stock;
+
 
     // === UPGRADES: cargar niveles por coche ===
     const upgradesKey = `tdr2:upgrades:${this.carId}`;
@@ -186,7 +199,8 @@ export class RaceScene extends Phaser.Scene {
     // Alias compatible con código viejo
     this._dbgSet = (m) => this._dbg(m);
     // 1) Track meta primero (define world real)
-const t01 = makeTrack02Technical();
+const t01 = (this.trackKey === 'track01') ? makeTrack01Oval() : makeTrack02Technical();
+
 
     this.worldW = t01.worldW;
     this.worldH = t01.worldH;
