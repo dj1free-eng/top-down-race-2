@@ -718,8 +718,9 @@ if (cell.stroke && !cell.stroke.visible) cell.stroke.setVisible(true);
       }
 } catch (e) {
   if (!this._cullErrLogged) {
-  this._cullErrLogged = true;
-  this._hudLog(`[Track culling render] ERROR: ${e?.message || e}`);
+    this._cullErrLogged = true;
+    this._hudLog(`[cull ERROR] ${e?.message || e}`);
+  }
 }
     }
 
