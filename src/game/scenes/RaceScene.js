@@ -410,11 +410,14 @@ this.cameras.main.ignore([
   this.upUI,
   this._dbgText,
 
-  // Botones de zoom (rect + texto)
+  // Botones de zoom
   this._zoomBtnPlus?.r,
   this._zoomBtnPlus?.t,
   this._zoomBtnMinus?.r,
-  this._zoomBtnMinus?.t
+  this._zoomBtnMinus?.t,
+
+  // Controles táctiles
+  this.touchUI
 ].filter(Boolean));
 
 
@@ -1032,7 +1035,8 @@ const bgKey = this.bgKey || '(no bg ref)';
       btnH: 0
     };
 
-    const ui = this.add.container(0, 0).setScrollFactor(0).setDepth(1000);
+const ui = this.add.container(0, 0).setScrollFactor(0).setDepth(1000);
+this.touchUI = ui; // ← referencia para cámaras
 
     const build = () => {
       ui.removeAll(true);
