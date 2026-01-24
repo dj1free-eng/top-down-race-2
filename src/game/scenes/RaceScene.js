@@ -12,6 +12,78 @@ function wrapPi(a) {
   return a;
 }
 const DEV_TOOLS = true; // ponlo en false para ocultar botones de zoom/cull
+// =================================================
+// TRACK SURFACE HELPERS (point-in-polygon por celdas)
+// =================================================
+function _ptXY(pt, ox = 0, oy = 0) {
+  if (!pt) return { x: NaN, y: NaN };
+  if (typeof pt.x === 'number' && typeof pt.y === 'number') return { x: pt.x + ox, y: pt.y + oy };
+  if (Array.isArray(pt) && pt.length >= 2) return { x: pt[0] + ox, y: pt[1] + oy };
+  return { x: NaN, y: NaN };
+}
+
+// Even-odd rule (ray casting)
+function _pointInPoly(px, py, poly, ox = 0, oy = 0) {
+  let inside = false;
+  const n = poly?.length ?? 0;
+  if (n < 3) return false;
+
+  for (let i = 0, j = n - 1; i < n; j = i++) {
+    const a = _ptXY(poly[i], ox, oy);
+    const b = _ptXY(poly[j], ox, oy);
+
+    if (!Number.isFinite(a.x) || !Number.isFinite(a.y) || !Number.isFinite(b.x) || !Number.isFinite(b.y)) continue;
+
+    const intersect =
+      ((a.y > py) !== (b.y > py)) &&
+      (px < (b.x - a.x) * (py - a.y) / ((b.y - a.y) || 1e-9) + a.x);
+
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+function isPointOnTrackWorld(px, py, geom) {
+  const cells = geom?.cells;
+  const cellSize = geom?.cellSize;
+  if (!cells || !cellSize) return true; // si no hay geom, no penalizamos
+
+  const cx = Math.floor(px / cellSize);
+  const cy = Math.floor(py / cellSize);
+
+  // Miramos celda actual + vecinas (evita falsos “off” en bordes)
+  for (let yy = cy - 1; yy <= cy + 1; yy++) {
+    for (let xx = cx - 1; xx <= cx + 1; xx++) {
+      const key = `${xx},${yy}`;
+      const cd = cells.get(key);
+      const polys = cd?.polys;
+      if (!polys || polys.length === 0) continue;
+
+      const oxCell = xx * cellSize;
+      const oyCell = yy * cellSize;
+
+      for (const poly of polys) {
+        if (!poly || poly.length < 3) continue;
+
+        // Detectar si poly viene en coords mundo o coords locales de celda (como ya haces en el mask)
+        const p0 = poly[0];
+        const p0xy = _ptXY(p0, 0, 0);
+        if (!Number.isFinite(p0xy.x) || !Number.isFinite(p0xy.y)) continue;
+
+        const looksWorld =
+          (p0xy.x > cellSize * 1.5) || (p0xy.y > cellSize * 1.5) ||
+          (p0xy.x < -cellSize * 0.5) || (p0xy.y < -cellSize * 0.5);
+
+        const ox = looksWorld ? 0 : oxCell;
+        const oy = looksWorld ? 0 : oyCell;
+
+        if (_pointInPoly(px, py, poly, ox, oy)) return true;
+      }
+    }
+  }
+  return false;
+}
+
 export class RaceScene extends Phaser.Scene {
   constructor() {
     super('race');
@@ -275,6 +347,7 @@ this.track = {
   activeCells: new Set(),
   cullRadiusCells: 2
 };
+    this._isOnTrack = (x, y) => isPointOnTrackWorld(x, y, this.track?.geom);
     this._cullEnabled = true;
 this._hudLog(`[track geom] cells=${this.track.geom?.cells?.size ?? 'null'}`);
  this._trackCells = this.track.geom?.cells?.size ?? null;
@@ -623,14 +696,33 @@ if (justDown && keys.toggleCull && justDown(keys.toggleCull)) {
     const vy = body.velocity?.y || 0;
     const speed = Math.sqrt(vx * vx + vy * vy);
 
-    // Params (por si init no llegó a setearlos aún)
-    const accel = this.accel ?? 0;
-    const brakeForce = this.brakeForce ?? 0;
-    const linearDrag = this.linearDrag ?? 0;
-    const maxFwd = this.maxFwd ?? 1;
-    const maxRev = this.maxRev ?? 1;
-    const turnRate = this.turnRate ?? 0;
-    const turnMin = this.turnMin ?? 0.1;
+// Superficie: dentro/fuera de pista (geom real)
+const onTrack = this._isOnTrack ? this._isOnTrack(this.car.x, this.car.y) : true;
+this._onTrack = onTrack; // para HUD/debug
+
+// Params (por si init no llegó a setearlos aún)
+let accel = this.accel ?? 0;
+const brakeForce = this.brakeForce ?? 0;
+const linearDrag = this.linearDrag ?? 0;
+const maxFwd = this.maxFwd ?? 1;
+const maxRev = this.maxRev ?? 1;
+let turnRate = this.turnRate ?? 0;
+const turnMin = this.turnMin ?? 0.1;
+
+// Penalización fuera de pista: pierde velocidad y le cuesta girar/recuperar
+if (!onTrack) {
+  // 1) motor “ahogado”
+  accel *= 0.35;
+
+  // 2) menos capacidad de giro
+  turnRate *= 0.60;
+
+  // 3) drag extra fuerte y estable por tiempo (independiente de FPS)
+  //    En ~1s te deja aprox al 18% de velocidad (muy penalizante)
+  const extra = Math.pow(0.18, dt);
+  body.velocity.x *= extra;
+  body.velocity.y *= extra;
+}
 
     // Aceleración / freno
     if (up && !down) {
@@ -888,7 +980,8 @@ const bgKey = this.bgKey || '(no bg ref)';
 
       this.hud.setText(
   'RaceScene\n' +
-  `BG: ${bgKey}\n` +
+ // `BG: ${bgKey}\n` +
+  `Surface: ${this._onTrack ? 'TRACK' : 'OFF'}\n` +
   `Vueltas: ${this.lapCount || 0}\n` +
   `Car: ${this.carId || 'stock'} | Upg E${u.engine} B${u.brakes} T${u.tires}\n` +
   'Vel: ' + kmh.toFixed(0) + ' km/h\n' +
