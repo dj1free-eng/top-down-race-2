@@ -869,7 +869,7 @@ const tile = this.add.image(x, y, 'asphalt')
    // UI camera no debe renderizar chunks ni su máscara
 this.uiCam?.ignore?.(tile);
 this.uiCam?.ignore?.(maskG);
-this.uiCam?.ignore?.(stroke);    
+
         maskG.clear();
         maskG.fillStyle(0xffffff, 1);
 
@@ -950,7 +950,7 @@ for (const poly of cellData.polys) {
 const stroke = this.add.graphics({ x, y });
 stroke.setDepth(11); // encima del asfalto (10) y debajo del coche (30)
 stroke.setScrollFactor(1);
-
+this.uiCam?.ignore?.(stroke);    
 cell = { tile, stroke, maskG, mask };
 
         this.track.gfxByCell.set(k, cell);
