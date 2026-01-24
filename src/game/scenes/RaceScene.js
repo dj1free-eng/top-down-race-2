@@ -393,6 +393,12 @@ this._zoomBtnMinus = makeZoomBtn(zoomBtnX, zoomBtnY + 38, '−', () => {
   this.cameras.main.setZoom(this.zoom);
 });
 
+// CULL (toggle)
+this._zoomBtnCull = makeZoomBtn(zoomBtnX, zoomBtnY + 76, 'CULL', () => {
+  this._cullEnabled = !this._cullEnabled;
+  this._hudLog(`[culling] ${this._cullEnabled ? 'ON' : 'OFF'}`);
+});
+
 
     // 10) iOS multitouch + controles táctiles
     this.input.addPointer(2);
@@ -419,7 +425,8 @@ this.cameras.main.ignore([
   this._zoomBtnPlus?.t,
   this._zoomBtnMinus?.r,
   this._zoomBtnMinus?.t,
-
+this._zoomBtnCull?.r,
+this._zoomBtnCull?.t,
   // Controles táctiles
   this.touchUI
 ].filter(Boolean));
