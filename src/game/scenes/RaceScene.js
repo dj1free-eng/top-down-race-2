@@ -917,9 +917,29 @@ for (const poly of cellData.polys) {
   maskG.fillPath();
 }
 
-// 2) Borde visual (stroke) sin colisión
+// ================================
+// Borde visual (stroke) sin colisión — SOLO contorno exterior
+// (evita líneas interiores: dibuja solo aristas no compartidas)
+// ================================
 stroke.clear();
 stroke.lineStyle(4, 0xf2f2f2, 0.55);
+
+// Mapa de aristas: las interiores aparecen 2 veces (compartidas), las de borde 1 vez
+const edgeCount = new Map();
+const q = (v) => Math.round(v * 10) / 10; // cuantiza para que las keys sean estables
+
+const addEdge = (ax, ay, bx, by) => {
+  const axq = q(ax), ayq = q(ay), bxq = q(bx), byq = q(by);
+
+  const aFirst = (axq < bxq) || (axq === bxq && ayq <= byq);
+  const k = aFirst
+    ? `${axq},${ayq}|${bxq},${byq}`
+    : `${bxq},${byq}|${axq},${ayq}`;
+
+  const cur = edgeCount.get(k);
+  if (cur) cur.count += 1;
+  else edgeCount.set(k, { count: 1, ax: axq, ay: ayq, bx: bxq, by: byq });
+};
 
 for (const poly of cellData.polys) {
   if (!poly || poly.length < 3) continue;
@@ -931,24 +951,34 @@ for (const poly of cellData.polys) {
     (p0.x > cellSize * 1.5) || (p0.y > cellSize * 1.5) ||
     (p0.x < -cellSize * 0.5) || (p0.y < -cellSize * 0.5);
 
-  const x0 = looksWorld ? (p0.x - x) : p0.x;
-  const y0 = looksWorld ? (p0.y - y) : p0.y;
-
-  stroke.beginPath();
-  stroke.moveTo(x0, y0);
-
-  for (let i = 1; i < poly.length; i++) {
+  // Puntos en coords locales de celda (como en la máscara)
+  const pts = [];
+  for (let i = 0; i < poly.length; i++) {
     const pi = getXY(poly[i]);
     if (!Number.isFinite(pi.x) || !Number.isFinite(pi.y)) continue;
 
     const lx = looksWorld ? (pi.x - x) : pi.x;
     const ly = looksWorld ? (pi.y - y) : pi.y;
-    stroke.lineTo(lx, ly);
+    pts.push([lx, ly]);
   }
 
-  stroke.closePath();
-  stroke.strokePath();
+  if (pts.length < 3) continue;
+
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i];
+    const b = pts[(i + 1) % pts.length];
+    addEdge(a[0], a[1], b[0], b[1]);
+  }
 }
+
+// Dibujar solo aristas con count === 1 (contorno exterior)
+stroke.beginPath();
+for (const e of edgeCount.values()) {
+  if (e.count !== 1) continue;
+  stroke.moveTo(e.ax, e.ay);
+  stroke.lineTo(e.bx, e.by);
+}
+stroke.strokePath();
 
 const mask = maskG.createGeometryMask();
 tile.setMask(mask);
