@@ -378,7 +378,7 @@ this._trackDiag2 = '';
     // 7) Cámara
     this.cameras.main.startFollow(this.carRig, true, 0.12, 0.12);
     this.cameras.main.setZoom(this.zoom);
-
+    this.cameras.main.roundPixels = true;
     // 8) Input teclado
     this.keys = this.input.keyboard.addKeys({
   up: Phaser.Input.Keyboard.KeyCodes.W,
@@ -857,9 +857,10 @@ if (this._cullEnabled === false) {
         const y = iy * cellSize;
 
 // 1) Imagen de asfalto (NO tileSprite: evita costuras con mask + cámara)
-const tile = this.add.image(x, y, 'asphalt')
+// Asfalto por celda (con solape para evitar “costuras” entre chunks)
+const tile = this.add.image(x - 1, y - 1, 'asphalt')
   .setOrigin(0, 0)
-  .setDisplaySize(cellSize, cellSize)
+  .setDisplaySize(cellSize + 2, cellSize + 2)
   .setScrollFactor(1)
   .setDepth(10);
 
