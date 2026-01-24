@@ -395,7 +395,24 @@ this._zoomBtnMinus = makeZoomBtn(zoomBtnX, zoomBtnY + 38, '−', () => {
 
 // CULL (toggle)
 this._zoomBtnCull = makeZoomBtn(zoomBtnX, zoomBtnY + 76, 'CULL', () => {
-  this._cullEnabled = !this._cullEnabled;
+  const was = this._cullEnabled !== false; // default ON si undefined
+  this._cullEnabled = !was;
+
+  // Si volvemos a ON, limpiar todo lo que esté renderizado (se reconstruye por radio en el siguiente update)
+  if (this._cullEnabled) {
+    try {
+      for (const [k, cell] of (this.track?.gfxByCell || [])) {
+        cell.tile?.clearMask?.(true);
+        cell.mask?.destroy?.();
+        cell.maskG?.destroy?.();
+        cell.tile?.destroy?.();
+        cell.stroke?.destroy?.();
+      }
+      this.track?.gfxByCell?.clear?.();
+      this.track.activeCells = new Set();
+    } catch {}
+  }
+
   this._hudLog(`[culling] ${this._cullEnabled ? 'ON' : 'OFF'}`);
 });
 
