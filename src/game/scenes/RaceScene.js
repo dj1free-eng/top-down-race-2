@@ -704,14 +704,21 @@ try {
       this._hudLog(this._trackDiag);
     }
 
-    const want = new Set();
-    const R = this.track.cullRadiusCells ?? 2;
+    let want;
 
-    for (let yy = cy - R; yy <= cy + R; yy++) {
-      for (let xx = cx - R; xx <= cx + R; xx++) {
-        want.add(`${xx},${yy}`);
-      }
+if (this._cullEnabled === false) {
+  // OFF = pintar todas las celdas reales (sin loops enormes)
+  want = new Set(cells.keys());
+} else {
+  want = new Set();
+  const R = this.track.cullRadiusCells ?? 2;
+
+  for (let yy = cy - R; yy <= cy + R; yy++) {
+    for (let xx = cx - R; xx <= cx + R; xx++) {
+      want.add(`${xx},${yy}`);
     }
+  }
+}
 
     // Ocultar celdas que ya no se quieren
     for (const k of (this.track.activeCells || [])) {
