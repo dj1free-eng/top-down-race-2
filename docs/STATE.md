@@ -18,9 +18,14 @@ Nunca se asume nada “de memoria” si puede haber cambiado.
 
 ## Problema actual (prioridad #1)
 ESTADO ACTUAL (enero 2026)
-- Problema de rejilla/huecos: resuelto (ya no se ve rejilla).
-- Estamos usando el circuito técnico (Track 02) en lugar del óvalo (Track 01) para testear visibilidad/render/celdas de la pista.
-- Objetivo inmediato: validar que el render por celdas es estable en Track 02 y dejar listo el cambio rápido entre Track 01 y Track 02 desde el menú (si aún no está fino).
+Estado final verificado (lo que hemos dejado hecho)
+	•	Cambio Track 01 / Track 02: RaceScene respeta trackKey y lo persiste en localStorage.
+	•	Huecos / rejilla al moverse: eliminada la causa estructural sustituyendo tileSprite por image en los chunks de asfalto (mask estable).
+	•	Zoom en iPhone usable: botones táctiles + / − y UI camera para que HUD no escale.
+	•	Controles táctiles: aislados del zoom (touchUI ignorado por mainCam).
+	•	Test A/B de culling: botón CULL que alterna ON/OFF y en OFF pinta todas las celdas reales sin loops gigantes.
+	•	Limpieza memoria al volver a ON: destruye y reconstruye por radio.
+	•	Todo el debug encapsulado con DEV_TOOLS = true/false.
 ---
 
 ## Archivos clave (para pedir fragmentos)
