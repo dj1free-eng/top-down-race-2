@@ -11,7 +11,7 @@ function wrapPi(a) {
   while (a < -Math.PI) a += Math.PI * 2;
   return a;
 }
-
+const DEV_TOOLS = true; // ponlo en false para ocultar botones de zoom/cull
 export class RaceScene extends Phaser.Scene {
   constructor() {
     super('race');
@@ -351,7 +351,7 @@ this._fitHud = () => {
   const h = Math.max(68, (this.hud.height || 0) + 16);
   this.hudBox.setSize(w, h);
 };
-
+if (DEV_TOOLS) {
 // =================================================
 // DEBUG_ZOOM_UI (táctil) — borrar cuando no haga falta
 // =================================================
@@ -415,7 +415,7 @@ this._zoomBtnCull = makeZoomBtn(zoomBtnX, zoomBtnY + 76, 'CULL', () => {
 
   this._hudLog(`[culling] ${this._cullEnabled ? 'ON' : 'OFF'}`);
 });
-
+}
 
     // 10) iOS multitouch + controles táctiles
     this.input.addPointer(2);
