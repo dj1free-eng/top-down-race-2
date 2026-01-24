@@ -869,7 +869,7 @@ const tile = this.add.image(x, y, 'asphalt')
    // UI camera no debe renderizar chunks ni su máscara
 this.uiCam?.ignore?.(tile);
 this.uiCam?.ignore?.(maskG);
-    
+this.uiCam?.ignore?.(stroke);    
         maskG.clear();
         maskG.fillStyle(0xffffff, 1);
 
@@ -908,12 +908,50 @@ this.uiCam?.ignore?.(maskG);
           maskG.closePath();
           maskG.fillPath();
         }
+// ================================
+// Borde visual (stroke) sin colisión
+// ================================
+stroke.clear();
+stroke.lineStyle(4, 0xf2f2f2, 0.55);
 
+for (const poly of cellData.polys) {
+  if (!poly || poly.length < 3) continue;
+
+  const p0 = getXY(poly[0]);
+  if (!Number.isFinite(p0.x) || !Number.isFinite(p0.y)) continue;
+
+  const looksWorld =
+    (p0.x > cellSize * 1.5) || (p0.y > cellSize * 1.5) ||
+    (p0.x < -cellSize * 0.5) || (p0.y < -cellSize * 0.5);
+
+  const x0 = looksWorld ? (p0.x - x) : p0.x;
+  const y0 = looksWorld ? (p0.y - y) : p0.y;
+
+  stroke.beginPath();
+  stroke.moveTo(x0, y0);
+
+  for (let i = 1; i < poly.length; i++) {
+    const pi = getXY(poly[i]);
+    if (!Number.isFinite(pi.x) || !Number.isFinite(pi.y)) continue;
+
+    const lx = looksWorld ? (pi.x - x) : pi.x;
+    const ly = looksWorld ? (pi.y - y) : pi.y;
+
+    stroke.lineTo(lx, ly);
+  }
+
+  stroke.closePath();
+  stroke.strokePath();
+}
         const mask = maskG.createGeometryMask();
         tile.setMask(mask);
 
-        const stroke = null; // bordes desactivados
-        cell = { tile, stroke, maskG, mask };
+        // Stroke de borde (visual, sin colisión)
+const stroke = this.add.graphics({ x, y });
+stroke.setDepth(11); // encima del asfalto (10) y debajo del coche (30)
+stroke.setScrollFactor(1);
+
+cell = { tile, stroke, maskG, mask };
 
         this.track.gfxByCell.set(k, cell);
       }
