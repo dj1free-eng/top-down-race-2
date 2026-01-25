@@ -1,0 +1,132 @@
+:root{
+  --bg:#0b0f17;
+  --panel:#111827;
+  --line:#1f2937;
+  --txt:#e5e7eb;
+  --muted:#9ca3af;
+  --btn:#2563eb;
+  --btn2:#374151;
+}
+
+*{ box-sizing:border-box; }
+html,body{ height:100%; }
+body{
+  margin:0;
+  font-family: -apple-system, system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  background:var(--bg);
+  color:var(--txt);
+}
+
+.top{
+  padding:14px 14px 10px;
+  border-bottom:1px solid var(--line);
+}
+.title h1{ margin:0; font-size:18px; }
+.title p{ margin:4px 0 0; color:var(--muted); font-size:12px; }
+
+.wrap{
+  display:flex;
+  gap:12px;
+  padding:12px;
+  flex-direction:column;
+}
+
+.panel{
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:12px;
+}
+
+.row{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-bottom:10px;
+}
+
+.row.small{
+  margin-top:2px;
+  margin-bottom:8px;
+  gap:14px;
+}
+
+.kv{ display:flex; gap:8px; align-items:center; }
+.k{ color:var(--muted); font-size:12px; }
+.v{ font-size:12px; }
+
+.btn{
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:10px 12px;
+  border-radius:10px;
+  border:1px solid transparent;
+  background:var(--btn);
+  color:white;
+  font-weight:600;
+  font-size:14px;
+  cursor:pointer;
+  user-select:none;
+}
+
+.btn.secondary{
+  background:var(--btn2);
+  border-color:var(--line);
+}
+
+.btn input{
+  position:absolute;
+  inset:0;
+  opacity:0;
+  width:100%;
+  height:100%;
+  cursor:pointer;
+}
+
+textarea{
+  width:100%;
+  min-height:120px;
+  border-radius:10px;
+  border:1px solid var(--line);
+  background:#0b1220;
+  color:var(--txt);
+  padding:10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size:12px;
+  line-height:1.35;
+  resize:vertical;
+}
+
+.hint{
+  margin:8px 0 0;
+  color:var(--muted);
+  font-size:12px;
+}
+
+.stage{
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:10px;
+}
+
+.canvasWrap{
+  width:100%;
+  overflow:auto;
+  border-radius:10px;
+  border:1px solid var(--line);
+  background:#05070c;
+}
+
+canvas{
+  display:block;
+  touch-action:none; /* importante en iPhone para clicks/taps */
+}
+
+.help{
+  margin-top:10px;
+  color:var(--muted);
+  font-size:12px;
+}
