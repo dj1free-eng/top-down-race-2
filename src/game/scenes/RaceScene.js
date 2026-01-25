@@ -1104,10 +1104,77 @@ cell = { tile, stroke: null, maskG, mask };
         if (this._lapCooldownMs == null) this._lapCooldownMs = 0;
         this._lapCooldownMs = Math.max(0, this._lapCooldownMs - (deltaMs || 0));
 
-        if (within && crossed && forward && this._lapCooldownMs === 0) {
-          this.lapCount = (this.lapCount || 0) + 1;
-          this._lapCooldownMs = 700;
-        }
+        // Cooldowns
+this._lapCooldownMs = Math.max(0, (this._lapCooldownMs || 0) - (deltaMs || 0));
+this._cpCooldown1Ms = Math.max(0, (this._cpCooldown1Ms || 0) - (deltaMs || 0));
+this._cpCooldown2Ms = Math.max(0, (this._cpCooldown2Ms || 0) - (deltaMs || 0));
+
+// --- helper: test cruce gate (misma lógica que meta) ---
+const _crossGate = (gate) => {
+  if (!gate?.a || !gate?.b || !gate?.normal) return false;
+
+  const a = gate.a;
+  const b = gate.b;
+  const n = gate.normal;
+
+  const x0 = (this.prevCarX ?? this.car.x);
+  const y0 = (this.prevCarY ?? this.car.y);
+  const x1 = this.car.x;
+  const y1 = this.car.y;
+
+  const side0 = (x0 - a.x) * n.x + (y0 - a.y) * n.y;
+  const side1 = (x1 - a.x) * n.x + (y1 - a.y) * n.y;
+
+  const abx = b.x - a.x;
+  const aby = b.y - a.y;
+  const len2 = abx * abx + aby * aby;
+  const proj1 = len2 > 0 ? ((x1 - a.x) * abx + (y1 - a.y) * aby) / len2 : -1;
+  const withinGate = proj1 >= 0 && proj1 <= 1;
+
+  const crossedGate = (side0 === 0) ? (side1 !== 0) : ((side0 > 0) !== (side1 > 0));
+
+  const vvx = body.velocity?.x || 0;
+  const vvy = body.velocity?.y || 0;
+  const forwardGate = (vvx * n.x + vvy * n.y) > 0;
+
+  return withinGate && crossedGate && forwardGate;
+};
+
+// --- 1) checkpoints (en orden) ---
+const cp1 = this.checkpoints?.cp1;
+const cp2 = this.checkpoints?.cp2;
+
+if (cp1 && this._cpCooldown1Ms === 0 && _crossGate(cp1)) {
+  if ((this._cpState || 0) === 0) {
+    this._cpState = 1;
+  } else {
+    // Si lo pisa fuera de orden, reiniciamos para evitar exploits raros
+    this._cpState = 0;
+  }
+  this._cpCooldown1Ms = 500;
+}
+
+if (cp2 && this._cpCooldown2Ms === 0 && _crossGate(cp2)) {
+  if ((this._cpState || 0) === 1) {
+    this._cpState = 2;
+  } else {
+    this._cpState = 0;
+  }
+  this._cpCooldown2Ms = 500;
+}
+
+// --- 2) meta: SOLO cuenta si cpState==2 ---
+if (within && crossed && forward && this._lapCooldownMs === 0) {
+  if ((this._cpState || 0) === 2) {
+    this.lapCount = (this.lapCount || 0) + 1;
+    this._lapCooldownMs = 700;
+    this._cpState = 0; // nueva vuelta, reinicia combo
+  } else {
+    // cruzó meta sin checkpoints correctos: no cuenta
+    this._lapCooldownMs = 300; // pequeño “anti rebote”
+    this._cpState = 0;
+  }
+}
       }
     } catch (e) {
     }
