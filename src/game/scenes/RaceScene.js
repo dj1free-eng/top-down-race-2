@@ -694,8 +694,8 @@ this._zoomBtnCull = makeZoomBtn(zoomBtnX, zoomBtnY + 76, 'CULL', () => {
     this.input.addPointer(2);
     this.touch = this.createTouchControls();
 
-    // 11) UI Upgrades
-    this.buildUpgradesUI();
+// UI de upgrades desactivada en carrera (se moverá a Shop/Garage)
+this.upUI = null;
 // =================================================
 // UI CAMERA (HUD no afectado por zoom del mundo)
 // =================================================
@@ -1261,16 +1261,9 @@ if (within && crossed && forward && this._lapCooldownMs === 0) {
       const u = this.upgrades || { engine: 0, brakes: 0, tires: 0 };
 const bgKey = this.bgKey || '(no bg ref)';
 
-      this.hud.setText(
-  'RaceScene\n' +
- // `BG: ${bgKey}\n` +
-  `Surface: ${this._onTrack ? 'TRACK' : 'OFF'}\n` +
+this.hud.setText(
   `Vueltas: ${this.lapCount || 0}\n` +
-  `Car: ${this.carId || 'stock'} | Upg E${u.engine} B${u.brakes} T${u.tires}\n` +
-  'Vel: ' + kmh.toFixed(0) + ' km/h\n' +
-  'Zoom: ' + (this.zoom ?? 1).toFixed(1) + '\n' +
-  `Track: ${this._trackDiag || ''}\n` +
-  `Track2: ${this._trackDiag2 || ''}`
+  `Velocidad: ${kmh.toFixed(0)} km/h`
 );
     }
 
