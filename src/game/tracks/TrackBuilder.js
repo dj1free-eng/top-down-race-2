@@ -13,26 +13,52 @@ function normalize(x, y) {
   return [x / d, y / d];
 }
 
-// Catmull-Rom (centripetal-ish simple) para un t in [0,1]
+// Catmull-Rom CENTRÍPETA (reduce overshoot / auto-cruces) para t en [0,1]
 function catmullRom(p0, p1, p2, p3, t) {
-  const t2 = t * t;
-  const t3 = t2 * t;
+  const alpha = 0.5; // centripetal
+  const eps = 1e-6;
 
-  const x =
-    0.5 *
-    ((2 * p1[0]) +
-      (-p0[0] + p2[0]) * t +
-      (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 +
-      (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3);
+  const d01 = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]);
+  const d12 = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]);
+  const d23 = Math.hypot(p3[0] - p2[0], p3[1] - p2[1]);
 
-  const y =
-    0.5 *
-    ((2 * p1[1]) +
-      (-p0[1] + p2[1]) * t +
-      (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 +
-      (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3);
+  const t0 = 0;
+  const t1 = t0 + Math.pow(Math.max(d01, eps), alpha);
+  const t2 = t1 + Math.pow(Math.max(d12, eps), alpha);
+  const t3 = t2 + Math.pow(Math.max(d23, eps), alpha);
 
-  return [x, y];
+  // mapear [0,1] a [t1,t2]
+  const tt = t1 + (t2 - t1) * t;
+
+  const lerp = (a, b, ta, tb) => {
+    const denom = (tb - ta) || eps;
+    const w = (tt - ta) / denom;
+    return [a[0] + (b[0] - a[0]) * w, a[1] + (b[1] - a[1]) * w];
+  };
+
+  const A1 = lerp(p0, p1, t0, t1);
+  const A2 = lerp(p1, p2, t1, t2);
+  const A3 = lerp(p2, p3, t2, t3);
+
+  const B1 = (() => {
+    const denom = (t2 - t0) || eps;
+    const w = (tt - t0) / denom;
+    return [A1[0] + (A2[0] - A1[0]) * w, A1[1] + (A2[1] - A1[1]) * w];
+  })();
+
+  const B2 = (() => {
+    const denom = (t3 - t1) || eps;
+    const w = (tt - t1) / denom;
+    return [A2[0] + (A3[0] - A2[0]) * w, A2[1] + (A3[1] - A2[1]) * w];
+  })();
+
+  const C = (() => {
+    const denom = (t2 - t1) || eps;
+    const w = (tt - t1) / denom;
+    return [B1[0] + (B2[0] - B1[0]) * w, B1[1] + (B2[1] - B1[1]) * w];
+  })();
+
+  return C;
 }
 
 // Remuestreo a paso fijo (10–20 px típico)
