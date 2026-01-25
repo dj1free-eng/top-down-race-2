@@ -75,7 +75,8 @@ export function makeTrack02Technical() {
 
   // Ancho fijo (tu TrackBuilder actual recibe un número en tu RaceScene)
   // Si luego quieres ancho variable por sectores, lo hacemos, pero primero estabilidad.
-  const trackWidth = 360;
+const trackWidth = 300;
+const sampleStepPx = 12;
 
   // Start: en la recta principal (orientación hacia el siguiente punto)
   const start = { x: centerline[0].x, y: centerline[0].y, r: 0 };
@@ -110,14 +111,15 @@ export function makeTrack02Technical() {
 })();
 
     return {
-    id: 'track02',
-    name: 'Track 02 — Technical',
-    worldW,
-    worldH,
-    centerline,
-    trackWidth,
-    start,
-    finishLine,
-    closed: true
-  };
+  id: 'track02',
+  name: 'Track 02 — Technical',
+  worldW,
+  worldH,
+  centerline,
+  trackWidth,
+  sampleStepPx,
+  start,
+  finishLine,
+  closed: true
+};
 }
