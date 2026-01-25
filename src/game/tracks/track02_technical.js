@@ -11,33 +11,26 @@ export function makeTrack02Technical() {
   const worldW = 8000;
   const worldH = 5000;
 
-  // Centro de pista desde centerline normalizada (0..1) -> mundo (8000x5000)
-  // IMPORTANTE: lo cerramos explícitamente añadiendo el primer punto al final.
+  // Centerline ancho y estable (0..1). Sin cruces, sin horquillas cerradas.
   const centerlineNorm = [
-    [0.52, 0.02],
-    [0.55, 0.06],
-    [0.57, 0.11],
-    [0.58, 0.16],
-    [0.58, 0.22],
-    [0.57, 0.28],
-    [0.56, 0.34],
-    [0.55, 0.40],
-    [0.54, 0.46],
-    [0.53, 0.52],
-    [0.52, 0.58],
-    [0.51, 0.63],
-    [0.50, 0.68],
-    [0.49, 0.73],
-    [0.48, 0.78],
-    [0.48, 0.83],
-    [0.49, 0.88],
-    [0.51, 0.92],
-    [0.54, 0.95],
-    [0.57, 0.97],
-    [0.55, 0.99],
-    [0.52, 1.00]
+    [0.50, 0.10],
+    [0.60, 0.12],
+    [0.70, 0.18],
+    [0.78, 0.28],
+    [0.82, 0.40],
+    [0.80, 0.52],
+    [0.74, 0.62],
+    [0.64, 0.70],
+    [0.52, 0.74],
+    [0.40, 0.72],
+    [0.30, 0.66],
+    [0.22, 0.56],
+    [0.18, 0.44],
+    [0.20, 0.32],
+    [0.26, 0.22],
+    [0.36, 0.14],
+    [0.45, 0.11]
   ];
-
   const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
   const centerline = centerlineNorm.map(([nx, ny]) => ({
