@@ -156,7 +156,51 @@ export function buildTrackRibbon({
   if (cl.length < 8) {
     return { center: cl, left: [], right: [], cells: new Map(), cellSize };
   }
+// ================================
+// 2.5) Suavizado local en ángulos extremos (corner relaxation)
+// ================================
+const relax = [];
+const ANGLE_LIMIT = Math.cos((45 * Math.PI) / 180); // < 45° = muy cerrado
 
+for (let i = 0; i < cl.length; i++) {
+  const pPrev = cl[(i - 1 + cl.length) % cl.length];
+  const p = cl[i];
+  const pNext = cl[(i + 1) % cl.length];
+
+  // vectores normalizados
+  const v0x = p[0] - pPrev[0];
+  const v0y = p[1] - pPrev[1];
+  const v1x = pNext[0] - p[0];
+  const v1y = pNext[1] - p[1];
+
+  const l0 = Math.hypot(v0x, v0y) || 1;
+  const l1 = Math.hypot(v1x, v1y) || 1;
+
+  const a0x = v0x / l0;
+  const a0y = v0y / l0;
+  const a1x = v1x / l1;
+  const a1y = v1y / l1;
+
+  const dot = a0x * a1x + a0y * a1y;
+
+  relax.push(p);
+
+  // Si el ángulo es muy cerrado, insertar punto suavizado
+  if (dot < ANGLE_LIMIT) {
+    const mx = (pPrev[0] + pNext[0]) * 0.5;
+    const my = (pPrev[1] + pNext[1]) * 0.5;
+
+    // interpolar hacia el punto medio (suaviza sin desdibujar)
+    relax.push([
+      p[0] * 0.6 + mx * 0.4,
+      p[1] * 0.6 + my * 0.4
+    ]);
+  }
+}
+
+// sustituir centerline densa por la relajada
+cl.length = 0;
+for (const p of relax) cl.push(p);
 // 3) Bordes por normal (con miter-limit para curvas cerradas)
 const half = trackWidth * 0.5;
 const left = [];
