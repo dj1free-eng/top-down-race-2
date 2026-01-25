@@ -383,7 +383,62 @@ this._trackDiag2 = '';
 
 // 6) Meta, checkpoints y vueltas (datos)
 this.finishLine = t01.finishLine || t01.finish;
-this.lapCount = 0;
+// Fallback: si el track no trae normal en la meta, la calculamos desde la centerline
+if (this.finishLine?.a && this.finishLine?.b && !this.finishLine.normal) {
+  const a = this.finishLine.a;
+  const b = this.finishLine.b;
+
+  // Punto medio de la meta
+  const mid = { x: (a.x + b.x) * 0.5, y: (a.y + b.y) * 0.5 };
+
+  // Fuente de centerline: preferimos la del TrackBuilder si existe
+  const src = (
+    this.track?.geom?.center ||
+    this.track?.geom?.centerline ||
+    this.track?.geom?.centerPts ||
+    t01.centerline ||
+    []
+  );
+
+  const pts = src.map((pt) => {
+    if (!pt) return null;
+    if (typeof pt.x === 'number' && typeof pt.y === 'number') return { x: pt.x, y: pt.y };
+    if (Array.isArray(pt) && pt.length >= 2) return { x: pt[0], y: pt[1] };
+    return null;
+  }).filter(Boolean);
+
+  const norm = (x, y) => {
+    const d = Math.hypot(x, y) || 1;
+    return { x: x / d, y: y / d };
+  };
+
+  if (pts.length >= 2) {
+    // Encuentra el punto de centerline más cercano al mid
+    let bestI = 0;
+    let bestD = Infinity;
+    for (let i = 0; i < pts.length; i++) {
+      const dx = pts[i].x - mid.x;
+      const dy = pts[i].y - mid.y;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < bestD) { bestD = d2; bestI = i; }
+    }
+
+    // Tangente local (suavizada)
+    const p0 = pts[(bestI - 1 + pts.length) % pts.length];
+    const p1 = pts[bestI];
+    const p2 = pts[(bestI + 1) % pts.length];
+
+    const tx = (p2.x - p0.x);
+    const ty = (p2.y - p0.y);
+    this.finishLine.normal = norm(tx, ty);
+  } else {
+    // Último fallback: normal perpendicular a la meta (no ideal, pero evita null)
+    const abx = b.x - a.x;
+    const aby = b.y - a.y;
+    this.finishLine.normal = norm(-aby, abx);
+  }
+}
+    this.lapCount = 0;
 this.prevCarX = this.car.x;
 this.prevCarY = this.car.y;
 
