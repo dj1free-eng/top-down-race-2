@@ -157,24 +157,54 @@ export function buildTrackRibbon({
     return { center: cl, left: [], right: [], cells: new Map(), cellSize };
   }
 
-  // 3) Bordes por normal
-  const half = trackWidth * 0.5;
-  const left = [];
-  const right = [];
+// 3) Bordes por normal (con miter-limit para curvas cerradas)
+const half = trackWidth * 0.5;
+const left = [];
+const right = [];
 
-  for (let i = 0; i < cl.length; i++) {
-    const pPrev = cl[(i - 1 + cl.length) % cl.length];
-    const p = cl[i];
-    const pNext = cl[(i + 1) % cl.length];
+const eps = 1e-6;
+const MITER_LIMIT = 2.0; // 2.0–2.5 típico. Más alto = más puntas, más bajo = más “bevel”.
 
-    const tx = pNext[0] - pPrev[0];
-    const ty = pNext[1] - pPrev[1];
-    const [nx, ny] = normalize(-ty, tx); // normal izquierda
+for (let i = 0; i < cl.length; i++) {
+  const pPrev = cl[(i - 1 + cl.length) % cl.length];
+  const p = cl[i];
+  const pNext = cl[(i + 1) % cl.length];
 
-    left.push([p[0] + nx * half, p[1] + ny * half]);
-    right.push([p[0] - nx * half, p[1] - ny * half]);
+  // Segmentos
+  const v0x = p[0] - pPrev[0];
+  const v0y = p[1] - pPrev[1];
+  const v1x = pNext[0] - p[0];
+  const v1y = pNext[1] - p[1];
+
+  // Normales de cada segmento (izquierda)
+  const [n0x, n0y] = normalize(-v0y, v0x);
+  const [n1x, n1y] = normalize(-v1y, v1x);
+
+  // Miter = normalizada (n0 + n1)
+  let mx = n0x + n1x;
+  let my = n0y + n1y;
+  const [miterX, miterY] = normalize(mx, my);
+
+  // Escala del miter: half / dot(miter, n0)
+  const denom = (miterX * n0x + miterY * n0y);
+  let miterLen = half / Math.max(Math.abs(denom), eps);
+
+  // Fallback bevel si el ángulo es muy agudo (miter muy largo o denom muy pequeño)
+  const tooSharp = (Math.abs(denom) < 0.25) || (miterLen > MITER_LIMIT * half);
+
+  let ox, oy; // offset izquierda final
+  if (tooSharp) {
+    // Bevel-ish: usa una normal “segura” (la del segmento siguiente) para evitar puntas
+    ox = n1x * half;
+    oy = n1y * half;
+  } else {
+    ox = miterX * miterLen;
+    oy = miterY * miterLen;
   }
 
+  left.push([p[0] + ox, p[1] + oy]);
+  right.push([p[0] - ox, p[1] - oy]);
+}
   // 4) Ribbon en segmentos (quad -> 2 tri) y asignación a celdas
   // Guardamos polys como arrays de {x,y}
   const cells = new Map();
