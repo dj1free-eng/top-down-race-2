@@ -347,6 +347,32 @@ this.track = {
   activeCells: new Set(),
   cullRadiusCells: 2
 };
+    // ================================
+// Bordes de pista (GLOBAL, sin culling)
+// ================================
+const drawPolylineClosed = (pts, lineW, color, alpha) => {
+  const g = this.add.graphics();
+  g.setDepth(12);          // encima del asfalto (10)
+  g.setScrollFactor(1);
+  g.lineStyle(lineW, color, alpha);
+
+  if (!pts || pts.length < 2) return g;
+
+  g.beginPath();
+  g.moveTo(pts[0][0], pts[0][1]);
+  for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
+  g.closePath();
+  g.strokePath();
+  return g;
+};
+
+// Borde exterior e interior del ribbon
+this._borderLeft = drawPolylineClosed(this.track.geom.left, 4, 0xf2f2f2, 0.8);
+this._borderRight = drawPolylineClosed(this.track.geom.right, 4, 0xf2f2f2, 0.8);
+
+// UI camera no debe renderizar bordes
+this.uiCam?.ignore?.(this._borderLeft);
+this.uiCam?.ignore?.(this._borderRight);
     this._isOnTrack = (x, y) => isPointOnTrackWorld(x, y, this.track?.geom);
     this._cullEnabled = true;
 this._hudLog(`[track geom] cells=${this.track.geom?.cells?.size ?? 'null'}`);
