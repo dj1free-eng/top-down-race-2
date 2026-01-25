@@ -60,10 +60,16 @@ export function makeTrack02Technical() {
     { x: 2050, y: 2900 },
     { x: 1700, y: 2800 },
 
-    // --- Subida hacia zona media (curva abierta que se cierra)
-    { x: 1350, y: 2700 },
-    { x: 1200, y: 2600 },
-    { x: 1120, y: 2520 },
+// --- Subida hacia zona media (curva abierta que se cierra)
+{ x: 1350, y: 2700 },
+{ x: 1200, y: 2600 },
+
+// Pre-cierre: alinear tangente hacia el inicio (suaviza la unión)
+{ x: 1120, y: 2520 },
+{ x: 1110, y: 2510 },
+
+// Cierre explícito del loop
+{ x: 1100, y: 2500 },
 
   ];
 
