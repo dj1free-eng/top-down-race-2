@@ -15,49 +15,57 @@ export function makeTrack02Technical() {
   // Track02 — centerline normalizada (0..1)
 // Técnico viable: enlazadas, chicane suave, horquilla amplia, sin cruces.
 const centerlineNorm = [
-  // Entrada (recta con ligera curva)
-  [0.50, 0.08],
-  [0.56, 0.10],
-  [0.62, 0.13],
-  [0.67, 0.18],
+// zona superior (recta + esquina suave)
+  [0.66, 0.10],
+  [0.72, 0.10],
+  [0.78, 0.12],
+  [0.82, 0.16],
+  [0.82, 0.22],
+  [0.80, 0.28],
+  [0.77, 0.33],
 
-  // Curva larga derecha (progresiva)
-  [0.70, 0.24],
-  [0.71, 0.30],
-  [0.70, 0.36],
-  [0.67, 0.41],
+  // bajada hacia el cuello derecho
+  [0.73, 0.37],
+  [0.68, 0.40],
+  [0.62, 0.41],
+  [0.57, 0.41],
 
-  // Chicane suave (S amplia, sin V)
-  [0.62, 0.45],
-  [0.56, 0.48],
-  [0.50, 0.51],
-  [0.44, 0.55],
-  [0.39, 0.60],
+  // S central (mantiene forma, sin quiebros)
+  [0.53, 0.44],
+  [0.52, 0.49],
+  [0.54, 0.55],
+  [0.58, 0.60],
+  [0.62, 0.64],
+  [0.65, 0.69],
 
-  // Horquilla amplia abajo-izquierda (sin cierre en punta)
-  [0.37, 0.67],
-  [0.39, 0.73],
-  [0.45, 0.77],
-  [0.52, 0.79],
-  [0.59, 0.78],
-  [0.65, 0.75],
+  // panza inferior derecha y giro a la izquierda
+  [0.65, 0.76],
+  [0.62, 0.82],
+  [0.56, 0.86],
+  [0.48, 0.88],
+  [0.40, 0.88],
 
-  // Enlazada de vuelta (izq → der suave)
-  [0.69, 0.70],
-  [0.70, 0.64],
-  [0.68, 0.58],
-  [0.63, 0.54],
+  // gran zona inferior izquierda (ancha, redondeada)
+  [0.33, 0.86],
+  [0.28, 0.83],
+  [0.25, 0.79],
+  [0.24, 0.74],
+  [0.25, 0.68],
+  [0.28, 0.62],
 
-  // Sección técnica final (curva cerrando sin cruzar)
-  [0.57, 0.50],
-  [0.52, 0.46],
-  [0.48, 0.41],
-  [0.46, 0.35],
-  [0.46, 0.28],
-  [0.47, 0.21],
-  [0.48, 0.14],
-  [0.49, 0.10]
+  // subida por el lateral izquierdo (con el “escalón” suavizado)
+  [0.30, 0.56],
+  [0.30, 0.50],
+  [0.32, 0.44],
+  [0.36, 0.38],
+  [0.42, 0.30],
+  [0.50, 0.20],
+
+  // cierre hacia arriba (vuelve al punto inicial)
+  [0.58, 0.14]
 ];
+
+
   const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
   const centerline = centerlineNorm.map(([nx, ny]) => ({
