@@ -624,6 +624,74 @@ this._fitHud = () => {
   const h = Math.max(68, (this.hud.height || 0) + 16);
   this.hudBox.setSize(w, h);
 };
+    // =================================================
+// DEV HUD (panel derecha) — solo para desarrollo
+// =================================================
+this._devVisible = true;
+this._devElems = [];
+
+this._setDevVisible = (v) => {
+  this._devVisible = !!v;
+  for (const o of (this._devElems || [])) o?.setVisible?.(this._devVisible);
+};
+
+if (DEV_TOOLS) {
+  const pad = 12;
+  const panelW = 320;
+  const panelX = this.scale.width - panelW - pad;
+  const panelY = 12;
+
+  // Fondo panel dev
+  this.devBox = this.add.rectangle(panelX, panelY, panelW, 280, 0x000000, 0.55)
+    .setOrigin(0, 0)
+    .setScrollFactor(0)
+    .setDepth(1099)
+    .setStrokeStyle(1, 0xffffff, 0.12);
+
+  this.devTitle = this.add.text(panelX + 10, panelY + 8, 'DEV', {
+    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: '14px',
+    color: '#ffffff',
+    fontStyle: '700'
+  }).setScrollFactor(0).setDepth(1100);
+
+  // Texto de estado dev (CP, surface, culling, etc.)
+  this.devInfo = this.add.text(panelX + 10, panelY + 30, '', {
+    fontFamily: 'monospace',
+    fontSize: '12px',
+    color: '#ffffff',
+    lineSpacing: 3
+  }).setScrollFactor(0).setDepth(1100);
+
+  // Botón toggle DEV (tap)
+  this.devToggleBtn = this.add.rectangle(panelX + panelW - 56, panelY + 6, 46, 22, 0x000000, 0.65)
+    .setOrigin(0, 0)
+    .setScrollFactor(0)
+    .setDepth(1101)
+    .setStrokeStyle(1, 0xffffff, 0.18)
+    .setInteractive({ useHandCursor: true });
+
+  this.devToggleTxt = this.add.text(panelX + panelW - 33, panelY + 17, 'ON', {
+    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: '12px',
+    color: '#ffffff',
+    fontStyle: '700'
+  }).setOrigin(0.5).setScrollFactor(0).setDepth(1102);
+
+  this.devToggleBtn.on('pointerdown', () => {
+    this._setDevVisible(!this._devVisible);
+    if (this.devToggleTxt) this.devToggleTxt.setText(this._devVisible ? 'ON' : 'OFF');
+  });
+
+  this._devElems.push(this.devBox, this.devTitle, this.devInfo, this.devToggleBtn, this.devToggleTxt);
+
+  // Recolocar logs (_dbgText) dentro del panel (si existe ya)
+  if (this._dbgText) {
+    this._dbgText.setPosition(panelX + 10, panelY + 150);
+    this._dbgText.setDepth(1100);
+    this._devElems.push(this._dbgText);
+  }
+}
 if (DEV_TOOLS) {
 // =================================================
 // DEBUG_ZOOM_UI (táctil) — borrar cuando no haga falta
@@ -650,9 +718,9 @@ const makeZoomBtn = (x, y, label, onClick) => {
   return { r, t };
 };
 
-// Colócalos a la derecha del HUD
-const zoomBtnX = hudX + 340 + 10;
-const zoomBtnY = hudY;
+// Colócalos dentro del panel DEV (derecha)
+const zoomBtnX = (this.devBox ? this.devBox.x + 10 : (hudX + 340 + 10));
+const zoomBtnY = (this.devBox ? this.devBox.y + 40 : hudY);
 
 // + (zoom in)
 this._zoomBtnPlus = makeZoomBtn(zoomBtnX, zoomBtnY, '+', () => {
@@ -687,6 +755,14 @@ this._zoomBtnCull = makeZoomBtn(zoomBtnX, zoomBtnY + 76, 'CULL', () => {
   }
 
   this._hudLog(`[culling] ${this._cullEnabled ? 'ON' : 'OFF'}`);
+// Registrar botones en el panel dev para toggle ON/OFF
+if (this._devElems) {
+  this._devElems.push(
+    this._zoomBtnPlus?.r, this._zoomBtnPlus?.t,
+    this._zoomBtnMinus?.r, this._zoomBtnMinus?.t,
+    this._zoomBtnCull?.r, this._zoomBtnCull?.t
+  );
+}
 });
 }
 
@@ -709,14 +785,18 @@ this.cameras.main.ignore([
   this.hud,
   this.upUI,
   this._dbgText,
-
+  this.devBox,
+  this.devTitle,
+  this.devInfo,
+  this.devToggleBtn,
+  this.devToggleTxt,
   // Botones de zoom
   this._zoomBtnPlus?.r,
   this._zoomBtnPlus?.t,
   this._zoomBtnMinus?.r,
   this._zoomBtnMinus?.t,
-this._zoomBtnCull?.r,
-this._zoomBtnCull?.t,
+  this._zoomBtnCull?.r,
+  this._zoomBtnCull?.t,
   // Controles táctiles
   this.touchUI
 ].filter(Boolean));
@@ -1266,7 +1346,27 @@ this.hud.setText(
   `Velocidad: ${kmh.toFixed(0)} km/h`
 );
     }
+// DEV HUD info (derecha)
+if (DEV_TOOLS && this.devInfo && this._devVisible) {
+  const cp = (this._cpState || 0);
+  const surf = (this._onTrack ? 'TRACK' : 'OFF');
+  const zoom = (this.zoom ?? 1).toFixed(2);
+  const cull = (this._cullEnabled !== false) ? 'ON' : 'OFF';
+  const carCell = this._carCellKey || ''; // si no existe, queda vacío
+  const diag = this._trackDiag || '';
+  const diag2 = this._trackDiag2 || '';
 
+  this.devInfo.setText(
+    `Track: ${this.track?.meta?.id || this.track?.meta?.name || ''}\n` +
+    `CP: ${cp} | Lap: ${this.lapCount || 0}\n` +
+    `Surface: ${surf}\n` +
+    `Cull: ${cull}\n` +
+    `Zoom: ${zoom}\n` +
+    (carCell ? `Cell: ${carCell}\n` : '') +
+    (diag ? `Diag: ${diag}\n` : '') +
+    (diag2 ? `Diag2: ${diag2}\n` : '')
+  );
+}
     // Sincronizar rig visual con body físico
     if (this.carRig && this.carBody) {
       this.carRig.x = this.carBody.x;
