@@ -381,25 +381,140 @@ this._trackDiag = `cells=${this._trackCells}`;
 this._trackDiag2 = '';
     this.trackAsphaltColor = 0x2a2f3a;
 
-    // 6) Meta y vueltas (datos)
-    this.finishLine = t01.finishLine || t01.finish;
-    this.lapCount = 0;
-    this.lastFinishSide = null;
-    this.prevCarX = this.car.x;
-    this.prevCarY = this.car.y;
-    this._lapCooldownMs = 0;
+// 6) Meta, checkpoints y vueltas (datos)
+this.finishLine = t01.finishLine || t01.finish;
+this.lapCount = 0;
+this.prevCarX = this.car.x;
+this.prevCarY = this.car.y;
 
-    // Debug: línea de meta (si existe)
-    const finish = t01.finish || t01.finishLine;
-    if (finish?.a && finish?.b) {
-      this.finishGfx = this.add.graphics();
-      this.finishGfx.lineStyle(6, 0xff2d2d, 1);
-      this.finishGfx.beginPath();
-      this.finishGfx.moveTo(finish.a.x, finish.a.y);
-      this.finishGfx.lineTo(finish.b.x, finish.b.y);
-      this.finishGfx.strokePath();
-      this.finishGfx.setDepth(50);
-    }
+// Cooldowns (evita dobles triggers por frame)
+this._lapCooldownMs = 0;
+this._cpCooldown1Ms = 0;
+this._cpCooldown2Ms = 0;
+
+// Estado de checkpoints por vuelta:
+// 0 = nada, 1 = CP1 ok, 2 = CP1+CP2 ok (ya puede contar meta)
+this._cpState = 0;
+
+// ---------- helpers ----------
+const _ptToXY = (pt) => {
+  if (!pt) return { x: NaN, y: NaN };
+  if (typeof pt.x === 'number' && typeof pt.y === 'number') return { x: pt.x, y: pt.y };
+  if (Array.isArray(pt) && pt.length >= 2) return { x: pt[0], y: pt[1] };
+  return { x: NaN, y: NaN };
+};
+
+const _getCenterPtsXY = () => {
+  // Preferimos un centerline “rico” si TrackBuilder lo expone; si no, usamos el meta.centerline del track.
+  const c =
+    this.track?.geom?.center ||
+    this.track?.geom?.centerline ||
+    this.track?.geom?.centerPts ||
+    this.track?.meta?.centerline ||
+    [];
+
+  return c.map(_ptToXY).filter(p => Number.isFinite(p.x) && Number.isFinite(p.y));
+};
+
+const _makeGateAtFraction = (frac01) => {
+  const pts = _getCenterPtsXY();
+  if (pts.length < 3) return null;
+
+  // Longitud total
+  let total = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const dx = pts[i].x - pts[i - 1].x;
+    const dy = pts[i].y - pts[i - 1].y;
+    total += Math.hypot(dx, dy);
+  }
+  if (total <= 0) return null;
+
+  const target = total * frac01;
+
+  // Encuentra el segmento donde cae target
+  let acc = 0;
+  let idx = 1;
+  for (; idx < pts.length; idx++) {
+    const dx = pts[idx].x - pts[idx - 1].x;
+    const dy = pts[idx].y - pts[idx - 1].y;
+    const d = Math.hypot(dx, dy);
+    if (acc + d >= target) break;
+    acc += d;
+  }
+  if (idx >= pts.length) idx = pts.length - 1;
+
+  // Tangente local (preferimos mirar “hacia delante”)
+  const p0 = pts[Math.max(0, idx - 1)];
+  const p1 = pts[idx];
+  const p2 = pts[Math.min(pts.length - 1, idx + 1)];
+
+  // Tangente suavizada usando p0->p2 (reduce gates raros en curvas)
+  let tx = p2.x - p0.x;
+  let ty = p2.y - p0.y;
+  const tLen = Math.hypot(tx, ty) || 1;
+  tx /= tLen; ty /= tLen;
+
+  // Perpendicular
+  let px = -ty;
+  let py = tx;
+
+  // Punto medio interpolado dentro del segmento (p0->p1)
+  const segDx = p1.x - p0.x;
+  const segDy = p1.y - p0.y;
+  const segLen = Math.hypot(segDx, segDy) || 1;
+  const remain = Math.max(0, target - acc);
+  const u = Math.min(1, remain / segLen);
+
+  const mid = { x: p0.x + segDx * u, y: p0.y + segDy * u };
+
+  // Largo del gate (un pelín más que el ancho para asegurar cruce)
+  const half = (t01.trackWidth || 300) * 0.75;
+  const a = { x: mid.x - px * half, y: mid.y - py * half };
+  const b = { x: mid.x + px * half, y: mid.y + py * half };
+
+  // normal = “hacia delante” (tangente)
+  const normal = { x: tx, y: ty };
+
+  return { a, b, normal };
+};
+
+// ---------- construir checkpoints 33% / 66% ----------
+this.checkpoints = {
+  cp1: _makeGateAtFraction(0.33),
+  cp2: _makeGateAtFraction(0.66)
+};
+
+// Debug visual: meta + checkpoints
+const finish = t01.finish || t01.finishLine;
+if (finish?.a && finish?.b) {
+  this.finishGfx?.destroy?.();
+  this.finishGfx = this.add.graphics();
+  this.finishGfx.lineStyle(6, 0xff2d2d, 1);
+  this.finishGfx.beginPath();
+  this.finishGfx.moveTo(finish.a.x, finish.a.y);
+  this.finishGfx.lineTo(finish.b.x, finish.b.y);
+  this.finishGfx.strokePath();
+  this.finishGfx.setDepth(50);
+  this.uiCam?.ignore?.(this.finishGfx);
+}
+
+this.cpGfx?.destroy?.();
+this.cpGfx = this.add.graphics();
+this.cpGfx.setDepth(49);
+this.uiCam?.ignore?.(this.cpGfx);
+
+const _drawGate = (gate, color) => {
+  if (!gate?.a || !gate?.b) return;
+  this.cpGfx.lineStyle(5, color, 0.9);
+  this.cpGfx.beginPath();
+  this.cpGfx.moveTo(gate.a.x, gate.a.y);
+  this.cpGfx.lineTo(gate.b.x, gate.b.y);
+  this.cpGfx.strokePath();
+};
+
+// CP1 (amarillo) y CP2 (verde)
+_drawGate(this.checkpoints.cp1, 0xffd400);
+_drawGate(this.checkpoints.cp2, 0x2dff6a);
 
     // 7) Cámara
     this.cameras.main.startFollow(this.carRig, true, 0.12, 0.12);
