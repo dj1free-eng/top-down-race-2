@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Track Tool — Centerline ↔ Coordinates</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="title">
+      <h1>Track Tool</h1>
+      <p>Centerline ↔ Coordinates (compatible con TrackBuilder)</p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="panel">
+      <div class="row">
+        <label class="btn">
+          Cargar imagen
+          <input id="imgInput" type="file" accept="image/*" />
+        </label>
+
+        <button id="btnClear" class="btn secondary" type="button">Borrar puntos</button>
+        <button id="btnUndo" class="btn secondary" type="button">Deshacer</button>
+      </div>
+
+      <div class="row">
+        <button id="btnExport" class="btn" type="button">Exportar JSON</button>
+        <button id="btnImport" class="btn secondary" type="button">Importar JSON</button>
+        <button id="btnCopy" class="btn secondary" type="button">Copiar</button>
+      </div>
+
+      <div class="row small">
+        <div class="kv">
+          <span class="k">Puntos</span>
+          <span id="lblCount" class="v">0</span>
+        </div>
+        <div class="kv">
+          <span class="k">Modo</span>
+          <span class="v">Click = añadir punto</span>
+        </div>
+      </div>
+
+      <textarea id="txtJson" spellcheck="false" placeholder='Aquí saldrá el JSON, por ejemplo: [[100,200],[120,260],...]'></textarea>
+      <p class="hint">
+        Consejo: intenta marcar el centerline en sentido horario o antihorario, pero consistente.
+        Esto no es arte moderno: cuantos menos “picos”, mejor.
+      </p>
+    </section>
+
+    <section class="stage">
+      <div class="canvasWrap">
+        <canvas id="c"></canvas>
+      </div>
+      <div class="help">
+        <p><strong>Cómo se usa:</strong> Carga una imagen, haz clicks para marcar el centerline. Exporta JSON.</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="./tool.js"></script>
+</body>
+</html>
