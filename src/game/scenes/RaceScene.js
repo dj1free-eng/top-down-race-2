@@ -338,11 +338,11 @@ body.rotation = t01.start.r;
 this.track = {
   meta: t01,
   geom: buildTrackRibbon({
-    centerline: t01.centerline,
-    trackWidth: t01.trackWidth,
-    sampleStepPx: 22,
-    cellSize: 400
-  }),
+  centerline: t01.centerline,
+  trackWidth: t01.trackWidth,
+  sampleStepPx: t01.sampleStepPx ?? 22,
+  cellSize: t01.cellSize ?? 400
+}),
   gfxByCell: new Map(),
   activeCells: new Set(),
   cullRadiusCells: 2
