@@ -417,17 +417,21 @@ const _getCenterPtsXY = () => {
 };
 
 const _makeGateAtFraction = (frac01) => {
-  const pts = _getCenterPtsXY();
-  if (pts.length < 3) return null;
+  const pts0 = _getCenterPtsXY();
+if (pts0.length < 3) return null;
 
-  // Longitud total
-  let total = 0;
-  for (let i = 1; i < pts.length; i++) {
-    const dx = pts[i].x - pts[i - 1].x;
-    const dy = pts[i].y - pts[i - 1].y;
-    total += Math.hypot(dx, dy);
-  }
-  if (total <= 0) return null;
+// Para circuitos cerrados: incluir el segmento de cierre (last -> first)
+const pts = pts0.slice();
+pts.push({ x: pts0[0].x, y: pts0[0].y });
+
+// Longitud total (incluye cierre)
+let total = 0;
+for (let i = 1; i < pts.length; i++) {
+  const dx = pts[i].x - pts[i - 1].x;
+  const dy = pts[i].y - pts[i - 1].y;
+  total += Math.hypot(dx, dy);
+}
+if (total <= 0) return null;
 
   const target = total * frac01;
 
@@ -1122,24 +1126,37 @@ const _crossGate = (gate) => {
   const x1 = this.car.x;
   const y1 = this.car.y;
 
-  const side0 = (x0 - a.x) * n.x + (y0 - a.y) * n.y;
-  const side1 = (x1 - a.x) * n.x + (y1 - a.y) * n.y;
+  // --- Segment intersection: (x0,y0)->(x1,y1) con gate a->b ---
+  const ax = a.x, ay = a.y, bx = b.x, by = b.y;
 
-  const abx = b.x - a.x;
-  const aby = b.y - a.y;
-  const len2 = abx * abx + aby * aby;
-  const proj1 = len2 > 0 ? ((x1 - a.x) * abx + (y1 - a.y) * aby) / len2 : -1;
-  const withinGate = proj1 >= 0 && proj1 <= 1;
+  const rpx = x1 - x0;
+  const rpy = y1 - y0;
+  const spx = bx - ax;
+  const spy = by - ay;
 
-  const crossedGate = (side0 === 0) ? (side1 !== 0) : ((side0 > 0) !== (side1 > 0));
+  const rxs = rpx * spy - rpy * spx;
+  const qpx = ax - x0;
+  const qpy = ay - y0;
+  const qpxr = qpx * rpy - qpy * rpx;
 
-  const vvx = body.velocity?.x || 0;
-  const vvy = body.velocity?.y || 0;
+  // Paralelos o sin movimiento
+  if (Math.abs(rxs) < 1e-6) return false;
+
+  const t = (qpx * spy - qpy * spx) / rxs;
+  const u = qpxr / rxs;
+
+  // t in [0,1] -> interseca dentro del movimiento del coche
+  // u in [0,1] -> interseca dentro del segmento del checkpoint
+  const hit = (t >= 0 && t <= 1 && u >= 0 && u <= 1);
+  if (!hit) return false;
+
+  // Dirección: exigir que el coche vaya "hacia delante" del gate (anti ida/vuelta)
+  const vvx = body.velocity?.x || (x1 - x0);
+  const vvy = body.velocity?.y || (y1 - y0);
   const forwardGate = (vvx * n.x + vvy * n.y) > 0;
 
-  return withinGate && crossedGate && forwardGate;
+  return forwardGate;
 };
-
 // --- 1) checkpoints (en orden) ---
 const cp1 = this.checkpoints?.cp1;
 const cp2 = this.checkpoints?.cp2;
