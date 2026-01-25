@@ -604,7 +604,7 @@ _drawGate(this.checkpoints.cp2, 0x2dff6a);
 const hudX = 12;
 const hudY = 12;
 
-this.hudBox = this.add.rectangle(hudX, hudY, 340, 98, 0x000000, 0.55)
+this.hudBox = this.add.rectangle(hudX, hudY, 200, 64, 0x000000, 0.45)
   .setOrigin(0, 0)
   .setScrollFactor(0)
   .setDepth(1099)
