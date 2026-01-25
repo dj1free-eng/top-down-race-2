@@ -11,26 +11,53 @@ export function makeTrack02Technical() {
   const worldW = 8000;
   const worldH = 5000;
 
-  // Centerline ancho y estable (0..1). Sin cruces, sin horquillas cerradas.
-  const centerlineNorm = [
-    [0.50, 0.10],
-    [0.60, 0.12],
-    [0.70, 0.18],
-    [0.78, 0.28],
-    [0.82, 0.40],
-    [0.80, 0.52],
-    [0.74, 0.62],
-    [0.64, 0.70],
-    [0.52, 0.74],
-    [0.40, 0.72],
-    [0.30, 0.66],
-    [0.22, 0.56],
-    [0.18, 0.44],
-    [0.20, 0.32],
-    [0.26, 0.22],
-    [0.36, 0.14],
-    [0.45, 0.11]
-  ];
+
+  // Track02 — centerline normalizada (0..1)
+// Técnico viable: enlazadas, chicane suave, horquilla amplia, sin cruces.
+const centerlineNorm = [
+  // Entrada (recta con ligera curva)
+  [0.50, 0.08],
+  [0.56, 0.10],
+  [0.62, 0.13],
+  [0.67, 0.18],
+
+  // Curva larga derecha (progresiva)
+  [0.70, 0.24],
+  [0.71, 0.30],
+  [0.70, 0.36],
+  [0.67, 0.41],
+
+  // Chicane suave (S amplia, sin V)
+  [0.62, 0.45],
+  [0.56, 0.48],
+  [0.50, 0.51],
+  [0.44, 0.55],
+  [0.39, 0.60],
+
+  // Horquilla amplia abajo-izquierda (sin cierre en punta)
+  [0.37, 0.67],
+  [0.39, 0.73],
+  [0.45, 0.77],
+  [0.52, 0.79],
+  [0.59, 0.78],
+  [0.65, 0.75],
+
+  // Enlazada de vuelta (izq → der suave)
+  [0.69, 0.70],
+  [0.70, 0.64],
+  [0.68, 0.58],
+  [0.63, 0.54],
+
+  // Sección técnica final (curva cerrando sin cruzar)
+  [0.57, 0.50],
+  [0.52, 0.46],
+  [0.48, 0.41],
+  [0.46, 0.35],
+  [0.46, 0.28],
+  [0.47, 0.21],
+  [0.48, 0.14],
+  [0.49, 0.10]
+];
   const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
   const centerline = centerlineNorm.map(([nx, ny]) => ({
