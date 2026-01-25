@@ -11,72 +11,51 @@ export function makeTrack02Technical() {
   const worldW = 8000;
   const worldH = 5000;
 
-  // Centro de pista (loop cerrado, sentido horario).
-  // Diseñado para estresar máscara/celdas: chicane arriba derecha, horquilla abajo derecha,
-  // sección de "S" y cambios de radio.
-  const centerline = [
-    // --- Recta principal (zona media-izquierda -> media-derecha)
-    { x: 1100, y: 2500 },
-    { x: 1700, y: 2450 },
-    { x: 2400, y: 2400 },
-    { x: 3200, y: 2380 },
-    { x: 4000, y: 2400 },
-
-    // --- Entrada a zona técnica (sube y se estrecha el radio)
-    { x: 4700, y: 2320 },
-    { x: 5200, y: 2120 },
-    { x: 5550, y: 1850 },
-
-    // --- CHICANE (zig-zag arriba derecha)
-    { x: 5800, y: 1600 },
-    { x: 6100, y: 1820 },
-    { x: 6400, y: 1550 },
-    { x: 6750, y: 1750 },
-
-    // --- Curva hacia derecha y bajada (pre-horquilla)
-    { x: 7050, y: 2100 },
-    { x: 7250, y: 2550 },
-    { x: 7200, y: 3050 },
-
-    // --- HORQUILLA (abajo derecha, muy cerrada)
-    { x: 6850, y: 3550 },
-    { x: 6300, y: 3920 },
-    { x: 5650, y: 4000 },
-    { x: 5200, y: 3880 },
-
-    // --- Salida horquilla: recta de vuelta por abajo (derecha -> izquierda)
-    { x: 4600, y: 3820 },
-    { x: 3900, y: 3850 },
-    { x: 3200, y: 3980 },
-    { x: 2500, y: 4150 },
-    { x: 1900, y: 4200 },
-
-    // --- Sección de S (abajo izquierda, para probar máscara en curvas encadenadas)
-    { x: 1500, y: 4050 },
-    { x: 1400, y: 3700 },
-    { x: 1650, y: 3450 },
-    { x: 2000, y: 3300 },
-    { x: 2300, y: 3100 },
-    { x: 2050, y: 2900 },
-    { x: 1700, y: 2800 },
-
-// --- Subida hacia zona media (curva abierta que se cierra)
-{ x: 1350, y: 2700 },
-{ x: 1200, y: 2600 },
-
-// Pre-cierre: alinear tangente hacia el inicio (suaviza la unión)
-{ x: 1120, y: 2520 },
-{ x: 1110, y: 2510 },
-
-// Cierre explícito del loop
-{ x: 1100, y: 2500 },
-
+  // Centro de pista desde centerline normalizada (0..1) -> mundo (8000x5000)
+  // IMPORTANTE: lo cerramos explícitamente añadiendo el primer punto al final.
+  const centerlineNorm = [
+    [0.52, 0.02],
+    [0.55, 0.06],
+    [0.57, 0.11],
+    [0.58, 0.16],
+    [0.58, 0.22],
+    [0.57, 0.28],
+    [0.56, 0.34],
+    [0.55, 0.40],
+    [0.54, 0.46],
+    [0.53, 0.52],
+    [0.52, 0.58],
+    [0.51, 0.63],
+    [0.50, 0.68],
+    [0.49, 0.73],
+    [0.48, 0.78],
+    [0.48, 0.83],
+    [0.49, 0.88],
+    [0.51, 0.92],
+    [0.54, 0.95],
+    [0.57, 0.97],
+    [0.55, 0.99],
+    [0.52, 1.00]
   ];
+
+  const clamp01 = (v) => Math.max(0, Math.min(1, v));
+
+  const centerline = centerlineNorm.map(([nx, ny]) => ({
+    x: Math.round(clamp01(nx) * worldW),
+    y: Math.round(clamp01(ny) * worldH),
+  }));
+
+  // Cierre explícito del loop (si el último no coincide con el primero)
+  if (centerline.length >= 2) {
+    const a = centerline[0];
+    const b = centerline[centerline.length - 1];
+    if (a.x !== b.x || a.y !== b.y) centerline.push({ x: a.x, y: a.y });
+  }
 
   // Ancho fijo (tu TrackBuilder actual recibe un número en tu RaceScene)
   // Si luego quieres ancho variable por sectores, lo hacemos, pero primero estabilidad.
-const trackWidth = 300;
-const sampleStepPx = 12;
+  const trackWidth = 120;
+  const sampleStepPx = 10;
 
   // Start: en la recta principal (orientación hacia el siguiente punto)
   const start = { x: centerline[0].x, y: centerline[0].y, r: 0 };
