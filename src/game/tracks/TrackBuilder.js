@@ -190,7 +190,10 @@ for (let i = 0; i < cl.length; i++) {
   let miterLen = half / Math.max(Math.abs(denom), eps);
 
   // Fallback bevel si el ángulo es muy agudo (miter muy largo o denom muy pequeño)
-  const tooSharp = (Math.abs(denom) < 0.25) || (miterLen > MITER_LIMIT * half);
+const tooSharp =
+  (Math.abs(denom) < 0.35) ||        // ángulo muy cerrado
+  (miterLen > MITER_LIMIT * half) || // miter excesivo
+  (denom < 0);                       // giro brusco (normales opuestas)
 
   let ox, oy; // offset izquierda final
   if (tooSharp) {
