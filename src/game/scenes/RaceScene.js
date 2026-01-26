@@ -755,6 +755,7 @@ this.scale.on('resize', (gameSize) => {
 });
 // =================================================
 // START LIGHTS (F1) — modal + bloqueo de coche hasta salida
+// (PNG pro + luces transparentes)
 // =================================================
 this._raceStarted = false;
 this._startState = 'WAIT_GAS'; // WAIT_GAS -> COUNTDOWN -> GO -> RACING
@@ -767,82 +768,114 @@ const w = this.scale.width;
 const h = this.scale.height;
 
 // Fondo modal (oscurece)
-const modalBg = this.add.rectangle(0, 0, w, h, 0x000000, 0.45)
-  .setOrigin(0, 0);
+const modalBg = this.add.rectangle(0, 0, w, h, 0x000000, 0.45).setOrigin(0, 0);
 
-// Panel
-const panelW = Math.min(360, Math.floor(w * 0.86));
-const panelH = 190;
+// “Panel” invisible: solo para layout (no hace falta caja grande)
+const panelW = Math.min(760, Math.floor(w * 0.94));
+const panelH = 320;
 const panelX = Math.floor((w - panelW) / 2);
-const panelY = Math.floor(h * 0.18);
-
-const panel = this.add.rectangle(panelX, panelY, panelW, panelH, 0x000000, 0.65)
-  .setOrigin(0, 0)
-  .setStrokeStyle(2, 0xffffff, 0.14);
+const panelY = Math.floor(h * 0.14);
 
 // Texto
-this._startTitle = this.add.text(panelX + 18, panelY + 16, 'START', {
+this._startTitle = this.add.text(panelX + 18, panelY + 6, 'START', {
   fontFamily: 'Orbitron, monospace',
   fontSize: '18px',
   color: '#ffffff',
   fontStyle: '600'
 });
 
-this._startHint = this.add.text(panelX + 18, panelY + 44, 'Pulsa GAS para iniciar el semáforo', {
+this._startHint = this.add.text(panelX + 18, panelY + 34, 'Pulsa GAS para iniciar el semáforo', {
   fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
   fontSize: '13px',
   color: '#b7c0ff'
 });
 
-this._startStatus = this.add.text(panelX + 18, panelY + 150, 'WAITING', {
+this._startStatus = this.add.text(panelX + 18, panelY + panelH - 30, 'WAITING', {
   fontFamily: 'Orbitron, monospace',
   fontSize: '16px',
   color: '#ffffff'
 });
 
-// Luces (5)
-this._startLights = [];
-const lightsY = panelY + 105;
-const spacing = 44;
-const r = 15;
-const totalW = spacing * 4;
-const startX = Math.floor(panelX + panelW / 2 - totalW / 2);
+// PNG del semáforo (lo más grande posible)
+this._startAsset = this.add.image(panelX + panelW / 2, panelY + 160, 'startlights_f1')
+  .setOrigin(0.5, 0.5);
 
+// Escala: casi ancho completo del “panel”
+{
+  const targetW = Math.min(panelW * 0.92, 720);
+  const s = targetW / this._startAsset.width;
+  this._startAsset.setScale(s);
+}
+
+// Luces (5) — OVERLAY con transparencia para ver el cristal del PNG
+this._startLights = [];
 for (let i = 0; i < 5; i++) {
-  const cx = startX + i * spacing;
-  const circle = this.add.circle(cx, lightsY, r, 0x1a1a1a, 0.15)
-  .setStrokeStyle(2, 0xffffff, 0.10);
+  const circle = this.add.circle(0, 0, 16, 0x1a1a1a, 0.15);
+  // Un toque “LED” sin tapar textura
+  circle.setBlendMode(Phaser.BlendModes.ADD);
   this._startLights.push(circle);
 }
 
-// Monta modal
-this._startModal.add([modalBg, panel, this._startTitle, this._startHint, ...this._startLights, this._startStatus]);
+// Posicionar luces encima del PNG (coordenadas relativas al PNG)
+const positionLights = () => {
+  const img = this._startAsset;
+  const s = img.scaleX;
 
-// Importante: la cámara principal NO debe dibujar la modal (solo UI cam)
+  // Centro del PNG
+  const baseX = img.x;
+  const baseY = img.y;
+
+  // Ajuste fino: las lentes están alineadas en una fila.
+  // Estos offsets están pensados para el PNG que generamos (semáforo centrado).
+  const spacing = 44 * s;
+  const y = baseY - 12 * s;   // altura de lentes respecto al centro
+  const x0 = baseX - 2 * spacing;
+
+  for (let i = 0; i < 5; i++) {
+    this._startLights[i].setPosition(x0 + i * spacing, y);
+    this._startLights[i].setRadius(15 * s);
+  }
+};
+positionLights();
+
+// Monta modal
+this._startModal.add([
+  modalBg,
+  this._startTitle,
+  this._startHint,
+  this._startAsset,
+  ...this._startLights,
+  this._startStatus
+]);
+
+// Importante: la cámara principal NO debe dibujar la modal (solo UI)
 this.cameras.main.ignore(this._startModal);
 
-// Si rota/cambia viewport, reajusta modal
+// Si rota/cambia viewport, reajusta modal y reubica luces
 this._reflowStartModal = () => {
   const w2 = this.scale.width;
   const h2 = this.scale.height;
 
   modalBg.setSize(w2, h2);
 
-  const pw = Math.min(360, Math.floor(w2 * 0.86));
+  const pw = Math.min(760, Math.floor(w2 * 0.94));
   const px = Math.floor((w2 - pw) / 2);
-  const py = Math.floor(h2 * 0.18);
+  const py = Math.floor(h2 * 0.14);
 
-  panel.setPosition(px, py);
-  panel.setSize(pw, panelH);
+  // Repos texto
+  this._startTitle.setPosition(px + 18, py + 6);
+  this._startHint.setPosition(px + 18, py + 34);
+  this._startStatus.setPosition(px + 18, py + panelH - 30);
 
-  this._startTitle.setPosition(px + 18, py + 16);
-  this._startHint.setPosition(px + 18, py + 44);
-  this._startStatus.setPosition(px + 18, py + 150);
+  // Repos asset + escala
+  this._startAsset.setPosition(px + pw / 2, py + 160);
 
-  const startX2 = Math.floor(px + pw / 2 - (spacing * 4) / 2);
-  for (let i = 0; i < 5; i++) {
-    this._startLights[i].setPosition(startX2 + i * spacing, py + 105);
-  }
+  const targetW = Math.min(pw * 0.92, 720);
+  const s = targetW / this._startAsset.width;
+  this._startAsset.setScale(s);
+
+  // Repos luces encima del asset
+  positionLights();
 };
 
 this.scale.on('resize', this._reflowStartModal);
