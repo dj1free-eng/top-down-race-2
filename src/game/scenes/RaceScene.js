@@ -1366,8 +1366,7 @@ if (within && crossed && forward && this._lapCooldownMs === 0) {
     if (this.hud?.setText) {
       const u = this.upgrades || { engine: 0, brakes: 0, tires: 0 };
 const bgKey = this.bgKey || '(no bg ref)';
-
-this.hud.setText(
+const lapNow = performance.now() - (this.timing?.lapStart ?? performance.now());this.hud.setText(
   `LAP ${this.lapCount || 0}\n` +
   `NOW  ${fmtTime(lapNow)}\n` +
   `S1   ${fmtTime(this.timing?.s1)}\n` +
