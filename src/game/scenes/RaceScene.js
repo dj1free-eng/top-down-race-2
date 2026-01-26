@@ -818,9 +818,6 @@ this.scale.on('resize', (gameSize) => {
   // Flag para update()
   this._trackReady = true;
 
-
-}
-
 // ================================================
 // DEV HUD trigger oculto — pulsación larga con 2 dedos (robusto)
 // + indicador en pantalla de dedos detectados (DEV)
@@ -893,6 +890,8 @@ if (DEV_TOOLS) {
     }
   });
 }
+}
+
   buildUpgradesUI() {
     // Si ya existía (por reinicio de escena) la destruimos
     if (this.upUI) {
