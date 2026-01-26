@@ -6,9 +6,9 @@ export class BootScene extends Phaser.Scene {
   }
 
   preload() {
-    // Precarga mínima (logo/splash y UI esenciales)
+    // Precarga mínima (logo/splash y UI esenciales) y semaforo. 
     this.load.svg('logo', 'assets/logo.svg', { width: 256, height: 256 });
-
+this.load.image('startlights_f1', 'assets/startlights_f1.png');
     // Barra de carga simple
     const { width, height } = this.scale;
     const barW = Math.min(520, Math.floor(width * 0.7));
