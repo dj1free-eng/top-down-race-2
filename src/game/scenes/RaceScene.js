@@ -636,13 +636,13 @@ this._setDevVisible = (v) => {
 };
 
 if (DEV_TOOLS) {
-  const pad = 12;
-  const panelW = 320;
-  const panelX = this.scale.width - panelW - pad;
-  const panelY = 12;
+  const pad = 8;
+const panelW = 220;
+const panelX = this.scale.width - panelW - pad;
+const panelY = 10;
 
   // Fondo panel dev
-  this.devBox = this.add.rectangle(panelX, panelY, panelW, 280, 0x000000, 0.55)
+this.devBox = this.add.rectangle(panelX, panelY, panelW, 200, 0x000000, 0.50)
     .setOrigin(0, 0)
     .setScrollFactor(0)
     .setDepth(1099)
