@@ -630,6 +630,15 @@ this._fitHud = () => {
 this._devVisible = false;
 this._devElems = [];
 
+// Helper: registrar objetos para que ON/OFF los controle
+this._devRegister = (...objs) => {
+  if (!this._devElems) this._devElems = [];
+  for (const o of objs) {
+    if (!o) continue;
+    this._devElems.push(o);
+  }
+};
+
 this._setDevVisible = (v) => {
   this._devVisible = !!v;
   for (const o of (this._devElems || [])) o?.setVisible?.(this._devVisible);
@@ -640,6 +649,10 @@ if (DEV_TOOLS) {
   const panelW = 220;
   const panelX = this.scale.width - panelW - pad;
   const panelY = 10;
+
+  // Guardar coords para otros dev widgets (zoom/cull)
+  this._devPanelX = panelX;
+  this._devPanelY = panelY;
 
   // Fondo panel dev
   this.devBox = this.add.rectangle(panelX, panelY, panelW, 200, 0x000000, 0.50)
@@ -663,94 +676,94 @@ if (DEV_TOOLS) {
     lineSpacing: 3
   }).setScrollFactor(0).setDepth(1100);
 
+  // Registrar panel DEV (para toggle)
+  this._devRegister(this.devBox, this.devTitle, this.devInfo);
+
   // Recolocar logs (_dbgText) dentro del panel (si existe ya)
   if (this._dbgText) {
     this._dbgText.setPosition(panelX + 10, panelY + 150);
     this._dbgText.setDepth(1100);
-    this._devElems.push(this._dbgText);
+    this._devRegister(this._dbgText);
   }
 
-  // Estado inicial real: oculto (pero con el botón accesible no, porque estaría oculto también)
-  // Por eso dejamos el botón visible aunque el panel esté oculto.
-  // Ocultamos todo menos el toggle.
-  this._devVisible = false;
-  for (const o of this._devElems) {
-    if (o === this.devToggleBtn || o === this.devToggleTxt) continue;
-    o?.setVisible?.(false);
-  }
+  // Estado inicial: DEV oculto (esto ya oculta panel + lo que registremos después)
+  this._setDevVisible(false);
 }
+
 if (DEV_TOOLS) {
-// =================================================
-// DEBUG_ZOOM_UI (táctil) — borrar cuando no haga falta
-// =================================================
-const makeZoomBtn = (x, y, label, onClick) => {
-  const bw = 44, bh = 32;
+  // =================================================
+  // DEBUG_ZOOM_UI (táctil) — borrar cuando no haga falta
+  // =================================================
+  const makeZoomBtn = (x, y, label, onClick) => {
+    const bw = 44, bh = 32;
 
-  const r = this.add.rectangle(x, y, bw, bh, 0x000000, 0.55)
-    .setOrigin(0, 0)
-    .setScrollFactor(0)
-    .setDepth(1101)
-    .setStrokeStyle(1, 0xffffff, 0.18);
+    const r = this.add.rectangle(x, y, bw, bh, 0x000000, 0.55)
+      .setOrigin(0, 0)
+      .setScrollFactor(0)
+      .setDepth(1101)
+      .setStrokeStyle(1, 0xffffff, 0.18);
 
-  const t = this.add.text(x + bw / 2, y + bh / 2, label, {
-    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-    fontSize: '18px',
-    color: '#ffffff',
-    fontStyle: 'bold'
-  }).setOrigin(0.5).setScrollFactor(0).setDepth(1102);
+    const t = this.add.text(x + bw / 2, y + bh / 2, label, {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: '18px',
+      color: '#ffffff',
+      fontStyle: 'bold'
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(1102);
 
-  r.setInteractive({ useHandCursor: true });
-  r.on('pointerdown', () => onClick());
+    r.setInteractive({ useHandCursor: true });
+    r.on('pointerdown', () => onClick());
 
-  return { r, t };
-};
+    return { r, t };
+  };
 
-// Colócalos dentro del panel DEV (derecha)
-const zoomBtnX = (this.devBox ? this.devBox.x + 10 : (hudX + 340 + 10));
-const zoomBtnY = (this.devBox ? this.devBox.y + 40 : hudY);
+  // Colócalos dentro del panel DEV (derecha)
+  const zoomBtnX = (typeof this._devPanelX === 'number') ? (this._devPanelX + 10) : (hudX + 210);
+  const zoomBtnY = (typeof this._devPanelY === 'number') ? (this._devPanelY + 40) : (hudY + 40);
 
-// + (zoom in)
-this._zoomBtnPlus = makeZoomBtn(zoomBtnX, zoomBtnY, '+', () => {
-  this.zoom = clamp((this.zoom ?? 1) + 0.1, 0.6, 1.6);
-  this.cameras.main.setZoom(this.zoom);
-});
+  // + (zoom in)
+  this._zoomBtnPlus = makeZoomBtn(zoomBtnX, zoomBtnY, '+', () => {
+    this.zoom = clamp((this.zoom ?? 1) + 0.1, 0.6, 1.6);
+    this.cameras.main.setZoom(this.zoom);
+  });
 
-// − (zoom out)
-this._zoomBtnMinus = makeZoomBtn(zoomBtnX, zoomBtnY + 38, '−', () => {
-  this.zoom = clamp((this.zoom ?? 1) - 0.1, 0.6, 1.6);
-  this.cameras.main.setZoom(this.zoom);
-});
+  // − (zoom out)
+  this._zoomBtnMinus = makeZoomBtn(zoomBtnX, zoomBtnY + 38, '−', () => {
+    this.zoom = clamp((this.zoom ?? 1) - 0.1, 0.6, 1.6);
+    this.cameras.main.setZoom(this.zoom);
+  });
 
-// CULL (toggle)
-this._zoomBtnCull = makeZoomBtn(zoomBtnX, zoomBtnY + 76, 'CULL', () => {
-  const was = this._cullEnabled !== false; // default ON si undefined
-  this._cullEnabled = !was;
+  // CULL (toggle)
+  this._zoomBtnCull = makeZoomBtn(zoomBtnX, zoomBtnY + 76, 'CULL', () => {
+    const was = this._cullEnabled !== false; // default ON si undefined
+    this._cullEnabled = !was;
 
-  // Si volvemos a ON, limpiar todo lo que esté renderizado (se reconstruye por radio en el siguiente update)
-  if (this._cullEnabled) {
-    try {
-      for (const [k, cell] of (this.track?.gfxByCell || [])) {
-        cell.tile?.clearMask?.(true);
-        cell.mask?.destroy?.();
-        cell.maskG?.destroy?.();
-        cell.tile?.destroy?.();
-        cell.stroke?.destroy?.();
-      }
-      this.track?.gfxByCell?.clear?.();
-      this.track.activeCells = new Set();
-    } catch {}
-  }
+    // Si volvemos a ON, limpiar todo lo que esté renderizado (se reconstruye por radio en el siguiente update)
+    if (this._cullEnabled) {
+      try {
+        for (const [k, cell] of (this.track?.gfxByCell || [])) {
+          cell.tile?.clearMask?.(true);
+          cell.mask?.destroy?.();
+          cell.maskG?.destroy?.();
+          cell.tile?.destroy?.();
+          cell.stroke?.destroy?.();
+        }
+        this.track?.gfxByCell?.clear?.();
+        this.track.activeCells = new Set();
+      } catch {}
+    }
 
-  this._hudLog(`[culling] ${this._cullEnabled ? 'ON' : 'OFF'}`);
-// Registrar botones en el panel dev para toggle ON/OFF
-if (this._devElems) {
-  this._devElems.push(
+    this._hudLog(`[culling] ${this._cullEnabled ? 'ON' : 'OFF'}`);
+  });
+
+  // Registrar botones (para que DEV ON/OFF los oculte/muestre)
+  this._devRegister(
     this._zoomBtnPlus?.r, this._zoomBtnPlus?.t,
     this._zoomBtnMinus?.r, this._zoomBtnMinus?.t,
     this._zoomBtnCull?.r, this._zoomBtnCull?.t
   );
-}
-});
+
+  // Si DEV empieza oculto, aplicar inmediatamente a estos botones también
+  this._setDevVisible(this._devVisible);
 }
 
     // 10) iOS multitouch + controles táctiles
