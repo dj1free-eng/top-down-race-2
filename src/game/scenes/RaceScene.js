@@ -807,15 +807,6 @@ this._startAsset = this.add.image(panelX + panelW / 2, panelY + 160, 'startlight
   this._startAsset.setScale(s);
 }
 
-// Luces (5) — OVERLAY con transparencia para ver el cristal del PNG
-this._startLights = [];
-for (let i = 0; i < 5; i++) {
-  const circle = this.add.circle(0, 0, 16, 0x1a1a1a, 0.15);
-  // Un toque “LED” sin tapar textura
-  circle.setBlendMode(Phaser.BlendModes.ADD);
-  this._startLights.push(circle);
-}
-
 // Posicionar luces encima del PNG (coordenadas relativas al PNG)
 const positionLights = () => {
   const img = this._startAsset;
@@ -836,17 +827,6 @@ const positionLights = () => {
     this._startLights[i].setRadius(15 * s);
   }
 };
-positionLights();
-
-// Monta modal
-this._startModal.add([
-  modalBg,
-  this._startTitle,
-  this._startHint,
-  this._startAsset,
-  ...this._startLights,
-  this._startStatus
-]);
 
 // Importante: la cámara principal NO debe dibujar la modal (solo UI)
 this.cameras.main.ignore(this._startModal);
@@ -873,10 +853,6 @@ this._reflowStartModal = () => {
   const targetW = Math.min(pw * 0.92, 720);
   const s = targetW / this._startAsset.width;
   this._startAsset.setScale(s);
-
-  // Repos luces encima del asset
-  positionLights();
-};
 
 this.scale.on('resize', this._reflowStartModal);
   // 12) Volver al menú
@@ -1092,46 +1068,55 @@ this._prevThrottleDown = throttleDown;
 // En WAIT_GAS: si pulsa GAS, arranca secuencia
 if (this._startState === 'WAIT_GAS' && throttleJustPressed) {
   this._startState = 'COUNTDOWN';
+
   if (this._startHint) this._startHint.setText('Manténte listo...');
-  if (this._startStatus) this._startStatus.setText('RED LIGHTS');
+  if (this._startStatus) {
+    this._startStatus.setText('RED LIGHTS');
+    this._startStatus.setColor('#ffffff');
+  }
 
-  // Apaga todas primero
-  for (const c of (this._startLights || [])) c.setFillStyle(0x1a1a1a, 1);
+  // Asegura frame base antes de empezar
+  if (this._startAsset) this._startAsset.setTexture('start_base');
 
-// Enciende 5 rojas secuencial (semi-transparente para dejar ver el cristal/textura)
-const stepMs = 600;
-for (let i = 0; i < 5; i++) {
-  this.time.delayedCall(stepMs * (i + 1), () => {
-    const c = this._startLights?.[i];
-    if (c) c.setFillStyle(0xff1e1e, 0.55);
-  });
-}
+  const stepMs = 600;
+
+  // Enciende 6 rojas secuencial: start_l1 ... start_l6
+  for (let i = 1; i <= 6; i++) {
+    this.time.delayedCall(stepMs * i, () => {
+      if (this._startAsset) this._startAsset.setTexture(`start_l${i}`);
+    });
+  }
+
   // Delay aleatorio estilo F1 antes de apagar (lights out)
   const randMs = 800 + Math.floor(Math.random() * 700);
+
   this.time.delayedCall(stepMs * 6 + randMs, () => {
-// Lights out -> GO
-this._startState = 'GO';
-for (const c of (this._startLights || [])) c.setFillStyle(0x1a1a1a, 0.15);
-if (this._startStatus) {
-  this._startStatus.setText('GO!');
-  this._startStatus.setColor('#2bff88');
-}
+    // Lights out -> GO
+    this._startState = 'GO';
 
-// Iniciar cronómetro EXACTAMENTE en lights out
-if (this.timing) {
-  this.timing.lapStart = performance.now();
-  this.timing.started = true;
-  this.timing.s1 = null;
-  this.timing.s2 = null;
-  this.timing.s3 = null;
-}
+    // Apaga (vuelve al base)
+    if (this._startAsset) this._startAsset.setTexture('start_base');
 
-// Cierra modal y habilita carrera
-this.time.delayedCall(350, () => {
-  this._startState = 'RACING';
-  this._raceStarted = true;
-  if (this._startModal) this._startModal.setVisible(false);
-});
+    if (this._startStatus) {
+      this._startStatus.setText('GO!');
+      this._startStatus.setColor('#2bff88');
+    }
+
+    // Iniciar cronómetro EXACTAMENTE en lights out
+    if (this.timing) {
+      this.timing.lapStart = performance.now();
+      this.timing.started = true;
+      this.timing.s1 = null;
+      this.timing.s2 = null;
+      this.timing.s3 = null;
+    }
+
+    // Cierra modal y habilita carrera
+    this.time.delayedCall(350, () => {
+      this._startState = 'RACING';
+      this._raceStarted = true;
+      if (this._startModal) this._startModal.setVisible(false);
+    });
   });
 }
 
