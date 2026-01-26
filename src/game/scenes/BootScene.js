@@ -6,9 +6,17 @@ export class BootScene extends Phaser.Scene {
   }
 
   preload() {
-    // Precarga mínima (logo/splash y UI esenciales) y semaforo. 
-    this.load.svg('logo', 'assets/logo.svg', { width: 256, height: 256 });
-this.load.image('startlights_f1', 'assets/startlights_f1.png');
+// Precarga mínima (logo/splash y UI esenciales)
+this.load.svg('logo', 'assets/logo.svg', { width: 256, height: 256 });
+
+// Start lights (7 estados: base + 6 rojas)
+this.load.image('start_base', 'assets/startlights/start_base.png');
+this.load.image('start_l1', 'assets/startlights/start_l1.png');
+this.load.image('start_l2', 'assets/startlights/start_l2.png');
+this.load.image('start_l3', 'assets/startlights/start_l3.png');
+this.load.image('start_l4', 'assets/startlights/start_l4.png');
+this.load.image('start_l5', 'assets/startlights/start_l5.png');
+this.load.image('start_l6', 'assets/startlights/start_l6.png');
     // Barra de carga simple
     const { width, height } = this.scale;
     const barW = Math.min(520, Math.floor(width * 0.7));
