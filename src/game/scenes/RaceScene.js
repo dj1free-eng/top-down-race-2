@@ -793,8 +793,8 @@ if (DEV_TOOLS) {
   this.input.on('pointerdown', () => {
     if (cooldownMs > 0) return;
 
-    // Armamos solo cuando haya 2+ dedos simultáneos
-    if (downCount() < 2) return;
+    // Armamos solo cuando haya 3+ dedos simultáneos
+    if (downCount() < 3) return;
 
     cancelHold();
     armed = true;
