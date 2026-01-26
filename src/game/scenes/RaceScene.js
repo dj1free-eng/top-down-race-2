@@ -1102,33 +1102,38 @@ this.time.delayedCall(350, () => {
   });
 }
 
-// Bloqueo total del coche mientras no haya salida
-if (!this._raceStarted) {
+// Bloqueo del coche mientras no haya salida (pero NO cortamos el update,
+// para que la pista/culling se siga dibujando durante la modal)
+const freezeStart = !this._raceStarted;
+
+if (freezeStart) {
   const body0 = this.car?.body;
   if (body0) {
     body0.setVelocity(0, 0);
     body0.setAngularVelocity(0);
   }
-  // evita que el resto del update aplique física/inputs
-  return;
 }
-    const up =
-      (keys.up?.isDown) ||
-      (keys.up2?.isDown) ||
-      (t.throttle > 0.5);
+const up = !freezeStart && (
+  (keys.up?.isDown) ||
+  (keys.up2?.isDown) ||
+  (t.throttle > 0.5)
+);
 
-    const down =
-      (keys.down?.isDown) ||
-      (keys.down2?.isDown) ||
-      (t.brake > 0.5);
+const down = !freezeStart && (
+  (keys.down?.isDown) ||
+  (keys.down2?.isDown) ||
+  (t.brake > 0.5)
+);
 
-    const left =
-      (keys.left?.isDown) ||
-      (keys.left2?.isDown);
+const left = !freezeStart && (
+  (keys.left?.isDown) ||
+  (keys.left2?.isDown)
+);
 
-    const right =
-      (keys.right?.isDown) ||
-      (keys.right2?.isDown);
+const right = !freezeStart && (
+  (keys.right?.isDown) ||
+  (keys.right2?.isDown)
+);
 
     const body = this.car.body;
 
