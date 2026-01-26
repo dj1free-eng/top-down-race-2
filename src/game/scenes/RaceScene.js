@@ -1368,8 +1368,12 @@ if (within && crossed && forward && this._lapCooldownMs === 0) {
 const bgKey = this.bgKey || '(no bg ref)';
 
 this.hud.setText(
-  `Vueltas: ${this.lapCount || 0}\n` +
-  `Velocidad: ${kmh.toFixed(0)} km/h`
+  `LAP ${this.lapCount || 0}\n` +
+  `NOW  ${fmtTime(lapNow)}\n` +
+  `S1   ${fmtTime(this.timing?.s1)}\n` +
+  `S2   ${fmtTime(this.timing?.s2)}\n` +
+  `LAST ${fmtTime(this.timing?.lastLap)}\n` +
+  `BEST ${fmtTime(this.timing?.bestLap)}`
 );
     }
 // DEV HUD info (derecha)
