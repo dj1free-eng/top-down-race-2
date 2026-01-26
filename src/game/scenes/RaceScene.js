@@ -624,10 +624,10 @@ this._fitHud = () => {
   const h = Math.max(68, (this.hud.height || 0) + 16);
   this.hudBox.setSize(w, h);
 };
-    // =================================================
+// =================================================
 // DEV HUD (panel derecha) — solo para desarrollo
 // =================================================
-this._devVisible = true;
+this._devVisible = false;
 this._devElems = [];
 
 this._setDevVisible = (v) => {
@@ -637,12 +637,12 @@ this._setDevVisible = (v) => {
 
 if (DEV_TOOLS) {
   const pad = 8;
-const panelW = 220;
-const panelX = this.scale.width - panelW - pad;
-const panelY = 10;
+  const panelW = 220;
+  const panelX = this.scale.width - panelW - pad;
+  const panelY = 10;
 
   // Fondo panel dev
-this.devBox = this.add.rectangle(panelX, panelY, panelW, 200, 0x000000, 0.50)
+  this.devBox = this.add.rectangle(panelX, panelY, panelW, 200, 0x000000, 0.50)
     .setOrigin(0, 0)
     .setScrollFactor(0)
     .setDepth(1099)
@@ -664,32 +664,42 @@ this.devBox = this.add.rectangle(panelX, panelY, panelW, 200, 0x000000, 0.50)
   }).setScrollFactor(0).setDepth(1100);
 
   // Botón toggle DEV (tap)
-  this.devToggleBtn = this.add.rectangle(panelX + panelW - 56, panelY + 6, 46, 22, 0x000000, 0.65)
+  this.devToggleBtn = this.add.rectangle(panelX + panelW - 44, panelY + 6, 36, 20, 0x000000, 0.65)
     .setOrigin(0, 0)
     .setScrollFactor(0)
     .setDepth(1101)
     .setStrokeStyle(1, 0xffffff, 0.18)
     .setInteractive({ useHandCursor: true });
 
-  this.devToggleTxt = this.add.text(panelX + panelW - 33, panelY + 17, 'ON', {
+  this.devToggleTxt = this.add.text(panelX + panelW - 26, panelY + 16, 'OFF', {
     fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-    fontSize: '12px',
+    fontSize: '11px',
     color: '#ffffff',
     fontStyle: '700'
   }).setOrigin(0.5).setScrollFactor(0).setDepth(1102);
+
+  // Registrar elementos DEV (una sola vez, sin duplicados)
+  this._devElems.push(this.devBox, this.devTitle, this.devInfo, this.devToggleBtn, this.devToggleTxt);
 
   this.devToggleBtn.on('pointerdown', () => {
     this._setDevVisible(!this._devVisible);
     if (this.devToggleTxt) this.devToggleTxt.setText(this._devVisible ? 'ON' : 'OFF');
   });
 
-  this._devElems.push(this.devBox, this.devTitle, this.devInfo, this.devToggleBtn, this.devToggleTxt);
-
   // Recolocar logs (_dbgText) dentro del panel (si existe ya)
   if (this._dbgText) {
     this._dbgText.setPosition(panelX + 10, panelY + 150);
     this._dbgText.setDepth(1100);
     this._devElems.push(this._dbgText);
+  }
+
+  // Estado inicial real: oculto (pero con el botón accesible no, porque estaría oculto también)
+  // Por eso dejamos el botón visible aunque el panel esté oculto.
+  // Ocultamos todo menos el toggle.
+  this._devVisible = false;
+  for (const o of this._devElems) {
+    if (o === this.devToggleBtn || o === this.devToggleTxt) continue;
+    o?.setVisible?.(false);
   }
 }
 if (DEV_TOOLS) {
