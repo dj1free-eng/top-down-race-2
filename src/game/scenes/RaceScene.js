@@ -611,7 +611,7 @@ this.hudBox = this.add.rectangle(hudX, hudY, 200, 64, 0x000000, 0.45)
   .setStrokeStyle(1, 0xffffff, 0.12);
 
 this.hud = this.add.text(hudX + 10, hudY + 8, '', {
-  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+fontFamily: 'Orbitron, monospace',
   fontSize: '13px',
   color: '#ffffff',
   lineSpacing: 3
