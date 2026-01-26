@@ -663,29 +663,6 @@ if (DEV_TOOLS) {
     lineSpacing: 3
   }).setScrollFactor(0).setDepth(1100);
 
-  // Botón toggle DEV (tap)
-  this.devToggleBtn = this.add.rectangle(panelX + panelW - 44, panelY + 6, 36, 20, 0x000000, 0.65)
-    .setOrigin(0, 0)
-    .setScrollFactor(0)
-    .setDepth(1101)
-    .setStrokeStyle(1, 0xffffff, 0.18)
-    .setInteractive({ useHandCursor: true });
-
-  this.devToggleTxt = this.add.text(panelX + panelW - 26, panelY + 16, 'OFF', {
-    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-    fontSize: '11px',
-    color: '#ffffff',
-    fontStyle: '700'
-  }).setOrigin(0.5).setScrollFactor(0).setDepth(1102);
-
-  // Registrar elementos DEV (una sola vez, sin duplicados)
-  this._devElems.push(this.devBox, this.devTitle, this.devInfo, this.devToggleBtn, this.devToggleTxt);
-
-  this.devToggleBtn.on('pointerdown', () => {
-    this._setDevVisible(!this._devVisible);
-    if (this.devToggleTxt) this.devToggleTxt.setText(this._devVisible ? 'ON' : 'OFF');
-  });
-
   // Recolocar logs (_dbgText) dentro del panel (si existe ya)
   if (this._dbgText) {
     this._dbgText.setPosition(panelX + 10, panelY + 150);
@@ -809,8 +786,8 @@ this.cameras.main.ignore([
   this._zoomBtnCull?.t,
   // Controles táctiles
   this.touchUI
-].filter(Boolean));
-
+]
+.filter(Boolean));
 
 // 2) La cámara UI NO debe renderizar mundo (lo que ya existe ahora)
 if (this.bgWorld) this.uiCam.ignore(this.bgWorld);
@@ -844,7 +821,57 @@ this.scale.on('resize', (gameSize) => {
 
 }
 
+// ================================================
+// DEV HUD trigger oculto — pulsación larga con 2 dedos
+// ================================================
+if (DEV_TOOLS) {
+  // Asegura multitouch (necesitamos pointer2)
+  // (Añade 2 punteros extra por si Phaser no los creó)
+  this.input.addPointer(2);
 
+  const HOLD_MS = 700;
+  let holdTimer = null;
+  let cooldownMs = 0;
+
+  const twoFingersDown = () => {
+    // pointer1 y pointer2 suelen existir en Phaser; si no, addPointer arriba los crea.
+    const p1 = this.input.pointer1;
+    const p2 = this.input.pointer2;
+    return !!(p1?.isDown && p2?.isDown);
+  };
+
+  const cancelHold = () => {
+    if (holdTimer) {
+      holdTimer.remove(false);
+      holdTimer = null;
+    }
+  };
+
+  this.input.on('pointerdown', () => {
+    // Anti spam
+    if (cooldownMs > 0) return;
+
+    // Solo armamos cuando haya 2 dedos apoyados a la vez
+    if (!twoFingersDown()) return;
+
+    cancelHold();
+    holdTimer = this.time.delayedCall(HOLD_MS, () => {
+      // Si siguen 2 dedos al cumplir el tiempo -> toggle
+      if (twoFingersDown()) {
+        this._setDevVisible(!this._devVisible);
+        cooldownMs = 600; // evita toggles dobles
+      }
+    });
+  });
+
+  this.input.on('pointerup', cancelHold);
+  this.input.on('pointerout', cancelHold);
+
+  // Cooldown en update por delta (sin depender de setInterval)
+  this.events.on('postupdate', (t, dt) => {
+    cooldownMs = Math.max(0, cooldownMs - (dt || 0));
+  });
+}
   buildUpgradesUI() {
     // Si ya existía (por reinicio de escena) la destruimos
     if (this.upUI) {
