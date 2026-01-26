@@ -8,3 +8,9 @@ html, body {
 #app {
   height: 100%;
 }
+@font-face {
+  font-family: 'Orbitron';
+  src: url('/fonts/Orbitron-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
