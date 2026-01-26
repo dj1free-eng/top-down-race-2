@@ -822,22 +822,33 @@ this.scale.on('resize', (gameSize) => {
 }
 
 // ================================================
-// DEV HUD trigger oculto — pulsación larga con 2 dedos
+// DEV HUD trigger oculto — pulsación larga con 2 dedos (robusto)
+// + indicador en pantalla de dedos detectados (DEV)
 // ================================================
 if (DEV_TOOLS) {
-  // Asegura multitouch (necesitamos pointer2)
-  // (Añade 2 punteros extra por si Phaser no los creó)
-  this.input.addPointer(2);
+  // Asegura multitouch (crea punteros extra)
+  this.input.addPointer(5);
 
   const HOLD_MS = 700;
   let holdTimer = null;
   let cooldownMs = 0;
+  let armed = false;
 
-  const twoFingersDown = () => {
-    // pointer1 y pointer2 suelen existir en Phaser; si no, addPointer arriba los crea.
-    const p1 = this.input.pointer1;
-    const p2 = this.input.pointer2;
-    return !!(p1?.isDown && p2?.isDown);
+  // Indicador pequeño (para verificar que Phaser detecta 2 dedos)
+  this._touchDbg = this.add.text(this.scale.width - 10, 10, '', {
+    fontFamily: 'monospace',
+    fontSize: '12px',
+    color: '#ffffff',
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    padding: { left: 6, right: 6, top: 4, bottom: 4 }
+  }).setOrigin(1, 0).setScrollFactor(0).setDepth(999999);
+
+  // Cuenta dedos realmente “down” según Phaser
+  const downCount = () => {
+    const ps = this.input.manager?.pointers || [];
+    let c = 0;
+    for (const p of ps) if (p && p.isDown) c++;
+    return c;
   };
 
   const cancelHold = () => {
@@ -845,31 +856,41 @@ if (DEV_TOOLS) {
       holdTimer.remove(false);
       holdTimer = null;
     }
+    armed = false;
   };
 
   this.input.on('pointerdown', () => {
-    // Anti spam
     if (cooldownMs > 0) return;
 
-    // Solo armamos cuando haya 2 dedos apoyados a la vez
-    if (!twoFingersDown()) return;
+    // Armamos solo cuando haya 2+ dedos simultáneos
+    if (downCount() < 2) return;
 
     cancelHold();
+    armed = true;
+
     holdTimer = this.time.delayedCall(HOLD_MS, () => {
-      // Si siguen 2 dedos al cumplir el tiempo -> toggle
-      if (twoFingersDown()) {
+      // Si siguen 2+ dedos al cumplir el tiempo -> toggle DEV HUD
+      if (downCount() >= 2) {
         this._setDevVisible(!this._devVisible);
-        cooldownMs = 600; // evita toggles dobles
+        cooldownMs = 600;
       }
+      cancelHold();
     });
   });
 
   this.input.on('pointerup', cancelHold);
   this.input.on('pointerout', cancelHold);
 
-  // Cooldown en update por delta (sin depender de setInterval)
+  // Actualiza indicador y cooldown cada frame
   this.events.on('postupdate', (t, dt) => {
     cooldownMs = Math.max(0, cooldownMs - (dt || 0));
+
+    const c = downCount();
+    if (this._touchDbg) {
+      this._touchDbg.setText(
+        `touches:${c}  armed:${armed ? 'Y' : 'N'}  dev:${this._devVisible ? 'ON' : 'OFF'}`
+      );
+    }
   });
 }
   buildUpgradesUI() {
