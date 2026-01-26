@@ -11,6 +11,14 @@ function wrapPi(a) {
   while (a < -Math.PI) a += Math.PI * 2;
   return a;
 }
+function fmtTime(ms) {
+  if (ms == null) return '--:--.---';
+  const t = Math.max(0, ms);
+  const m = Math.floor(t / 60000);
+  const s = Math.floor((t % 60000) / 1000);
+  const ms3 = Math.floor(t % 1000);
+  return `${m}:${String(s).padStart(2, '0')}.${String(ms3).padStart(3, '0')}`;
+}
 const DEV_TOOLS = true; // ponlo en false para ocultar botones de zoom/cull
 // =================================================
 // TRACK SURFACE HELPERS (point-in-polygon por celdas)
@@ -312,7 +320,19 @@ if (bgKey) {
     .setOrigin(0, 0)
     .setDepth(0);
 }
+// ===============================
+// TIMING (laps + sectors)
+// ===============================
+this.timing = {
+  lapStart: performance.now(),
 
+  s1: null,
+  s2: null,
+  s3: null,
+
+  lastLap: null,
+  bestLap: null
+};
     // 4) Coche (body físico + rig visual)
     // Cuerpo físico SIN sprite (evita __MISSING)
 const body = this.physics.add.sprite(t01.start.x, t01.start.y, '__BODY__');
@@ -1290,6 +1310,7 @@ const cp2 = this.checkpoints?.cp2;
 if (cp1 && this._cpCooldown1Ms === 0 && _crossGate(cp1)) {
   if ((this._cpState || 0) === 0) {
     this._cpState = 1;
+    if (this.timing) this.timing.s1 = performance.now() - this.timing.lapStart;
   } else {
     // Si lo pisa fuera de orden, reiniciamos para evitar exploits raros
     this._cpState = 0;
@@ -1300,6 +1321,7 @@ if (cp1 && this._cpCooldown1Ms === 0 && _crossGate(cp1)) {
 if (cp2 && this._cpCooldown2Ms === 0 && _crossGate(cp2)) {
   if ((this._cpState || 0) === 1) {
     this._cpState = 2;
+    if (this.timing) this.timing.s2 = performance.now() - this.timing.lapStart;
   } else {
     this._cpState = 0;
   }
@@ -1309,6 +1331,19 @@ if (cp2 && this._cpCooldown2Ms === 0 && _crossGate(cp2)) {
 // --- 2) meta: SOLO cuenta si cpState==2 ---
 if (within && crossed && forward && this._lapCooldownMs === 0) {
   if ((this._cpState || 0) === 2) {
+    if (this.timing) {
+  const now = performance.now();
+  const lapTime = now - this.timing.lapStart;
+
+  this.timing.s3 = lapTime;
+  this.timing.lastLap = lapTime;
+  this.timing.bestLap = (this.timing.bestLap == null) ? lapTime : Math.min(this.timing.bestLap, lapTime);
+
+  this.timing.lapStart = now;
+  this.timing.s1 = null;
+  this.timing.s2 = null;
+  this.timing.s3 = null;
+}
     this.lapCount = (this.lapCount || 0) + 1;
     this._lapCooldownMs = 700;
     this._cpState = 0; // nueva vuelta, reinicia combo
