@@ -324,7 +324,8 @@ if (bgKey) {
 // TIMING (laps + sectors)
 // ===============================
 this.timing = {
-  lapStart: performance.now(),
+  lapStart: null,     // se fija en lights out
+  started: false,
 
   s1: null,
   s2: null,
@@ -1075,20 +1076,29 @@ if (this._startState === 'WAIT_GAS' && throttleJustPressed) {
   // Delay aleatorio estilo F1 antes de apagar (lights out)
   const randMs = 800 + Math.floor(Math.random() * 700);
   this.time.delayedCall(stepMs * 6 + randMs, () => {
-    // Lights out -> GO
-    this._startState = 'GO';
-    for (const c of (this._startLights || [])) c.setFillStyle(0x1a1a1a, 1);
-    if (this._startStatus) {
-      this._startStatus.setText('GO!');
-      this._startStatus.setColor('#2bff88');
-    }
+// Lights out -> GO
+this._startState = 'GO';
+for (const c of (this._startLights || [])) c.setFillStyle(0x1a1a1a, 1);
+if (this._startStatus) {
+  this._startStatus.setText('GO!');
+  this._startStatus.setColor('#2bff88');
+}
 
-    // Cierra modal y habilita carrera
-    this.time.delayedCall(350, () => {
-      this._startState = 'RACING';
-      this._raceStarted = true;
-      if (this._startModal) this._startModal.setVisible(false);
-    });
+// Iniciar cronómetro EXACTAMENTE en lights out
+if (this.timing) {
+  this.timing.lapStart = performance.now();
+  this.timing.started = true;
+  this.timing.s1 = null;
+  this.timing.s2 = null;
+  this.timing.s3 = null;
+}
+
+// Cierra modal y habilita carrera
+this.time.delayedCall(350, () => {
+  this._startState = 'RACING';
+  this._raceStarted = true;
+  if (this._startModal) this._startModal.setVisible(false);
+});
   });
 }
 
@@ -1511,7 +1521,9 @@ if (within && crossed && forward && this._lapCooldownMs === 0) {
     if (this.hud?.setText) {
       const u = this.upgrades || { engine: 0, brakes: 0, tires: 0 };
 const bgKey = this.bgKey || '(no bg ref)';
-const lapNow = performance.now() - (this.timing?.lapStart ?? performance.now());this.hud.setText(
+const lapNow = (this.timing?.started && this.timing.lapStart != null)
+  ? (performance.now() - this.timing.lapStart)
+  : 0;
   `LAP ${this.lapCount || 0}\n` +
   `NOW  ${fmtTime(lapNow)}\n` +
   `S1   ${fmtTime(this.timing?.s1)}\n` +
