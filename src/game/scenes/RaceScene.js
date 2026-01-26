@@ -752,7 +752,98 @@ if (this.finishGfx) this.uiCam.ignore(this.finishGfx);
 this.scale.on('resize', (gameSize) => {
   this.uiCam.setSize(gameSize.width, gameSize.height);
 });
+// =================================================
+// START LIGHTS (F1) — modal + bloqueo de coche hasta salida
+// =================================================
+this._raceStarted = false;
+this._startState = 'WAIT_GAS'; // WAIT_GAS -> COUNTDOWN -> GO -> RACING
+this._prevThrottleDown = false;
 
+// Modal container (UI)
+this._startModal = this.add.container(0, 0).setScrollFactor(0).setDepth(2000);
+
+const w = this.scale.width;
+const h = this.scale.height;
+
+// Fondo modal (oscurece)
+const modalBg = this.add.rectangle(0, 0, w, h, 0x000000, 0.45)
+  .setOrigin(0, 0);
+
+// Panel
+const panelW = Math.min(360, Math.floor(w * 0.86));
+const panelH = 190;
+const panelX = Math.floor((w - panelW) / 2);
+const panelY = Math.floor(h * 0.18);
+
+const panel = this.add.rectangle(panelX, panelY, panelW, panelH, 0x000000, 0.65)
+  .setOrigin(0, 0)
+  .setStrokeStyle(2, 0xffffff, 0.14);
+
+// Texto
+this._startTitle = this.add.text(panelX + 18, panelY + 16, 'START', {
+  fontFamily: 'Orbitron, monospace',
+  fontSize: '18px',
+  color: '#ffffff',
+  fontStyle: '600'
+});
+
+this._startHint = this.add.text(panelX + 18, panelY + 44, 'Pulsa GAS para iniciar el semáforo', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '13px',
+  color: '#b7c0ff'
+});
+
+this._startStatus = this.add.text(panelX + 18, panelY + 150, 'WAITING', {
+  fontFamily: 'Orbitron, monospace',
+  fontSize: '16px',
+  color: '#ffffff'
+});
+
+// Luces (5)
+this._startLights = [];
+const lightsY = panelY + 105;
+const spacing = 44;
+const r = 15;
+const totalW = spacing * 4;
+const startX = Math.floor(panelX + panelW / 2 - totalW / 2);
+
+for (let i = 0; i < 5; i++) {
+  const cx = startX + i * spacing;
+  const circle = this.add.circle(cx, lightsY, r, 0x1a1a1a, 1).setStrokeStyle(2, 0xffffff, 0.10);
+  this._startLights.push(circle);
+}
+
+// Monta modal
+this._startModal.add([modalBg, panel, this._startTitle, this._startHint, ...this._startLights, this._startStatus]);
+
+// Importante: la cámara principal NO debe dibujar la modal (solo UI cam)
+this.cameras.main.ignore(this._startModal);
+
+// Si rota/cambia viewport, reajusta modal
+this._reflowStartModal = () => {
+  const w2 = this.scale.width;
+  const h2 = this.scale.height;
+
+  modalBg.setSize(w2, h2);
+
+  const pw = Math.min(360, Math.floor(w2 * 0.86));
+  const px = Math.floor((w2 - pw) / 2);
+  const py = Math.floor(h2 * 0.18);
+
+  panel.setPosition(px, py);
+  panel.setSize(pw, panelH);
+
+  this._startTitle.setPosition(px + 18, py + 16);
+  this._startHint.setPosition(px + 18, py + 44);
+  this._startStatus.setPosition(px + 18, py + 150);
+
+  const startX2 = Math.floor(px + pw / 2 - (spacing * 4) / 2);
+  for (let i = 0; i < 5; i++) {
+    this._startLights[i].setPosition(startX2 + i * spacing, py + 105);
+  }
+};
+
+this.scale.on('resize', this._reflowStartModal);
   // 12) Volver al menú
   if (this.keys?.back) {
     this.keys.back.on('down', () => this.scene.start('menu'));
@@ -956,7 +1047,61 @@ if (justDown && keys.toggleCull && justDown(keys.toggleCull)) {
 }
     // Inputs
     const t = this.touch || { steer: 0, throttle: 0, brake: 0, stickX: 0, stickY: 0 };
+// =================================================
+// START LIGHTS runtime (bloquea coche hasta salida)
+// =================================================
+const throttleDown = (t.throttle > 0.5);
+const throttleJustPressed = throttleDown && !this._prevThrottleDown;
+this._prevThrottleDown = throttleDown;
 
+// En WAIT_GAS: si pulsa GAS, arranca secuencia
+if (this._startState === 'WAIT_GAS' && throttleJustPressed) {
+  this._startState = 'COUNTDOWN';
+  if (this._startHint) this._startHint.setText('Manténte listo...');
+  if (this._startStatus) this._startStatus.setText('RED LIGHTS');
+
+  // Apaga todas primero
+  for (const c of (this._startLights || [])) c.setFillStyle(0x1a1a1a, 1);
+
+  // Enciende 5 rojas secuencial
+  const stepMs = 600;
+  for (let i = 0; i < 5; i++) {
+    this.time.delayedCall(stepMs * (i + 1), () => {
+      const c = this._startLights?.[i];
+      if (c) c.setFillStyle(0xff1e1e, 1);
+    });
+  }
+
+  // Delay aleatorio estilo F1 antes de apagar (lights out)
+  const randMs = 800 + Math.floor(Math.random() * 700);
+  this.time.delayedCall(stepMs * 6 + randMs, () => {
+    // Lights out -> GO
+    this._startState = 'GO';
+    for (const c of (this._startLights || [])) c.setFillStyle(0x1a1a1a, 1);
+    if (this._startStatus) {
+      this._startStatus.setText('GO!');
+      this._startStatus.setColor('#2bff88');
+    }
+
+    // Cierra modal y habilita carrera
+    this.time.delayedCall(350, () => {
+      this._startState = 'RACING';
+      this._raceStarted = true;
+      if (this._startModal) this._startModal.setVisible(false);
+    });
+  });
+}
+
+// Bloqueo total del coche mientras no haya salida
+if (!this._raceStarted) {
+  const body0 = this.car?.body;
+  if (body0) {
+    body0.setVelocity(0, 0);
+    body0.setAngularVelocity(0);
+  }
+  // evita que el resto del update aplique física/inputs
+  return;
+}
     const up =
       (keys.up?.isDown) ||
       (keys.up2?.isDown) ||
