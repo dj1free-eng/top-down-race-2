@@ -1518,19 +1518,22 @@ if (within && crossed && forward && this._lapCooldownMs === 0) {
 
     // === HUD ===
     const kmh = speed * 0.12;
+
     if (this.hud?.setText) {
-      const u = this.upgrades || { engine: 0, brakes: 0, tires: 0 };
-const bgKey = this.bgKey || '(no bg ref)';
-const lapNow = (this.timing?.started && this.timing.lapStart != null)
-  ? (performance.now() - this.timing.lapStart)
-  : 0;
-  `LAP ${this.lapCount || 0}\n` +
-  `NOW  ${fmtTime(lapNow)}\n` +
-  `S1   ${fmtTime(this.timing?.s1)}\n` +
-  `S2   ${fmtTime(this.timing?.s2)}\n` +
-  `LAST ${fmtTime(this.timing?.lastLap)}\n` +
-  `BEST ${fmtTime(this.timing?.bestLap)}`
-);
+      const lapNow = (this.timing?.started && this.timing.lapStart != null)
+        ? (performance.now() - this.timing.lapStart)
+        : null;
+
+      this.hud.setText(
+        `LAP ${this.lapCount || 0}\n` +
+        `NOW  ${fmtTime(lapNow)}\n` +
+        `S1   ${fmtTime(this.timing?.s1)}\n` +
+        `S2   ${fmtTime(this.timing?.s2)}\n` +
+        `LAST ${fmtTime(this.timing?.lastLap)}\n` +
+        `BEST ${fmtTime(this.timing?.bestLap)}`
+      );
+
+      if (this._fitHud) this._fitHud();
     }
 // DEV HUD info (derecha)
 if (DEV_TOOLS && this.devInfo && this._devVisible) {
