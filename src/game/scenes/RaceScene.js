@@ -810,7 +810,8 @@ const startX = Math.floor(panelX + panelW / 2 - totalW / 2);
 
 for (let i = 0; i < 5; i++) {
   const cx = startX + i * spacing;
-  const circle = this.add.circle(cx, lightsY, r, 0x1a1a1a, 1).setStrokeStyle(2, 0xffffff, 0.10);
+  const circle = this.add.circle(cx, lightsY, r, 0x1a1a1a, 0.15)
+  .setStrokeStyle(2, 0xffffff, 0.10);
   this._startLights.push(circle);
 }
 
@@ -1064,21 +1065,20 @@ if (this._startState === 'WAIT_GAS' && throttleJustPressed) {
   // Apaga todas primero
   for (const c of (this._startLights || [])) c.setFillStyle(0x1a1a1a, 1);
 
-  // Enciende 5 rojas secuencial
-  const stepMs = 600;
-  for (let i = 0; i < 5; i++) {
-    this.time.delayedCall(stepMs * (i + 1), () => {
-      const c = this._startLights?.[i];
-      if (c) c.setFillStyle(0xff1e1e, 1);
-    });
-  }
-
+// Enciende 5 rojas secuencial (semi-transparente para dejar ver el cristal/textura)
+const stepMs = 600;
+for (let i = 0; i < 5; i++) {
+  this.time.delayedCall(stepMs * (i + 1), () => {
+    const c = this._startLights?.[i];
+    if (c) c.setFillStyle(0xff1e1e, 0.55);
+  });
+}
   // Delay aleatorio estilo F1 antes de apagar (lights out)
   const randMs = 800 + Math.floor(Math.random() * 700);
   this.time.delayedCall(stepMs * 6 + randMs, () => {
 // Lights out -> GO
 this._startState = 'GO';
-for (const c of (this._startLights || [])) c.setFillStyle(0x1a1a1a, 1);
+for (const c of (this._startLights || [])) c.setFillStyle(0x1a1a1a, 0.15);
 if (this._startStatus) {
   this._startStatus.setText('GO!');
   this._startStatus.setColor('#2bff88');
