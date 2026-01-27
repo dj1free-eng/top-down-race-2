@@ -57,9 +57,22 @@ this.load.image('start_l6', 'assets/startlights/start_l6.png');
       color: '#b7c0ff'
     }).setOrigin(0.5);
 
-    this.time.delayedCall(450, () => {
-      t1.destroy();
-      this.scene.start('menu');
+        // ✅ No arrancar MenuScene hasta que el loader haya terminado
+    // (evita texturas __MISSING en iPhone/GitHub Pages)
+    this.load.once('complete', () => {
+      // Pequeña pausa para que el splash no sea un flash
+      this.time.delayedCall(200, () => {
+        t1.destroy();
+        this.scene.start('menu');
+      });
     });
+
+    // Si por cualquier motivo ya estuviera todo cargado, arrancamos igual
+    if (this.load.progress >= 1) {
+      this.time.delayedCall(200, () => {
+        t1.destroy();
+        this.scene.start('menu');
+      });
+    }
   }
 }
