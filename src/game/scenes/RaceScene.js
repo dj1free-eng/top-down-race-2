@@ -358,9 +358,10 @@ body.rotation = t01.start.r;
 // 5) Track ribbon (geom + culling state)
 this.track = {
   meta: t01,
-  geom: buildTrackRibbon({
+geom: buildTrackRibbon({
   centerline: t01.centerline,
   trackWidth: t01.trackWidth,
+  grassMargin: t01.grassMargin ?? 220, // punto de ataque: ancho banda GRASS (px por lado)
   sampleStepPx: t01.sampleStepPx ?? 22,
   cellSize: t01.cellSize ?? 400
 }),
@@ -394,7 +395,37 @@ this._borderRight = drawPolylineClosed(this.track.geom.right, 4, 0xf2f2f2, 0.8);
 // UI camera no debe renderizar bordes
 this.uiCam?.ignore?.(this._borderLeft);
 this.uiCam?.ignore?.(this._borderRight);
-    this._isOnTrack = (x, y) => isPointOnTrackWorld(x, y, this.track?.geom);
+this._isOnTrack = (x, y) => isPointOnTrackWorld(x, y, this.track?.geom);
+
+// Banda GRASS/OFF usando el MISMO sistema de celdas (point-in-polys)
+this._isInBand = (band, x, y) => {
+  if (!band || !band.cells) return false;
+
+  const cs = this.track?.geom?.cellSize || 400;
+  const cx = Math.floor(x / cs);
+  const cy = Math.floor(y / cs);
+  const key = `${cx},${cy}`;
+  const cd = band.cells.get(key);
+  if (!cd || !cd.polys) return false;
+
+  // Ray casting
+  const pointInPoly = (poly) => {
+    let inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const xi = poly[i].x, yi = poly[i].y;
+      const xj = poly[j].x, yj = poly[j].y;
+      const denom = (yj - yi) || 1e-6;
+      const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / denom + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  };
+
+  for (const poly of cd.polys) {
+    if (pointInPoly(poly)) return true;
+  }
+  return false;
+};
     this._cullEnabled = true;
 this._hudLog(`[track geom] cells=${this.track.geom?.cells?.size ?? 'null'}`);
  this._trackCells = this.track.geom?.cells?.size ?? null;
@@ -1175,6 +1206,9 @@ const right = !freezeStart && (
 
 // =========================
 // SURFACE DETECTION (3 estados)
+// TRACK: dentro de ribbon principal
+// GRASS: dentro de banda GRASS (ribbon más ancho)
+// OFF: fuera de la banda GRASS
 // =========================
 const x = this.car.x;
 const y = this.car.y;
@@ -1182,23 +1216,21 @@ const y = this.car.y;
 // 1) Dentro de pista
 const onTrack = this._isOnTrack ? this._isOnTrack(x, y) : true;
 
-// 2) Dentro del mundo jugable
-const inWorld =
-  x >= 0 && y >= 0 &&
-  x <= this.worldW &&
-  y <= this.worldH;
+// 2) Dentro de banda GRASS (si existe)
+const inGrassBand = this._isInBand
+  ? this._isInBand(this.track?.geom?.grass, x, y)
+  : false;
 
 // Surface final
 let surface = 'OFF';
 if (onTrack) {
   surface = 'TRACK';
-} else if (inWorld) {
+} else if (inGrassBand) {
   surface = 'GRASS';
 }
 
 this._onTrack = onTrack;
-this._surface = surface; // ← NUEVO, fuente única de verdad
-
+this._surface = surface;
 // Params (por si init no llegó a setearlos aún)
 let accel = this.accel ?? 0;
 const brakeForce = this.brakeForce ?? 0;
