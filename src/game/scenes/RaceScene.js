@@ -297,6 +297,7 @@ if (this.physics.world.debugGraphic) {
 }
 // 2) Texturas procedurales (no deben romper la escena)
 try { this.ensureBgTexture(); } catch (e) {}
+try { this.ensureOffTexture(); } catch (e) {}   // ← NUEVO (OFF visual)
 try {
   this.ensureAsphaltTexture();
   this._dbg('asphalt OK');
@@ -304,22 +305,55 @@ try {
   this._dbg('asphalt ERROR');
 }
 try { this.ensureCarTexture(); } catch (e) {}
+// =========================
+// 3) Fondo del mundo: OFF + GRASS BAND
+// =========================
 
-// 3) Fondo del mundo: SOLO grass (sin bgGrid en producción)
-const bgKey = this.textures.exists('grass') ? 'grass' : null;
+// OFF: cubre todo el mundo (arena / tierra)
+this.bgOff = this.add.tileSprite(
+  0, 0,
+  this.worldW,
+  this.worldH,
+  'off'
+)
+  .setOrigin(0, 0)
+  .setScrollFactor(1)
+  .setDepth(0);
 
-if (bgKey) {
-  this.bgWorld = this.add.tileSprite(0, 0, this.worldW, this.worldH, bgKey)
-    .setOrigin(0, 0)
-    .setScrollFactor(1)
-    .setDepth(0); // césped debajo del asfalto (asfalto está en depth 10)
-  this.bgKey = bgKey;
-} else {
-  this.bgWorld = null;
-  this.add.rectangle(0, 0, this.worldW, this.worldH, 0x111111, 1)
-    .setOrigin(0, 0)
-    .setDepth(0);
+// GRASS: se verá SOLO donde exista la banda GRASS
+this.bgGrass = this.add.tileSprite(
+  0, 0,
+  this.worldW,
+  this.worldH,
+  'grass'
+)
+  .setOrigin(0, 0)
+  .setScrollFactor(1)
+  .setDepth(1);
+
+// Máscara geométrica basada en la banda GRASS
+const gMask = this.make.graphics({ x: 0, y: 0, add: false });
+gMask.fillStyle(0xffffff, 1);
+
+// Recorremos TODAS las celdas de la banda GRASS
+const grassCells = this.track?.geom?.grass?.cells;
+
+if (grassCells) {
+  for (const cell of grassCells.values()) {
+    for (const poly of cell.polys) {
+      gMask.beginPath();
+      gMask.moveTo(poly[0].x, poly[0].y);
+      for (let i = 1; i < poly.length; i++) {
+        gMask.lineTo(poly[i].x, poly[i].y);
+      }
+      gMask.closePath();
+      gMask.fillPath();
+    }
+  }
 }
+
+// Aplicamos la máscara al GRASS
+this.bgGrass.setMask(gMask.createGeometryMask());
 // ===============================
 // TIMING (laps + sectors)
 // ===============================
@@ -1709,6 +1743,40 @@ if (DEV_TOOLS && this.devInfo && this._devVisible) {
   }
 
   g.generateTexture('grass', size, size);
+  g.destroy();
+}
+  ensureOffTexture() {
+  if (this.textures.exists('off')) return;
+
+  const size = 256;
+  const g = this.make.graphics({ x: 0, y: 0, add: false });
+
+  // Base arena / tierra
+  g.fillStyle(0xbfa36a, 1); // amarillo-marrón
+  g.fillRect(0, 0, size, size);
+
+  // Manchas irregulares
+  g.fillStyle(0xa8894d, 1);
+  for (let i = 0; i < 300; i++) {
+    g.fillCircle(
+      Math.random() * size,
+      Math.random() * size,
+      1 + Math.random() * 2
+    );
+  }
+
+  // Puntos oscuros (piedra)
+  g.fillStyle(0x6b5a2e, 1);
+  for (let i = 0; i < 180; i++) {
+    g.fillRect(
+      Math.random() * size,
+      Math.random() * size,
+      1,
+      1
+    );
+  }
+
+  g.generateTexture('off', size, size);
   g.destroy();
 }
   ensureAsphaltTexture() {
