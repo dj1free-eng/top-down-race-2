@@ -763,7 +763,14 @@ this._prevThrottleDown = false;
 
 // Modal container (UI)
 this._startModal = this.add.container(0, 0).setScrollFactor(0).setDepth(2000);
-
+// Aseguramos que TODO el semáforo vive dentro del modal
+this._startModal.add([
+  modalBg,
+  this._startTitle,
+  this._startHint,
+  this._startStatus,
+  this._startAsset
+]);
 const w = this.scale.width;
 const h = this.scale.height;
 
@@ -1114,10 +1121,10 @@ if (this._startState === 'WAIT_GAS' && throttleJustPressed) {
 
     // Cierra modal y habilita carrera
     this.time.delayedCall(350, () => {
-      this._startState = 'RACING';
-      this._raceStarted = true;
-      if (this._startModal) this._startModal.setVisible(false);
-    });
+  this._startState = 'RACING';
+  this._raceStarted = true;
+  if (this._startModal) this._startModal.setVisible(false);
+});
   });
 }
 
