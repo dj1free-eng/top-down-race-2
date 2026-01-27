@@ -638,7 +638,7 @@ fontFamily: 'Orbitron, monospace',
   lineSpacing: 3
 }).setScrollFactor(0).setDepth(1100);
 
-// Ajuste automático del alto de la caja según el texto (para que no tape)
+
 // Ajuste automático del alto de la caja según el texto (para que no tape)
 this._fitHud = () => {
   const w = 340;
@@ -1173,9 +1173,31 @@ const right = !freezeStart && (
     const vy = body.velocity?.y || 0;
     const speed = Math.sqrt(vx * vx + vy * vy);
 
-// Superficie: dentro/fuera de pista (geom real)
-const onTrack = this._isOnTrack ? this._isOnTrack(this.car.x, this.car.y) : true;
-this._onTrack = onTrack; // para HUD/debug
+// =========================
+// SURFACE DETECTION (3 estados)
+// =========================
+const x = this.car.x;
+const y = this.car.y;
+
+// 1) Dentro de pista
+const onTrack = this._isOnTrack ? this._isOnTrack(x, y) : true;
+
+// 2) Dentro del mundo jugable
+const inWorld =
+  x >= 0 && y >= 0 &&
+  x <= this.worldW &&
+  y <= this.worldH;
+
+// Surface final
+let surface = 'OFF';
+if (onTrack) {
+  surface = 'TRACK';
+} else if (inWorld) {
+  surface = 'GRASS';
+}
+
+this._onTrack = onTrack;
+this._surface = surface; // ← NUEVO, fuente única de verdad
 
 // Params (por si init no llegó a setearlos aún)
 let accel = this.accel ?? 0;
@@ -1186,8 +1208,27 @@ const maxRev = this.maxRev ?? 1;
 let turnRate = this.turnRate ?? 0;
 const turnMin = this.turnMin ?? 0.1;
 
-// Penalización fuera de pista: pierde velocidad y le cuesta girar/recuperar
-if (!onTrack) {
+// =========================
+// SURFACE PHYSICS
+// =========================
+
+// Césped: penalización MEDIA (recuperable)
+if (this._surface === 'GRASS') {
+  // 1) motor “ahogado” pero menos
+  accel *= 0.65;
+
+  // 2) menos capacidad de giro pero menos
+  turnRate *= 0.80;
+
+  // 3) drag medio y estable por tiempo (independiente de FPS)
+  //    En ~1s te deja aprox al 55% de velocidad
+  const extra = Math.pow(0.55, dt);
+  body.velocity.x *= extra;
+  body.velocity.y *= extra;
+}
+
+// Off-road: penalización DURA (TU BLOQUE original, intacto)
+if (this._surface === 'OFF') {
   // 1) motor “ahogado”
   accel *= 0.35;
 
@@ -1569,7 +1610,7 @@ if (within && crossed && forward && this._lapCooldownMs === 0) {
 // DEV HUD info (derecha)
 if (DEV_TOOLS && this.devInfo && this._devVisible) {
   const cp = (this._cpState || 0);
-  const surf = (this._onTrack ? 'TRACK' : 'OFF');
+  const surf = this._surface || '??';
   const zoom = (this.zoom ?? 1).toFixed(2);
   const cull = (this._cullEnabled !== false) ? 'ON' : 'OFF';
   const carCell = this._carCellKey || ''; // si no existe, queda vacío
