@@ -1796,67 +1796,78 @@ if (DEV_TOOLS && this.devInfo && this._devVisible) {
   g.destroy();
 }
   ensureAsphaltTexture() {
-    const key = 'asphalt';
-    const size = 256;
+  const key = 'asphalt';
+  const size = 512; // textura más grande => menos repetición visible
 
-    // CLAVE: si ya existía, la borramos. Esto evita que “asphalt” se quede apuntando a una textura vieja (la rejilla).
-    if (this.textures.exists(key)) this.textures.remove(key);
+  if (this.textures.exists(key)) this.textures.remove(key);
 
-    const g = this.add.graphics();
+  const g = this.add.graphics();
 
-    // Base asfalto (gris oscuro neutro)
-    g.fillStyle(0x2a2f3a, 1);
-    g.fillRect(0, 0, size, size);
+  // =========================
+  // Base casi plana (sin dirección)
+  // =========================
+  g.fillStyle(0x262c34, 1);
+  g.fillRect(0, 0, size, size);
 
-    // Grano fino claro
-    g.fillStyle(0xffffff, 0.045);
-    for (let i = 0; i < 1100; i++) {
-      const x = Math.random() * size;
-      const y = Math.random() * size;
-      const s = Math.random() < 0.92 ? 1 : 2;
-      g.fillRect(x, y, s, s);
-    }
+  // =========================
+  // Variación MUY suave (manchas grandes isotrópicas)
+  // - Sin bordes marcados
+  // - Sin patrones repetitivos
+  // =========================
+  for (let i = 0; i < 40; i++) {
+    const x = Math.random() * size;
+    const y = Math.random() * size;
+    const r = 70 + Math.random() * 190;
 
-    // Grano fino oscuro
-    g.fillStyle(0x000000, 0.07);
-    for (let i = 0; i < 900; i++) {
-      g.fillRect(Math.random() * size, Math.random() * size, 1, 1);
-    }
+    // alterna sutil entre un poco más claro / un poco más oscuro
+    const col = Math.random() < 0.5 ? 0x20252d : 0x2d3540;
+    const a = 0.03 + Math.random() * 0.05;
 
-    // Parches suaves (manchas de reparación)
-    for (let i = 0; i < 18; i++) {
-      const x = Math.random() * size;
-      const y = Math.random() * size;
-      const w = 26 + Math.random() * 70;
-      const h = 16 + Math.random() * 44;
-      const a = 0.04 + Math.random() * 0.06;
-      g.fillStyle(0x000000, a);
-      g.fillRoundedRect(x, y, w, h, 6);
-    }
-
-    // Marcas de goma muy sutiles (tire marks)
-    g.lineStyle(2, 0x10141b, 0.10);
-    for (let i = 0; i < 12; i++) {
-      const x1 = Math.random() * size;
-      const y1 = Math.random() * size;
-      const x2 = x1 + 80 + Math.random() * 120;
-      const y2 = y1 + (Math.random() * 18 - 9);
-      g.beginPath();
-      g.moveTo(x1, y1);
-      g.lineTo(x2, y2);
-      g.strokePath();
-    }
-
-    // Micro “rayas” de rodadura (longitudinales, casi invisibles)
-    g.lineStyle(1, 0xffffff, 0.018);
-    for (let i = 0; i < 160; i++) {
-      const y = Math.random() * size;
-      g.lineBetween(0, y, size, y + (Math.random() * 6 - 3));
-    }
-
-    g.generateTexture(key, size, size);
-    g.destroy();
+    g.fillStyle(col, a);
+    g.fillCircle(x, y, r);
   }
+
+  // =========================
+  // Ruido NO direccional (sal y pimienta)
+  // - Solo puntos (sin líneas, sin curvas)
+  // =========================
+  // oscurece
+  for (let i = 0; i < 14000; i++) {
+    const x = Math.random() * size;
+    const y = Math.random() * size;
+    g.fillStyle(0x000000, 0.025 + Math.random() * 0.03);
+    g.fillRect(x, y, 1, 1);
+  }
+  // aclara
+  for (let i = 0; i < 12000; i++) {
+    const x = Math.random() * size;
+    const y = Math.random() * size;
+    g.fillStyle(0xffffff, 0.015 + Math.random() * 0.02);
+    g.fillRect(x, y, 1, 1);
+  }
+
+  // =========================
+  // Grano un pelín más “chunky” (también isotrópico)
+  // =========================
+  for (let i = 0; i < 2500; i++) {
+    const x = Math.random() * size;
+    const y = Math.random() * size;
+    const s = Math.random() < 0.85 ? 1 : 2;
+
+    const col =
+      Math.random() < 0.55 ? 0x11161d :
+      Math.random() < 0.85 ? 0x3a4452 :
+                             0x566274;
+
+    const a = s === 1 ? (0.02 + Math.random() * 0.03) : (0.015 + Math.random() * 0.025);
+
+    g.fillStyle(col, a);
+    g.fillRect(x, y, s, s);
+  }
+
+  g.generateTexture(key, size, size);
+  g.destroy();
+}
 
 
   ensureCarTexture() {
