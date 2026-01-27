@@ -331,26 +331,41 @@ this.bgGrass = this.add.tileSprite(
   .setScrollFactor(1)
   .setDepth(1);
 
-// Máscara geométrica basada en la banda GRASS
-const gMask = this.make.graphics({ x: 0, y: 0, add: false });
-gMask.fillStyle(0xffffff, 1);
+// ===============================
+// GRASS MASK (solo afecta a bgGrass)
+// ===============================
+const gMaskGfx = this.make.graphics({ x: 0, y: 0, add: false });
+gMaskGfx.fillStyle(0xffffff, 1);
 
-// Recorremos TODAS las celdas de la banda GRASS
 const grassCells = this.track?.geom?.grass?.cells;
 
 if (grassCells) {
   for (const cell of grassCells.values()) {
     for (const poly of cell.polys) {
-      gMask.beginPath();
-      gMask.moveTo(poly[0].x, poly[0].y);
+      if (!poly || poly.length < 3) continue;
+
+      gMaskGfx.beginPath();
+      gMaskGfx.moveTo(poly[0].x, poly[0].y);
       for (let i = 1; i < poly.length; i++) {
-        gMask.lineTo(poly[i].x, poly[i].y);
+        gMaskGfx.lineTo(poly[i].x, poly[i].y);
       }
-      gMask.closePath();
-      gMask.fillPath();
+      gMaskGfx.closePath();
+      gMaskGfx.fillPath();
     }
   }
 }
+
+const grassMask = gMaskGfx.createGeometryMask();
+
+// ⚠️ CRÍTICO: la UI camera NO debe ver esta máscara
+this.uiCam?.ignore?.(gMaskGfx);
+
+// Aplicar SOLO al grass
+this.bgGrass.setMask(grassMask);
+
+// Guardamos referencias por si en el futuro queremos limpiar / rehacer
+this._grassMaskGfx = gMaskGfx;
+this._grassMask = grassMask;
 
 // Aplicamos la máscara al GRASS
 this.bgGrass.setMask(gMask.createGeometryMask());
