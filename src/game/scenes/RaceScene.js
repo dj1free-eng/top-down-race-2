@@ -668,7 +668,7 @@ if (DEV_TOOLS) {
   const pad = 8;
 
   // Panel más estrecho para móvil y sin salirse de pantalla
-  const panelW = 200;
+  const panelW = 180;
   const panelH = 170;
   const panelX = this.scale.width - panelW - pad;
   const panelY = 10;
@@ -797,7 +797,7 @@ this._startStatus = this.add.text(panelX + 18, panelY + panelH - 30, 'WAITING', 
 });
 
 // PNG del semáforo (lo más grande posible)
-this._startAsset = this.add.image(panelX + panelW / 2, panelY + 160, 'startlights_f1')
+this._startAsset = this.add.image(panelX + panelW / 2, panelY + 160, 'start_base')
   .setOrigin(0.5, 0.5);
 
 // Escala: casi ancho completo del “panel”
