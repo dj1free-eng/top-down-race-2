@@ -305,67 +305,20 @@ try {
   this._dbg('asphalt ERROR');
 }
 try { this.ensureCarTexture(); } catch (e) {}
-// =========================
-// 3) Fondo del mundo: OFF + GRASS BAND
-// =========================
-
-// OFF: cubre todo el mundo (arena / tierra)
-this.bgOff = this.add.tileSprite(
-  0, 0,
-  this.worldW,
-  this.worldH,
-  'off'
-)
-  .setOrigin(0, 0)
-  .setScrollFactor(1)
-  .setDepth(0);
-
-// GRASS: se verá SOLO donde exista la banda GRASS
-this.bgGrass = this.add.tileSprite(
-  0, 0,
-  this.worldW,
-  this.worldH,
-  'grass'
-)
-  .setOrigin(0, 0)
-  .setScrollFactor(1)
-  .setDepth(1);
-
-// ===============================
-// GRASS MASK (solo afecta a bgGrass)
-// ===============================
-const gMaskGfx = this.make.graphics({ x: 0, y: 0, add: false });
-gMaskGfx.fillStyle(0xffffff, 1);
-
-const grassCells = this.track?.geom?.grass?.cells;
-
-if (grassCells) {
-  for (const cell of grassCells.values()) {
-    for (const poly of cell.polys) {
-      if (!poly || poly.length < 3) continue;
-
-      gMaskGfx.beginPath();
-      gMaskGfx.moveTo(poly[0].x, poly[0].y);
-      for (let i = 1; i < poly.length; i++) {
-        gMaskGfx.lineTo(poly[i].x, poly[i].y);
-      }
-      gMaskGfx.closePath();
-      gMaskGfx.fillPath();
-    }
-  }
-}
-
-const grassMask = gMaskGfx.createGeometryMask();
-
-// ⚠️ CRÍTICO: la UI camera NO debe ver esta máscara
-this.uiCam?.ignore?.(gMaskGfx);
-
-// Aplicar SOLO al grass
-this.bgGrass.setMask(grassMask);
-
-// Guardamos referencias por si en el futuro queremos limpiar / rehacer
-this._grassMaskGfx = gMaskGfx;
-this._grassMask = grassMask;
+// 5) Track ribbon (geom + culling state)
+this.track = {
+  meta: t01,
+  geom: buildTrackRibbon({
+    centerline: t01.centerline,
+    trackWidth: t01.trackWidth,
+    grassMargin: t01.grassMargin ?? 220, // punto de ataque: ancho banda GRASS (px por lado)
+    sampleStepPx: t01.sampleStepPx ?? 22,
+    cellSize: t01.cellSize ?? 400
+  }),
+  gfxByCell: new Map(),
+  activeCells: new Set(),
+  cullRadiusCells: 2
+};
 // ===============================
 // TIMING (laps + sectors)
 // ===============================
