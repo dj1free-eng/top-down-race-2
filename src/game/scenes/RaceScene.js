@@ -853,6 +853,7 @@ this._reflowStartModal = () => {
   const targetW = Math.min(pw * 0.92, 720);
   const s = targetW / this._startAsset.width;
   this._startAsset.setScale(s);
+};
 
 this.scale.on('resize', this._reflowStartModal);
   // 12) Volver al menú
