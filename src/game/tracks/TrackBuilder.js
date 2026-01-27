@@ -112,6 +112,7 @@ function cellKey(cx, cy) {
 export function buildTrackRibbon({
   centerline,
   trackWidth,
+  grassMargin = 0,     // <-- NUEVO: extra a cada lado (px). Banda GRASS = trackWidth + 2*grassMargin
   sampleStepPx = 12,
   cellSize = 400
 }) {
@@ -201,10 +202,17 @@ for (let i = 0; i < cl.length; i++) {
 // sustituir centerline densa por la relajada
 cl.length = 0;
 for (const p of relax) cl.push(p);
+
 // 3) Bordes por normal (con miter-limit para curvas cerradas)
 const half = trackWidth * 0.5;
+const halfGrass = half + Math.max(0, grassMargin); // <-- NUEVO
+
 const left = [];
 const right = [];
+
+// Banda GRASS (más ancha) siguiendo la misma forma
+const grassLeft = [];
+const grassRight = [];
 
 const eps = 1e-6;
 const MITER_LIMIT = 2.0; // 2.0–2.5 típico. Más alto = más puntas, más bajo = más “bevel”.
@@ -239,24 +247,39 @@ const tooSharp =
   (miterLen > MITER_LIMIT * half) || // miter excesivo
   (denom < 0);                       // giro brusco (normales opuestas)
 
-  let ox, oy; // offset izquierda final
+  // Dirección del offset (unidad). La reutilizamos para TRACK y GRASS.
+  let dirX, dirY;
+
   if (tooSharp) {
     // Bevel-ish: usa una normal “segura” (la del segmento siguiente) para evitar puntas
-    ox = n1x * half;
-    oy = n1y * half;
+    dirX = n1x;
+    dirY = n1y;
   } else {
-    ox = miterX * miterLen;
-    oy = miterY * miterLen;
+    // Miter direction
+    dirX = miterX;
+    dirY = miterY;
   }
 
-  left.push([p[0] + ox, p[1] + oy]);
-  right.push([p[0] - ox, p[1] - oy]);
+  // TRACK offsets
+  const oxT = dirX * half;
+  const oyT = dirY * half;
+
+  left.push([p[0] + oxT, p[1] + oyT]);
+  right.push([p[0] - oxT, p[1] - oyT]);
+
+  // GRASS offsets (misma forma, más ancho)
+  const oxG = dirX * halfGrass;
+  const oyG = dirY * halfGrass;
+
+  grassLeft.push([p[0] + oxG, p[1] + oyG]);
+  grassRight.push([p[0] - oxG, p[1] - oyG]);
 }
   // 4) Ribbon en segmentos (quad -> 2 tri) y asignación a celdas
   // Guardamos polys como arrays de {x,y}
-  const cells = new Map();
+    const cells = new Map();
+  const grassCells = new Map(); // <-- NUEVO
 
-  const addPolyToCells = (poly) => {
+  const addPolyToCells = (cellsMap, poly) => {
     const b = boundsOfPoly(poly);
     const cx0 = Math.floor(b.minX / cellSize);
     const cy0 = Math.floor(b.minY / cellSize);
@@ -266,8 +289,8 @@ const tooSharp =
     for (let cy = cy0; cy <= cy1; cy++) {
       for (let cx = cx0; cx <= cx1; cx++) {
         const key = cellKey(cx, cy);
-        if (!cells.has(key)) cells.set(key, { polys: [] });
-        cells.get(key).polys.push(poly);
+                if (!cellsMap.has(key)) cellsMap.set(key, { polys: [] });
+        cellsMap.get(key).polys.push(poly);
       }
     }
   };
@@ -281,13 +304,39 @@ for (let i = 0; i < count; i++) {
   const l0 = left[i], r0 = right[i];
   const l1 = left[j], r1 = right[j];
 
-  addPolyToCells([
+    // TRACK quad -> celdas TRACK
+  addPolyToCells(cells, [
     { x: l0[0], y: l0[1] },
     { x: r0[0], y: r0[1] },
     { x: r1[0], y: r1[1] },
     { x: l1[0], y: l1[1] }
   ]);
+
+  // GRASS quad -> celdas GRASS (misma topología, mayor ancho)
+  const gl0 = grassLeft[i], gr0 = grassRight[i];
+  const gl1 = grassLeft[j], gr1 = grassRight[j];
+
+  addPolyToCells(grassCells, [
+    { x: gl0[0], y: gl0[1] },
+    { x: gr0[0], y: gr0[1] },
+    { x: gr1[0], y: gr1[1] },
+    { x: gl1[0], y: gl1[1] }
+  ]);
 }
 
-  return { center: cl, left, right, cells, cellSize };
+    return {
+    center: cl,
+    left,
+    right,
+    cells,
+    cellSize,
+
+    // Banda GRASS adicional (misma forma, más ancha)
+    grass: {
+      margin: Math.max(0, grassMargin),
+      left: grassLeft,
+      right: grassRight,
+      cells: grassCells
+    }
+  };
 }
