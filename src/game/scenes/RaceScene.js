@@ -366,9 +366,6 @@ this.bgGrass.setMask(grassMask);
 // Guardamos referencias por si en el futuro queremos limpiar / rehacer
 this._grassMaskGfx = gMaskGfx;
 this._grassMask = grassMask;
-
-// Aplicamos la máscara al GRASS
-this.bgGrass.setMask(gMask.createGeometryMask());
 // ===============================
 // TIMING (laps + sectors)
 // ===============================
@@ -800,7 +797,10 @@ this.upUI = null;
 this.uiCam = this.cameras.add(0, 0, this.scale.width, this.scale.height);
 this.uiCam.setScroll(0, 0);
 this.uiCam.setZoom(1);
-
+// UI cam: ignorar fondos del mundo y máscaras
+if (this.bgOff) this.uiCam.ignore(this.bgOff);
+if (this.bgGrass) this.uiCam.ignore(this.bgGrass);
+if (this._grassMaskGfx) this.uiCam.ignore(this._grassMaskGfx);
 // 1) La cámara principal NO debe renderizar UI
 this.cameras.main.ignore([
   this.hudBox,
