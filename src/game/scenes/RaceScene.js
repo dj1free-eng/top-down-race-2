@@ -763,14 +763,7 @@ this._prevThrottleDown = false;
 
 // Modal container (UI)
 this._startModal = this.add.container(0, 0).setScrollFactor(0).setDepth(2000);
-// Aseguramos que TODO el semáforo vive dentro del modal
-this._startModal.add([
-  modalBg,
-  this._startTitle,
-  this._startHint,
-  this._startStatus,
-  this._startAsset
-]);
+
 const w = this.scale.width;
 const h = this.scale.height;
 
@@ -813,7 +806,14 @@ this._startAsset = this.add.image(panelX + panelW / 2, panelY + 160, 'start_base
   const s = targetW / this._startAsset.width;
   this._startAsset.setScale(s);
 }
-
+// Aseguramos que TODO el semáforo vive dentro del modal
+this._startModal.add([
+  modalBg,
+  this._startTitle,
+  this._startHint,
+  this._startStatus,
+  this._startAsset
+]);
 // Posicionar luces encima del PNG (coordenadas relativas al PNG)
 const positionLights = () => {
   const img = this._startAsset;
