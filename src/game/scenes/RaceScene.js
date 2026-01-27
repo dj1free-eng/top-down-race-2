@@ -11,6 +11,86 @@ function wrapPi(a) {
   while (a < -Math.PI) a += Math.PI * 2;
   return a;
 }
+function fmtTime(ms) {
+  if (ms == null) return '--:--.---';
+  const t = Math.max(0, ms);
+  const m = Math.floor(t / 60000);
+  const s = Math.floor((t % 60000) / 1000);
+  const ms3 = Math.floor(t % 1000);
+  return `${m}:${String(s).padStart(2, '0')}.${String(ms3).padStart(3, '0')}`;
+}
+const DEV_TOOLS = true; // ponlo en false para ocultar botones de zoom/cull
+// =================================================
+// TRACK SURFACE HELPERS (point-in-polygon por celdas)
+// =================================================
+function _ptXY(pt, ox = 0, oy = 0) {
+  if (!pt) return { x: NaN, y: NaN };
+  if (typeof pt.x === 'number' && typeof pt.y === 'number') return { x: pt.x + ox, y: pt.y + oy };
+  if (Array.isArray(pt) && pt.length >= 2) return { x: pt[0] + ox, y: pt[1] + oy };
+  return { x: NaN, y: NaN };
+}
+
+// Even-odd rule (ray casting)
+function _pointInPoly(px, py, poly, ox = 0, oy = 0) {
+  let inside = false;
+  const n = poly?.length ?? 0;
+  if (n < 3) return false;
+
+  for (let i = 0, j = n - 1; i < n; j = i++) {
+    const a = _ptXY(poly[i], ox, oy);
+    const b = _ptXY(poly[j], ox, oy);
+
+    if (!Number.isFinite(a.x) || !Number.isFinite(a.y) || !Number.isFinite(b.x) || !Number.isFinite(b.y)) continue;
+
+    const intersect =
+      ((a.y > py) !== (b.y > py)) &&
+      (px < (b.x - a.x) * (py - a.y) / ((b.y - a.y) || 1e-9) + a.x);
+
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+function isPointOnTrackWorld(px, py, geom) {
+  const cells = geom?.cells;
+  const cellSize = geom?.cellSize;
+  if (!cells || !cellSize) return true; // si no hay geom, no penalizamos
+
+  const cx = Math.floor(px / cellSize);
+  const cy = Math.floor(py / cellSize);
+
+  // Miramos celda actual + vecinas (evita falsos “off” en bordes)
+  for (let yy = cy - 1; yy <= cy + 1; yy++) {
+    for (let xx = cx - 1; xx <= cx + 1; xx++) {
+      const key = `${xx},${yy}`;
+      const cd = cells.get(key);
+      const polys = cd?.polys;
+      if (!polys || polys.length === 0) continue;
+
+      const oxCell = xx * cellSize;
+      const oyCell = yy * cellSize;
+
+      for (const poly of polys) {
+        if (!poly || poly.length < 3) continue;
+
+        // Detectar si poly viene en coords mundo o coords locales de celda (como ya haces en el mask)
+        const p0 = poly[0];
+        const p0xy = _ptXY(p0, 0, 0);
+        if (!Number.isFinite(p0xy.x) || !Number.isFinite(p0xy.y)) continue;
+
+        const looksWorld =
+          (p0xy.x > cellSize * 1.5) || (p0xy.y > cellSize * 1.5) ||
+          (p0xy.x < -cellSize * 0.5) || (p0xy.y < -cellSize * 0.5);
+
+        const ox = looksWorld ? 0 : oxCell;
+        const oy = looksWorld ? 0 : oyCell;
+
+        if (_pointInPoly(px, py, poly, ox, oy)) return true;
+      }
+    }
+  }
+  return false;
+}
 
 export class RaceScene extends Phaser.Scene {
   constructor() {
@@ -40,12 +120,25 @@ export class RaceScene extends Phaser.Scene {
     this.carRig = null;
   }
 
-  init(data) {
+    init(data) {
     // 1) Resolver coche seleccionado (prioridad: data -> localStorage -> stock)
     this.carId = data?.carId || localStorage.getItem('tdr2:carId') || 'stock';
 
+    // 1.1) Resolver circuito seleccionado (prioridad: data -> localStorage -> track02)
+    const incomingTrack = data?.trackKey;
+    const savedTrack = localStorage.getItem('tdr2:trackKey');
+
+    const valid = (k) => (k === 'track01' || k === 'track02');
+
+    this.trackKey = valid(incomingTrack)
+      ? incomingTrack
+      : (valid(savedTrack) ? savedTrack : 'track02');
+
+    localStorage.setItem('tdr2:trackKey', this.trackKey);
+
     // 2) Base spec
     const baseSpec = CAR_SPECS[this.carId] || CAR_SPECS.stock;
+
 
     // === UPGRADES: cargar niveles por coche ===
     const upgradesKey = `tdr2:upgrades:${this.carId}`;
@@ -186,7 +279,8 @@ export class RaceScene extends Phaser.Scene {
     // Alias compatible con código viejo
     this._dbgSet = (m) => this._dbg(m);
     // 1) Track meta primero (define world real)
-const t01 = makeTrack02Technical();
+const t01 = (this.trackKey === 'track01') ? makeTrack01Oval() : makeTrack02Technical();
+
 
     this.worldW = t01.worldW;
     this.worldH = t01.worldH;
@@ -226,7 +320,20 @@ if (bgKey) {
     .setOrigin(0, 0)
     .setDepth(0);
 }
+// ===============================
+// TIMING (laps + sectors)
+// ===============================
+this.timing = {
+  lapStart: null,     // se fija en lights out
+  started: false,
 
+  s1: null,
+  s2: null,
+  s3: null,
+
+  lastLap: null,
+  bestLap: null
+};
     // 4) Coche (body físico + rig visual)
     // Cuerpo físico SIN sprite (evita __MISSING)
 const body = this.physics.add.sprite(t01.start.x, t01.start.y, '__BODY__');
@@ -252,181 +359,502 @@ body.rotation = t01.start.r;
 this.track = {
   meta: t01,
   geom: buildTrackRibbon({
-    centerline: t01.centerline,
-    trackWidth: t01.trackWidth,
-    sampleStepPx: 22,
-    cellSize: 400
-  }),
+  centerline: t01.centerline,
+  trackWidth: t01.trackWidth,
+  sampleStepPx: t01.sampleStepPx ?? 22,
+  cellSize: t01.cellSize ?? 400
+}),
   gfxByCell: new Map(),
   activeCells: new Set(),
   cullRadiusCells: 2
 };
+    // ================================
+// Bordes de pista (GLOBAL, sin culling)
+// ================================
+const drawPolylineClosed = (pts, lineW, color, alpha) => {
+  const g = this.add.graphics();
+  g.setDepth(12);          // encima del asfalto (10)
+  g.setScrollFactor(1);
+  g.lineStyle(lineW, color, alpha);
+
+  if (!pts || pts.length < 2) return g;
+
+  g.beginPath();
+  g.moveTo(pts[0][0], pts[0][1]);
+  for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
+  g.closePath();
+  g.strokePath();
+  return g;
+};
+
+// Borde exterior e interior del ribbon
+this._borderLeft = drawPolylineClosed(this.track.geom.left, 4, 0xf2f2f2, 0.8);
+this._borderRight = drawPolylineClosed(this.track.geom.right, 4, 0xf2f2f2, 0.8);
+
+// UI camera no debe renderizar bordes
+this.uiCam?.ignore?.(this._borderLeft);
+this.uiCam?.ignore?.(this._borderRight);
+    this._isOnTrack = (x, y) => isPointOnTrackWorld(x, y, this.track?.geom);
+    this._cullEnabled = true;
 this._hudLog(`[track geom] cells=${this.track.geom?.cells?.size ?? 'null'}`);
  this._trackCells = this.track.geom?.cells?.size ?? null;
 this._trackDiag = `cells=${this._trackCells}`;
 this._trackDiag2 = '';
     this.trackAsphaltColor = 0x2a2f3a;
 
-    // 6) Meta y vueltas (datos)
-    this.finishLine = t01.finishLine || t01.finish;
-    this.lapCount = 0;
-    this.lastFinishSide = null;
-    this.prevCarX = this.car.x;
-    this.prevCarY = this.car.y;
-    this._lapCooldownMs = 0;
+// 6) Meta, checkpoints y vueltas (datos)
+this.finishLine = t01.finishLine || t01.finish;
+// Fallback: si el track no trae normal en la meta, la calculamos desde la centerline
+if (this.finishLine?.a && this.finishLine?.b && !this.finishLine.normal) {
+  const a = this.finishLine.a;
+  const b = this.finishLine.b;
 
-    // Debug: línea de meta (si existe)
-    const finish = t01.finish || t01.finishLine;
-    if (finish?.a && finish?.b) {
-      this.finishGfx = this.add.graphics();
-      this.finishGfx.lineStyle(6, 0xff2d2d, 1);
-      this.finishGfx.beginPath();
-      this.finishGfx.moveTo(finish.a.x, finish.a.y);
-      this.finishGfx.lineTo(finish.b.x, finish.b.y);
-      this.finishGfx.strokePath();
-      this.finishGfx.setDepth(50);
+  // Punto medio de la meta
+  const mid = { x: (a.x + b.x) * 0.5, y: (a.y + b.y) * 0.5 };
+
+  // Fuente de centerline: preferimos la del TrackBuilder si existe
+  const src = (
+    this.track?.geom?.center ||
+    this.track?.geom?.centerline ||
+    this.track?.geom?.centerPts ||
+    t01.centerline ||
+    []
+  );
+
+  const pts = src.map((pt) => {
+    if (!pt) return null;
+    if (typeof pt.x === 'number' && typeof pt.y === 'number') return { x: pt.x, y: pt.y };
+    if (Array.isArray(pt) && pt.length >= 2) return { x: pt[0], y: pt[1] };
+    return null;
+  }).filter(Boolean);
+
+  const norm = (x, y) => {
+    const d = Math.hypot(x, y) || 1;
+    return { x: x / d, y: y / d };
+  };
+
+  if (pts.length >= 2) {
+    // Encuentra el punto de centerline más cercano al mid
+    let bestI = 0;
+    let bestD = Infinity;
+    for (let i = 0; i < pts.length; i++) {
+      const dx = pts[i].x - mid.x;
+      const dy = pts[i].y - mid.y;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < bestD) { bestD = d2; bestI = i; }
     }
+
+    // Tangente local (suavizada)
+    const p0 = pts[(bestI - 1 + pts.length) % pts.length];
+    const p1 = pts[bestI];
+    const p2 = pts[(bestI + 1) % pts.length];
+
+    const tx = (p2.x - p0.x);
+    const ty = (p2.y - p0.y);
+    this.finishLine.normal = norm(tx, ty);
+  } else {
+    // Último fallback: normal perpendicular a la meta (no ideal, pero evita null)
+    const abx = b.x - a.x;
+    const aby = b.y - a.y;
+    this.finishLine.normal = norm(-aby, abx);
+  }
+}
+    this.lapCount = 0;
+this.prevCarX = this.car.x;
+this.prevCarY = this.car.y;
+
+// Cooldowns (evita dobles triggers por frame)
+this._lapCooldownMs = 0;
+this._cpCooldown1Ms = 0;
+this._cpCooldown2Ms = 0;
+
+// Estado de checkpoints por vuelta:
+// 0 = nada, 1 = CP1 ok, 2 = CP1+CP2 ok (ya puede contar meta)
+this._cpState = 0;
+
+// ---------- helpers ----------
+const _ptToXY = (pt) => {
+  if (!pt) return { x: NaN, y: NaN };
+  if (typeof pt.x === 'number' && typeof pt.y === 'number') return { x: pt.x, y: pt.y };
+  if (Array.isArray(pt) && pt.length >= 2) return { x: pt[0], y: pt[1] };
+  return { x: NaN, y: NaN };
+};
+
+const _getCenterPtsXY = () => {
+  // Preferimos un centerline “rico” si TrackBuilder lo expone; si no, usamos el meta.centerline del track.
+  const c =
+    this.track?.geom?.center ||
+    this.track?.geom?.centerline ||
+    this.track?.geom?.centerPts ||
+    this.track?.meta?.centerline ||
+    [];
+
+  return c.map(_ptToXY).filter(p => Number.isFinite(p.x) && Number.isFinite(p.y));
+};
+
+const _makeGateAtFraction = (frac01) => {
+  const pts0 = _getCenterPtsXY();
+if (pts0.length < 3) return null;
+
+// Para circuitos cerrados: incluir el segmento de cierre (last -> first)
+const pts = pts0.slice();
+pts.push({ x: pts0[0].x, y: pts0[0].y });
+
+// Longitud total (incluye cierre)
+let total = 0;
+for (let i = 1; i < pts.length; i++) {
+  const dx = pts[i].x - pts[i - 1].x;
+  const dy = pts[i].y - pts[i - 1].y;
+  total += Math.hypot(dx, dy);
+}
+if (total <= 0) return null;
+
+  const target = total * frac01;
+
+  // Encuentra el segmento donde cae target
+  let acc = 0;
+  let idx = 1;
+  for (; idx < pts.length; idx++) {
+    const dx = pts[idx].x - pts[idx - 1].x;
+    const dy = pts[idx].y - pts[idx - 1].y;
+    const d = Math.hypot(dx, dy);
+    if (acc + d >= target) break;
+    acc += d;
+  }
+  if (idx >= pts.length) idx = pts.length - 1;
+
+  // Tangente local (preferimos mirar “hacia delante”)
+  const p0 = pts[Math.max(0, idx - 1)];
+  const p1 = pts[idx];
+  const p2 = pts[Math.min(pts.length - 1, idx + 1)];
+
+  // Tangente suavizada usando p0->p2 (reduce gates raros en curvas)
+  let tx = p2.x - p0.x;
+  let ty = p2.y - p0.y;
+  const tLen = Math.hypot(tx, ty) || 1;
+  tx /= tLen; ty /= tLen;
+
+  // Perpendicular
+  let px = -ty;
+  let py = tx;
+
+  // Punto medio interpolado dentro del segmento (p0->p1)
+  const segDx = p1.x - p0.x;
+  const segDy = p1.y - p0.y;
+  const segLen = Math.hypot(segDx, segDy) || 1;
+  const remain = Math.max(0, target - acc);
+  const u = Math.min(1, remain / segLen);
+
+  const mid = { x: p0.x + segDx * u, y: p0.y + segDy * u };
+
+  // Largo del gate (un pelín más que el ancho para asegurar cruce)
+  const half = (t01.trackWidth || 300) * 0.75;
+  const a = { x: mid.x - px * half, y: mid.y - py * half };
+  const b = { x: mid.x + px * half, y: mid.y + py * half };
+
+  // normal = “hacia delante” (tangente)
+  const normal = { x: tx, y: ty };
+
+  return { a, b, normal };
+};
+
+// ---------- construir checkpoints 33% / 66% ----------
+this.checkpoints = {
+  cp1: _makeGateAtFraction(0.33),
+  cp2: _makeGateAtFraction(0.66)
+};
+
+// Debug visual: meta + checkpoints
+const finish = t01.finish || t01.finishLine;
+if (finish?.a && finish?.b) {
+  this.finishGfx?.destroy?.();
+  this.finishGfx = this.add.graphics();
+  this.finishGfx.lineStyle(6, 0xff2d2d, 1);
+  this.finishGfx.beginPath();
+  this.finishGfx.moveTo(finish.a.x, finish.a.y);
+  this.finishGfx.lineTo(finish.b.x, finish.b.y);
+  this.finishGfx.strokePath();
+  this.finishGfx.setDepth(50);
+  this.uiCam?.ignore?.(this.finishGfx);
+}
+
+this.cpGfx?.destroy?.();
+this.cpGfx = this.add.graphics();
+this.cpGfx.setDepth(49);
+this.uiCam?.ignore?.(this.cpGfx);
+
+const _drawGate = (gate, color) => {
+  if (!gate?.a || !gate?.b) return;
+  this.cpGfx.lineStyle(5, color, 0.9);
+  this.cpGfx.beginPath();
+  this.cpGfx.moveTo(gate.a.x, gate.a.y);
+  this.cpGfx.lineTo(gate.b.x, gate.b.y);
+  this.cpGfx.strokePath();
+};
+
+// CP1 (amarillo) y CP2 (verde)
+_drawGate(this.checkpoints.cp1, 0xffd400);
+_drawGate(this.checkpoints.cp2, 0x2dff6a);
 
     // 7) Cámara
     this.cameras.main.startFollow(this.carRig, true, 0.12, 0.12);
     this.cameras.main.setZoom(this.zoom);
-
+    this.cameras.main.roundPixels = true;
     // 8) Input teclado
     this.keys = this.input.keyboard.addKeys({
-      up: Phaser.Input.Keyboard.KeyCodes.W,
-      down: Phaser.Input.Keyboard.KeyCodes.S,
-      left: Phaser.Input.Keyboard.KeyCodes.A,
-      right: Phaser.Input.Keyboard.KeyCodes.D,
+  up: Phaser.Input.Keyboard.KeyCodes.W,
+  down: Phaser.Input.Keyboard.KeyCodes.S,
+  left: Phaser.Input.Keyboard.KeyCodes.A,
+  right: Phaser.Input.Keyboard.KeyCodes.D,
 
-      up2: Phaser.Input.Keyboard.KeyCodes.UP,
-      down2: Phaser.Input.Keyboard.KeyCodes.DOWN,
-      left2: Phaser.Input.Keyboard.KeyCodes.LEFT,
-      right2: Phaser.Input.Keyboard.KeyCodes.RIGHT,
+  up2: Phaser.Input.Keyboard.KeyCodes.UP,
+  down2: Phaser.Input.Keyboard.KeyCodes.DOWN,
+  left2: Phaser.Input.Keyboard.KeyCodes.LEFT,
+  right2: Phaser.Input.Keyboard.KeyCodes.RIGHT,
 
-      zoomIn: Phaser.Input.Keyboard.KeyCodes.E,
-      zoomOut: Phaser.Input.Keyboard.KeyCodes.Q,
-      back: Phaser.Input.Keyboard.KeyCodes.ESC
-    });
+  zoomIn: Phaser.Input.Keyboard.KeyCodes.E,
+  zoomOut: Phaser.Input.Keyboard.KeyCodes.Q,
+  back: Phaser.Input.Keyboard.KeyCodes.ESC,
+
+  // DEBUG: alternar culling
+  toggleCull: Phaser.Input.Keyboard.KeyCodes.C
+});
 
 
       // HUD (caja + texto legible)
 const hudX = 12;
 const hudY = 12;
 
-this.hudBox = this.add.rectangle(hudX, hudY, 340, 98, 0x000000, 0.55)
+this.hudBox = this.add.rectangle(hudX, hudY, 200, 64, 0x000000, 0.45)
   .setOrigin(0, 0)
   .setScrollFactor(0)
   .setDepth(1099)
   .setStrokeStyle(1, 0xffffff, 0.12);
 
 this.hud = this.add.text(hudX + 10, hudY + 8, '', {
-  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+fontFamily: 'Orbitron, monospace',
   fontSize: '13px',
   color: '#ffffff',
   lineSpacing: 3
 }).setScrollFactor(0).setDepth(1100);
 
 // Ajuste automático del alto de la caja según el texto (para que no tape)
+// Ajuste automático del alto de la caja según el texto (para que no tape)
 this._fitHud = () => {
   const w = 340;
   const h = Math.max(68, (this.hud.height || 0) + 16);
   this.hudBox.setSize(w, h);
 };
+// =================================================
+// DEV HUD (panel derecha) — solo para desarrollo
+// (sin botones: zoom/cull se operarán desde Config más adelante)
+// =================================================
+this._devVisible = false;
+this._devElems = [];
 
+this._devRegister = (...objs) => {
+  for (const o of objs) {
+    if (!o) continue;
+    this._devElems.push(o);
+  }
+};
+
+this._setDevVisible = (v) => {
+  this._devVisible = !!v;
+  for (const o of (this._devElems || [])) o?.setVisible?.(this._devVisible);
+};
+
+if (DEV_TOOLS) {
+  const pad = 8;
+
+  // Panel más estrecho para móvil y sin salirse de pantalla
+  const panelW = 200;
+  const panelH = 170;
+  const panelX = this.scale.width - panelW - pad;
+  const panelY = 10;
+
+  // Fondo panel dev
+  this.devBox = this.add.rectangle(panelX, panelY, panelW, panelH, 0x000000, 0.50)
+    .setOrigin(0, 0)
+    .setScrollFactor(0)
+    .setDepth(1099)
+    .setStrokeStyle(1, 0xffffff, 0.12);
+
+  this.devTitle = this.add.text(panelX + 10, panelY + 8, 'DEV', {
+    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: '13px',
+    color: '#ffffff',
+    fontStyle: '700'
+  }).setScrollFactor(0).setDepth(1100);
+
+  // Texto de estado dev: word wrap + fuente algo más pequeña (evita montajes)
+  this.devInfo = this.add.text(panelX + 10, panelY + 28, '', {
+    fontFamily: 'monospace',
+    fontSize: '11px',
+    color: '#ffffff',
+    lineSpacing: 2,
+    wordWrap: { width: panelW - 20, useAdvancedWrap: false }
+  }).setScrollFactor(0).setDepth(1100);
+
+  // Recolocar logs (_dbgText) dentro del panel (si existe ya)
+  if (this._dbgText) {
+    this._dbgText.setPosition(panelX + 10, panelY + 120);
+    this._dbgText.setDepth(1100);
+  }
+
+  // Registrar para toggle ON/OFF
+  this._devRegister(this.devBox, this.devTitle, this.devInfo, this._dbgText);
+
+  // Estado inicial: oculto (lo mostrará el gesto 2 dedos)
+  this._setDevVisible(false);
+}
     // 10) iOS multitouch + controles táctiles
     this.input.addPointer(2);
     this.touch = this.createTouchControls();
 
+// UI de upgrades desactivada en carrera (se moverá a Shop/Garage)
+this.upUI = null;
+// =================================================
+// UI CAMERA (HUD no afectado por zoom del mundo)
+// =================================================
+this.uiCam = this.cameras.add(0, 0, this.scale.width, this.scale.height);
+this.uiCam.setScroll(0, 0);
+this.uiCam.setZoom(1);
+
+// 1) La cámara principal NO debe renderizar UI
+this.cameras.main.ignore([
+  this.hudBox,
+  this.hud,
+  this.upUI,
+  this._dbgText,
+  this.devBox,
+  this.devTitle,
+  this.devInfo,
+  this.devToggleBtn,
+  this.devToggleTxt,
+  // Botones de zoom
+  this._zoomBtnPlus?.r,
+  this._zoomBtnPlus?.t,
+  this._zoomBtnMinus?.r,
+  this._zoomBtnMinus?.t,
+  this._zoomBtnCull?.r,
+  this._zoomBtnCull?.t,
+  // Controles táctiles
+  this.touchUI
+]
+.filter(Boolean));
+
+// 2) La cámara UI NO debe renderizar mundo (lo que ya existe ahora)
+if (this.bgWorld) this.uiCam.ignore(this.bgWorld);
+if (this.carRig) this.uiCam.ignore(this.carRig);
+if (this.finishGfx) this.uiCam.ignore(this.finishGfx);
+
+// Mantener tamaño si rota/cambia viewport
+this.scale.on('resize', (gameSize) => {
+  this.uiCam.setSize(gameSize.width, gameSize.height);
+});
 // =================================================
 // START LIGHTS (F1) — modal + bloqueo de coche hasta salida
-// Semáforo por PNG (7 estados): start_base + start_l1..start_l6
+// (PNG pro + luces transparentes)
 // =================================================
 this._raceStarted = false;
 this._startState = 'WAIT_GAS'; // WAIT_GAS -> COUNTDOWN -> GO -> RACING
 this._prevThrottleDown = false;
 
-// Helper: setTexture seguro (evita crashear si falta alguna key)
-this._setStartTexture = (key) => {
-  try {
-    if (this._startAsset && this.textures?.exists?.(key)) this._startAsset.setTexture(key);
-  } catch {}
-};
+// Modal container (UI)
+this._startModal = this.add.container(0, 0).setScrollFactor(0).setDepth(2000);
 
-// Modal UI (scrollFactor 0, depth alto)
-this._startModal = this.add.container(0, 0).setScrollFactor(0).setDepth(3000);
+const w = this.scale.width;
+const h = this.scale.height;
 
-const modalBg = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0x000000, 0.25)
-  .setOrigin(0, 0)
-  .setScrollFactor(0)
-  .setDepth(3000);
+// Fondo modal (oscurece)
+const modalBg = this.add.rectangle(0, 0, w, h, 0x000000, 0.45).setOrigin(0, 0);
 
-const panelW = Math.min(900, Math.floor(this.scale.width * 0.96));
-const panelH = 360;
-const panelX = Math.floor((this.scale.width - panelW) / 2);
-const panelY = Math.floor(this.scale.height * 0.10);
+// “Panel” invisible: solo para layout (no hace falta caja grande)
+const panelW = Math.min(760, Math.floor(w * 0.94));
+const panelH = 320;
+const panelX = Math.floor((w - panelW) / 2);
+const panelY = Math.floor(h * 0.14);
 
-this._startTitle = this.add.text(panelX + 18, panelY + 10, 'START', {
+// Texto
+this._startTitle = this.add.text(panelX + 18, panelY + 6, 'START', {
   fontFamily: 'Orbitron, monospace',
   fontSize: '18px',
   color: '#ffffff',
   fontStyle: '600'
-}).setScrollFactor(0).setDepth(3001);
+});
 
-this._startHint = this.add.text(panelX + 18, panelY + 40, 'Pulsa GAS para iniciar el semáforo', {
+this._startHint = this.add.text(panelX + 18, panelY + 34, 'Pulsa GAS para iniciar el semáforo', {
   fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
   fontSize: '13px',
   color: '#b7c0ff'
-}).setScrollFactor(0).setDepth(3001);
+});
 
-this._startStatus = this.add.text(panelX + 18, panelY + panelH - 28, 'WAITING', {
+this._startStatus = this.add.text(panelX + 18, panelY + panelH - 30, 'WAITING', {
   fontFamily: 'Orbitron, monospace',
   fontSize: '16px',
   color: '#ffffff'
-}).setScrollFactor(0).setDepth(3001);
+});
 
-// Imagen del semáforo (estado base)
-this._startAsset = this.add.image(panelX + panelW / 2, panelY + 200, 'start_base')
-  .setOrigin(0.5, 0.5)
-  .setScrollFactor(0)
-  .setDepth(3001);
+// PNG del semáforo (lo más grande posible)
+this._startAsset = this.add.image(panelX + panelW / 2, panelY + 160, 'startlights_f1')
+  .setOrigin(0.5, 0.5);
 
-// Escala: lo más grande posible sin salirse (móvil-first)
-this._fitStartAsset = () => {
-  try {
-    const pw = Math.min(900, Math.floor(this.scale.width * 0.96));
-    const targetW = Math.min(pw * 0.96, this.scale.width * 0.96);
-    const s = targetW / (this._startAsset.width || 1);
-    this._startAsset.setScale(s);
-  } catch {}
+// Escala: casi ancho completo del “panel”
+{
+  const targetW = Math.min(panelW * 0.92, 720);
+  const s = targetW / this._startAsset.width;
+  this._startAsset.setScale(s);
+}
+
+// Posicionar luces encima del PNG (coordenadas relativas al PNG)
+const positionLights = () => {
+  const img = this._startAsset;
+  const s = img.scaleX;
+
+  // Centro del PNG
+  const baseX = img.x;
+  const baseY = img.y;
+
+  // Ajuste fino: las lentes están alineadas en una fila.
+  // Estos offsets están pensados para el PNG que generamos (semáforo centrado).
+  const spacing = 44 * s;
+  const y = baseY - 12 * s;   // altura de lentes respecto al centro
+  const x0 = baseX - 2 * spacing;
+
+  for (let i = 0; i < 5; i++) {
+    this._startLights[i].setPosition(x0 + i * spacing, y);
+    this._startLights[i].setRadius(15 * s);
+  }
 };
-this._fitStartAsset();
 
-// Montaje modal
-this._startModal.add([modalBg, this._startTitle, this._startHint, this._startAsset, this._startStatus]);
+// Importante: la cámara principal NO debe dibujar la modal (solo UI)
+this.cameras.main.ignore(this._startModal);
 
-// Reflow en resize/orientación
+// Si rota/cambia viewport, reajusta modal y reubica luces
 this._reflowStartModal = () => {
-  try {
-    modalBg.setSize(this.scale.width, this.scale.height);
+  const w2 = this.scale.width;
+  const h2 = this.scale.height;
 
-    const pw = Math.min(900, Math.floor(this.scale.width * 0.96));
-    const px = Math.floor((this.scale.width - pw) / 2);
-    const py = Math.floor(this.scale.height * 0.10);
+  modalBg.setSize(w2, h2);
 
-    this._startTitle.setPosition(px + 18, py + 10);
-    this._startHint.setPosition(px + 18, py + 40);
-    this._startStatus.setPosition(px + 18, py + panelH - 28);
-    this._startAsset.setPosition(px + pw / 2, py + 200);
+  const pw = Math.min(760, Math.floor(w2 * 0.94));
+  const px = Math.floor((w2 - pw) / 2);
+  const py = Math.floor(h2 * 0.14);
 
-    this._fitStartAsset();
-  } catch {}
-};
+  // Repos texto
+  this._startTitle.setPosition(px + 18, py + 6);
+  this._startHint.setPosition(px + 18, py + 34);
+  this._startStatus.setPosition(px + 18, py + panelH - 30);
+
+  // Repos asset + escala
+  this._startAsset.setPosition(px + pw / 2, py + 160);
+
+  const targetW = Math.min(pw * 0.92, 720);
+  const s = targetW / this._startAsset.width;
+  this._startAsset.setScale(s);
+
 this.scale.on('resize', this._reflowStartModal);
-
-
-    // 11) UI Upgrades
-    this.buildUpgradesUI();
-
   // 12) Volver al menú
   if (this.keys?.back) {
     this.keys.back.on('down', () => this.scene.start('menu'));
@@ -446,9 +874,79 @@ this.scale.on('resize', this._reflowStartModal);
   // Flag para update()
   this._trackReady = true;
 
+// ================================================
+// DEV HUD trigger oculto — pulsación larga con 2 dedos (robusto)
+// + indicador en pantalla de dedos detectados (DEV)
+// ================================================
+if (DEV_TOOLS) {
+  // Asegura multitouch (crea punteros extra)
+  this.input.addPointer(5);
 
+  const HOLD_MS = 700;
+  let holdTimer = null;
+  let cooldownMs = 0;
+  let armed = false;
+
+  // Indicador pequeño (para verificar que Phaser detecta 2 dedos)
+  this._touchDbg = this.add.text(this.scale.width - 10, 10, '', {
+    fontFamily: 'monospace',
+    fontSize: '12px',
+    color: '#ffffff',
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    padding: { left: 6, right: 6, top: 4, bottom: 4 }
+  }).setOrigin(1, 0).setScrollFactor(0).setDepth(999999);
+
+  // Cuenta dedos realmente “down” según Phaser
+  const downCount = () => {
+    const ps = this.input.manager?.pointers || [];
+    let c = 0;
+    for (const p of ps) if (p && p.isDown) c++;
+    return c;
+  };
+
+  const cancelHold = () => {
+    if (holdTimer) {
+      holdTimer.remove(false);
+      holdTimer = null;
+    }
+    armed = false;
+  };
+
+  this.input.on('pointerdown', () => {
+    if (cooldownMs > 0) return;
+
+    // Armamos solo cuando haya 3+ dedos simultáneos
+    if (downCount() < 3) return;
+
+    cancelHold();
+    armed = true;
+
+    holdTimer = this.time.delayedCall(HOLD_MS, () => {
+      // Si siguen 2+ dedos al cumplir el tiempo -> toggle DEV HUD
+      if (downCount() >= 2) {
+        this._setDevVisible(!this._devVisible);
+        cooldownMs = 600;
+      }
+      cancelHold();
+    });
+  });
+
+  this.input.on('pointerup', cancelHold);
+  this.input.on('pointerout', cancelHold);
+
+  // Actualiza indicador y cooldown cada frame
+  this.events.on('postupdate', (t, dt) => {
+    cooldownMs = Math.max(0, cooldownMs - (dt || 0));
+
+    const c = downCount();
+    if (this._touchDbg) {
+      this._touchDbg.setText(
+        `touches:${c}  armed:${armed ? 'Y' : 'N'}  dev:${this._devVisible ? 'ON' : 'OFF'}`
+      );
+    }
+  });
 }
-
+}
 
   buildUpgradesUI() {
     // Si ya existía (por reinicio de escena) la destruimos
@@ -553,95 +1051,107 @@ this.scale.on('resize', this._reflowStartModal);
       this.zoom = clamp((this.zoom ?? 1) - 0.1, 0.6, 1.6);
       this.cameras.main.setZoom(this.zoom);
     }
-
+// DEBUG: toggle culling (ON / OFF)
+if (justDown && keys.toggleCull && justDown(keys.toggleCull)) {
+  this._cullEnabled = !this._cullEnabled;
+  this._hudLog(`[culling] ${this._cullEnabled ? 'ON' : 'OFF'}`);
+}
     // Inputs
     const t = this.touch || { steer: 0, throttle: 0, brake: 0, stickX: 0, stickY: 0 };
+// =================================================
+// START LIGHTS runtime (bloquea coche hasta salida)
+// =================================================
+const throttleDown = (t.throttle > 0.5);
+const throttleJustPressed = throttleDown && !this._prevThrottleDown;
+this._prevThrottleDown = throttleDown;
 
-    // =================================================
-    // START LIGHTS runtime (bloquea coche hasta salida)
-    // =================================================
-    const throttleDown = (t.throttle > 0.5);
-    const throttleJustPressed = throttleDown && !this._prevThrottleDown;
-    this._prevThrottleDown = throttleDown;
+// En WAIT_GAS: si pulsa GAS, arranca secuencia
+if (this._startState === 'WAIT_GAS' && throttleJustPressed) {
+  this._startState = 'COUNTDOWN';
 
-    // En WAIT_GAS: si pulsa GAS, arranca secuencia
-    if (this._startState === 'WAIT_GAS' && throttleJustPressed) {
-      this._startState = 'COUNTDOWN';
-      if (this._startHint) this._startHint.setText('Manténte listo...');
-      if (this._startStatus) {
-        this._startStatus.setText('RED LIGHTS');
-        this._startStatus.setColor('#ffffff');
-      }
+  if (this._startHint) this._startHint.setText('Manténte listo...');
+  if (this._startStatus) {
+    this._startStatus.setText('RED LIGHTS');
+    this._startStatus.setColor('#ffffff');
+  }
 
-      // Base al inicio
-      this._setStartTexture?.('start_base');
+  // Asegura frame base antes de empezar
+  if (this._startAsset) this._startAsset.setTexture('start_base');
 
-      const stepMs = 600;
+  const stepMs = 600;
 
-      // Enciende 6 rojas secuencial: start_l1 ... start_l6
-      for (let i = 1; i <= 6; i++) {
-        this.time.delayedCall(stepMs * i, () => {
-          this._setStartTexture?.(`start_l${i}`);
-        });
-      }
+  // Enciende 6 rojas secuencial: start_l1 ... start_l6
+  for (let i = 1; i <= 6; i++) {
+    this.time.delayedCall(stepMs * i, () => {
+      if (this._startAsset) this._startAsset.setTexture(`start_l${i}`);
+    });
+  }
 
-      // Delay aleatorio estilo F1 antes de apagar (lights out)
-      const randMs = 800 + Math.floor(Math.random() * 700);
+  // Delay aleatorio estilo F1 antes de apagar (lights out)
+  const randMs = 800 + Math.floor(Math.random() * 700);
 
-      this.time.delayedCall(stepMs * 6 + randMs, () => {
-        // Lights out -> GO
-        this._startState = 'GO';
-        this._setStartTexture?.('start_base');
+  this.time.delayedCall(stepMs * 6 + randMs, () => {
+    // Lights out -> GO
+    this._startState = 'GO';
 
-        if (this._startStatus) {
-          this._startStatus.setText('GO!');
-          this._startStatus.setColor('#2bff88');
-        }
+    // Apaga (vuelve al base)
+    if (this._startAsset) this._startAsset.setTexture('start_base');
 
-        // Iniciar cronómetro EXACTAMENTE en lights out
-        if (this.timing) {
-          this.timing.lapStart = performance.now();
-          this.timing.started = true;
-          this.timing.s1 = null;
-          this.timing.s2 = null;
-          this.timing.s3 = null;
-        }
-
-        // Cierra modal y habilita carrera
-        this.time.delayedCall(350, () => {
-          this._startState = 'RACING';
-          this._raceStarted = true;
-          if (this._startModal) this._startModal.setVisible(false);
-        });
-      });
+    if (this._startStatus) {
+      this._startStatus.setText('GO!');
+      this._startStatus.setColor('#2bff88');
     }
 
-    let up =
-      (keys.up?.isDown) ||
-      (keys.up2?.isDown) ||
-      (t.throttle > 0.5);
-
-    let down =
-      (keys.down?.isDown) ||
-      (keys.down2?.isDown) ||
-      (t.brake > 0.5);
-
-    let left =
-      (keys.left?.isDown) ||
-      (keys.left2?.isDown);
-
-    let right =
-      (keys.right?.isDown) ||
-      (keys.right2?.isDown);
-
-    // Mientras no haya salida, bloqueamos conducción (pero seguimos render/culling)
-    if (!this._raceStarted) {
-      up = false;
-      down = false;
-      left = false;
-      right = false;
+    // Iniciar cronómetro EXACTAMENTE en lights out
+    if (this.timing) {
+      this.timing.lapStart = performance.now();
+      this.timing.started = true;
+      this.timing.s1 = null;
+      this.timing.s2 = null;
+      this.timing.s3 = null;
     }
 
+    // Cierra modal y habilita carrera
+    this.time.delayedCall(350, () => {
+      this._startState = 'RACING';
+      this._raceStarted = true;
+      if (this._startModal) this._startModal.setVisible(false);
+    });
+  });
+}
+
+// Bloqueo del coche mientras no haya salida (pero NO cortamos el update,
+// para que la pista/culling se siga dibujando durante la modal)
+const freezeStart = !this._raceStarted;
+
+if (freezeStart) {
+  const body0 = this.car?.body;
+  if (body0) {
+    body0.setVelocity(0, 0);
+    body0.setAngularVelocity(0);
+  }
+}
+const up = !freezeStart && (
+  (keys.up?.isDown) ||
+  (keys.up2?.isDown) ||
+  (t.throttle > 0.5)
+);
+
+const down = !freezeStart && (
+  (keys.down?.isDown) ||
+  (keys.down2?.isDown) ||
+  (t.brake > 0.5)
+);
+
+const left = !freezeStart && (
+  (keys.left?.isDown) ||
+  (keys.left2?.isDown)
+);
+
+const right = !freezeStart && (
+  (keys.right?.isDown) ||
+  (keys.right2?.isDown)
+);
 
     const body = this.car.body;
 
@@ -655,22 +1165,35 @@ this.scale.on('resize', this._reflowStartModal);
     const vy = body.velocity?.y || 0;
     const speed = Math.sqrt(vx * vx + vy * vy);
 
-    // Params (por si init no llegó a setearlos aún)
-    const accel = this.accel ?? 0;
-    const brakeForce = this.brakeForce ?? 0;
-    const linearDrag = this.linearDrag ?? 0;
-    const maxFwd = this.maxFwd ?? 1;
-    const maxRev = this.maxRev ?? 1;
-    const turnRate = this.turnRate ?? 0;
-    const turnMin = this.turnMin ?? 0.1;
+// Superficie: dentro/fuera de pista (geom real)
+const onTrack = this._isOnTrack ? this._isOnTrack(this.car.x, this.car.y) : true;
+this._onTrack = onTrack; // para HUD/debug
+
+// Params (por si init no llegó a setearlos aún)
+let accel = this.accel ?? 0;
+const brakeForce = this.brakeForce ?? 0;
+const linearDrag = this.linearDrag ?? 0;
+const maxFwd = this.maxFwd ?? 1;
+const maxRev = this.maxRev ?? 1;
+let turnRate = this.turnRate ?? 0;
+const turnMin = this.turnMin ?? 0.1;
+
+// Penalización fuera de pista: pierde velocidad y le cuesta girar/recuperar
+if (!onTrack) {
+  // 1) motor “ahogado”
+  accel *= 0.35;
+
+  // 2) menos capacidad de giro
+  turnRate *= 0.60;
+
+  // 3) drag extra fuerte y estable por tiempo (independiente de FPS)
+  //    En ~1s te deja aprox al 18% de velocidad (muy penalizante)
+  const extra = Math.pow(0.18, dt);
+  body.velocity.x *= extra;
+  body.velocity.y *= extra;
+}
 
     // Aceleración / freno
-    // Si aún no ha empezado la carrera, congelamos el coche (sin empujar ni girar)
-    if (!this._raceStarted) {
-      body.velocity.x = 0;
-      body.velocity.y = 0;
-    }
-
     if (up && !down) {
       body.velocity.x += dirX * accel * dt;
       body.velocity.y += dirY * accel * dt;
@@ -759,14 +1282,21 @@ try {
       this._hudLog(this._trackDiag);
     }
 
-    const want = new Set();
-    const R = this.track.cullRadiusCells ?? 2;
+    let want;
 
-    for (let yy = cy - R; yy <= cy + R; yy++) {
-      for (let xx = cx - R; xx <= cx + R; xx++) {
-        want.add(`${xx},${yy}`);
-      }
+if (this._cullEnabled === false) {
+  // OFF = pintar todas las celdas reales (sin loops enormes)
+  want = new Set(cells.keys());
+} else {
+  want = new Set();
+  const R = this.track.cullRadiusCells ?? 2;
+
+  for (let yy = cy - R; yy <= cy + R; yy++) {
+    for (let xx = cx - R; xx <= cx + R; xx++) {
+      want.add(`${xx},${yy}`);
     }
+  }
+}
 
     // Ocultar celdas que ya no se quieren
     for (const k of (this.track.activeCells || [])) {
@@ -795,67 +1325,73 @@ try {
         const x = ix * cellSize;
         const y = iy * cellSize;
 
-        // 1) Tile del asfalto
-        const tile = this.add.tileSprite(x, y, cellSize, cellSize, 'asphalt')
-          .setOrigin(0, 0)
-          .setScrollFactor(1)
-          .setDepth(10);
+// 1) Imagen de asfalto (NO tileSprite: evita costuras con mask + cámara)
+// Asfalto por celda (con solape para evitar “costuras” entre chunks)
+const tile = this.add.image(x - 1, y - 1, 'asphalt')
+  .setOrigin(0, 0)
+  .setDisplaySize(cellSize + 2, cellSize + 2)
+  .setScrollFactor(1)
+  .setDepth(10);
 
-        tile.tilePositionX = x;
-        tile.tilePositionY = y;
 
-        // 2) Mask con forma de pista
-        const maskG = this.make.graphics({ x, y, add: false });
-        maskG.clear();
-        maskG.fillStyle(0xffffff, 1);
+// 2) Mask con forma de pista
+const maskG = this.make.graphics({ x, y, add: false });
 
-        const getXY = (pt) => {
-          if (!pt) return { x: NaN, y: NaN };
-          if (typeof pt.x === 'number' && typeof pt.y === 'number') return { x: pt.x, y: pt.y };
-          if (Array.isArray(pt) && pt.length >= 2) return { x: pt[0], y: pt[1] };
-          return { x: NaN, y: NaN };
-        };
+// UI camera no debe renderizar chunks / máscaras
+this.uiCam?.ignore?.(tile);
+this.uiCam?.ignore?.(maskG);
 
-        for (const poly of cellData.polys) {
-          if (!poly || poly.length < 3) continue;
+maskG.clear();
+maskG.fillStyle(0xffffff, 1);
 
-          const p0 = getXY(poly[0]);
-          if (!Number.isFinite(p0.x) || !Number.isFinite(p0.y)) continue;
+const getXY = (pt) => {
+  if (!pt) return { x: NaN, y: NaN };
+  if (typeof pt.x === 'number' && typeof pt.y === 'number') return { x: pt.x, y: pt.y };
+  if (Array.isArray(pt) && pt.length >= 2) return { x: pt[0], y: pt[1] };
+  return { x: NaN, y: NaN };
+};
 
-          const looksWorld =
-            (p0.x > cellSize * 1.5) || (p0.y > cellSize * 1.5) ||
-            (p0.x < -cellSize * 0.5) || (p0.y < -cellSize * 0.5);
+// 1) Relleno de asfalto (máscara)
+for (const poly of cellData.polys) {
+  if (!poly || poly.length < 3) continue;
 
-          const x0 = looksWorld ? (p0.x - x) : p0.x;
-          const y0 = looksWorld ? (p0.y - y) : p0.y;
+  const p0 = getXY(poly[0]);
+  if (!Number.isFinite(p0.x) || !Number.isFinite(p0.y)) continue;
 
-          maskG.beginPath();
-          maskG.moveTo(x0, y0);
+  const looksWorld =
+    (p0.x > cellSize * 1.5) || (p0.y > cellSize * 1.5) ||
+    (p0.x < -cellSize * 0.5) || (p0.y < -cellSize * 0.5);
 
-          for (let i = 1; i < poly.length; i++) {
-            const pi = getXY(poly[i]);
-            if (!Number.isFinite(pi.x) || !Number.isFinite(pi.y)) continue;
+  const x0 = looksWorld ? (p0.x - x) : p0.x;
+  const y0 = looksWorld ? (p0.y - y) : p0.y;
 
-            const lx = looksWorld ? (pi.x - x) : pi.x;
-            const ly = looksWorld ? (pi.y - y) : pi.y;
-            maskG.lineTo(lx, ly);
-          }
+  maskG.beginPath();
+  maskG.moveTo(x0, y0);
 
-          maskG.closePath();
-          maskG.fillPath();
-        }
+  for (let i = 1; i < poly.length; i++) {
+    const pi = getXY(poly[i]);
+    if (!Number.isFinite(pi.x) || !Number.isFinite(pi.y)) continue;
 
-        const mask = maskG.createGeometryMask();
-        tile.setMask(mask);
+    const lx = looksWorld ? (pi.x - x) : pi.x;
+    const ly = looksWorld ? (pi.y - y) : pi.y;
+    maskG.lineTo(lx, ly);
+  }
 
-        const stroke = null; // bordes desactivados
-        cell = { tile, stroke, maskG, mask };
+  maskG.closePath();
+  maskG.fillPath();
+}
+
+// (bordes por celda eliminados: se dibujarán globales fuera del culling)
+
+const mask = maskG.createGeometryMask();
+tile.setMask(mask);
+
+cell = { tile, stroke: null, maskG, mask };
 
         this.track.gfxByCell.set(k, cell);
       }
 
       if (cell.tile && !cell.tile.visible) cell.tile.setVisible(true);
-      if (cell.stroke && !cell.stroke.visible) cell.stroke.setVisible(true);
     }
 
     this.track.activeCells = want;
@@ -896,10 +1432,105 @@ try {
         if (this._lapCooldownMs == null) this._lapCooldownMs = 0;
         this._lapCooldownMs = Math.max(0, this._lapCooldownMs - (deltaMs || 0));
 
-        if (within && crossed && forward && this._lapCooldownMs === 0) {
-          this.lapCount = (this.lapCount || 0) + 1;
-          this._lapCooldownMs = 700;
-        }
+        // Cooldowns
+this._lapCooldownMs = Math.max(0, (this._lapCooldownMs || 0) - (deltaMs || 0));
+this._cpCooldown1Ms = Math.max(0, (this._cpCooldown1Ms || 0) - (deltaMs || 0));
+this._cpCooldown2Ms = Math.max(0, (this._cpCooldown2Ms || 0) - (deltaMs || 0));
+
+// --- helper: test cruce gate (misma lógica que meta) ---
+const _crossGate = (gate) => {
+  if (!gate?.a || !gate?.b || !gate?.normal) return false;
+
+  const a = gate.a;
+  const b = gate.b;
+  const n = gate.normal;
+
+  const x0 = (this.prevCarX ?? this.car.x);
+  const y0 = (this.prevCarY ?? this.car.y);
+  const x1 = this.car.x;
+  const y1 = this.car.y;
+
+  // --- Segment intersection: (x0,y0)->(x1,y1) con gate a->b ---
+  const ax = a.x, ay = a.y, bx = b.x, by = b.y;
+
+  const rpx = x1 - x0;
+  const rpy = y1 - y0;
+  const spx = bx - ax;
+  const spy = by - ay;
+
+  const rxs = rpx * spy - rpy * spx;
+  const qpx = ax - x0;
+  const qpy = ay - y0;
+  const qpxr = qpx * rpy - qpy * rpx;
+
+  // Paralelos o sin movimiento
+  if (Math.abs(rxs) < 1e-6) return false;
+
+  const t = (qpx * spy - qpy * spx) / rxs;
+  const u = qpxr / rxs;
+
+  // t in [0,1] -> interseca dentro del movimiento del coche
+  // u in [0,1] -> interseca dentro del segmento del checkpoint
+  const hit = (t >= 0 && t <= 1 && u >= 0 && u <= 1);
+  if (!hit) return false;
+
+  // Dirección: exigir que el coche vaya "hacia delante" del gate (anti ida/vuelta)
+  const vvx = body.velocity?.x || (x1 - x0);
+  const vvy = body.velocity?.y || (y1 - y0);
+  const forwardGate = (vvx * n.x + vvy * n.y) > 0;
+
+  return forwardGate;
+};
+// --- 1) checkpoints (en orden) ---
+const cp1 = this.checkpoints?.cp1;
+const cp2 = this.checkpoints?.cp2;
+
+if (cp1 && this._cpCooldown1Ms === 0 && _crossGate(cp1)) {
+  if ((this._cpState || 0) === 0) {
+    this._cpState = 1;
+    if (this.timing) this.timing.s1 = performance.now() - this.timing.lapStart;
+  } else {
+    // Si lo pisa fuera de orden, reiniciamos para evitar exploits raros
+    this._cpState = 0;
+  }
+  this._cpCooldown1Ms = 500;
+}
+
+if (cp2 && this._cpCooldown2Ms === 0 && _crossGate(cp2)) {
+  if ((this._cpState || 0) === 1) {
+    this._cpState = 2;
+    if (this.timing) this.timing.s2 = performance.now() - this.timing.lapStart;
+  } else {
+    this._cpState = 0;
+  }
+  this._cpCooldown2Ms = 500;
+}
+
+// --- 2) meta: SOLO cuenta si cpState==2 ---
+if (within && crossed && forward && this._lapCooldownMs === 0) {
+  if ((this._cpState || 0) === 2) {
+    if (this.timing) {
+  const now = performance.now();
+  const lapTime = now - this.timing.lapStart;
+
+  this.timing.s3 = lapTime;
+  this.timing.lastLap = lapTime;
+  this.timing.bestLap = (this.timing.bestLap == null) ? lapTime : Math.min(this.timing.bestLap, lapTime);
+
+  this.timing.lapStart = now;
+  this.timing.s1 = null;
+  this.timing.s2 = null;
+  this.timing.s3 = null;
+}
+    this.lapCount = (this.lapCount || 0) + 1;
+    this._lapCooldownMs = 700;
+    this._cpState = 0; // nueva vuelta, reinicia combo
+  } else {
+    // cruzó meta sin checkpoints correctos: no cuenta
+    this._lapCooldownMs = 300; // pequeño “anti rebote”
+    this._cpState = 0;
+  }
+}
       }
     } catch (e) {
     }
@@ -910,22 +1541,44 @@ try {
 
     // === HUD ===
     const kmh = speed * 0.12;
+
     if (this.hud?.setText) {
-      const u = this.upgrades || { engine: 0, brakes: 0, tires: 0 };
-const bgKey = this.bgKey || '(no bg ref)';
+      const lapNow = (this.timing?.started && this.timing.lapStart != null)
+        ? (performance.now() - this.timing.lapStart)
+        : null;
 
       this.hud.setText(
-  'RaceScene\n' +
-  `BG: ${bgKey}\n` +
-  `Vueltas: ${this.lapCount || 0}\n` +
-  `Car: ${this.carId || 'stock'} | Upg E${u.engine} B${u.brakes} T${u.tires}\n` +
-  'Vel: ' + kmh.toFixed(0) + ' km/h\n' +
-  'Zoom: ' + (this.zoom ?? 1).toFixed(1) + '\n' +
-  `Track: ${this._trackDiag || ''}\n` +
-  `Track2: ${this._trackDiag2 || ''}`
-);
-    }
+        `LAP ${this.lapCount || 0}\n` +
+        `NOW  ${fmtTime(lapNow)}\n` +
+        `S1   ${fmtTime(this.timing?.s1)}\n` +
+        `S2   ${fmtTime(this.timing?.s2)}\n` +
+        `LAST ${fmtTime(this.timing?.lastLap)}\n` +
+        `BEST ${fmtTime(this.timing?.bestLap)}`
+      );
 
+      if (this._fitHud) this._fitHud();
+    }
+// DEV HUD info (derecha)
+if (DEV_TOOLS && this.devInfo && this._devVisible) {
+  const cp = (this._cpState || 0);
+  const surf = (this._onTrack ? 'TRACK' : 'OFF');
+  const zoom = (this.zoom ?? 1).toFixed(2);
+  const cull = (this._cullEnabled !== false) ? 'ON' : 'OFF';
+  const carCell = this._carCellKey || ''; // si no existe, queda vacío
+  const diag = this._trackDiag || '';
+  const diag2 = this._trackDiag2 || '';
+
+  this.devInfo.setText(
+    `Track: ${this.track?.meta?.id || this.track?.meta?.name || ''}\n` +
+    `CP: ${cp} | Lap: ${this.lapCount || 0}\n` +
+    `Surface: ${surf}\n` +
+    `Cull: ${cull}\n` +
+    `Zoom: ${zoom}\n` +
+    (carCell ? `Cell: ${carCell}\n` : '') +
+    (diag ? `Diag: ${diag}\n` : '') +
+    (diag2 ? `Diag2: ${diag2}\n` : '')
+  );
+}
     // Sincronizar rig visual con body físico
     if (this.carRig && this.carBody) {
       this.carRig.x = this.carBody.x;
@@ -1102,7 +1755,8 @@ const bgKey = this.bgKey || '(no bg ref)';
       btnH: 0
     };
 
-    const ui = this.add.container(0, 0).setScrollFactor(0).setDepth(1000);
+const ui = this.add.container(0, 0).setScrollFactor(0).setDepth(1000);
+this.touchUI = ui; // ← referencia para cámaras
 
     const build = () => {
       ui.removeAll(true);
