@@ -47,21 +47,21 @@ this.load.image('start_l6', 'assets/startlights/start_l6.png');
   const cam = this.cameras.main;
 
   cam.setBackgroundColor('#000000');
-  cam.fadeIn(400, 0, 0, 0);
+  cam.fadeIn(900, 0, 0, 0);
 
   // Logo centrado
-  const logo = this.add.image(width / 2, height / 2 - 70, 'logo')
-    .setScale(0.9)
-    .setAlpha(0);
+  const logo = this.add.image(width / 2, height * 0.38, 'logo')
+  .setScale(0.42)
+  .setAlpha(0);
 
   // Fade-in del logo
   this.tweens.add({
-    targets: logo,
-    alpha: 1,
-    duration: 900,
-    ease: 'Sine.easeOut',
-    delay: 300
-  });
+  targets: logo,
+  alpha: 1,
+  duration: 1400,
+  ease: 'Sine.easeOut',
+  delay: 350
+});
 
   // Destello recorriendo el contorno
   const glow = this.add.rectangle(
@@ -77,19 +77,20 @@ this.load.image('start_l6', 'assets/startlights/start_l6.png');
     targets: glow,
     alpha: { from: 0, to: 1 },
     duration: 300,
-    delay: 900,
+    delay: 1700,
     yoyo: true,
     repeat: 1
   });
 
   // Flash final / "explosión"
-  this.time.delayedCall(1400, () => {
-    cam.flash(180, 43, 255, 136);
-  });
+  this.time.delayedCall(2400, () => {
+  cam.flash(220, 43, 255, 136);
+});
+
 
   // Entrada al juego
-  this.time.delayedCall(1600, () => {
-    this.scene.start('menu');
-  });
+  this.time.delayedCall(2700, () => {
+  this.scene.start('menu');
+})
 }
 }
