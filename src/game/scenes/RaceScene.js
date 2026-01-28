@@ -1514,6 +1514,7 @@ const maskG = this.make.graphics({ x, y, add: false });
 // UI camera no debe renderizar chunks / máscaras
 this.uiCam?.ignore?.(tile);
 this.uiCam?.ignore?.(maskG);
+this.uiCam?.ignore?.(overlay);
 
 maskG.clear();
 maskG.fillStyle(0xffffff, 1);
@@ -1559,8 +1560,9 @@ for (const poly of cellData.polys) {
 
 const mask = maskG.createGeometryMask();
 tile.setMask(mask);
+overlay.setMask(mask);
 
-cell = { tile, stroke: null, maskG, mask };
+cell = { tile, overlay, stroke: null, maskG, mask };
 
         this.track.gfxByCell.set(k, cell);
       }
