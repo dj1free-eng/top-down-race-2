@@ -1745,47 +1745,131 @@ if (DEV_TOOLS && this.devInfo && this._devVisible) {
 
 
   }
-  ensureBgTexture() {
+ensureBgTexture() {
   const size = 256;
 
   // Producción: solo 'grass'. Eliminamos cualquier rastro de 'bgGrid'.
   if (this.textures.exists('grass')) this.textures.remove('grass');
   if (this.textures.exists('bgGrid')) this.textures.remove('bgGrid');
 
-  const g = this.add.graphics();
+  // Canvas texture (más realista que Graphics: ruido no direccional)
+  const tex = this.textures.createCanvas('grass', size, size);
+  const ctx = tex.getContext();
+  const img = ctx.createImageData(size, size);
+  const data = img.data;
 
-  // Base verde
-  g.fillStyle(0x1a6a2a, 1);
-  g.fillRect(0, 0, size, size);
+  // Paleta (desaturada, natural)
+  const base = { r: 0x37, g: 0x7D, b: 0x44 }; // #377D44
+  const dark = { r: 0x2F, g: 0x5E, b: 0x36 }; // #2F5E36
+  const lite = { r: 0x3F, g: 0x8A, b: 0x4B }; // un pelín más claro
 
-  // Ruido de variación (manchitas)
-  for (let i = 0; i < 900; i++) {
-    const alpha = 0.06 + Math.random() * 0.08;
-    const col = Math.random() > 0.5 ? 0x134e20 : 0x2b8c3b;
+  // Hash determinista (sin RNG global) -> [0,1)
+  const fract = (v) => v - Math.floor(v);
+  const hash = (x, y) => fract(Math.sin(x * 127.1 + y * 311.7) * 43758.5453);
 
-    g.fillStyle(col, alpha);
-    const x = Math.random() * size;
-    const y = Math.random() * size;
-    const w = 2 + Math.random() * 3;
-    const h = 2 + Math.random() * 3;
-    g.fillRect(x, y, w, h);
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const smooth = (t) => t * t * (3 - 2 * t);
+
+  // Value noise 2D (coherente)
+  const vnoise = (x, y, freq) => {
+    const xf = x * freq;
+    const yf = y * freq;
+    const x0 = Math.floor(xf), y0 = Math.floor(yf);
+    const x1 = x0 + 1,       y1 = y0 + 1;
+
+    const sx = smooth(xf - x0);
+    const sy = smooth(yf - y0);
+
+    const n00 = hash(x0, y0);
+    const n10 = hash(x1, y0);
+    const n01 = hash(x0, y1);
+    const n11 = hash(x1, y1);
+
+    const ix0 = lerp(n00, n10, sx);
+    const ix1 = lerp(n01, n11, sx);
+    return lerp(ix0, ix1, sy);
+  };
+
+  // fbm (fractal brownian motion) suave
+  const fbm = (x, y) => {
+    let f = 0;
+    let amp = 0.55;
+    let freq = 1 / 64; // base suave
+    for (let i = 0; i < 4; i++) {
+      f += amp * vnoise(x, y, freq);
+      amp *= 0.5;
+      freq *= 2.0;
+    }
+    return f; // aprox [0,1]
+  };
+
+  // 2-3 “manchas” grandes (variación muy difusa)
+  const blobs = [
+    { x: 64,  y: 180, r: 140, k: -0.10 },
+    { x: 200, y: 70,  r: 120, k:  0.06 },
+    { x: 190, y: 210, r: 160, k: -0.06 }
+  ];
+
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const i = (y * size + x) * 4;
+
+      // Ruido principal (orgánico, no direccional)
+      const n = fbm(x, y);
+
+      // Micro-ruido (grano fino)
+      const g = vnoise(x + 11.7, y - 3.4, 1 / 10);
+
+      // Manchas grandes difusas
+      let blob = 0;
+      for (const b of blobs) {
+        const dx = x - b.x;
+        const dy = y - b.y;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        const t = Math.max(0, 1 - d / b.r);
+        blob += b.k * (t * t); // suave
+      }
+
+      // Mezcla final (ajustes suaves, sin “bandas”)
+      // baseVar: +/- ~8% como mucho
+      const baseVar = (n - 0.5) * 0.14;   // muy suave
+      const grain   = (g - 0.5) * 0.06;   // grano fino
+      const v = baseVar + grain + blob;   // total
+
+      // Interpola entre dark/base/lite según v
+      // v ~ [-0.2, +0.2]
+      let r = base.r, gg = base.g, b = base.b;
+
+      if (v < 0) {
+        const t = Math.min(1, -v / 0.18);
+        r  = Math.round(lerp(base.r,  dark.r, t));
+        gg = Math.round(lerp(base.g,  dark.g, t));
+        b  = Math.round(lerp(base.b,  dark.b, t));
+      } else {
+        const t = Math.min(1,  v / 0.18);
+        r  = Math.round(lerp(base.r,  lite.r, t));
+        gg = Math.round(lerp(base.g,  lite.g, t));
+        b  = Math.round(lerp(base.b,  lite.b, t));
+      }
+
+      // Unos puntitos muy sutiles (tierra/piedrita) MUY baja opacidad visual
+      // (no direccional y sin “confeti”)
+      const speck = hash(x * 3.1, y * 2.7);
+      if (speck > 0.995) { // muy pocos
+        r  = Math.max(0, r - 18);
+        gg = Math.max(0, gg - 14);
+        b  = Math.max(0, b - 10);
+      }
+
+      data[i + 0] = r;
+      data[i + 1] = gg;
+      data[i + 2] = b;
+      data[i + 3] = 255;
+    }
   }
 
-  // Briznas suaves
-  g.lineStyle(1, 0x0f3a18, 0.10);
-  for (let i = 0; i < 180; i++) {
-    const x = Math.random() * size;
-    const y = Math.random() * size;
-    g.lineBetween(
-      x,
-      y,
-      x + (Math.random() * 10 - 5),
-      y - (6 + Math.random() * 12)
-    );
-  }
-
-  g.generateTexture('grass', size, size);
-  g.destroy();
+  ctx.putImageData(img, 0, 0);
+  tex.refresh();
 }
   ensureOffTexture() {
   if (this.textures.exists('off')) return;
