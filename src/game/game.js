@@ -9,6 +9,9 @@ export function createGame(parentId = 'app') {
     parent: parentId,
     backgroundColor: '#0b1020',
     scene: [BootScene, MenuScene, RaceScene],
+    dom: {
+  createContainer: true
+},
     scale: {
       mode: Phaser.Scale.RESIZE,
       autoCenter: Phaser.Scale.CENTER_BOTH
