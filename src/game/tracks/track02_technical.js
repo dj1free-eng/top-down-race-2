@@ -127,6 +127,7 @@ const centerlineNorm = [
   sampleStepPx,
   start,
   finishLine,
-  closed: true
+  closed: true,
+  shoulderPx: 6 // ← arcén MUY pequeño para pista técnica
 };
 }
