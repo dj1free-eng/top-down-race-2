@@ -1745,241 +1745,125 @@ if (DEV_TOOLS && this.devInfo && this._devVisible) {
 
 
   }
-ensureBgTexture() {
-  const size = 256;
-
-  // Producción: solo 'grass'. Eliminamos cualquier rastro de 'bgGrid'.
-  if (this.textures.exists('grass')) this.textures.remove('grass');
-  if (this.textures.exists('bgGrid')) this.textures.remove('bgGrid');
-
-  // Canvas texture (más realista que Graphics: ruido no direccional)
-  const tex = this.textures.createCanvas('grass', size, size);
-  const ctx = tex.getContext();
-  const img = ctx.createImageData(size, size);
-  const data = img.data;
-
-  // Paleta (desaturada, natural)
-  const base = { r: 0x37, g: 0x7D, b: 0x44 }; // #377D44
-  const dark = { r: 0x2F, g: 0x5E, b: 0x36 }; // #2F5E36
-  const lite = { r: 0x3F, g: 0x8A, b: 0x4B }; // un pelín más claro
-
-  // Hash determinista (sin RNG global) -> [0,1)
-  const fract = (v) => v - Math.floor(v);
-  const hash = (x, y) => fract(Math.sin(x * 127.1 + y * 311.7) * 43758.5453);
-
-  const lerp = (a, b, t) => a + (b - a) * t;
-  const smooth = (t) => t * t * (3 - 2 * t);
-
-  // Value noise 2D (coherente)
-  const vnoise = (x, y, freq) => {
-    const xf = x * freq;
-    const yf = y * freq;
-    const x0 = Math.floor(xf), y0 = Math.floor(yf);
-    const x1 = x0 + 1,       y1 = y0 + 1;
-
-    const sx = smooth(xf - x0);
-    const sy = smooth(yf - y0);
-
-    const n00 = hash(x0, y0);
-    const n10 = hash(x1, y0);
-    const n01 = hash(x0, y1);
-    const n11 = hash(x1, y1);
-
-    const ix0 = lerp(n00, n10, sx);
-    const ix1 = lerp(n01, n11, sx);
-    return lerp(ix0, ix1, sy);
-  };
-
-  // fbm (fractal brownian motion) suave
-  const fbm = (x, y) => {
-    let f = 0;
-    let amp = 0.55;
-    let freq = 1 / 64; // base suave
-    for (let i = 0; i < 4; i++) {
-      f += amp * vnoise(x, y, freq);
-      amp *= 0.5;
-      freq *= 2.0;
-    }
-    return f; // aprox [0,1]
-  };
-
-  // 2-3 “manchas” grandes (variación muy difusa)
-  const blobs = [
-    { x: 64,  y: 180, r: 140, k: -0.10 },
-    { x: 200, y: 70,  r: 120, k:  0.06 },
-    { x: 190, y: 210, r: 160, k: -0.06 }
-  ];
-
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const i = (y * size + x) * 4;
-
-      // Ruido principal (orgánico, no direccional)
-      const n = fbm(x, y);
-
-      // Micro-ruido (grano fino)
-      const g = vnoise(x + 11.7, y - 3.4, 1 / 10);
-
-      // Manchas grandes difusas
-      let blob = 0;
-      for (const b of blobs) {
-        const dx = x - b.x;
-        const dy = y - b.y;
-        const d = Math.sqrt(dx * dx + dy * dy);
-        const t = Math.max(0, 1 - d / b.r);
-        blob += b.k * (t * t); // suave
-      }
-
-      // Mezcla final (ajustes suaves, sin “bandas”)
-      // baseVar: +/- ~8% como mucho
-      const baseVar = (n - 0.5) * 0.14;   // muy suave
-      const grain   = (g - 0.5) * 0.06;   // grano fino
-      const v = baseVar + grain + blob;   // total
-
-      // Interpola entre dark/base/lite según v
-      // v ~ [-0.2, +0.2]
-      let r = base.r, gg = base.g, b = base.b;
-
-      if (v < 0) {
-        const t = Math.min(1, -v / 0.18);
-        r  = Math.round(lerp(base.r,  dark.r, t));
-        gg = Math.round(lerp(base.g,  dark.g, t));
-        b  = Math.round(lerp(base.b,  dark.b, t));
-      } else {
-        const t = Math.min(1,  v / 0.18);
-        r  = Math.round(lerp(base.r,  lite.r, t));
-        gg = Math.round(lerp(base.g,  lite.g, t));
-        b  = Math.round(lerp(base.b,  lite.b, t));
-      }
-
-      // Unos puntitos muy sutiles (tierra/piedrita) MUY baja opacidad visual
-      // (no direccional y sin “confeti”)
-      const speck = hash(x * 3.1, y * 2.7);
-      if (speck > 0.995) { // muy pocos
-        r  = Math.max(0, r - 18);
-        gg = Math.max(0, gg - 14);
-        b  = Math.max(0, b - 10);
-      }
-
-      data[i + 0] = r;
-      data[i + 1] = gg;
-      data[i + 2] = b;
-      data[i + 3] = 255;
-    }
-  }
-
-  ctx.putImageData(img, 0, 0);
-  tex.refresh();
-}
-  ensureOffTexture() {
-  if (this.textures.exists('off')) return;
-
-  const size = 256;
-  const g = this.make.graphics({ x: 0, y: 0, add: false });
-
-  // Base arena / tierra
-  g.fillStyle(0xbfa36a, 1); // amarillo-marrón
-  g.fillRect(0, 0, size, size);
-
-  // Manchas irregulares
-  g.fillStyle(0xa8894d, 1);
-  for (let i = 0; i < 300; i++) {
-    g.fillCircle(
-      Math.random() * size,
-      Math.random() * size,
-      1 + Math.random() * 2
-    );
-  }
-
-  // Puntos oscuros (piedra)
-  g.fillStyle(0x6b5a2e, 1);
-  for (let i = 0; i < 180; i++) {
-    g.fillRect(
-      Math.random() * size,
-      Math.random() * size,
-      1,
-      1
-    );
-  }
-
-  g.generateTexture('off', size, size);
-  g.destroy();
-}
-  ensureAsphaltTexture() {
-  const key = 'asphalt';
-  const size = 512; // textura más grande => menos repetición visible
+ensureOffTexture() {
+  const key = 'off';
+  const size = 512;
 
   if (this.textures.exists(key)) this.textures.remove(key);
 
-  const g = this.add.graphics();
+  const g = this.make.graphics({ x: 0, y: 0, add: false });
 
-  // =========================
-  // Base casi plana (sin dirección)
-  // =========================
-  g.fillStyle(0x262c34, 1);
+  // Base: tierra/arena APAGADA (más oscura que grass para “no entres aquí”)
+  g.fillStyle(0x6a5a3a, 1);
   g.fillRect(0, 0, size, size);
 
-  // =========================
-  // Variación MUY suave (manchas grandes isotrópicas)
-  // - Sin bordes marcados
-  // - Sin patrones repetitivos
-  // =========================
-  for (let i = 0; i < 40; i++) {
+  // Variación GRANDE y DIFUSA (sin piedras ni puntos)
+  const blobs = 26;
+  for (let i = 0; i < blobs; i++) {
+    const r = 80 + Math.random() * 210;
     const x = Math.random() * size;
     const y = Math.random() * size;
-    const r = 70 + Math.random() * 190;
 
-    // alterna sutil entre un poco más claro / un poco más oscuro
-    const col = Math.random() < 0.5 ? 0x20252d : 0x2d3540;
-    const a = 0.03 + Math.random() * 0.05;
+    const col = (Math.random() > 0.5) ? 0x5a4a31 : 0x7a6a46;
+    const alpha = 0.04 + Math.random() * 0.05;
 
-    g.fillStyle(col, a);
+    g.fillStyle(col, alpha);
     g.fillCircle(x, y, r);
   }
 
-  // =========================
-  // Ruido NO direccional (sal y pimienta)
-  // - Solo puntos (sin líneas, sin curvas)
-  // =========================
-  // oscurece
-  for (let i = 0; i < 14000; i++) {
+  // “Zona compactada” sutil (oscura)
+  for (let i = 0; i < 8; i++) {
+    const r = 60 + Math.random() * 160;
     const x = Math.random() * size;
     const y = Math.random() * size;
-    g.fillStyle(0x000000, 0.025 + Math.random() * 0.03);
-    g.fillRect(x, y, 1, 1);
-  }
-  // aclara
-  for (let i = 0; i < 12000; i++) {
-    const x = Math.random() * size;
-    const y = Math.random() * size;
-    g.fillStyle(0xffffff, 0.015 + Math.random() * 0.02);
-    g.fillRect(x, y, 1, 1);
-  }
-
-  // =========================
-  // Grano un pelín más “chunky” (también isotrópico)
-  // =========================
-  for (let i = 0; i < 2500; i++) {
-    const x = Math.random() * size;
-    const y = Math.random() * size;
-    const s = Math.random() < 0.85 ? 1 : 2;
-
-    const col =
-      Math.random() < 0.55 ? 0x11161d :
-      Math.random() < 0.85 ? 0x3a4452 :
-                             0x566274;
-
-    const a = s === 1 ? (0.02 + Math.random() * 0.03) : (0.015 + Math.random() * 0.025);
-
-    g.fillStyle(col, a);
-    g.fillRect(x, y, s, s);
+    g.fillStyle(0x3f3524, 0.03 + Math.random() * 0.04);
+    g.fillCircle(x, y, r);
   }
 
   g.generateTexture(key, size, size);
   g.destroy();
 }
+  ensureBgTexture() {
+  const key = 'grass';
+  const size = 512; // más grande => menos patrón repetido
 
+  // Recrear siempre (evita caches raras)
+  if (this.textures.exists(key)) this.textures.remove(key);
+  if (this.textures.exists('bgGrid')) this.textures.remove('bgGrid');
 
+  const g = this.make.graphics({ x: 0, y: 0, add: false });
+
+  // Base: verde apagado (sin saturación “juguete”)
+  g.fillStyle(0x2f5e36, 1);
+  g.fillRect(0, 0, size, size);
+
+  // Variación GRANDE y DIFUSA (nada de puntitos / grano)
+  const blobs = 28;
+  for (let i = 0; i < blobs; i++) {
+    const r = 70 + Math.random() * 190; // manchas grandes
+    const x = Math.random() * size;
+    const y = Math.random() * size;
+
+    // tonos cercanos, muy sutiles
+    const col = (Math.random() > 0.5) ? 0x355c3b : 0x2b552f;
+    const alpha = 0.035 + Math.random() * 0.045;
+
+    g.fillStyle(col, alpha);
+    g.fillCircle(x, y, r);
+  }
+
+  // Un par de “zonas secas” (ligero amarillento, muy suave)
+  for (let i = 0; i < 6; i++) {
+    const r = 90 + Math.random() * 180;
+    const x = Math.random() * size;
+    const y = Math.random() * size;
+    g.fillStyle(0x4b5a33, 0.02 + Math.random() * 0.03);
+    g.fillCircle(x, y, r);
+  }
+
+  g.generateTexture(key, size, size);
+  g.destroy();
+}
+  ensureAsphaltTexture() {
+  const key = 'asphalt';
+  const size = 512; // grande para que el tile no cante
+
+  // Re-crear SIEMPRE para evitar que quede una textura vieja colgada en caché
+  if (this.textures.exists(key)) this.textures.remove(key);
+
+  const g = this.make.graphics({ x: 0, y: 0, add: false });
+
+  // Base: casi liso (sin grano ni bandas)
+  g.fillStyle(0x2b2234, 1);
+  g.fillRect(0, 0, size, size);
+
+  // Variación GRANDE y DIFUSA (sin dirección)
+  const patches = 22;
+  for (let i = 0; i < patches; i++) {
+    const r = 120 + Math.random() * 260;
+    const x = Math.random() * size;
+    const y = Math.random() * size;
+
+    // ± muy poco
+    const col = (Math.random() > 0.5) ? 0x272a30 : 0x33343a;
+    const alpha = 0.018 + Math.random() * 0.028;
+
+    g.fillStyle(col, alpha);
+    g.fillCircle(x, y, r);
+  }
+
+  // “Zonas de goma” MUY suaves (más oscuras), en manchas grandes
+  for (let i = 0; i < 10; i++) {
+    const r = 110 + Math.random() * 230;
+    const x = Math.random() * size;
+    const y = Math.random() * size;
+    g.fillStyle(0x1f1f24, 0.012 + Math.random() * 0.02);
+    g.fillCircle(x, y, r);
+  }
+
+  g.generateTexture(key, size, size);
+  g.destroy();
+}
   ensureCarTexture() {
     if (!this.textures.exists('__BODY__')) {
   const g = this.add.graphics();
