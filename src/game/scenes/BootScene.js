@@ -7,7 +7,7 @@ export class BootScene extends Phaser.Scene {
 
   preload() {
 // Precarga mínima (logo/splash y UI esenciales)
-this.load.svg('logo', 'assets/logo.svg', { width: 256, height: 256 });
+this.load.image('logo', 'assets/logo.webp', { width: 256, height: 256 });
     // Materiales (overlay sutil de asfalto)
     this.load.image('asphaltOverlay', 'assets/textures/texture-asphalt-overlay.webp');
 // Start lights (7 estados: base + 6 rojas)
