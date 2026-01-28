@@ -25,9 +25,10 @@ this.load.image('start_l6', 'assets/startlights/start_l6.png');
     const x = (width - barW) / 2;
     const y = Math.floor(height * 0.72);
 
-    this.add
-      .rectangle(width / 2, height / 2 - 70, 260, 260, 0x0b1020, 0)
-      .setStrokeStyle(2, 0x2bff88, 0.35);
+this.add.image(width / 2, height / 2 - 40, 'logo')
+  .setOrigin(0.5)
+  .setScale(0.5);
+  .setDepth(10);
 
     const outline = this.add
       .rectangle(x + barW / 2, y, barW, barH, 0x0b1020, 0)
