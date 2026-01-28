@@ -436,8 +436,34 @@ const drawPolylineClosed = (pts, lineW, color, alpha) => {
 };
 
 // Borde exterior e interior del ribbon
-this._borderLeft = drawPolylineClosed(this.track.geom.left, 4, 0xf2f2f2, 0.8);
-this._borderRight = drawPolylineClosed(this.track.geom.right, 4, 0xf2f2f2, 0.8);
+// ================================
+// Líneas del borde: INSET dentro del asfalto (arcén visual antes del césped)
+// - Sigue siendo TRACK físicamente (solo cambiamos dónde pintamos la línea)
+// ================================
+const halfW = (this.track?.meta?.trackWidth ?? 300) * 0.5;
+const shoulderPx = this.track?.meta?.shoulderPx ?? 28; // ← punto de ataque (px hacia dentro)
+const tInset = Math.max(0, Math.min(1, shoulderPx / Math.max(1, halfW)));
+
+const centerPts = this.track.geom.center; // [[x,y], ...]
+const insetTowardCenter = (edgePts) => {
+  if (!edgePts || !centerPts || edgePts.length !== centerPts.length) return edgePts;
+  const out = new Array(edgePts.length);
+  for (let i = 0; i < edgePts.length; i++) {
+    const e = edgePts[i];
+    const c = centerPts[i];
+    out[i] = [
+      e[0] + (c[0] - e[0]) * tInset,
+      e[1] + (c[1] - e[1]) * tInset
+    ];
+  }
+  return out;
+};
+
+const leftInset = insetTowardCenter(this.track.geom.left);
+const rightInset = insetTowardCenter(this.track.geom.right);
+
+this._borderLeft = drawPolylineClosed(leftInset, 4, 0xf2f2f2, 0.8);
+this._borderRight = drawPolylineClosed(rightInset, 4, 0xf2f2f2, 0.8);
 
 // UI camera no debe renderizar bordes
 this.uiCam?.ignore?.(this._borderLeft);
