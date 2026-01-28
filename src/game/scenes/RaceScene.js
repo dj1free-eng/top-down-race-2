@@ -732,30 +732,108 @@ _drawGate(this.checkpoints.cp2, 0x2dff6a);
 });
 
 
-      // HUD (caja + texto legible)
-const hudX = 12;
-const hudY = 12;
+// =================================================
+// Time Trial HUD v1.2 (VISUAL) — zona superior only
+// =================================================
+this.ttHud = {};
+this.ttHud.elapsedMs = 0;         // (por ahora) cronómetro simple
+this.ttHud.lap = 1;
+this.ttHud.lapsTotal = 3;         // placeholder hasta conectar con modo TT real
+this.ttHud.progress01 = 0;        // 0..1 placeholder
 
-this.hudBox = this.add.rectangle(hudX, hudY, 200, 64, 0x000000, 0.45)
-  .setOrigin(0, 0)
+const safeTop = 12;
+const safeLeft = 12;
+
+// --- A) Tiempo principal (top-center)
+this.ttHud.timeText = this.add.text(this.scale.width / 2, safeTop + 6, '0:00.00', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '34px',              // principal
+  fontStyle: '600',
+  color: '#F2F2F2'
+})
+  .setOrigin(0.5, 0)
   .setScrollFactor(0)
-  .setDepth(1099)
-  .setStrokeStyle(1, 0xffffff, 0.12);
+  .setDepth(2000);
 
-this.hud = this.add.text(hudX + 10, hudY + 8, '', {
-fontFamily: 'Orbitron, monospace',
-  fontSize: '13px',
-  color: '#ffffff',
-  lineSpacing: 3
-}).setScrollFactor(0).setDepth(1100);
+// micro-sombra suave
+this.ttHud.timeText.setShadow(0, 1, '#000000', 2, false, true);
 
+// --- B) Vuelta (top-left)
+this.ttHud.lapText = this.add.text(safeLeft, safeTop + 10, 'VUELTA 1 / 3', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '14px',
+  fontStyle: '600',
+  color: '#CFCFCF'
+})
+  .setOrigin(0, 0)
+  .setAlpha(0.85)
+  .setScrollFactor(0)
+  .setDepth(2000);
 
-// Ajuste automático del alto de la caja según el texto (para que no tape)
-this._fitHud = () => {
-  const w = 340;
-  const h = Math.max(68, (this.hud.height || 0) + 16);
-  this.hudBox.setSize(w, h);
-};
+this.ttHud.lapText.setShadow(0, 1, '#000000', 2, false, true);
+
+// --- C) Barra progreso + ticks (debajo de vuelta)
+const barX = safeLeft;
+const barY = safeTop + 32;
+const barW = 160;      // ancho estable (móvil)
+const barH = 2;
+
+this.ttHud.bar = { barX, barY, barW, barH };
+
+// Base gris
+this.ttHud.barBase = this.add.rectangle(barX, barY, barW, barH, 0x555555, 0.60)
+  .setOrigin(0, 0.5)
+  .setScrollFactor(0)
+  .setDepth(1999);
+
+// “Slider” (bloque deslizante, look racing pro)
+this.ttHud.barSlider = this.add.rectangle(barX, barY, 10, 6, 0xF2F2F2, 0.90)
+  .setOrigin(0.5, 0.5)
+  .setScrollFactor(0)
+  .setDepth(2001);
+
+// Ticks estáticos (4 marcas: salida, CP1, CP2, meta)
+this.ttHud.ticksGfx = this.add.graphics()
+  .setScrollFactor(0)
+  .setDepth(2002);
+
+const tickColor = 0xAAAAAA;
+const tickAlpha = 0.70;
+const tickH = 8;
+const tickW = 2;
+
+// 4 ticks fijos: 0%, 33%, 66%, 100%
+const tickXs = [
+  barX,
+  barX + Math.floor(barW * 0.333),
+  barX + Math.floor(barW * 0.666),
+  barX + barW
+];
+
+this.ttHud.ticksGfx.clear();
+this.ttHud.ticksGfx.fillStyle(tickColor, tickAlpha);
+for (const tx of tickXs) {
+  this.ttHud.ticksGfx.fillRect(Math.floor(tx - tickW / 2), Math.floor(barY - tickH / 2), tickW, tickH);
+}
+
+// Fade-in suave (100–150ms)
+this.ttHud.timeText.setAlpha(0);
+this.ttHud.lapText.setAlpha(0);
+this.ttHud.barBase.setAlpha(0);
+this.ttHud.barSlider.setAlpha(0);
+this.ttHud.ticksGfx.setAlpha(0);
+
+this.tweens.add({
+  targets: [this.ttHud.timeText, this.ttHud.lapText, this.ttHud.barBase, this.ttHud.barSlider, this.ttHud.ticksGfx],
+  alpha: 1,
+  duration: 140,
+  ease: 'Sine.easeOut'
+});
+
+// Mantener posición correcta si hay RESIZE
+this.scale.on('resize', (gameSize) => {
+  if (this.ttHud?.timeText) this.ttHud.timeText.setX(gameSize.width / 2);
+});
 // =================================================
 // DEV HUD (panel derecha) — solo para desarrollo
 // (sin botones: zoom/cull se operarán desde Config más adelante)
@@ -1151,7 +1229,28 @@ if (DEV_TOOLS) {
 
   update(time, deltaMs) {
     const dt = Math.min(0.05, (deltaMs || 0) / 1000);
+// ==============================
+// Time Trial HUD v1.2 — update (provisional)
+// ==============================
+if (this.ttHud) {
+  this.ttHud.elapsedMs += (delta || 0);
 
+  // Formato M:SS.xx (siempre)
+  const t = Math.max(0, this.ttHud.elapsedMs);
+  const m = Math.floor(t / 60000);
+  const s = Math.floor((t % 60000) / 1000);
+  const cs = Math.floor((t % 1000) / 10); // centésimas
+  const txt = `${m}:${String(s).padStart(2, '0')}.${String(cs).padStart(2, '0')}`;
+
+  this.ttHud.timeText.setText(txt);
+  this.ttHud.lapText.setText(`VUELTA ${this.ttHud.lap} / ${this.ttHud.lapsTotal}`);
+
+  // Progreso placeholder suave (solo para ver el slider funcionando)
+  this.ttHud.progress01 = (this.ttHud.progress01 + (delta || 0) * 0.00006) % 1;
+  const { barX, barW, barY } = this.ttHud.bar;
+  const px = barX + this.ttHud.progress01 * barW;
+  this.ttHud.barSlider.setPosition(px, barY);
+}
     // Guardas duras: si create() no terminó, no reventamos el loop.
     if (!this.cameras?.main) return;
 
