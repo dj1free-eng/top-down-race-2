@@ -1494,22 +1494,18 @@ if (this._cullEnabled === false) {
 const px = Math.round(x - 1);
 const py = Math.round(y - 1);
 
-const tile = this.add.tileSprite(px, py, cellSize + 2, cellSize + 2, 'asphalt')
+const tile = this.add.image(px, py, 'asphalt')
   .setOrigin(0, 0)
+  .setDisplaySize(cellSize + 2, cellSize + 2)
   .setScrollFactor(1)
   .setDepth(10);
 
-tile.tilePositionX = px;
-tile.tilePositionY = py;
-
-const overlay = this.add.tileSprite(px, py, cellSize + 2, cellSize + 2, 'asphaltOverlay')
+const overlay = this.add.image(px, py, 'asphaltOverlay')
   .setOrigin(0, 0)
+  .setDisplaySize(cellSize + 2, cellSize + 2)
   .setScrollFactor(1)
   .setDepth(11)
   .setAlpha(ASPHALT_OVERLAY_ALPHA);
-
-overlay.tilePositionX = px;
-overlay.tilePositionY = py;
 
 
 // 2) Mask con forma de pista
