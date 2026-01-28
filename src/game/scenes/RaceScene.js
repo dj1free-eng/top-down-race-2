@@ -1491,25 +1491,25 @@ if (this._cullEnabled === false) {
 
 // 1) Asfalto por celda (tileSprite) con UV continuo en mundo
 // (evita el “mosaico por chunk” al mover cámara)
-const tile = this.add.tileSprite(x - 1, y - 1, cellSize + 2, cellSize + 2, 'asphalt')
+const px = Math.round(x - 1);
+const py = Math.round(y - 1);
+
+const tile = this.add.tileSprite(px, py, cellSize + 2, cellSize + 2, 'asphalt')
   .setOrigin(0, 0)
   .setScrollFactor(1)
   .setDepth(10);
 
-// Anclaje a mundo (continuidad entre chunks)
-tile.tilePositionX = x - 1;
-tile.tilePositionY = y - 1;
+tile.tilePositionX = px;
+tile.tilePositionY = py;
 
-// 1.1) Overlay sutil de asfalto (micro-variación)
-const overlay = this.add.tileSprite(x - 1, y - 1, cellSize + 2, cellSize + 2, 'asphaltOverlay')
+const overlay = this.add.tileSprite(px, py, cellSize + 2, cellSize + 2, 'asphaltOverlay')
   .setOrigin(0, 0)
   .setScrollFactor(1)
   .setDepth(11)
   .setAlpha(ASPHALT_OVERLAY_ALPHA);
 
-// Anclaje a mundo (continuidad entre chunks)
-overlay.tilePositionX = x - 1;
-overlay.tilePositionY = y - 1;
+overlay.tilePositionX = px;
+overlay.tilePositionY = py;
 
 
 // 2) Mask con forma de pista
