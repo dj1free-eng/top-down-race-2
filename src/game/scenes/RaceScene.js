@@ -20,7 +20,7 @@ function fmtTime(ms) {
   return `${m}:${String(s).padStart(2, '0')}.${String(ms3).padStart(3, '0')}`;
 }
 const DEV_TOOLS = true; // ponlo en false para ocultar botones de zoom/cull
-const ASPHALT_OVERLAY_ALPHA = 0.10; // rango sano: 0.08 – 0.12
+const ASPHALT_OVERLAY_ALPHA = 0.08; // rango sano: 0.08 – 0.12
 
 // =================================================
 // TRACK SURFACE HELPERS (point-in-polygon por celdas)
