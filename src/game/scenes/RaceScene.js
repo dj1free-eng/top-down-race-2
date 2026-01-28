@@ -20,6 +20,8 @@ function fmtTime(ms) {
   return `${m}:${String(s).padStart(2, '0')}.${String(ms3).padStart(3, '0')}`;
 }
 const DEV_TOOLS = true; // ponlo en false para ocultar botones de zoom/cull
+const ASPHALT_OVERLAY_ALPHA = 0.10; // rango sano: 0.08 – 0.12
+
 // =================================================
 // TRACK SURFACE HELPERS (point-in-polygon por celdas)
 // =================================================
@@ -1461,6 +1463,7 @@ if (this._cullEnabled === false) {
         const cell = this.track.gfxByCell.get(k);
         if (cell) {
           cell.tile?.clearMask?.(true);
+          cell.overlay?.destroy?.();     // <-- NUEVO
           cell.mask?.destroy?.();
           cell.maskG?.destroy?.();
           cell.tile?.destroy?.();
@@ -1482,13 +1485,27 @@ if (this._cullEnabled === false) {
         const x = ix * cellSize;
         const y = iy * cellSize;
 
-// 1) Imagen de asfalto (NO tileSprite: evita costuras con mask + cámara)
-// Asfalto por celda (con solape para evitar “costuras” entre chunks)
-const tile = this.add.image(x - 1, y - 1, 'asphalt')
+// 1) Asfalto por celda (tileSprite) con UV continuo en mundo
+// (evita el “mosaico por chunk” al mover cámara)
+const tile = this.add.tileSprite(x - 1, y - 1, cellSize + 2, cellSize + 2, 'asphalt')
   .setOrigin(0, 0)
-  .setDisplaySize(cellSize + 2, cellSize + 2)
   .setScrollFactor(1)
   .setDepth(10);
+
+// Anclaje a mundo (continuidad entre chunks)
+tile.tilePositionX = x - 1;
+tile.tilePositionY = y - 1;
+
+// 1.1) Overlay sutil de asfalto (micro-variación)
+const overlay = this.add.tileSprite(x - 1, y - 1, cellSize + 2, cellSize + 2, 'asphaltOverlay')
+  .setOrigin(0, 0)
+  .setScrollFactor(1)
+  .setDepth(11)
+  .setAlpha(ASPHALT_OVERLAY_ALPHA);
+
+// Anclaje a mundo (continuidad entre chunks)
+overlay.tilePositionX = x - 1;
+overlay.tilePositionY = y - 1;
 
 
 // 2) Mask con forma de pista
