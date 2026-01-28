@@ -20,8 +20,8 @@ export function createGame(parentId = 'app') {
       }
     },
     render: {
-      pixelArt: false,
-      antialias: true
-    }
+  pixelArt: false,
+  antialias: false
+}
   });
 }
