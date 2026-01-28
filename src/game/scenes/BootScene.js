@@ -43,54 +43,82 @@ this.load.image('start_l6', 'assets/startlights/start_l6.png');
   }
 
   create() {
-  const { width, height } = this.scale;
   const cam = this.cameras.main;
-
   cam.setBackgroundColor('#000000');
-  cam.fadeIn(900, 0, 0, 0);
 
-  // Logo centrado
-  const logo = this.add.image(width / 2, height * 0.38, 'logo')
-  .setScale(0.42)
-  .setAlpha(0);
+  const { width, height } = this.scale;
 
-  // Fade-in del logo
-  this.tweens.add({
-  targets: logo,
-  alpha: 1,
-  duration: 1400,
-  ease: 'Sine.easeOut',
-  delay: 350
-});
+  // Creamos un <video> HTML para iOS/Android (lo más robusto)
+  const video = document.createElement('video');
+  video.src = 'assets/intro/intro.mp4';
+  video.muted = true;               // clave para autoplay en iOS
+  video.playsInline = true;         // iOS: no abrir pantalla completa
+  video.autoplay = true;
+  video.preload = 'auto';
+  video.controls = false;
+  video.loop = false;
 
-  // Destello recorriendo el contorno
-  const glow = this.add.rectangle(
-    logo.x,
-    logo.y,
-    logo.displayWidth + 10,
-    logo.displayHeight + 10,
-    0xffffff,
-    0
-  ).setStrokeStyle(3, 0x2bff88, 0.0);
+  // Estilo: cubrir pantalla sin deformar
+  video.style.width = '100%';
+  video.style.height = '100%';
+  video.style.objectFit = 'contain';   // usa 'cover' si quieres que recorte
+  video.style.background = '#000';
 
-  this.tweens.add({
-    targets: glow,
-    alpha: { from: 0, to: 1 },
-    duration: 300,
-    delay: 1700,
-    yoyo: true,
-    repeat: 1
+  // Phaser DOMElement (requiere dom.createContainer=true en config)
+  const domEl = this.add.dom(width / 2, height / 2, video);
+  domEl.setOrigin(0.5);
+
+  // Si cambia el tamaño (RESIZE), re-centramos
+  this.scale.on('resize', (gameSize) => {
+    domEl.setPosition(gameSize.width / 2, gameSize.height / 2);
   });
 
-  // Flash final / "explosión"
-  this.time.delayedCall(2400, () => {
-  cam.flash(220, 43, 255, 136);
-});
+  const cleanupAndGo = () => {
+    // Evitar doble llamada
+    video.onended = null;
+    video.onerror = null;
 
+    try { video.pause(); } catch {}
+    try { video.removeAttribute('src'); video.load(); } catch {}
+    try { domEl.destroy(); } catch {}
+    try { video.remove(); } catch {}
 
-  // Entrada al juego
-  this.time.delayedCall(2700, () => {
-  this.scene.start('menu');
-})
+    this.scene.start('menu');
+  };
+
+  // Cuando acaba el vídeo => menú
+  video.onended = cleanupAndGo;
+
+  // Si falla carga => menú (fallback)
+  video.onerror = cleanupAndGo;
+
+  // Intento de autoplay; si iOS lo bloquea, pedimos tap
+  const tryPlay = () => {
+    const p = video.play();
+    if (p && typeof p.catch === 'function') {
+      p.catch(() => {
+        // Fallback: tap para iniciar
+        const hint = this.add.text(width / 2, height * 0.8, 'Toca para empezar', {
+          fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+          fontSize: '18px',
+          color: '#ffffff'
+        }).setOrigin(0.5);
+
+        this.input.once('pointerdown', () => {
+          hint.destroy();
+          video.play().catch(() => cleanupAndGo());
+        });
+      });
+    }
+  };
+
+  // Arranca
+  tryPlay();
+
+  // Seguridad: si por lo que sea no dispara ended (rarísimo), corta a los 7s
+  this.time.delayedCall(7000, () => {
+    // si sigue en pantalla y no ha cambiado de escena
+    if (this.scene.isActive()) cleanupAndGo();
+  });
 }
 }
