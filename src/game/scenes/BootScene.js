@@ -48,33 +48,53 @@ this.add.image(width / 2, height / 2 - 40, 'logo')
   }
 
   create() {
-    const { width, height } = this.scale;
+  const { width, height } = this.scale;
+  const cam = this.cameras.main;
 
-    this.cameras.main.setBackgroundColor('#0b1020');
-    this.add.image(width / 2, height / 2 - 70, 'logo').setScale(0.9);
+  cam.setBackgroundColor('#000000');
+  cam.fadeIn(400, 0, 0, 0);
 
-    const t1 = this.add.text(width / 2, height * 0.72 - 26, 'Cargando…', {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '14px',
-      color: '#b7c0ff'
-    }).setOrigin(0.5);
+  // Logo centrado
+  const logo = this.add.image(width / 2, height / 2 - 70, 'logo')
+    .setScale(0.9)
+    .setAlpha(0);
 
-        // ✅ No arrancar MenuScene hasta que el loader haya terminado
-    // (evita texturas __MISSING en iPhone/GitHub Pages)
-    this.load.once('complete', () => {
-      // Pequeña pausa para que el splash no sea un flash
-      this.time.delayedCall(200, () => {
-        t1.destroy();
-        this.scene.start('menu');
-      });
-    });
+  // Fade-in del logo
+  this.tweens.add({
+    targets: logo,
+    alpha: 1,
+    duration: 900,
+    ease: 'Sine.easeOut',
+    delay: 300
+  });
 
-    // Si por cualquier motivo ya estuviera todo cargado, arrancamos igual
-    if (this.load.progress >= 1) {
-      this.time.delayedCall(200, () => {
-        t1.destroy();
-        this.scene.start('menu');
-      });
-    }
-  }
+  // Destello recorriendo el contorno
+  const glow = this.add.rectangle(
+    logo.x,
+    logo.y,
+    logo.displayWidth + 10,
+    logo.displayHeight + 10,
+    0xffffff,
+    0
+  ).setStrokeStyle(3, 0x2bff88, 0.0);
+
+  this.tweens.add({
+    targets: glow,
+    alpha: { from: 0, to: 1 },
+    duration: 300,
+    delay: 900,
+    yoyo: true,
+    repeat: 1
+  });
+
+  // Flash final / "explosión"
+  this.time.delayedCall(1400, () => {
+    cam.flash(180, 43, 255, 136);
+  });
+
+  // Entrada al juego
+  this.time.delayedCall(1600, () => {
+    this.scene.start('menu');
+  });
+}
 }
