@@ -710,7 +710,7 @@ _drawGate(this.checkpoints.cp2, 0x2dff6a);
     this.cameras.main.startFollow(this.carRig, true, 0.12, 0.12);
     this.cameras.main.setZoom(this.zoom);
     this.cameras.main.roundPixels = true;
-    this.uiCam.roundPixels = true;
+
     // 8) Input teclado
     this.keys = this.input.keyboard.addKeys({
   up: Phaser.Input.Keyboard.KeyCodes.W,
@@ -831,6 +831,7 @@ this.upUI = null;
 this.uiCam = this.cameras.add(0, 0, this.scale.width, this.scale.height);
 this.uiCam.setScroll(0, 0);
 this.uiCam.setZoom(1);
+this.uiCam.roundPixels = true;
 // UI cam: ignorar fondos del mundo y máscaras
 if (this.bgOff) this.uiCam.ignore(this.bgOff);
 if (this.bgGrass) this.uiCam.ignore(this.bgGrass);
