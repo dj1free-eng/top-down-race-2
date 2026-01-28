@@ -1540,8 +1540,8 @@ for (const poly of cellData.polys) {
     (p0.x > cellSize * 1.5) || (p0.y > cellSize * 1.5) ||
     (p0.x < -cellSize * 0.5) || (p0.y < -cellSize * 0.5);
 
-  const x0 = looksWorld ? (p0.x - x) : p0.x;
-  const y0 = looksWorld ? (p0.y - y) : p0.y;
+  const x0 = looksWorld ? (p0.x - px) : p0.x;
+const y0 = looksWorld ? (p0.y - py) : p0.y;
 
   maskG.beginPath();
   maskG.moveTo(x0, y0);
@@ -1550,8 +1550,8 @@ for (const poly of cellData.polys) {
     const pi = getXY(poly[i]);
     if (!Number.isFinite(pi.x) || !Number.isFinite(pi.y)) continue;
 
-    const lx = looksWorld ? (pi.x - x) : pi.x;
-    const ly = looksWorld ? (pi.y - y) : pi.y;
+    const lx = looksWorld ? (pi.x - px) : pi.x;
+const ly = looksWorld ? (pi.y - py) : pi.y;
     maskG.lineTo(lx, ly);
   }
 
