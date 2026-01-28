@@ -710,6 +710,7 @@ _drawGate(this.checkpoints.cp2, 0x2dff6a);
     this.cameras.main.startFollow(this.carRig, true, 0.12, 0.12);
     this.cameras.main.setZoom(this.zoom);
     this.cameras.main.roundPixels = true;
+    this.uiCam.roundPixels = true;
     // 8) Input teclado
     this.keys = this.input.keyboard.addKeys({
   up: Phaser.Input.Keyboard.KeyCodes.W,
