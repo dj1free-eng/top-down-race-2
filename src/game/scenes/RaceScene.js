@@ -1467,7 +1467,8 @@ if (this._cullEnabled === false) {
         const cell = this.track.gfxByCell.get(k);
         if (cell) {
           cell.tile?.clearMask?.(true);
-          cell.overlay?.destroy?.();     // <-- NUEVO
+cell.overlay?.clearMask?.(true);
+cell.overlay?.destroy?.();
           cell.mask?.destroy?.();
           cell.maskG?.destroy?.();
           cell.tile?.destroy?.();
@@ -1567,7 +1568,8 @@ cell = { tile, overlay, stroke: null, maskG, mask };
         this.track.gfxByCell.set(k, cell);
       }
 
-      if (cell.tile && !cell.tile.visible) cell.tile.setVisible(true);
+if (cell.tile && !cell.tile.visible) cell.tile.setVisible(true);
+if (cell.overlay && !cell.overlay.visible) cell.overlay.setVisible(true);
     }
 
     this.track.activeCells = want;
