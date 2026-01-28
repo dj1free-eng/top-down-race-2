@@ -404,7 +404,7 @@ if (grassCells) {
       gMaskGfx.closePath();
       gMaskGfx.fillPath();
       // Engordar máscara 2px para tapar “hairline seams” entre celdas
-gMaskGfx.lineStyle(2, 0xffffff, 1);
+gMaskGfx.lineStyle(3, 0xffffff, 1);
 gMaskGfx.strokePath();
 gMaskGfx.lineStyle(); // reset
     }
