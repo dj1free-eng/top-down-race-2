@@ -21,7 +21,7 @@ export function createGame(parentId = 'app') {
     },
     render: {
   pixelArt: false,
-  antialias: false
+  antialias: true
 }
   });
 }
