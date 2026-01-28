@@ -67,24 +67,41 @@ this.load.image('start_l6', 'assets/startlights/start_l6.png');
   // Phaser DOMElement (requiere dom.createContainer=true en config)
   const domEl = this.add.dom(width / 2, height / 2, video);
   domEl.setOrigin(0.5);
-
+// Capa negra para fade-out final
+const fadeRect = this.add.rectangle(
+  width / 2,
+  height / 2,
+  width,
+  height,
+  0x000000,
+  0
+).setDepth(1000);
   // Si cambia el tamaño (RESIZE), re-centramos
   this.scale.on('resize', (gameSize) => {
     domEl.setPosition(gameSize.width / 2, gameSize.height / 2);
   });
 
   const cleanupAndGo = () => {
-    // Evitar doble llamada
-    video.onended = null;
-    video.onerror = null;
+  // Fade a negro
+  this.tweens.add({
+    targets: fadeRect,
+    alpha: 1,
+    duration: 500,
+    ease: 'Sine.easeInOut',
+    onComplete: () => {
+      // Limpieza segura
+      video.onended = null;
+      video.onerror = null;
 
-    try { video.pause(); } catch {}
-    try { video.removeAttribute('src'); video.load(); } catch {}
-    try { domEl.destroy(); } catch {}
-    try { video.remove(); } catch {}
+      try { video.pause(); } catch {}
+      try { video.removeAttribute('src'); video.load(); } catch {}
+      try { domEl.destroy(); } catch {}
+      try { video.remove(); } catch {}
 
-    this.scene.start('menu');
-  };
+      this.scene.start('menu');
+    }
+  });
+};
 
   // Cuando acaba el vídeo => menú
   video.onended = cleanupAndGo;
