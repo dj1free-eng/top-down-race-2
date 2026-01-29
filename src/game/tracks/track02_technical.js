@@ -85,15 +85,27 @@ const centerlineNorm = [
   const trackWidth = 120;
   const sampleStepPx = 10;
 
-  // Start: en la recta principal (orientación hacia el siguiente punto)
-  const start = { x: centerline[0].x, y: centerline[0].y, r: 0 };
+  // Start: anclado a la FINISH LINE (sale unos px ANTES de meta)
+  // Así start y meta quedan sincronizados (especialmente en óvalo/loops).
+  const startBackPx = 90; // ajustable: más alto = sale más atrás
 
-  // Calcula rotación inicial según el primer segmento
-  {
-    const p0 = centerline[0];
-    const p1 = centerline[1];
-    start.r = Math.atan2(p1.y - p0.y, p1.x - p0.x);
-  }
+  // Usamos el mismo tramo que la finishLine para definir la dirección “forward”
+  const p0s = centerline[1];
+  const p1s = centerline[2];
+
+  const dxs = p1s.x - p0s.x;
+  const dys = p1s.y - p0s.y;
+
+  const fwdS = norm(dxs, dys);
+
+  // Punto medio equivalente al usado en finishLine (0.55 del segmento)
+  const midS = { x: p0s.x + dxs * 0.55, y: p0s.y + dys * 0.55 };
+
+  const start = {
+    x: Math.round(midS.x - fwdS.x * startBackPx),
+    y: Math.round(midS.y - fwdS.y * startBackPx),
+    r: Math.atan2(fwdS.y, fwdS.x)
+  };
 
   // Finish line: cruzando la recta principal cerca del inicio.
   // La ponemos perpendicular al primer segmento y con normal apuntando “hacia delante”.
