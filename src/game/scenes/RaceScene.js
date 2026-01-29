@@ -183,6 +183,109 @@ export class RaceScene extends Phaser.Scene {
     this._ttProg.idx = bestI;
     return bestI / (n - 1);
   }
+    // =================================================
+  // Time Trial: precompute distancias acumuladas centerline
+  // =================================================
+  _initTTCenterlineMetrics() {
+    const cl = this.track?.meta?.centerline;
+    const n = cl?.length ?? 0;
+    if (n < 2) return;
+
+    const getXY = (p) => {
+      if (!p) return [NaN, NaN];
+      if (Array.isArray(p)) return [p[0], p[1]];
+      if (typeof p.x === 'number' && typeof p.y === 'number') return [p.x, p.y];
+      return [NaN, NaN];
+    };
+
+    const cum = new Array(n).fill(0);
+    let total = 0;
+
+    let [px, py] = getXY(cl[0]);
+    for (let i = 1; i < n; i++) {
+      const [x, y] = getXY(cl[i]);
+      if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(px) || !Number.isFinite(py)) {
+        cum[i] = total;
+        px = x; py = y;
+        continue;
+      }
+      const dx = x - px;
+      const dy = y - py;
+      total += Math.hypot(dx, dy);
+      cum[i] = total;
+      px = x; py = y;
+    }
+
+    this._ttCl = { cum, total: Math.max(1e-6, total) };
+  }
+
+  // =================================================
+  // Time Trial: progreso de vuelta 0..1 por centerline
+  // (rápido: búsqueda local con caché de índice)
+  // Devuelve progreso por DISTANCIA si _ttCl existe
+  // =================================================
+  _computeLapProgress01(px, py) {
+    const cl = this.track?.meta?.centerline;
+    const n = cl?.length ?? 0;
+    if (n < 2 || !Number.isFinite(px) || !Number.isFinite(py)) return 0;
+
+    if (!this._ttProg) this._ttProg = { idx: 0, inited: false };
+
+    const getXY = (p) => {
+      if (!p) return [NaN, NaN];
+      if (Array.isArray(p)) return [p[0], p[1]];
+      if (typeof p.x === 'number' && typeof p.y === 'number') return [p.x, p.y];
+      return [NaN, NaN];
+    };
+
+    const byDist = (i) => {
+      const cum = this._ttCl?.cum;
+      const total = this._ttCl?.total || 1;
+      if (cum && cum[i] != null) return cum[i] / total;
+      return i / (n - 1);
+    };
+
+    // Primera vez: búsqueda global (solo una vez)
+    if (!this._ttProg.inited) {
+      let bestI = 0;
+      let bestD2 = Infinity;
+      for (let i = 0; i < n; i++) {
+        const [x, y] = getXY(cl[i]);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+        const dx = x - px;
+        const dy = y - py;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < bestD2) { bestD2 = d2; bestI = i; }
+      }
+      this._ttProg.idx = bestI;
+      this._ttProg.inited = true;
+      return byDist(bestI);
+    }
+
+    // Búsqueda local circular alrededor del último índice (barata)
+    const w = 45;
+    const base = this._ttProg.idx;
+
+    let bestI = base;
+    let bestD2 = Infinity;
+
+    for (let o = -w; o <= w; o++) {
+      let i = base + o;
+      i %= n;
+      if (i < 0) i += n;
+
+      const [x, y] = getXY(cl[i]);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+
+      const dx = x - px;
+      const dy = y - py;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < bestD2) { bestD2 = d2; bestI = i; }
+    }
+
+    this._ttProg.idx = bestI;
+    return byDist(bestI);
+  }
     init(data) {
     // 1) Resolver coche seleccionado (prioridad: data -> localStorage -> stock)
     this.carId = data?.carId || localStorage.getItem('tdr2:carId') || 'stock';
@@ -418,6 +521,8 @@ geom: buildTrackRibbon({
   activeCells: new Set(),
   cullRadiusCells: 2
 };
+    // TT: métricas de centerline (progreso por distancia, corrige óvalo)
+this._initTTCenterlineMetrics();
     // =========================
 // 3) Fondo del mundo: OFF + GRASS BAND
 // =========================
