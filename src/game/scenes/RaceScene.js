@@ -216,7 +216,39 @@ export class RaceScene extends Phaser.Scene {
       px = x; py = y;
     }
 
-    this._ttCl = { cum, total: Math.max(1e-6, total) };
+// Calcular ancla de META: distancia acumulada del punto de centerline más cercano a la finish line
+const finish = this.track?.meta?.finish || this.track?.meta?.finishLine;
+let startDist = 0;
+let startIdx = 0;
+
+if (finish?.a && finish?.b) {
+  const midX = (finish.a.x + finish.b.x) * 0.5;
+  const midY = (finish.a.y + finish.b.y) * 0.5;
+
+  let bestI = 0;
+  let bestD2 = Infinity;
+  for (let i = 0; i < n; i++) {
+    const [x, y] = getXY(cl[i]);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+    const dx = x - midX;
+    const dy = y - midY;
+    const d2 = dx * dx + dy * dy;
+    if (d2 < bestD2) { bestD2 = d2; bestI = i; }
+  }
+  startIdx = bestI;
+  startDist = cum[bestI] || 0;
+}
+
+this._ttCl = {
+  cum,
+  total: Math.max(1e-6, total),
+  startDist,
+  startIdx
+};
+
+// (opcional pero útil): inicializa el índice de búsqueda cerca de la meta
+if (!this._ttProg) this._ttProg = { idx: startIdx, inited: false };
+else this._ttProg.idx = startIdx;
   }
 
   // =================================================
@@ -239,11 +271,19 @@ export class RaceScene extends Phaser.Scene {
     };
 
     const byDist = (i) => {
-      const cum = this._ttCl?.cum;
-      const total = this._ttCl?.total || 1;
-      if (cum && cum[i] != null) return cum[i] / total;
-      return i / (n - 1);
-    };
+  const cum = this._ttCl?.cum;
+  const total = this._ttCl?.total || 1;
+  const startDist = this._ttCl?.startDist || 0;
+
+  if (cum && cum[i] != null) {
+    // Progreso anclado a META: (cum - startDist) con wrap
+    let d = cum[i] - startDist;
+    d %= total;
+    if (d < 0) d += total;
+    return d / total;
+  }
+  return i / (n - 1);
+};
 
     // Primera vez: búsqueda global (solo una vez)
     if (!this._ttProg.inited) {
