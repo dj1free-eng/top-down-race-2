@@ -121,7 +121,68 @@ export class RaceScene extends Phaser.Scene {
     this.carBody = null;
     this.carRig = null;
   }
+  // =================================================
+  // Time Trial: progreso de vuelta 0..1 por centerline
+  // (rápido: búsqueda local con caché de índice)
+  // =================================================
+  _computeLapProgress01(px, py) {
+    const cl = this.track?.meta?.centerline;
+    const n = cl?.length ?? 0;
+    if (n < 2 || !Number.isFinite(px) || !Number.isFinite(py)) return 0;
 
+    // Estado cacheado
+    if (!this._ttProg) this._ttProg = { idx: 0, inited: false };
+
+    // Helper para leer punto [x,y] o {x,y}
+    const getXY = (p) => {
+      if (!p) return [NaN, NaN];
+      if (Array.isArray(p)) return [p[0], p[1]];
+      if (typeof p.x === 'number' && typeof p.y === 'number') return [p.x, p.y];
+      return [NaN, NaN];
+    };
+
+    // Primera vez: búsqueda global (solo una vez)
+    if (!this._ttProg.inited) {
+      let bestI = 0;
+      let bestD2 = Infinity;
+      for (let i = 0; i < n; i++) {
+        const [x, y] = getXY(cl[i]);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+        const dx = x - px;
+        const dy = y - py;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < bestD2) { bestD2 = d2; bestI = i; }
+      }
+      this._ttProg.idx = bestI;
+      this._ttProg.inited = true;
+      return bestI / (n - 1);
+    }
+
+    // Búsqueda local circular alrededor del último índice (barata)
+    const w = 45; // ventana (ajustable). 45*2+1 = 91 checks/frame, ok en móvil.
+    const base = this._ttProg.idx;
+
+    let bestI = base;
+    let bestD2 = Infinity;
+
+    for (let o = -w; o <= w; o++) {
+      let i = base + o;
+      // wrap circular (track loop)
+      i %= n;
+      if (i < 0) i += n;
+
+      const [x, y] = getXY(cl[i]);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+
+      const dx = x - px;
+      const dy = y - py;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < bestD2) { bestD2 = d2; bestI = i; }
+    }
+
+    this._ttProg.idx = bestI;
+    return bestI / (n - 1);
+  }
     init(data) {
     // 1) Resolver coche seleccionado (prioridad: data -> localStorage -> stock)
     this.carId = data?.carId || localStorage.getItem('tdr2:carId') || 'stock';
@@ -1236,20 +1297,20 @@ if (this.ttHud) {
 this.ttHud.elapsedMs += (deltaMs || 0);
 
   // Formato M:SS.xx (siempre)
-  const t = Math.max(0, this.ttHud.elapsedMs);
-  const m = Math.floor(t / 60000);
-  const s = Math.floor((t % 60000) / 1000);
-  const cs = Math.floor((t % 1000) / 10); // centésimas
+  const tt = Math.max(0, this.ttHud.elapsedMs);
+const m = Math.floor(tt / 60000);
+const s = Math.floor((tt % 60000) / 1000);
+const cs = Math.floor((tt % 1000) / 10);
   const txt = `${m}:${String(s).padStart(2, '0')}.${String(cs).padStart(2, '0')}`;
 
   this.ttHud.timeText.setText(txt);
   this.ttHud.lapText.setText(`VUELTA ${this.ttHud.lap} / ${this.ttHud.lapsTotal}`);
 
-  // Progreso placeholder suave (solo para ver el slider funcionando)
-this.ttHud.progress01 = (this.ttHud.progress01 + (deltaMs || 0) * 0.00006) % 1;
-  const { barX, barW, barY } = this.ttHud.bar;
-  const px = barX + this.ttHud.progress01 * barW;
-  this.ttHud.barSlider.setPosition(px, barY);
+// Progreso REAL (0..1) por centerline
+this.ttHud.progress01 = this._computeLapProgress01(this.car.x, this.car.y);
+const { barX, barW, barY } = this.ttHud.bar;
+const px = barX + this.ttHud.progress01 * barW;
+this.ttHud.barSlider.setPosition(px, barY);
 }
     // Guardas duras: si create() no terminó, no reventamos el loop.
     if (!this.cameras?.main) return;
