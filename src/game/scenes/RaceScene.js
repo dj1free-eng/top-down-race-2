@@ -770,22 +770,49 @@ const _getCenterPtsXY = () => {
 
 const _makeGateAtFraction = (frac01) => {
   const pts0 = _getCenterPtsXY();
-if (pts0.length < 3) return null;
+  if (pts0.length < 3) return null;
 
-// Para circuitos cerrados: incluir el segmento de cierre (last -> first)
-const pts = pts0.slice();
-pts.push({ x: pts0[0].x, y: pts0[0].y });
+  // Para circuitos cerrados: incluir el segmento de cierre (last -> first)
+  const pts = pts0.slice();
+  pts.push({ x: pts0[0].x, y: pts0[0].y });
 
-// Longitud total (incluye cierre)
-let total = 0;
-for (let i = 1; i < pts.length; i++) {
-  const dx = pts[i].x - pts[i - 1].x;
-  const dy = pts[i].y - pts[i - 1].y;
-  total += Math.hypot(dx, dy);
-}
-if (total <= 0) return null;
+  // Longitud total + distancias acumuladas (incluye cierre)
+  const cum = new Array(pts.length).fill(0);
+  let total = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const dx = pts[i].x - pts[i - 1].x;
+    const dy = pts[i].y - pts[i - 1].y;
+    total += Math.hypot(dx, dy);
+    cum[i] = total;
+  }
+  if (total <= 0) return null;
 
-  const target = total * frac01;
+  // -------------------------------------------------
+  // ANCLA: el 0% es la META (finish line), no pts0[0]
+  // -------------------------------------------------
+  const finish = t01.finish || t01.finishLine;
+  let startDist = 0;
+
+  if (finish?.a && finish?.b) {
+    const midX = (finish.a.x + finish.b.x) * 0.5;
+    const midY = (finish.a.y + finish.b.y) * 0.5;
+
+    // punto de centerline más cercano a la meta
+    let bestI = 0;
+    let bestD2 = Infinity;
+    for (let i = 0; i < pts0.length; i++) {
+      const dx = pts0[i].x - midX;
+      const dy = pts0[i].y - midY;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < bestD2) { bestD2 = d2; bestI = i; }
+    }
+
+    // startDist: distancia acumulada hasta ese punto (cum está alineado con pts0)
+    startDist = cum[bestI] || 0;
+  }
+
+  // target = META + frac * total, con wrap
+  const target = (startDist + total * frac01) % total;
 
   // Encuentra el segmento donde cae target
   let acc = 0;
@@ -799,20 +826,20 @@ if (total <= 0) return null;
   }
   if (idx >= pts.length) idx = pts.length - 1;
 
-  // Tangente local (preferimos mirar “hacia delante”)
+  // Tangente local (mirar hacia delante)
   const p0 = pts[Math.max(0, idx - 1)];
   const p1 = pts[idx];
   const p2 = pts[Math.min(pts.length - 1, idx + 1)];
 
-  // Tangente suavizada usando p0->p2 (reduce gates raros en curvas)
+  // Tangente suavizada usando p0->p2
   let tx = p2.x - p0.x;
   let ty = p2.y - p0.y;
   const tLen = Math.hypot(tx, ty) || 1;
   tx /= tLen; ty /= tLen;
 
   // Perpendicular
-  let px = -ty;
-  let py = tx;
+  const px = -ty;
+  const py = tx;
 
   // Punto medio interpolado dentro del segmento (p0->p1)
   const segDx = p1.x - p0.x;
@@ -823,14 +850,12 @@ if (total <= 0) return null;
 
   const mid = { x: p0.x + segDx * u, y: p0.y + segDy * u };
 
-  // Largo del gate (un pelín más que el ancho para asegurar cruce)
+  // Largo del gate
   const half = (t01.trackWidth || 300) * 0.75;
   const a = { x: mid.x - px * half, y: mid.y - py * half };
   const b = { x: mid.x + px * half, y: mid.y + py * half };
 
-  // normal = “hacia delante” (tangente)
   const normal = { x: tx, y: ty };
-
   return { a, b, normal };
 };
 
