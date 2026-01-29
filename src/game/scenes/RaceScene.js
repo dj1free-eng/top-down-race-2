@@ -1233,7 +1233,7 @@ if (DEV_TOOLS) {
 // Time Trial HUD v1.2 — update (provisional)
 // ==============================
 if (this.ttHud) {
-  this.ttHud.elapsedMs += (delta || 0);
+this.ttHud.elapsedMs += (deltaMs || 0);
 
   // Formato M:SS.xx (siempre)
   const t = Math.max(0, this.ttHud.elapsedMs);
@@ -1246,7 +1246,7 @@ if (this.ttHud) {
   this.ttHud.lapText.setText(`VUELTA ${this.ttHud.lap} / ${this.ttHud.lapsTotal}`);
 
   // Progreso placeholder suave (solo para ver el slider funcionando)
-  this.ttHud.progress01 = (this.ttHud.progress01 + (delta || 0) * 0.00006) % 1;
+this.ttHud.progress01 = (this.ttHud.progress01 + (deltaMs || 0) * 0.00006) % 1;
   const { barX, barW, barY } = this.ttHud.bar;
   const px = barX + this.ttHud.progress01 * barW;
   this.ttHud.barSlider.setPosition(px, barY);
