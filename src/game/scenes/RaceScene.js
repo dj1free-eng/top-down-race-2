@@ -1462,25 +1462,33 @@ if (DEV_TOOLS) {
     const dt = Math.min(0.05, (deltaMs || 0) / 1000);
 // ==============================
 // Time Trial HUD v1.2 — update (provisional)
+// (IMPORTANTE: el tiempo NO corre hasta lights out)
 // ==============================
 if (this.ttHud) {
-this.ttHud.elapsedMs += (deltaMs || 0);
+  const started = !!this.timing?.started && (this.timing?.lapStart != null);
+
+  // Tiempo: si no ha empezado la carrera, se queda en 0
+  const nowMs = performance.now();
+  const elapsedMs = started ? Math.max(0, nowMs - this.timing.lapStart) : 0;
+
+  this.ttHud.elapsedMs = elapsedMs; // dejamos el valor coherente
 
   // Formato M:SS.xx (siempre)
-  const tt = Math.max(0, this.ttHud.elapsedMs);
-const m = Math.floor(tt / 60000);
-const s = Math.floor((tt % 60000) / 1000);
-const cs = Math.floor((tt % 1000) / 10);
+  const m = Math.floor(elapsedMs / 60000);
+  const s = Math.floor((elapsedMs % 60000) / 1000);
+  const cs = Math.floor((elapsedMs % 1000) / 10);
   const txt = `${m}:${String(s).padStart(2, '0')}.${String(cs).padStart(2, '0')}`;
 
   this.ttHud.timeText.setText(txt);
   this.ttHud.lapText.setText(`VUELTA ${this.ttHud.lap} / ${this.ttHud.lapsTotal}`);
 
-// Progreso REAL (0..1) por centerline
-this.ttHud.progress01 = this._computeLapProgress01(this.car.x, this.car.y);
-const { barX, barW, barY } = this.ttHud.bar;
-const px = barX + this.ttHud.progress01 * barW;
-this.ttHud.barSlider.setPosition(px, barY);
+  // Progreso REAL (0..1) por centerline (solo si hay coche)
+  if (this.car) {
+    this.ttHud.progress01 = this._computeLapProgress01(this.car.x, this.car.y);
+    const { barX, barW, barY } = this.ttHud.bar;
+    const px = barX + this.ttHud.progress01 * barW;
+    this.ttHud.barSlider.setPosition(px, barY);
+  }
 }
     // Guardas duras: si create() no terminó, no reventamos el loop.
     if (!this.cameras?.main) return;
