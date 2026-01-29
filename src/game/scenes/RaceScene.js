@@ -341,7 +341,25 @@ else this._ttProg.idx = startIdx;
       : (valid(savedTrack) ? savedTrack : 'track02');
 
     localStorage.setItem('tdr2:trackKey', this.trackKey);
+// ========================================
+// Time Trial: best lap + splits por pista
+// ========================================
+this.ttKey = `tdr2:ttBest:${this.trackKey}`; // por pista
+this.ttBest = null;
 
+try {
+  const raw = localStorage.getItem(this.ttKey);
+  const parsed = raw ? JSON.parse(raw) : null;
+  if (parsed && Number.isFinite(parsed.lapMs)) {
+    this.ttBest = {
+      lapMs: parsed.lapMs,
+      s1: Number.isFinite(parsed.s1) ? parsed.s1 : null,
+      s2: Number.isFinite(parsed.s2) ? parsed.s2 : null
+    };
+  }
+} catch (e) {
+  this.ttBest = null;
+}
     // 2) Base spec
     const baseSpec = CAR_SPECS[this.carId] || CAR_SPECS.stock;
 
@@ -967,6 +985,12 @@ _drawGate(this.checkpoints.cp2, 0x2dff6a);
 // Time Trial HUD v1.2 (VISUAL) — zona superior only
 // =================================================
 this.ttHud = {};
+// Color del crono (solo cambia al pasar CPs/META)
+this._ttHudColor = '#F2F2F2'; // blanco por defecto
+this._setTTHudColor = (hex) => {
+  this._ttHudColor = hex;
+  if (this.ttHud?.timeText) this.ttHud.timeText.setColor(hex);
+};
 this.ttHud.elapsedMs = 0;         // (por ahora) cronómetro simple
 this.ttHud.lap = 1;
 this.ttHud.lapsTotal = 3;         // placeholder hasta conectar con modo TT real
@@ -988,7 +1012,7 @@ this.ttHud.timeText = this.add.text(this.scale.width / 2, safeTop + 6, '0:00.00'
 
 // micro-sombra suave
 this.ttHud.timeText.setShadow(0, 1, '#000000', 2, false, true);
-
+this._setTTHudColor(this.ttBest ? '#F2F2F2' : '#F2F2F2'); // de momento igual, pero deja la ruta clara
 // --- B) Vuelta (top-left)
 this.ttHud.lapText = this.add.text(safeLeft, safeTop + 10, 'VUELTA 1 / 3', {
   fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
@@ -2006,12 +2030,44 @@ const cp2 = this.checkpoints?.cp2;
 if (cp1 && this._cpCooldown1Ms === 0 && _crossGate(cp1)) {
   if ((this._cpState || 0) === 0) {
     this._cpState = 1;
-    if (this.timing) this.timing.s1 = performance.now() - this.timing.lapStart;
+
+    if (this.timing?.lapStart != null) {
+      this.timing.s1 = performance.now() - this.timing.lapStart;
+
+      // Color SOLO al cruzar CP1
+      if (this.ttBest?.s1 != null) {
+        this._setTTHudColor(this.timing.s1 <= this.ttBest.s1 ? '#2ECC71' : '#E74C3C');
+      } else {
+        this._setTTHudColor('#F2F2F2');
+      }
+    }
   } else {
-    // Si lo pisa fuera de orden, reiniciamos para evitar exploits raros
+    // Si lo pisa fuera de orden, reiniciamos
     this._cpState = 0;
+    this._setTTHudColor('#F2F2F2');
   }
   this._cpCooldown1Ms = 500;
+}
+
+if (cp2 && this._cpCooldown2Ms === 0 && _crossGate(cp2)) {
+  if ((this._cpState || 0) === 1) {
+    this._cpState = 2;
+
+    if (this.timing?.lapStart != null) {
+      this.timing.s2 = performance.now() - this.timing.lapStart;
+
+      // Color SOLO al cruzar CP2
+      if (this.ttBest?.s2 != null) {
+        this._setTTHudColor(this.timing.s2 <= this.ttBest.s2 ? '#2ECC71' : '#E74C3C');
+      } else {
+        this._setTTHudColor('#F2F2F2');
+      }
+    }
+  } else {
+    this._cpState = 0;
+    this._setTTHudColor('#F2F2F2');
+  }
+  this._cpCooldown2Ms = 500;
 }
 
 if (cp2 && this._cpCooldown2Ms === 0 && _crossGate(cp2)) {
@@ -2027,18 +2083,40 @@ if (cp2 && this._cpCooldown2Ms === 0 && _crossGate(cp2)) {
 // --- 2) meta: SOLO cuenta si cpState==2 ---
 if (within && crossed && forward && this._lapCooldownMs === 0) {
   if ((this._cpState || 0) === 2) {
-    if (this.timing) {
+if (this.timing) {
   const now = performance.now();
   const lapTime = now - this.timing.lapStart;
 
-  this.timing.s3 = lapTime;
+  // Guarda “last lap”
   this.timing.lastLap = lapTime;
-  this.timing.bestLap = (this.timing.bestLap == null) ? lapTime : Math.min(this.timing.bestLap, lapTime);
 
+  // Color SOLO al cruzar META (comparación total)
+  if (this.ttBest?.lapMs != null) {
+    this._setTTHudColor(lapTime <= this.ttBest.lapMs ? '#2ECC71' : '#E74C3C');
+  } else {
+    this._setTTHudColor('#F2F2F2');
+  }
+
+  // Si mejora el total: actualizar best lap + splits (regla estricta)
+  const improves = (this.ttBest == null) || (lapTime < this.ttBest.lapMs);
+  if (improves) {
+    this.ttBest = {
+      lapMs: lapTime,
+      s1: Number.isFinite(this.timing.s1) ? this.timing.s1 : null,
+      s2: Number.isFinite(this.timing.s2) ? this.timing.s2 : null
+    };
+    try {
+      localStorage.setItem(this.ttKey, JSON.stringify(this.ttBest));
+    } catch (e) {}
+  }
+
+  // Reset de vuelta: arranca nueva vuelta desde ahora
   this.timing.lapStart = now;
   this.timing.s1 = null;
   this.timing.s2 = null;
-  this.timing.s3 = null;
+
+  // En salida (nuevo lap): volvemos a blanco hasta CP1 (sin parpadeo)
+  this._setTTHudColor('#F2F2F2');
 }
     this.lapCount = (this.lapCount || 0) + 1;
     this._lapCooldownMs = 700;
