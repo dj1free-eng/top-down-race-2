@@ -1219,6 +1219,14 @@ this.cameras.main.ignore([
   this.devInfo,
   this.devToggleBtn,
   this.devToggleTxt,
+
+  // Time Trial HUD (solo debe renderizarse en uiCam)
+  this.ttHud?.timeText,
+  this.ttHud?.lapText,
+  this.ttHud?.barBase,
+  this.ttHud?.barSlider,
+  this.ttHud?.ticksGfx,
+
   // Botones de zoom
   this._zoomBtnPlus?.r,
   this._zoomBtnPlus?.t,
@@ -1226,6 +1234,7 @@ this.cameras.main.ignore([
   this._zoomBtnMinus?.t,
   this._zoomBtnCull?.r,
   this._zoomBtnCull?.t,
+
   // Controles táctiles
   this.touchUI
 ]
@@ -2105,16 +2114,6 @@ if (cp2 && this._cpCooldown2Ms === 0 && _crossGate(cp2)) {
   } else {
     this._cpState = 0;
     this._setTTHudColor('#F2F2F2');
-  }
-  this._cpCooldown2Ms = 500;
-}
-
-if (cp2 && this._cpCooldown2Ms === 0 && _crossGate(cp2)) {
-  if ((this._cpState || 0) === 1) {
-    this._cpState = 2;
-    if (this.timing) this.timing.s2 = performance.now() - this.timing.lapStart;
-  } else {
-    this._cpState = 0;
   }
   this._cpCooldown2Ms = 500;
 }
