@@ -1071,7 +1071,7 @@ this.ttHud.lapText.setShadow(0, 1, '#000000', 2, false, true);
 // --- C) Barra progreso + ticks (debajo de vuelta)
 const barX = safeLeft;
 const barY = safeTop + 32;
-const barW = 160;      // ancho estable (móvil)
+const barW = 120;      // reducido para no invadir el crono
 const barH = 2;
 
 this.ttHud.bar = { barX, barY, barW, barH };
