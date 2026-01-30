@@ -20,6 +20,8 @@ function fmtTime(ms) {
   return `${m}:${String(s).padStart(2, '0')}.${String(ms3).padStart(3, '0')}`;
 }
 const DEV_TOOLS = true; // ponlo en false para ocultar botones de zoom/cull
+const ASPHALT_OVERLAY_ALPHA = 0.08; // rango sano: 0.08 – 0.12
+
 // =================================================
 // TRACK SURFACE HELPERS (point-in-polygon por celdas)
 // =================================================
@@ -110,60 +112,7 @@ export class RaceScene extends Phaser.Scene {
     this.upgrades = { engine: 0, brakes: 0, tires: 0 };
     this.UPGRADE_CAPS = { engine: 3, brakes: 3, tires: 3 };
 
-    
-// =================================================
-// SPEEDOMETER (móvil-first) — abajo centro, entre controles
-// - Número grande (km/h) + arco superior que se llena con la velocidad
-// - Arco invisible cuando la velocidad es 0
-// Nota: el juego trabaja en px/s. Usamos el mismo factor que ya empleas arriba (px -> km/h).
-// =================================================
-this._speedo = {
-  kmhFactor: 0.12,     // coherente con el HUD actual (ajustable si recalibras)
-  maxPx: (this.maxFwd || 520),  // referencia de velocidad punta por coche (px/s)
-  peakKmh: 0
-};
-
-// elementos gráficos (UI)
-this.speedoBgGfx = this.add.graphics().setScrollFactor(0).setDepth(1400);
-this.speedoFgGfx = this.add.graphics().setScrollFactor(0).setDepth(1401);
-
-this.speedoText = this.add.text(0, 0, '0', {
-  fontFamily: 'Orbitron, system-ui, -apple-system, Segoe UI, Roboto, Arial',
-  fontSize: '44px',
-  fontStyle: '800',
-  color: '#F2F2F2'
-}).setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(1402);
-
-this.speedoUnitText = this.add.text(0, 0, 'KM/H', {
-  fontFamily: 'Orbitron, system-ui, -apple-system, Segoe UI, Roboto, Arial',
-  fontSize: '12px',
-  fontStyle: '700',
-  color: '#CFCFCF'
-}).setOrigin(0.5, 0.5).setAlpha(0.85).setScrollFactor(0).setDepth(1402);
-
-// micro-sombra suave
-this.speedoText.setShadow(0, 1, '#000000', 2, false, true);
-this.speedoUnitText.setShadow(0, 1, '#000000', 2, false, true);
-
-// layout inicial
-this._layoutSpeedometer = (w, h) => {
-  const cx = w * 0.5;
-  // colocación: suficientemente baja para “sentirse” parte del control inferior,
-  // pero sin pisar los paneles. Ajusta si cambias los controles.
-  const baseY = h - Math.round(Math.min(140, h * 0.18));
-
-  this._speedo.cx = cx;
-  this._speedo.cy = baseY - 8;      // centro del arco (un pelín arriba del número)
-  this._speedo.r  = Math.round(Math.min(70, Math.max(52, w * 0.085)));
-  this._speedo.th = 6;
-
-  this.speedoText.setPosition(cx, baseY + 18);
-  this.speedoUnitText.setPosition(cx, baseY + 48);
-};
-
-this._layoutSpeedometer(this.scale.width, this.scale.height);
-
-this.upUI = null;
+    this.upUI = null;
     this.upTxt = null;
     this._saveUpgrades = null;
     this.buyUpgrade = null;
@@ -172,7 +121,232 @@ this.upUI = null;
     this.carBody = null;
     this.carRig = null;
   }
+  // =================================================
+  // Time Trial: precompute distancias acumuladas centerline
+  // =================================================
+  _initTTCenterlineMetrics() {
+    const cl = this.track?.meta?.centerline;
+    const n = cl?.length ?? 0;
+    if (n < 2) return;
 
+    const getXY = (p) => {
+      if (!p) return [NaN, NaN];
+      if (Array.isArray(p)) return [p[0], p[1]];
+      if (typeof p.x === 'number' && typeof p.y === 'number') return [p.x, p.y];
+      return [NaN, NaN];
+    };
+
+    const cum = new Array(n).fill(0);
+    let total = 0;
+
+    let [px, py] = getXY(cl[0]);
+    for (let i = 1; i < n; i++) {
+      const [x, y] = getXY(cl[i]);
+      if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(px) || !Number.isFinite(py)) {
+        cum[i] = total;
+        px = x; py = y;
+        continue;
+      }
+      const dx = x - px;
+      const dy = y - py;
+      total += Math.hypot(dx, dy);
+      cum[i] = total;
+      px = x; py = y;
+    }
+
+// Calcular ancla de META: distancia acumulada del punto de centerline más cercano a la finish line
+const finish = this.track?.meta?.finish || this.track?.meta?.finishLine;
+let startDist = 0;
+let startIdx = 0;
+
+if (finish?.a && finish?.b) {
+  const midX = (finish.a.x + finish.b.x) * 0.5;
+  const midY = (finish.a.y + finish.b.y) * 0.5;
+
+  let bestI = 0;
+  let bestD2 = Infinity;
+  for (let i = 0; i < n; i++) {
+    const [x, y] = getXY(cl[i]);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+    const dx = x - midX;
+    const dy = y - midY;
+    const d2 = dx * dx + dy * dy;
+    if (d2 < bestD2) { bestD2 = d2; bestI = i; }
+  }
+  startIdx = bestI;
+  startDist = cum[bestI] || 0;
+}
+
+this._ttCl = {
+  cum,
+  total: Math.max(1e-6, total),
+  startDist,
+  startIdx
+};
+
+// (opcional pero útil): inicializa el índice de búsqueda cerca de la meta
+if (!this._ttProg) this._ttProg = { idx: startIdx, inited: false };
+else this._ttProg.idx = startIdx;
+  }
+
+  // =================================================
+  // Time Trial: progreso de vuelta 0..1 por centerline
+  // (rápido: búsqueda local con caché de índice)
+  // Devuelve progreso por DISTANCIA si _ttCl existe
+  // =================================================
+  _computeLapProgress01(px, py) {
+    const cl = this.track?.meta?.centerline;
+    const n = cl?.length ?? 0;
+    if (n < 2 || !Number.isFinite(px) || !Number.isFinite(py)) return 0;
+
+    if (!this._ttProg) this._ttProg = { idx: 0, inited: false };
+
+    const getXY = (p) => {
+      if (!p) return [NaN, NaN];
+      if (Array.isArray(p)) return [p[0], p[1]];
+      if (typeof p.x === 'number' && typeof p.y === 'number') return [p.x, p.y];
+      return [NaN, NaN];
+    };
+
+    const byDist = (i) => {
+  const cum = this._ttCl?.cum;
+  const total = this._ttCl?.total || 1;
+  const startDist = this._ttCl?.startDist || 0;
+
+  if (cum && cum[i] != null) {
+    // Progreso anclado a META: (cum - startDist) con wrap
+    let d = cum[i] - startDist;
+    d %= total;
+    if (d < 0) d += total;
+    return d / total;
+  }
+  return i / (n - 1);
+};
+
+    // Primera vez: búsqueda global (solo una vez)
+    if (!this._ttProg.inited) {
+      let bestI = 0;
+      let bestD2 = Infinity;
+      for (let i = 0; i < n; i++) {
+        const [x, y] = getXY(cl[i]);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+        const dx = x - px;
+        const dy = y - py;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < bestD2) { bestD2 = d2; bestI = i; }
+      }
+      this._ttProg.idx = bestI;
+      this._ttProg.inited = true;
+      return byDist(bestI);
+    }
+
+    // Búsqueda local circular alrededor del último índice (barata)
+    const w = 45;
+    const base = this._ttProg.idx;
+
+    let bestI = base;
+    let bestD2 = Infinity;
+
+    for (let o = -w; o <= w; o++) {
+      let i = base + o;
+      i %= n;
+      if (i < 0) i += n;
+
+      const [x, y] = getXY(cl[i]);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+
+      const dx = x - px;
+      const dy = y - py;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < bestD2) { bestD2 = d2; bestI = i; }
+    }
+
+    this._ttProg.idx = bestI;
+    return byDist(bestI);
+  }
+  // =================================================
+  // Time Trial: construir informe de evolución por pista
+  // =================================================
+  _buildTTReport() {
+    const hist = Array.isArray(this.ttHistory) ? this.ttHistory : [];
+    const n = hist.length;
+
+    const getLap = (r) => (r && Number.isFinite(r.lapMs) ? r.lapMs : null);
+
+    const laps = [];
+    for (let i = 0; i < n; i++) {
+      const v = getLap(hist[i]);
+      if (v != null) laps.push(v);
+    }
+
+    const count = laps.length;
+    if (count === 0) {
+      return {
+        count: 0,
+        firstLapMs: null,
+        bestLapMs: null,
+        lastLapMs: null,
+        improvementMs: null,
+        improvementPct: null,
+        recentAvg10Ms: null,
+        recentRange10Ms: null,
+        trend50Ms: null,
+        pbIndex: null
+      };
+    }
+
+    let bestLapMs = Infinity;
+    let pbIndex = 0;
+    for (let i = 0; i < count; i++) {
+      if (laps[i] < bestLapMs) {
+        bestLapMs = laps[i];
+        pbIndex = i;
+      }
+    }
+
+    const firstLapMs = laps[0];
+    const lastLapMs = laps[count - 1];
+    const improvementMs = firstLapMs - bestLapMs;
+    const improvementPct = firstLapMs > 0 ? (improvementMs / firstLapMs) : null;
+
+    const sliceAvg = (arr) => {
+      if (!arr.length) return null;
+      let s = 0;
+      for (const x of arr) s += x;
+      return s / arr.length;
+    };
+
+    const last10 = laps.slice(-10);
+    const recentAvg10Ms = sliceAvg(last10);
+
+    let recentRange10Ms = null;
+    if (last10.length) {
+      let mn = Infinity, mx = -Infinity;
+      for (const x of last10) { if (x < mn) mn = x; if (x > mx) mx = x; }
+      recentRange10Ms = mx - mn;
+    }
+
+    // Trend: compara avg últimas 10 vs las 10 anteriores (si existen)
+    let trend50Ms = null;
+    if (laps.length >= 20) {
+      const a = sliceAvg(laps.slice(-10));
+      const b = sliceAvg(laps.slice(-20, -10));
+      if (a != null && b != null) trend50Ms = a - b; // negativo = mejora
+    }
+
+    return {
+      count,
+      firstLapMs,
+      bestLapMs,
+      lastLapMs,
+      improvementMs,
+      improvementPct,
+      recentAvg10Ms,
+      recentRange10Ms,
+      trend50Ms,
+      pbIndex
+    };
+  }
     init(data) {
     // 1) Resolver coche seleccionado (prioridad: data -> localStorage -> stock)
     this.carId = data?.carId || localStorage.getItem('tdr2:carId') || 'stock';
@@ -188,7 +362,43 @@ this.upUI = null;
       : (valid(savedTrack) ? savedTrack : 'track02');
 
     localStorage.setItem('tdr2:trackKey', this.trackKey);
+// ========================================
+// Time Trial: histórico de vueltas (por pista) — máx 500
+// ========================================
+this.ttHistKey = `tdr2:ttHist:${this.trackKey}`;
+this.ttHistory = [];
 
+try {
+  const raw = localStorage.getItem(this.ttHistKey);
+  const parsed = raw ? JSON.parse(raw) : null;
+  const arr = parsed?.history;
+  if (Array.isArray(arr)) {
+    this.ttHistory = arr
+      .filter(r => r && Number.isFinite(r.lapMs))
+      .slice(-500);
+  }
+} catch (e) {
+  this.ttHistory = [];
+}
+// ========================================
+// Time Trial: best lap + splits por pista
+// ========================================
+this.ttKey = `tdr2:ttBest:${this.trackKey}`; // por pista
+this.ttBest = null;
+
+try {
+  const raw = localStorage.getItem(this.ttKey);
+  const parsed = raw ? JSON.parse(raw) : null;
+  if (parsed && Number.isFinite(parsed.lapMs)) {
+    this.ttBest = {
+      lapMs: parsed.lapMs,
+      s1: Number.isFinite(parsed.s1) ? parsed.s1 : null,
+      s2: Number.isFinite(parsed.s2) ? parsed.s2 : null
+    };
+  }
+} catch (e) {
+  this.ttBest = null;
+}
     // 2) Base spec
     const baseSpec = CAR_SPECS[this.carId] || CAR_SPECS.stock;
 
@@ -408,7 +618,10 @@ geom: buildTrackRibbon({
   activeCells: new Set(),
   cullRadiusCells: 2
 };
-    // =========================
+    // TT: métricas de centerline (progreso por distancia, corrige óvalo)
+this._initTTCenterlineMetrics();
+
+// =========================
 // 3) Fondo del mundo: OFF + GRASS BAND
 // =========================
 
@@ -454,6 +667,10 @@ if (grassCells) {
       }
       gMaskGfx.closePath();
       gMaskGfx.fillPath();
+      // Engordar máscara 2px para tapar “hairline seams” entre celdas
+gMaskGfx.lineStyle(3, 0xffffff, 1);
+gMaskGfx.strokePath();
+gMaskGfx.lineStyle(); // reset
     }
   }
 }
@@ -469,7 +686,8 @@ this.bgGrass.setMask(grassMask);
 // Guardamos referencias por si en el futuro queremos limpiar / rehacer
 this._grassMaskGfx = gMaskGfx;
 this._grassMask = grassMask;
-    // ================================
+
+// ================================
 // Bordes de pista (GLOBAL, sin culling)
 // ================================
 const drawPolylineClosed = (pts, lineW, color, alpha) => {
@@ -651,22 +869,49 @@ const _getCenterPtsXY = () => {
 
 const _makeGateAtFraction = (frac01) => {
   const pts0 = _getCenterPtsXY();
-if (pts0.length < 3) return null;
+  if (pts0.length < 3) return null;
 
-// Para circuitos cerrados: incluir el segmento de cierre (last -> first)
-const pts = pts0.slice();
-pts.push({ x: pts0[0].x, y: pts0[0].y });
+  // Para circuitos cerrados: incluir el segmento de cierre (last -> first)
+  const pts = pts0.slice();
+  pts.push({ x: pts0[0].x, y: pts0[0].y });
 
-// Longitud total (incluye cierre)
-let total = 0;
-for (let i = 1; i < pts.length; i++) {
-  const dx = pts[i].x - pts[i - 1].x;
-  const dy = pts[i].y - pts[i - 1].y;
-  total += Math.hypot(dx, dy);
-}
-if (total <= 0) return null;
+  // Longitud total + distancias acumuladas (incluye cierre)
+  const cum = new Array(pts.length).fill(0);
+  let total = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const dx = pts[i].x - pts[i - 1].x;
+    const dy = pts[i].y - pts[i - 1].y;
+    total += Math.hypot(dx, dy);
+    cum[i] = total;
+  }
+  if (total <= 0) return null;
 
-  const target = total * frac01;
+  // -------------------------------------------------
+  // ANCLA: el 0% es la META (finish line), no pts0[0]
+  // -------------------------------------------------
+  const finish = t01.finish || t01.finishLine;
+  let startDist = 0;
+
+  if (finish?.a && finish?.b) {
+    const midX = (finish.a.x + finish.b.x) * 0.5;
+    const midY = (finish.a.y + finish.b.y) * 0.5;
+
+    // punto de centerline más cercano a la meta
+    let bestI = 0;
+    let bestD2 = Infinity;
+    for (let i = 0; i < pts0.length; i++) {
+      const dx = pts0[i].x - midX;
+      const dy = pts0[i].y - midY;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < bestD2) { bestD2 = d2; bestI = i; }
+    }
+
+    // startDist: distancia acumulada hasta ese punto (cum está alineado con pts0)
+    startDist = cum[bestI] || 0;
+  }
+
+  // target = META + frac * total, con wrap
+  const target = (startDist + total * frac01) % total;
 
   // Encuentra el segmento donde cae target
   let acc = 0;
@@ -680,20 +925,20 @@ if (total <= 0) return null;
   }
   if (idx >= pts.length) idx = pts.length - 1;
 
-  // Tangente local (preferimos mirar “hacia delante”)
+  // Tangente local (mirar hacia delante)
   const p0 = pts[Math.max(0, idx - 1)];
   const p1 = pts[idx];
   const p2 = pts[Math.min(pts.length - 1, idx + 1)];
 
-  // Tangente suavizada usando p0->p2 (reduce gates raros en curvas)
+  // Tangente suavizada usando p0->p2
   let tx = p2.x - p0.x;
   let ty = p2.y - p0.y;
   const tLen = Math.hypot(tx, ty) || 1;
   tx /= tLen; ty /= tLen;
 
   // Perpendicular
-  let px = -ty;
-  let py = tx;
+  const px = -ty;
+  const py = tx;
 
   // Punto medio interpolado dentro del segmento (p0->p1)
   const segDx = p1.x - p0.x;
@@ -704,14 +949,12 @@ if (total <= 0) return null;
 
   const mid = { x: p0.x + segDx * u, y: p0.y + segDy * u };
 
-  // Largo del gate (un pelín más que el ancho para asegurar cruce)
+  // Largo del gate
   const half = (t01.trackWidth || 300) * 0.75;
   const a = { x: mid.x - px * half, y: mid.y - py * half };
   const b = { x: mid.x + px * half, y: mid.y + py * half };
 
-  // normal = “hacia delante” (tangente)
   const normal = { x: tx, y: ty };
-
   return { a, b, normal };
 };
 
@@ -757,6 +1000,7 @@ _drawGate(this.checkpoints.cp2, 0x2dff6a);
     this.cameras.main.startFollow(this.carRig, true, 0.12, 0.12);
     this.cameras.main.setZoom(this.zoom);
     this.cameras.main.roundPixels = true;
+
     // 8) Input teclado
     this.keys = this.input.keyboard.addKeys({
   up: Phaser.Input.Keyboard.KeyCodes.W,
@@ -778,30 +1022,114 @@ _drawGate(this.checkpoints.cp2, 0x2dff6a);
 });
 
 
-      // HUD (caja + texto legible)
-const hudX = 12;
-const hudY = 12;
-
-this.hudBox = this.add.rectangle(hudX, hudY, 200, 64, 0x000000, 0.45)
-  .setOrigin(0, 0)
-  .setScrollFactor(0)
-  .setDepth(1099)
-  .setStrokeStyle(1, 0xffffff, 0.12);
-
-this.hud = this.add.text(hudX + 10, hudY + 8, '', {
-fontFamily: 'Orbitron, monospace',
-  fontSize: '13px',
-  color: '#ffffff',
-  lineSpacing: 3
-}).setScrollFactor(0).setDepth(1100);
-
-
-// Ajuste automático del alto de la caja según el texto (para que no tape)
-this._fitHud = () => {
-  const w = 340;
-  const h = Math.max(68, (this.hud.height || 0) + 16);
-  this.hudBox.setSize(w, h);
+// =================================================
+// Time Trial HUD v1.2 (VISUAL) — zona superior only
+// =================================================
+this.ttHud = {};
+// Color del crono (solo cambia al pasar CPs/META)
+this._ttHudColor = '#F2F2F2'; // blanco por defecto
+this._setTTHudColor = (hex) => {
+  this._ttHudColor = hex;
+  if (this.ttHud?.timeText) this.ttHud.timeText.setColor(hex);
 };
+this.ttHud.elapsedMs = 0;         // (por ahora) cronómetro simple
+this.ttHud.lap = 1;
+this.ttHud.lapsTotal = 3;         // placeholder hasta conectar con modo TT real
+this.ttHud.progress01 = 0;        // 0..1 placeholder
+
+const safeTop = 12;
+const safeLeft = 12;
+
+// --- A) Tiempo principal (top-center)
+this.ttHud.timeText = this.add.text(this.scale.width / 2, safeTop + 6, '0:00.00', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '34px',              // principal
+  fontStyle: '600',
+  color: '#F2F2F2'
+})
+  .setOrigin(0.5, 0)
+  .setScrollFactor(0)
+  .setDepth(2000);
+
+// micro-sombra suave
+this.ttHud.timeText.setShadow(0, 1, '#000000', 2, false, true);
+this._setTTHudColor(this.ttBest ? '#F2F2F2' : '#F2F2F2'); // de momento igual, pero deja la ruta clara
+// --- B) Vuelta (top-left)
+this.ttHud.lapText = this.add.text(safeLeft, safeTop + 10, 'VUELTA 1 / 3', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '14px',
+  fontStyle: '600',
+  color: '#CFCFCF'
+})
+  .setOrigin(0, 0)
+  .setAlpha(0.85)
+  .setScrollFactor(0)
+  .setDepth(2000);
+
+this.ttHud.lapText.setShadow(0, 1, '#000000', 2, false, true);
+
+// --- C) Barra progreso + ticks (debajo de vuelta)
+const barX = safeLeft;
+const barY = safeTop + 32;
+const barW = 160;      // ancho estable (móvil)
+const barH = 2;
+
+this.ttHud.bar = { barX, barY, barW, barH };
+
+// Base gris
+this.ttHud.barBase = this.add.rectangle(barX, barY, barW, barH, 0x555555, 0.60)
+  .setOrigin(0, 0.5)
+  .setScrollFactor(0)
+  .setDepth(1999);
+
+// “Slider” (bloque deslizante, look racing pro)
+this.ttHud.barSlider = this.add.rectangle(barX, barY, 10, 6, 0xF2F2F2, 0.90)
+  .setOrigin(0.5, 0.5)
+  .setScrollFactor(0)
+  .setDepth(2001);
+
+// Ticks estáticos (4 marcas: salida, CP1, CP2, meta)
+this.ttHud.ticksGfx = this.add.graphics()
+  .setScrollFactor(0)
+  .setDepth(2002);
+
+const tickColor = 0xAAAAAA;
+const tickAlpha = 0.70;
+const tickH = 8;
+const tickW = 2;
+
+// 4 ticks fijos: 0%, 33%, 66%, 100%
+const tickXs = [
+  barX,
+  barX + Math.floor(barW * 0.333),
+  barX + Math.floor(barW * 0.666),
+  barX + barW
+];
+
+this.ttHud.ticksGfx.clear();
+this.ttHud.ticksGfx.fillStyle(tickColor, tickAlpha);
+for (const tx of tickXs) {
+  this.ttHud.ticksGfx.fillRect(Math.floor(tx - tickW / 2), Math.floor(barY - tickH / 2), tickW, tickH);
+}
+
+// Fade-in suave (100–150ms)
+this.ttHud.timeText.setAlpha(0);
+this.ttHud.lapText.setAlpha(0);
+this.ttHud.barBase.setAlpha(0);
+this.ttHud.barSlider.setAlpha(0);
+this.ttHud.ticksGfx.setAlpha(0);
+
+this.tweens.add({
+  targets: [this.ttHud.timeText, this.ttHud.lapText, this.ttHud.barBase, this.ttHud.barSlider, this.ttHud.ticksGfx],
+  alpha: 1,
+  duration: 140,
+  ease: 'Sine.easeOut'
+});
+
+// Mantener posición correcta si hay RESIZE
+this.scale.on('resize', (gameSize) => {
+  if (this.ttHud?.timeText) this.ttHud.timeText.setX(gameSize.width / 2);
+});
 // =================================================
 // DEV HUD (panel derecha) — solo para desarrollo
 // (sin botones: zoom/cull se operarán desde Config más adelante)
@@ -877,10 +1205,113 @@ this.upUI = null;
 this.uiCam = this.cameras.add(0, 0, this.scale.width, this.scale.height);
 this.uiCam.setScroll(0, 0);
 this.uiCam.setZoom(1);
+this.uiCam.roundPixels = true;
 // UI cam: ignorar fondos del mundo y máscaras
 if (this.bgOff) this.uiCam.ignore(this.bgOff);
 if (this.bgGrass) this.uiCam.ignore(this.bgGrass);
 if (this._grassMaskGfx) this.uiCam.ignore(this._grassMaskGfx);
+
+// =================================================
+// TIME TRIAL: PANEL DESPLEGABLE (UI) — no toca ttHud
+// =================================================
+this.ttPanel = {
+  shown: false,
+  busy: false,
+  w: 240,
+  h: 160,
+  pad: 10,
+  xShown: 0,
+  xHidden: 0,
+  y: 64
+};
+
+// Container UI
+this.ttPanel.c = this.add.container(0, 0)
+  .setScrollFactor(0)
+  .setDepth(2005);
+
+// Fondo + borde
+this.ttPanel.bg = this.add.rectangle(0, 0, this.ttPanel.w, this.ttPanel.h, 0x000000, 0.50)
+  .setOrigin(0, 0)
+  .setStrokeStyle(1, 0xffffff, 0.14);
+
+// Título
+this.ttPanel.title = this.add.text(12, 10, 'TIME TRIAL', {
+  fontFamily: 'Orbitron, monospace',
+  fontSize: '14px',
+  color: '#ffffff',
+  fontStyle: '700'
+});
+
+// Cuerpo (stats)
+this.ttPanel.body = this.add.text(12, 34, '', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '12px',
+  color: '#EDEDED',
+  lineSpacing: 4,
+  wordWrap: { width: this.ttPanel.w - 24, useAdvancedWrap: false }
+});
+
+// Montar
+this.ttPanel.c.add([this.ttPanel.bg, this.ttPanel.title, this.ttPanel.body]);
+
+// Layout (posición hidden/shown)
+this._layoutTTPanel = () => {
+  const w = this.scale.width;
+  const pad = this.ttPanel.pad;
+
+  this.ttPanel.xShown = w - this.ttPanel.w - pad; // entra desde la derecha
+  this.ttPanel.xHidden = w + 6;                   // fuera de pantalla
+  this.ttPanel.y = 64;                            // debajo de HUD superior
+
+  const x = this.ttPanel.shown ? this.ttPanel.xShown : this.ttPanel.xHidden;
+  this.ttPanel.c.setPosition(x, this.ttPanel.y);
+};
+
+this._layoutTTPanel();
+
+// Animaciones (sin recrear nada)
+this._showTTPanel = () => {
+  if (!this.ttPanel || this.ttPanel.shown || this.ttPanel.busy) return;
+  this.ttPanel.busy = true;
+  this.ttPanel.shown = true;
+
+  this.ttPanel.c.setVisible(true);
+
+  this.tweens.add({
+    targets: this.ttPanel.c,
+    x: this.ttPanel.xShown,
+    duration: 180,
+    ease: 'Sine.easeOut',
+    onComplete: () => { this.ttPanel.busy = false; }
+  });
+};
+
+this._hideTTPanel = () => {
+  if (!this.ttPanel || !this.ttPanel.shown || this.ttPanel.busy) return;
+  this.ttPanel.busy = true;
+  this.ttPanel.shown = false;
+
+  this.tweens.add({
+    targets: this.ttPanel.c,
+    x: this.ttPanel.xHidden,
+    duration: 200,
+    ease: 'Sine.easeIn',
+    onComplete: () => {
+      this.ttPanel.busy = false;
+      this.ttPanel.c.setVisible(false);
+    }
+  });
+};
+
+// Auto-layout en resize
+this.scale.on('resize', () => {
+  if (this.uiCam) this.uiCam.setSize(this.scale.width, this.scale.height);
+  this._layoutTTPanel?.();
+});
+
+// Estado inicial: oculto
+this.ttPanel.c.setVisible(false);
 // 1) La cámara principal NO debe renderizar UI
 this.cameras.main.ignore([
   this.hudBox,
@@ -892,6 +1323,21 @@ this.cameras.main.ignore([
   this.devInfo,
   this.devToggleBtn,
   this.devToggleTxt,
+
+  // Time Trial HUD (solo debe renderizarse en uiCam)
+  this.ttHud?.timeText,
+  this.ttHud?.lapText,
+  this.ttHud?.barBase,
+  this.ttHud?.barSlider,
+  this.ttHud?.ticksGfx,
+
+  // TT Panel (solo debe renderizarse en uiCam)
+  this.ttPanel?.c,
+  this.ttPanel?.bg,
+  this.ttPanel?.title,
+  this.ttPanel?.body,
+
+
   // Botones de zoom
   this._zoomBtnPlus?.r,
   this._zoomBtnPlus?.t,
@@ -899,6 +1345,7 @@ this.cameras.main.ignore([
   this._zoomBtnMinus?.t,
   this._zoomBtnCull?.r,
   this._zoomBtnCull?.t,
+
   // Controles táctiles
   this.touchUI
 ]
@@ -912,7 +1359,6 @@ if (this.finishGfx) this.uiCam.ignore(this.finishGfx);
 // Mantener tamaño si rota/cambia viewport
 this.scale.on('resize', (gameSize) => {
   this.uiCam.setSize(gameSize.width, gameSize.height);
-  if (this._layoutSpeedometer) this._layoutSpeedometer(gameSize.width, gameSize.height);
 });
 // =================================================
 // START LIGHTS (F1) — modal + bloqueo de coche hasta salida
@@ -1197,7 +1643,36 @@ if (DEV_TOOLS) {
 
   update(time, deltaMs) {
     const dt = Math.min(0.05, (deltaMs || 0) / 1000);
+// ==============================
+// Time Trial HUD v1.2 — update (provisional)
+// (IMPORTANTE: el tiempo NO corre hasta lights out)
+// ==============================
+if (this.ttHud) {
+  const started = !!this.timing?.started && (this.timing?.lapStart != null);
 
+  // Tiempo: si no ha empezado la carrera, se queda en 0
+  const nowMs = performance.now();
+  const elapsedMs = started ? Math.max(0, nowMs - this.timing.lapStart) : 0;
+
+  this.ttHud.elapsedMs = elapsedMs; // dejamos el valor coherente
+
+  // Formato M:SS.xx (siempre)
+  const m = Math.floor(elapsedMs / 60000);
+  const s = Math.floor((elapsedMs % 60000) / 1000);
+  const cs = Math.floor((elapsedMs % 1000) / 10);
+  const txt = `${m}:${String(s).padStart(2, '0')}.${String(cs).padStart(2, '0')}`;
+
+  this.ttHud.timeText.setText(txt);
+  this.ttHud.lapText.setText(`VUELTA ${this.ttHud.lap} / ${this.ttHud.lapsTotal}`);
+
+  // Progreso REAL (0..1) por centerline (solo si hay coche)
+  if (this.car) {
+    this.ttHud.progress01 = this._computeLapProgress01(this.car.x, this.car.y);
+    const { barX, barW, barY } = this.ttHud.bar;
+    const px = barX + this.ttHud.progress01 * barW;
+    this.ttHud.barSlider.setPosition(px, barY);
+  }
+}
     // Guardas duras: si create() no terminó, no reventamos el loop.
     if (!this.cameras?.main) return;
 
@@ -1515,6 +1990,8 @@ if (this._cullEnabled === false) {
         const cell = this.track.gfxByCell.get(k);
         if (cell) {
           cell.tile?.clearMask?.(true);
+cell.overlay?.clearMask?.(true);
+cell.overlay?.destroy?.();
           cell.mask?.destroy?.();
           cell.maskG?.destroy?.();
           cell.tile?.destroy?.();
@@ -1536,13 +2013,23 @@ if (this._cullEnabled === false) {
         const x = ix * cellSize;
         const y = iy * cellSize;
 
-// 1) Imagen de asfalto (NO tileSprite: evita costuras con mask + cámara)
-// Asfalto por celda (con solape para evitar “costuras” entre chunks)
-const tile = this.add.image(x - 1, y - 1, 'asphalt')
+// 1) Asfalto por celda (tileSprite) con UV continuo en mundo
+// (evita el “mosaico por chunk” al mover cámara)
+const px = Math.round(x - 1);
+const py = Math.round(y - 1);
+
+const tile = this.add.image(px, py, 'asphalt')
   .setOrigin(0, 0)
   .setDisplaySize(cellSize + 2, cellSize + 2)
   .setScrollFactor(1)
   .setDepth(10);
+
+const overlay = this.add.image(px, py, 'asphaltOverlay')
+  .setOrigin(0, 0)
+  .setDisplaySize(cellSize + 2, cellSize + 2)
+  .setScrollFactor(1)
+  .setDepth(11)
+  .setAlpha(ASPHALT_OVERLAY_ALPHA);
 
 
 // 2) Mask con forma de pista
@@ -1551,6 +2038,7 @@ const maskG = this.make.graphics({ x, y, add: false });
 // UI camera no debe renderizar chunks / máscaras
 this.uiCam?.ignore?.(tile);
 this.uiCam?.ignore?.(maskG);
+this.uiCam?.ignore?.(overlay);
 
 maskG.clear();
 maskG.fillStyle(0xffffff, 1);
@@ -1573,8 +2061,8 @@ for (const poly of cellData.polys) {
     (p0.x > cellSize * 1.5) || (p0.y > cellSize * 1.5) ||
     (p0.x < -cellSize * 0.5) || (p0.y < -cellSize * 0.5);
 
-  const x0 = looksWorld ? (p0.x - x) : p0.x;
-  const y0 = looksWorld ? (p0.y - y) : p0.y;
+  const x0 = looksWorld ? (p0.x - px) : p0.x;
+const y0 = looksWorld ? (p0.y - py) : p0.y;
 
   maskG.beginPath();
   maskG.moveTo(x0, y0);
@@ -1583,8 +2071,8 @@ for (const poly of cellData.polys) {
     const pi = getXY(poly[i]);
     if (!Number.isFinite(pi.x) || !Number.isFinite(pi.y)) continue;
 
-    const lx = looksWorld ? (pi.x - x) : pi.x;
-    const ly = looksWorld ? (pi.y - y) : pi.y;
+    const lx = looksWorld ? (pi.x - px) : pi.x;
+const ly = looksWorld ? (pi.y - py) : pi.y;
     maskG.lineTo(lx, ly);
   }
 
@@ -1596,13 +2084,15 @@ for (const poly of cellData.polys) {
 
 const mask = maskG.createGeometryMask();
 tile.setMask(mask);
+overlay.setMask(mask);
 
-cell = { tile, stroke: null, maskG, mask };
+cell = { tile, overlay, stroke: null, maskG, mask };
 
         this.track.gfxByCell.set(k, cell);
       }
 
-      if (cell.tile && !cell.tile.visible) cell.tile.setVisible(true);
+if (cell.tile && !cell.tile.visible) cell.tile.setVisible(true);
+if (cell.overlay && !cell.overlay.visible) cell.overlay.setVisible(true);
     }
 
     this.track.activeCells = want;
@@ -1699,10 +2189,21 @@ const cp2 = this.checkpoints?.cp2;
 if (cp1 && this._cpCooldown1Ms === 0 && _crossGate(cp1)) {
   if ((this._cpState || 0) === 0) {
     this._cpState = 1;
-    if (this.timing) this.timing.s1 = performance.now() - this.timing.lapStart;
+
+    if (this.timing?.lapStart != null) {
+      this.timing.s1 = performance.now() - this.timing.lapStart;
+
+      // Color SOLO al cruzar CP1
+      if (this.ttBest?.s1 != null) {
+        this._setTTHudColor(this.timing.s1 <= this.ttBest.s1 ? '#2ECC71' : '#E74C3C');
+      } else {
+        this._setTTHudColor('#F2F2F2');
+      }
+    }
   } else {
-    // Si lo pisa fuera de orden, reiniciamos para evitar exploits raros
+    // Si lo pisa fuera de orden, reiniciamos
     this._cpState = 0;
+    this._setTTHudColor('#F2F2F2');
   }
   this._cpCooldown1Ms = 500;
 }
@@ -1710,9 +2211,20 @@ if (cp1 && this._cpCooldown1Ms === 0 && _crossGate(cp1)) {
 if (cp2 && this._cpCooldown2Ms === 0 && _crossGate(cp2)) {
   if ((this._cpState || 0) === 1) {
     this._cpState = 2;
-    if (this.timing) this.timing.s2 = performance.now() - this.timing.lapStart;
+
+    if (this.timing?.lapStart != null) {
+      this.timing.s2 = performance.now() - this.timing.lapStart;
+
+      // Color SOLO al cruzar CP2
+      if (this.ttBest?.s2 != null) {
+        this._setTTHudColor(this.timing.s2 <= this.ttBest.s2 ? '#2ECC71' : '#E74C3C');
+      } else {
+        this._setTTHudColor('#F2F2F2');
+      }
+    }
   } else {
     this._cpState = 0;
+    this._setTTHudColor('#F2F2F2');
   }
   this._cpCooldown2Ms = 500;
 }
@@ -1720,18 +2232,99 @@ if (cp2 && this._cpCooldown2Ms === 0 && _crossGate(cp2)) {
 // --- 2) meta: SOLO cuenta si cpState==2 ---
 if (within && crossed && forward && this._lapCooldownMs === 0) {
   if ((this._cpState || 0) === 2) {
-    if (this.timing) {
+if (this.timing) {
   const now = performance.now();
   const lapTime = now - this.timing.lapStart;
+// ========================================
+// Time Trial: guardar vuelta en histórico
+// ========================================
+if (this.ttHistory && this.ttHistKey) {
+  const rec = {
+    t: Date.now(),
+    lapMs: lapTime,
+    s1: Number.isFinite(this.timing.s1) ? this.timing.s1 : null,
+    s2: Number.isFinite(this.timing.s2) ? this.timing.s2 : null
+  };
 
-  this.timing.s3 = lapTime;
+  this.ttHistory.push(rec);
+
+  // Limitar a las últimas 500
+  if (this.ttHistory.length > 500) {
+    this.ttHistory = this.ttHistory.slice(-500);
+  }
+
+  try {
+    localStorage.setItem(
+      this.ttHistKey,
+      JSON.stringify({ v: 1, history: this.ttHistory })
+    );
+  } catch (e) {
+    // si falla storage, no rompemos la carrera
+  }
+}
+  // Guarda “last lap”
   this.timing.lastLap = lapTime;
-  this.timing.bestLap = (this.timing.bestLap == null) ? lapTime : Math.min(this.timing.bestLap, lapTime);
 
+  // Color SOLO al cruzar META (comparación total)
+  if (this.ttBest?.lapMs != null) {
+    this._setTTHudColor(lapTime <= this.ttBest.lapMs ? '#2ECC71' : '#E74C3C');
+  } else {
+    this._setTTHudColor('#F2F2F2');
+  }
+
+  // Si mejora el total: actualizar best lap + splits (regla estricta)
+  const improves = (this.ttBest == null) || (lapTime < this.ttBest.lapMs);
+  if (improves) {
+    this.ttBest = {
+      lapMs: lapTime,
+      s1: Number.isFinite(this.timing.s1) ? this.timing.s1 : null,
+      s2: Number.isFinite(this.timing.s2) ? this.timing.s2 : null
+    };
+    try {
+      localStorage.setItem(this.ttKey, JSON.stringify(this.ttBest));
+    } catch (e) {}
+  }
+
+  // Reset de vuelta: arranca nueva vuelta desde ahora
   this.timing.lapStart = now;
   this.timing.s1 = null;
   this.timing.s2 = null;
-  this.timing.s3 = null;
+
+  // En salida (nuevo lap): volvemos a blanco hasta CP1 (sin parpadeo)
+  this._setTTHudColor('#F2F2F2');
+
+  // ========================================
+  // TT Panel: actualizar y mostrar (solo al cerrar vuelta)
+  // ========================================
+  if (this.ttPanel?.body && this._buildTTReport) {
+    const rep = this._buildTTReport();
+
+    const pct = (rep.improvementPct != null)
+      ? `${Math.round(rep.improvementPct * 100)}%`
+      : '--';
+
+    const fmt2 = (ms) => {
+      if (!Number.isFinite(ms)) return '--:--.--';
+      const m = Math.floor(ms / 60000);
+      const s = Math.floor((ms % 60000) / 1000);
+      const cs = Math.floor((ms % 1000) / 10);
+      return `${m}:${String(s).padStart(2,'0')}.${String(cs).padStart(2,'0')}`;
+    };
+
+    this.ttPanel.body.setText(
+      `Vueltas guardadas: ${rep.count}\n` +
+      `Primera: ${fmt2(rep.firstLapMs)}\n` +
+      `Mejor:   ${fmt2(rep.bestLapMs)}\n` +
+      `Última:  ${fmt2(rep.lastLapMs)}\n` +
+      `Mejora:  ${fmt2(rep.improvementMs)} (${pct})\n` +
+      `Media(10): ${fmt2(rep.recentAvg10Ms)}\n` +
+      `Rango(10): ${fmt2(rep.recentRange10Ms)}`
+    );
+
+    // Enseña 2.2s y se esconde solo
+    this._showTTPanel?.();
+    this.time.delayedCall(2200, () => this._hideTTPanel?.());
+  }
 }
     this.lapCount = (this.lapCount || 0) + 1;
     this._lapCooldownMs = 700;
@@ -1752,47 +2345,6 @@ if (within && crossed && forward && this._lapCooldownMs === 0) {
 
     // === HUD ===
     const kmh = speed * 0.12;
-
-// === SPEEDOMETER (abajo centro) ===
-if (this.speedoText && this._speedo) {
-  const spdKmh = Math.max(0, Math.round(kmh));
-  this._speedo.peakKmh = Math.max(this._speedo.peakKmh || 0, spdKmh);
-
-  // Número
-  this.speedoText.setText(String(spdKmh));
-
-  // Progreso 0..1 (contra velocidad punta del coche)
-  const maxPx = Math.max(1e-6, this._speedo.maxPx || this.maxFwd || 520);
-  const sp01 = clamp(speed / maxPx, 0, 1);
-
-  // Dibujo arco superior (tipo HUD GPS)
-  const cx = this._speedo.cx, cy = this._speedo.cy, r = this._speedo.r, th = this._speedo.th;
-  const a0 = Phaser.Math.DegToRad(210);   // inicio
-  const a1 = Phaser.Math.DegToRad(330);   // fin (arco superior)
-  const total = (a1 >= a0) ? (a1 - a0) : (a1 + Math.PI * 2 - a0);
-  const ae = a0 + total * sp01;
-
-  // invisible a 0 km/h (y muy discreto a baja velocidad)
-  const vis = (spdKmh <= 0) ? 0 : 1;
-
-  this.speedoBgGfx.clear();
-  this.speedoFgGfx.clear();
-
-  if (vis > 0) {
-    // fondo tenue (full arc)
-    this.speedoBgGfx.lineStyle(th, 0x000000, 0.22);
-    this.speedoBgGfx.beginPath();
-    this.speedoBgGfx.arc(cx, cy, r, a0, a1, false);
-    this.speedoBgGfx.strokePath();
-
-    // arco activo
-    this.speedoFgGfx.lineStyle(th, 0xF2F2F2, 0.85);
-    this.speedoFgGfx.beginPath();
-    this.speedoFgGfx.arc(cx, cy, r, a0, ae, false);
-    this.speedoFgGfx.strokePath();
-  }
-}
-
 
     if (this.hud?.setText) {
       const lapNow = (this.timing?.started && this.timing.lapStart != null)
