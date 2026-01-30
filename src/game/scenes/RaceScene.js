@@ -121,7 +121,7 @@ export class RaceScene extends Phaser.Scene {
     this.carBody = null;
     this.carRig = null;
   }
-    // =================================================
+  // =================================================
   // Time Trial: precompute distancias acumuladas centerline
   // =================================================
   _initTTCenterlineMetrics() {
@@ -264,7 +264,7 @@ else this._ttProg.idx = startIdx;
     this._ttProg.idx = bestI;
     return byDist(bestI);
   }
-    // =================================================
+  // =================================================
   // Time Trial: construir informe de evolución por pista
   // =================================================
   _buildTTReport() {
@@ -620,7 +620,8 @@ geom: buildTrackRibbon({
 };
     // TT: métricas de centerline (progreso por distancia, corrige óvalo)
 this._initTTCenterlineMetrics();
-    // =========================
+
+// =========================
 // 3) Fondo del mundo: OFF + GRASS BAND
 // =========================
 
@@ -685,7 +686,8 @@ this.bgGrass.setMask(grassMask);
 // Guardamos referencias por si en el futuro queremos limpiar / rehacer
 this._grassMaskGfx = gMaskGfx;
 this._grassMask = grassMask;
-    // ================================
+
+// ================================
 // Bordes de pista (GLOBAL, sin culling)
 // ================================
 const drawPolylineClosed = (pts, lineW, color, alpha) => {
