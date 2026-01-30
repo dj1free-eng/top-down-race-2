@@ -342,6 +342,24 @@ else this._ttProg.idx = startIdx;
 
     localStorage.setItem('tdr2:trackKey', this.trackKey);
 // ========================================
+// Time Trial: histórico de vueltas (por pista) — máx 500
+// ========================================
+this.ttHistKey = `tdr2:ttHist:${this.trackKey}`;
+this.ttHistory = [];
+
+try {
+  const raw = localStorage.getItem(this.ttHistKey);
+  const parsed = raw ? JSON.parse(raw) : null;
+  const arr = parsed?.history;
+  if (Array.isArray(arr)) {
+    this.ttHistory = arr
+      .filter(r => r && Number.isFinite(r.lapMs))
+      .slice(-500);
+  }
+} catch (e) {
+  this.ttHistory = [];
+}
+// ========================================
 // Time Trial: best lap + splits por pista
 // ========================================
 this.ttKey = `tdr2:ttBest:${this.trackKey}`; // por pista
