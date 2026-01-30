@@ -2335,8 +2335,13 @@ if (this.ttPanel?.lastText && this.ttPanel?.deltaText && this.ttPanel?.bestText 
   }
 
   // Enseña 2.2s y se esconde solo
+  // Mostrar SOLO si hay "igual o mejor" (delta <= 0)
+const shouldShow = (deltaMs != null && deltaMs <= 0);
+
+if (shouldShow) {
   this._showTTPanel?.();
   this.time.delayedCall(2200, () => this._hideTTPanel?.());
+}
 }
 }
     this.lapCount = (this.lapCount || 0) + 1;
