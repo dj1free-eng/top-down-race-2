@@ -1235,25 +1235,30 @@ this.ttPanel.bg = this.add.rectangle(0, 0, this.ttPanel.w, this.ttPanel.h, 0x000
   .setOrigin(0, 0)
   .setStrokeStyle(1, 0xffffff, 0.14);
 
-// Título
-this.ttPanel.title = this.add.text(12, 10, 'TIME TRIAL', {
+// 3 líneas (grandes, legibles, bold)
+this.ttPanel.lastText = this.add.text(14, 16, 'ÚLTIMA  --:--.--', {
   fontFamily: 'Orbitron, monospace',
-  fontSize: '14px',
-  color: '#ffffff',
-  fontStyle: '700'
-});
+  fontSize: '18px',
+  color: '#FFFFFF',
+  fontStyle: '800'
+}).setShadow(0, 1, '#000000', 2, false, true);
 
-// Cuerpo (stats)
-this.ttPanel.body = this.add.text(12, 34, '', {
-  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-  fontSize: '12px',
-  color: '#EDEDED',
-  lineSpacing: 4,
-  wordWrap: { width: this.ttPanel.w - 24, useAdvancedWrap: false }
-});
+this.ttPanel.deltaText = this.add.text(14, 60, 'Δ  --:--.--', {
+  fontFamily: 'Orbitron, monospace',
+  fontSize: '22px',
+  color: '#FFFFFF',
+  fontStyle: '900'
+}).setShadow(0, 1, '#000000', 2, false, true);
+
+this.ttPanel.bestText = this.add.text(14, 108, 'MEJOR  --:--.--', {
+  fontFamily: 'Orbitron, monospace',
+  fontSize: '18px',
+  color: '#FFFFFF',
+  fontStyle: '800'
+}).setShadow(0, 1, '#000000', 2, false, true);
 
 // Montar
-this.ttPanel.c.add([this.ttPanel.bg, this.ttPanel.title, this.ttPanel.body]);
+this.ttPanel.c.add([this.ttPanel.bg, this.ttPanel.lastText, this.ttPanel.deltaText, this.ttPanel.bestText]);
 
 // Layout (posición hidden/shown)
 this._layoutTTPanel = () => {
@@ -2296,35 +2301,43 @@ if (this.ttHistory && this.ttHistKey) {
   // ========================================
   // TT Panel: actualizar y mostrar (solo al cerrar vuelta)
   // ========================================
-  if (this.ttPanel?.body && this._buildTTReport) {
-    const rep = this._buildTTReport();
+if (this.ttPanel?.lastText && this.ttPanel?.deltaText && this.ttPanel?.bestText && this._buildTTReport) {
+  const rep = this._buildTTReport();
 
-    const pct = (rep.improvementPct != null)
-      ? `${Math.round(rep.improvementPct * 100)}%`
-      : '--';
+  const fmt2 = (ms) => {
+    if (!Number.isFinite(ms)) return '--:--.--';
+    const m = Math.floor(ms / 60000);
+    const s = Math.floor((ms % 60000) / 1000);
+    const cs = Math.floor((ms % 1000) / 10);
+    return `${m}:${String(s).padStart(2,'0')}.${String(cs).padStart(2,'0')}`;
+  };
 
-    const fmt2 = (ms) => {
-      if (!Number.isFinite(ms)) return '--:--.--';
-      const m = Math.floor(ms / 60000);
-      const s = Math.floor((ms % 60000) / 1000);
-      const cs = Math.floor((ms % 1000) / 10);
-      return `${m}:${String(s).padStart(2,'0')}.${String(cs).padStart(2,'0')}`;
-    };
+  // Última y mejor
+  const last = rep.lastLapMs;
+  const best = rep.bestLapMs;
 
-    this.ttPanel.body.setText(
-      `Vueltas guardadas: ${rep.count}\n` +
-      `Primera: ${fmt2(rep.firstLapMs)}\n` +
-      `Mejor:   ${fmt2(rep.bestLapMs)}\n` +
-      `Última:  ${fmt2(rep.lastLapMs)}\n` +
-      `Mejora:  ${fmt2(rep.improvementMs)} (${pct})\n` +
-      `Media(10): ${fmt2(rep.recentAvg10Ms)}\n` +
-      `Rango(10): ${fmt2(rep.recentRange10Ms)}`
-    );
+  this.ttPanel.lastText.setText(`ÚLTIMA  ${fmt2(last)}`);
+  this.ttPanel.bestText.setText(`MEJOR   ${fmt2(best)}`);
 
-    // Enseña 2.2s y se esconde solo
-    this._showTTPanel?.();
-    this.time.delayedCall(2200, () => this._hideTTPanel?.());
+  // Delta vs best (rojo/verde)
+  let deltaMs = null;
+  if (Number.isFinite(last) && Number.isFinite(best)) deltaMs = last - best;
+
+  if (deltaMs == null) {
+    this.ttPanel.deltaText.setText(`Δ  --:--.--`);
+    this.ttPanel.deltaText.setColor('#FFFFFF');
+  } else {
+    const sign = deltaMs > 0 ? '+' : '';
+    this.ttPanel.deltaText.setText(`Δ  ${sign}${fmt2(Math.abs(deltaMs))}`);
+
+    // rojo si vas peor, verde si vas mejor/igual
+    this.ttPanel.deltaText.setColor(deltaMs <= 0 ? '#2ECC71' : '#E74C3C');
   }
+
+  // Enseña 2.2s y se esconde solo
+  this._showTTPanel?.();
+  this.time.delayedCall(2200, () => this._hideTTPanel?.());
+}
 }
     this.lapCount = (this.lapCount || 0) + 1;
     this._lapCooldownMs = 700;
