@@ -2104,7 +2104,33 @@ if (within && crossed && forward && this._lapCooldownMs === 0) {
 if (this.timing) {
   const now = performance.now();
   const lapTime = now - this.timing.lapStart;
+// ========================================
+// Time Trial: guardar vuelta en histórico
+// ========================================
+if (this.ttHistory && this.ttHistKey) {
+  const rec = {
+    t: Date.now(),
+    lapMs: lapTime,
+    s1: Number.isFinite(this.timing.s1) ? this.timing.s1 : null,
+    s2: Number.isFinite(this.timing.s2) ? this.timing.s2 : null
+  };
 
+  this.ttHistory.push(rec);
+
+  // Limitar a las últimas 500
+  if (this.ttHistory.length > 500) {
+    this.ttHistory = this.ttHistory.slice(-500);
+  }
+
+  try {
+    localStorage.setItem(
+      this.ttHistKey,
+      JSON.stringify({ v: 1, history: this.ttHistory })
+    );
+  } catch (e) {
+    // si falla storage, no rompemos la carrera
+  }
+}
   // Guarda “last lap”
   this.timing.lastLap = lapTime;
 
