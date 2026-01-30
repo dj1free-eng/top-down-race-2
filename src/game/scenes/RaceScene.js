@@ -1210,6 +1210,108 @@ this.uiCam.roundPixels = true;
 if (this.bgOff) this.uiCam.ignore(this.bgOff);
 if (this.bgGrass) this.uiCam.ignore(this.bgGrass);
 if (this._grassMaskGfx) this.uiCam.ignore(this._grassMaskGfx);
+
+// =================================================
+// TIME TRIAL: PANEL DESPLEGABLE (UI) — no toca ttHud
+// =================================================
+this.ttPanel = {
+  shown: false,
+  busy: false,
+  w: 240,
+  h: 160,
+  pad: 10,
+  xShown: 0,
+  xHidden: 0,
+  y: 64
+};
+
+// Container UI
+this.ttPanel.c = this.add.container(0, 0)
+  .setScrollFactor(0)
+  .setDepth(2005);
+
+// Fondo + borde
+this.ttPanel.bg = this.add.rectangle(0, 0, this.ttPanel.w, this.ttPanel.h, 0x000000, 0.50)
+  .setOrigin(0, 0)
+  .setStrokeStyle(1, 0xffffff, 0.14);
+
+// Título
+this.ttPanel.title = this.add.text(12, 10, 'TIME TRIAL', {
+  fontFamily: 'Orbitron, monospace',
+  fontSize: '14px',
+  color: '#ffffff',
+  fontStyle: '700'
+});
+
+// Cuerpo (stats)
+this.ttPanel.body = this.add.text(12, 34, '', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '12px',
+  color: '#EDEDED',
+  lineSpacing: 4,
+  wordWrap: { width: this.ttPanel.w - 24, useAdvancedWrap: false }
+});
+
+// Montar
+this.ttPanel.c.add([this.ttPanel.bg, this.ttPanel.title, this.ttPanel.body]);
+
+// Layout (posición hidden/shown)
+this._layoutTTPanel = () => {
+  const w = this.scale.width;
+  const pad = this.ttPanel.pad;
+
+  this.ttPanel.xShown = w - this.ttPanel.w - pad; // entra desde la derecha
+  this.ttPanel.xHidden = w + 6;                   // fuera de pantalla
+  this.ttPanel.y = 64;                            // debajo de HUD superior
+
+  const x = this.ttPanel.shown ? this.ttPanel.xShown : this.ttPanel.xHidden;
+  this.ttPanel.c.setPosition(x, this.ttPanel.y);
+};
+
+this._layoutTTPanel();
+
+// Animaciones (sin recrear nada)
+this._showTTPanel = () => {
+  if (!this.ttPanel || this.ttPanel.shown || this.ttPanel.busy) return;
+  this.ttPanel.busy = true;
+  this.ttPanel.shown = true;
+
+  this.ttPanel.c.setVisible(true);
+
+  this.tweens.add({
+    targets: this.ttPanel.c,
+    x: this.ttPanel.xShown,
+    duration: 180,
+    ease: 'Sine.easeOut',
+    onComplete: () => { this.ttPanel.busy = false; }
+  });
+};
+
+this._hideTTPanel = () => {
+  if (!this.ttPanel || !this.ttPanel.shown || this.ttPanel.busy) return;
+  this.ttPanel.busy = true;
+  this.ttPanel.shown = false;
+
+  this.tweens.add({
+    targets: this.ttPanel.c,
+    x: this.ttPanel.xHidden,
+    duration: 200,
+    ease: 'Sine.easeIn',
+    onComplete: () => {
+      this.ttPanel.busy = false;
+      this.ttPanel.c.setVisible(false);
+    }
+  });
+};
+
+// Auto-layout en resize
+this.scale.on('resize', () => {
+  if (this.uiCam) this.uiCam.setSize(this.scale.width, this.scale.height);
+  this._layoutTTPanel?.();
+});
+
+// Estado inicial: oculto
+this.ttPanel.c.setVisible(false);
 // 1) La cámara principal NO debe renderizar UI
 this.cameras.main.ignore([
   this.hudBox,
@@ -1228,6 +1330,13 @@ this.cameras.main.ignore([
   this.ttHud?.barBase,
   this.ttHud?.barSlider,
   this.ttHud?.ticksGfx,
+
+  // TT Panel (solo debe renderizarse en uiCam)
+  this.ttPanel?.c,
+  this.ttPanel?.bg,
+  this.ttPanel?.title,
+  this.ttPanel?.body,
+
 
   // Botones de zoom
   this._zoomBtnPlus?.r,
@@ -2183,6 +2292,39 @@ if (this.ttHistory && this.ttHistKey) {
 
   // En salida (nuevo lap): volvemos a blanco hasta CP1 (sin parpadeo)
   this._setTTHudColor('#F2F2F2');
+
+  // ========================================
+  // TT Panel: actualizar y mostrar (solo al cerrar vuelta)
+  // ========================================
+  if (this.ttPanel?.body && this._buildTTReport) {
+    const rep = this._buildTTReport();
+
+    const pct = (rep.improvementPct != null)
+      ? `${Math.round(rep.improvementPct * 100)}%`
+      : '--';
+
+    const fmt2 = (ms) => {
+      if (!Number.isFinite(ms)) return '--:--.--';
+      const m = Math.floor(ms / 60000);
+      const s = Math.floor((ms % 60000) / 1000);
+      const cs = Math.floor((ms % 1000) / 10);
+      return `${m}:${String(s).padStart(2,'0')}.${String(cs).padStart(2,'0')}`;
+    };
+
+    this.ttPanel.body.setText(
+      `Vueltas guardadas: ${rep.count}\n` +
+      `Primera: ${fmt2(rep.firstLapMs)}\n` +
+      `Mejor:   ${fmt2(rep.bestLapMs)}\n` +
+      `Última:  ${fmt2(rep.lastLapMs)}\n` +
+      `Mejora:  ${fmt2(rep.improvementMs)} (${pct})\n` +
+      `Media(10): ${fmt2(rep.recentAvg10Ms)}\n` +
+      `Rango(10): ${fmt2(rep.recentRange10Ms)}`
+    );
+
+    // Enseña 2.2s y se esconde solo
+    this._showTTPanel?.();
+    this.time.delayedCall(2200, () => this._hideTTPanel?.());
+  }
 }
     this.lapCount = (this.lapCount || 0) + 1;
     this._lapCooldownMs = 700;
