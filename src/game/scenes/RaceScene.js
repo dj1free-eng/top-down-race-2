@@ -326,6 +326,89 @@ else this._ttProg.idx = startIdx;
     this._ttProg.idx = bestI;
     return byDist(bestI);
   }
+    // =================================================
+  // Time Trial: construir informe de evolución por pista
+  // =================================================
+  _buildTTReport() {
+    const hist = Array.isArray(this.ttHistory) ? this.ttHistory : [];
+    const n = hist.length;
+
+    const getLap = (r) => (r && Number.isFinite(r.lapMs) ? r.lapMs : null);
+
+    const laps = [];
+    for (let i = 0; i < n; i++) {
+      const v = getLap(hist[i]);
+      if (v != null) laps.push(v);
+    }
+
+    const count = laps.length;
+    if (count === 0) {
+      return {
+        count: 0,
+        firstLapMs: null,
+        bestLapMs: null,
+        lastLapMs: null,
+        improvementMs: null,
+        improvementPct: null,
+        recentAvg10Ms: null,
+        recentRange10Ms: null,
+        trend50Ms: null,
+        pbIndex: null
+      };
+    }
+
+    let bestLapMs = Infinity;
+    let pbIndex = 0;
+    for (let i = 0; i < count; i++) {
+      if (laps[i] < bestLapMs) {
+        bestLapMs = laps[i];
+        pbIndex = i;
+      }
+    }
+
+    const firstLapMs = laps[0];
+    const lastLapMs = laps[count - 1];
+    const improvementMs = firstLapMs - bestLapMs;
+    const improvementPct = firstLapMs > 0 ? (improvementMs / firstLapMs) : null;
+
+    const sliceAvg = (arr) => {
+      if (!arr.length) return null;
+      let s = 0;
+      for (const x of arr) s += x;
+      return s / arr.length;
+    };
+
+    const last10 = laps.slice(-10);
+    const recentAvg10Ms = sliceAvg(last10);
+
+    let recentRange10Ms = null;
+    if (last10.length) {
+      let mn = Infinity, mx = -Infinity;
+      for (const x of last10) { if (x < mn) mn = x; if (x > mx) mx = x; }
+      recentRange10Ms = mx - mn;
+    }
+
+    // Trend: compara avg últimas 10 vs las 10 anteriores (si existen)
+    let trend50Ms = null;
+    if (laps.length >= 20) {
+      const a = sliceAvg(laps.slice(-10));
+      const b = sliceAvg(laps.slice(-20, -10));
+      if (a != null && b != null) trend50Ms = a - b; // negativo = mejora
+    }
+
+    return {
+      count,
+      firstLapMs,
+      bestLapMs,
+      lastLapMs,
+      improvementMs,
+      improvementPct,
+      recentAvg10Ms,
+      recentRange10Ms,
+      trend50Ms,
+      pbIndex
+    };
+  }
     init(data) {
     // 1) Resolver coche seleccionado (prioridad: data -> localStorage -> stock)
     this.carId = data?.carId || localStorage.getItem('tdr2:carId') || 'stock';
