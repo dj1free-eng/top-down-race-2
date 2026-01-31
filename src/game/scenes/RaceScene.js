@@ -632,7 +632,7 @@ const body = this.physics.add.sprite(t01.start.x, t01.start.y, '__BODY__');
 body.setVisible(false);
 
 // Escala del coche según spec (prep en carSpecs.js)
-const vScale = (baseSpec?.visualScale ?? 1.0);
+const vScale = (spec?.visualScale ?? 1.0);
 
 // Colisión: si quieres que el camión “ocupe pista”, esto es CLAVE
 const baseRadius = 14;
@@ -657,10 +657,8 @@ this.carRig = rig;
 this.car = body; // compat con tu update()
 
 // Skin runtime: si existe, sustituye la textura del sprite sin romper nada
-this.ensureCarSkinTexture(baseSpec).then((texKey) => {
-  if (texKey) {
-    carSprite.setTexture(texKey);
-  }
+this.ensureCarSkinTexture(spec).then((texKey) => {
+  if (texKey) carSprite.setTexture(texKey);
 });
 
 // 5) Track ribbon (geom + culling state)
