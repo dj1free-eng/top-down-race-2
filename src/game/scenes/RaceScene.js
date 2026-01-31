@@ -1666,7 +1666,8 @@ if (this.ttHud) {
   const txt = `${m}:${String(s).padStart(2, '0')}.${String(cs).padStart(2, '0')}`;
 
   this.ttHud.timeText.setText(txt);
-  this.ttHud.lapText.setText(`VUELTA ${this.ttHud.lap} / ${this.ttHud.lapsTotal}`);
+const lapInProgress = (this.lapCount || 0) + 1; // lapCount = vueltas completadas
+this.ttHud.lapText.setText(`VUELTA ${lapInProgress}`);
 
   // Progreso REAL (0..1) por centerline (solo si hay coche)
   if (this.car) {
