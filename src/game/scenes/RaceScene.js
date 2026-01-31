@@ -1032,11 +1032,9 @@ this._setTTHudColor = (hex) => {
   this._ttHudColor = hex;
   if (this.ttHud?.timeText) this.ttHud.timeText.setColor(hex);
 };
-this.ttHud.elapsedMs = 0;         // (por ahora) cronómetro simple
-this.ttHud.lap = 1;
-this.ttHud.lapsTotal = 3;         // placeholder hasta conectar con modo TT real
-this.ttHud.progress01 = 0;        // 0..1 placeholder
-
+this.ttHud.elapsedMs = 0;         // cronómetro
+this.ttHud.progress01 = 0;        // 0..1
+    
 const safeTop = 12;
 const safeLeft = 12;
 
@@ -1055,7 +1053,7 @@ this.ttHud.timeText = this.add.text(this.scale.width / 2, safeTop + 6, '0:00.00'
 this.ttHud.timeText.setShadow(0, 1, '#000000', 2, false, true);
 this._setTTHudColor(this.ttBest ? '#F2F2F2' : '#F2F2F2'); // de momento igual, pero deja la ruta clara
 // --- B) Vuelta (top-left)
-this.ttHud.lapText = this.add.text(safeLeft, safeTop + 10, 'VUELTA 1 / 3', {
+this.ttHud.lapText = this.add.text(safeLeft, safeTop + 10, 'VUELTA 1', {
   fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
   fontSize: '14px',
   fontStyle: '600',
