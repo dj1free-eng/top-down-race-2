@@ -3,29 +3,30 @@
 
 export const CAR_SPECS = {
   stock: {
-  id: 'stock',
-  name: 'Stock Kart',
+    id: 'stock',
+    name: 'Stock Kart',
 
-  // Velocidades máximas (px/s)
-  maxFwd: 460,
-  maxRev: 260,
+    // Velocidades máximas (px/s)
+    maxFwd: 460,
+    maxRev: 260,
 
-  // Dinámica longitudinal
-  accel: 640,
-  brakeForce: 980,
-  engineBrake: 260,
-  linearDrag: 0.030,
+    // Dinámica longitudinal
+    accel: 640,
+    brakeForce: 980,
+    engineBrake: 260,
+    linearDrag: 0.030,
 
-  // Dirección
-  turnRate: 3.4,
-  turnMin: 0.28,
+    // Dirección
+    turnRate: 3.4,
+    turnMin: 0.28,
 
-  // Agarres laterales
-  gripCoast: 0.22,
-  gripDrive: 0.06,
-  gripBrake: 0.14
-}
-    ,touring: {
+    // Agarres laterales
+    gripCoast: 0.22,
+    gripDrive: 0.06,
+    gripBrake: 0.14
+  },
+
+  touring: {
     id: 'touring',
     name: 'Touring (suave y estable)',
 
@@ -69,6 +70,10 @@ export const CAR_SPECS = {
     gripBrake: 0.14
   },
 
+  // =========================================================
+  // VEHÍCULOS OFICIALES (15) — listos para skins + UI
+  // =========================================================
+
   helix_spark: {
     id: 'helix_spark',
     name: 'HÉLIX Spark',
@@ -76,6 +81,12 @@ export const CAR_SPECS = {
     country: 'España',
     category: 'Starter',
     role: 'Principiante',
+
+    // UI / Colección
+    collectionNo: 1,
+    rarity: 'Común',
+    skin: 'skin_helix_spark.webp',
+    visualScale: 1.00,
 
     // Stats diseño (01–99): VEL/ACC/GIR/EST/FRN
     designStats: { VEL: 53, ACC: 56, GIR: 67, EST: 61, FRN: 58 },
@@ -96,7 +107,7 @@ export const CAR_SPECS = {
 
     // Agarre lateral (más alto = más estable)
     gripCoast: 0.26,
-    gripDrive: 0.1,
+    gripDrive: 0.10,
     gripBrake: 0.18
   },
 
@@ -107,6 +118,12 @@ export const CAR_SPECS = {
     country: 'España',
     category: 'All-Rounder',
     role: 'Transición',
+
+    // UI / Colección
+    collectionNo: 2,
+    rarity: 'Poco común',
+    skin: 'skin_helix_comet.webp',
+    visualScale: 1.03,
 
     // Stats diseño (01–99): VEL/ACC/GIR/EST/FRN
     designStats: { VEL: 62, ACC: 60, GIR: 64, EST: 55, FRN: 63 },
@@ -139,6 +156,12 @@ export const CAR_SPECS = {
     category: 'All-Rounder',
     role: 'Competitivo ligero',
 
+    // UI / Colección
+    collectionNo: 3,
+    rarity: 'Poco común',
+    skin: 'skin_helix_pulse.webp',
+    visualScale: 1.02,
+
     // Stats diseño (01–99): VEL/ACC/GIR/EST/FRN
     designStats: { VEL: 64, ACC: 63, GIR: 72, EST: 56, FRN: 62 },
 
@@ -169,6 +192,12 @@ export const CAR_SPECS = {
     country: 'Reino Unido',
     category: 'All-Rounder',
     role: 'Competitivo estándar',
+
+    // UI / Colección
+    collectionNo: 4,
+    rarity: 'Poco común',
+    skin: 'skin_crown_axis.webp',
+    visualScale: 1.03,
 
     // Stats diseño (01–99): VEL/ACC/GIR/EST/FRN
     designStats: { VEL: 64, ACC: 61, GIR: 72, EST: 63, FRN: 66 },
@@ -201,6 +230,12 @@ export const CAR_SPECS = {
     category: 'All-Rounder',
     role: 'Competitivo avanzado',
 
+    // UI / Colección
+    collectionNo: 5,
+    rarity: 'Raro',
+    skin: 'skin_crown_vector.webp',
+    visualScale: 1.04,
+
     // Stats diseño (01–99): VEL/ACC/GIR/EST/FRN
     designStats: { VEL: 71, ACC: 63, GIR: 74, EST: 62, FRN: 64 },
 
@@ -231,6 +266,12 @@ export const CAR_SPECS = {
     country: 'Reino Unido',
     category: 'All-Rounder',
     role: 'Alta competición',
+
+    // UI / Colección
+    collectionNo: 6,
+    rarity: 'Raro',
+    skin: 'skin_crown_equinox.webp',
+    visualScale: 1.06,
 
     // Stats diseño (01–99): VEL/ACC/GIR/EST/FRN
     designStats: { VEL: 73, ACC: 71, GIR: 66, EST: 61, FRN: 69 },
@@ -263,6 +304,12 @@ export const CAR_SPECS = {
     category: 'Técnico (Grip)',
     role: 'Técnico accesible',
 
+    // UI / Colección
+    collectionNo: 7,
+    rarity: 'Poco común',
+    skin: 'skin_avenir_gripline.webp',
+    visualScale: 1.02,
+
     // Stats diseño (01–99): VEL/ACC/GIR/EST/FRN
     designStats: { VEL: 57, ACC: 55, GIR: 82, EST: 64, FRN: 71 },
 
@@ -283,7 +330,7 @@ export const CAR_SPECS = {
     // Agarre lateral (más alto = más estable)
     gripCoast: 0.27,
     gripDrive: 0.12,
-    gripBrake: 0.2
+    gripBrake: 0.20
   },
 
   avenir_apex: {
@@ -293,6 +340,12 @@ export const CAR_SPECS = {
     country: 'Francia',
     category: 'Técnico (Grip)',
     role: 'Técnico agresivo',
+
+    // UI / Colección
+    collectionNo: 8,
+    rarity: 'Raro',
+    skin: 'skin_avenir_apex.webp',
+    visualScale: 1.03,
 
     // Stats diseño (01–99): VEL/ACC/GIR/EST/FRN
     designStats: { VEL: 63, ACC: 61, GIR: 84, EST: 58, FRN: 66 },
@@ -325,6 +378,12 @@ export const CAR_SPECS = {
     category: 'Técnico (Grip)',
     role: 'Técnico élite',
 
+    // UI / Colección
+    collectionNo: 9,
+    rarity: 'Élite',
+    skin: 'skin_avenir_torque.webp',
+    visualScale: 1.04,
+
     // Stats diseño (01–99): VEL/ACC/GIR/EST/FRN
     designStats: { VEL: 66, ACC: 63, GIR: 91, EST: 62, FRN: 73 },
 
@@ -345,7 +404,7 @@ export const CAR_SPECS = {
     // Agarre lateral (más alto = más estable)
     gripCoast: 0.27,
     gripDrive: 0.12,
-    gripBrake: 0.2
+    gripBrake: 0.20
   },
 
   veloce_flash: {
@@ -355,6 +414,12 @@ export const CAR_SPECS = {
     country: 'Italia',
     category: 'Velocidad',
     role: 'Velocidad temprana',
+
+    // UI / Colección
+    collectionNo: 10,
+    rarity: 'Poco común',
+    skin: 'skin_veloce_flash.webp',
+    visualScale: 0.99,
 
     // Stats diseño (01–99): VEL/ACC/GIR/EST/FRN
     designStats: { VEL: 72, ACC: 71, GIR: 55, EST: 52, FRN: 54 },
@@ -387,6 +452,12 @@ export const CAR_SPECS = {
     category: 'Velocidad',
     role: 'Alta velocidad',
 
+    // UI / Colección
+    collectionNo: 11,
+    rarity: 'Raro',
+    skin: 'skin_veloce_surge.webp',
+    visualScale: 0.98,
+
     // Stats diseño (01–99): VEL/ACC/GIR/EST/FRN
     designStats: { VEL: 82, ACC: 81, GIR: 46, EST: 51, FRN: 53 },
 
@@ -418,6 +489,12 @@ export const CAR_SPECS = {
     category: 'Velocidad',
     role: 'Velocidad élite',
 
+    // UI / Colección
+    collectionNo: 12,
+    rarity: 'Élite',
+    skin: 'skin_veloce_photon.webp',
+    visualScale: 0.97,
+
     // Stats diseño (01–99): VEL/ACC/GIR/EST/FRN
     designStats: { VEL: 91, ACC: 84, GIR: 44, EST: 45, FRN: 62 },
 
@@ -433,7 +510,7 @@ export const CAR_SPECS = {
 
     // Dirección
     turnRate: 3.51,
-    turnMin: 0.3,
+    turnMin: 0.30,
 
     // Agarre lateral (más alto = más estable)
     gripCoast: 0.22,
@@ -448,6 +525,12 @@ export const CAR_SPECS = {
     country: 'EE.UU.',
     category: 'Potencia',
     role: 'Todoterreno militar',
+
+    // UI / Colección
+    collectionNo: 13,
+    rarity: 'Raro',
+    skin: 'skin_forge_hammer.webp',
+    visualScale: 1.25,
 
     // Stats diseño (01–99): VEL/ACC/GIR/EST/FRN
     designStats: { VEL: 66, ACC: 82, GIR: 33, EST: 83, FRN: 64 },
@@ -467,7 +550,7 @@ export const CAR_SPECS = {
     turnMin: 0.33,
 
     // Agarre lateral (más alto = más estable)
-    gripCoast: 0.3,
+    gripCoast: 0.30,
     gripDrive: 0.04,
     gripBrake: 0.18
   },
@@ -479,6 +562,12 @@ export const CAR_SPECS = {
     country: 'EE.UU.',
     category: 'Potencia',
     role: 'Monster truck',
+
+    // UI / Colección
+    collectionNo: 14,
+    rarity: 'Élite',
+    skin: 'skin_forge_anvil.webp',
+    visualScale: 1.35,
 
     // Stats diseño (01–99): VEL/ACC/GIR/EST/FRN
     designStats: { VEL: 63, ACC: 92, GIR: 31, EST: 81, FRN: 62 },
@@ -498,7 +587,7 @@ export const CAR_SPECS = {
     turnMin: 0.33,
 
     // Agarre lateral (más alto = más estable)
-    gripCoast: 0.3,
+    gripCoast: 0.30,
     gripDrive: 0.04,
     gripBrake: 0.18
   },
@@ -511,6 +600,12 @@ export const CAR_SPECS = {
     category: 'Potencia',
     role: 'Cabina camión',
 
+    // UI / Colección
+    collectionNo: 15,
+    rarity: 'Legendario',
+    skin: 'skin_forge_colossus.webp',
+    visualScale: 1.45,
+
     // Stats diseño (01–99): VEL/ACC/GIR/EST/FRN
     designStats: { VEL: 71, ACC: 86, GIR: 24, EST: 99, FRN: 73 },
 
@@ -522,7 +617,7 @@ export const CAR_SPECS = {
     accel: 875.0,
     brakeForce: 1120.4,
     engineBrake: 260,
-    linearDrag: 0.04,
+    linearDrag: 0.040,
 
     // Dirección
     turnRate: 2.78,
