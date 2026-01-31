@@ -22,6 +22,11 @@ function fmtTime(ms) {
 const DEV_TOOLS = true; // ponlo en false para ocultar botones de zoom/cull
 const ASPHALT_OVERLAY_ALPHA = 0.08; // rango sano: 0.08 – 0.12
 
+// Base path de skins (carpeta en /public)
+const CAR_SKIN_BASE = 'assets/skins/'; 
+// Si tus skins están en /public/assets/skins/runtime/, usa:
+// const CAR_SKIN_BASE = 'assets/skins/runtime/';
+
 // =================================================
 // TRACK SURFACE HELPERS (point-in-polygon por celdas)
 // =================================================
@@ -120,6 +125,44 @@ export class RaceScene extends Phaser.Scene {
     // Car rig
     this.carBody = null;
     this.carRig = null;
+  }
+    // =========================================
+  // Skins: carga dinámica por coche (runtime)
+  // =========================================
+  ensureCarSkinTexture(spec) {
+    const file = spec?.skin;
+    if (!file) return Promise.resolve(null);
+
+    const texKey = `car_${spec.id}`;
+    if (this.textures.exists(texKey)) return Promise.resolve(texKey);
+
+    return new Promise((resolve) => {
+      const url = `${CAR_SKIN_BASE}${file}`;
+
+      const onComplete = () => {
+        cleanup();
+        resolve(texKey);
+      };
+
+      const onError = (fileObj) => {
+        // Si falla este fichero, no reventamos: usamos el procedural 'car'
+        if (fileObj?.key === texKey) {
+          cleanup();
+          resolve(null);
+        }
+      };
+
+      const cleanup = () => {
+        this.load.off(Phaser.Loader.Events.COMPLETE, onComplete);
+        this.load.off(Phaser.Loader.Events.LOAD_ERROR, onError);
+      };
+
+      this.load.once(Phaser.Loader.Events.COMPLETE, onComplete);
+      this.load.on(Phaser.Loader.Events.LOAD_ERROR, onError);
+
+      this.load.image(texKey, url);
+      this.load.start();
+    });
   }
   // =================================================
   // Time Trial: precompute distancias acumuladas centerline
@@ -583,26 +626,42 @@ this.timing = {
   lastLap: null,
   bestLap: null
 };
-    // 4) Coche (body físico + rig visual)
-    // Cuerpo físico SIN sprite (evita __MISSING)
+// 4) Coche (body físico + rig visual)
+// Cuerpo físico SIN sprite (evita __MISSING)
 const body = this.physics.add.sprite(t01.start.x, t01.start.y, '__BODY__');
 body.setVisible(false);
-body.setCircle(14);
+
+// Escala del coche según spec (prep en carSpecs.js)
+const vScale = (baseSpec?.visualScale ?? 1.0);
+
+// Colisión: si quieres que el camión “ocupe pista”, esto es CLAVE
+const baseRadius = 14;
+body.setCircle(Math.round(baseRadius * vScale));
+
 body.setCollideWorldBounds(true);
 body.setBounce(0);
 body.setDrag(0, 0);
 body.rotation = t01.start.r;
 
-    const carSprite = this.add.sprite(0, 0, 'car');
-    carSprite.x = 12;
-    carSprite.y = 0;
+// Sprite visual: por defecto usa procedural 'car' (fallback seguro)
+const carSprite = this.add.sprite(0, 0, 'car');
+carSprite.x = 12;
+carSprite.y = 0;
+carSprite.setScale(vScale);
 
-    const rig = this.add.container(body.x, body.y, [carSprite]);
-    rig.setDepth(30);
+const rig = this.add.container(body.x, body.y, [carSprite]);
+rig.setDepth(30);
 
-    this.carBody = body;
-    this.carRig = rig;
-    this.car = body; // compat con tu update()
+this.carBody = body;
+this.carRig = rig;
+this.car = body; // compat con tu update()
+
+// Skin runtime: si existe, sustituye la textura del sprite sin romper nada
+this.ensureCarSkinTexture(baseSpec).then((texKey) => {
+  if (texKey) {
+    carSprite.setTexture(texKey);
+  }
+});
 
 // 5) Track ribbon (geom + culling state)
 this.track = {
