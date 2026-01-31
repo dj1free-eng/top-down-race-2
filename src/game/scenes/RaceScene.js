@@ -2239,6 +2239,8 @@ if (within && crossed && forward && this._lapCooldownMs === 0) {
 if (this.timing) {
   const now = performance.now();
   const lapTime = now - this.timing.lapStart;
+// === TT Panel: captura del best ANTES de actualizar (para delta real)
+const prevBestMs = (this.ttBest && Number.isFinite(this.ttBest.lapMs)) ? this.ttBest.lapMs : null;
 // ========================================
 // Time Trial: guardar vuelta en histórico
 // ========================================
@@ -2319,8 +2321,18 @@ if (this.ttPanel?.lastText && this.ttPanel?.deltaText && this.ttPanel?.bestText 
   this.ttPanel.bestText.setText(`MEJOR   ${fmt2(best)}`);
 
   // Delta vs best (rojo/verde)
+  // OJO: delta real contra el best ANTERIOR (si esta vuelta ha sido PB)
   let deltaMs = null;
-  if (Number.isFinite(last) && Number.isFinite(best)) deltaMs = last - best;
+
+  const improved = (prevBestMs != null) && Number.isFinite(last) && (last <= prevBestMs);
+
+  if (improved) {
+    // delta contra el best anterior (así NO sale 0 siempre)
+    deltaMs = last - prevBestMs; // negativo o 0
+  } else if (Number.isFinite(last) && Number.isFinite(best)) {
+    // fallback: delta vs best actual (cuando NO es PB)
+    deltaMs = last - best;
+  }
 
   if (deltaMs == null) {
     this.ttPanel.deltaText.setText(`Δ  --:--.--`);
