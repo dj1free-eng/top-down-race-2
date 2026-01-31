@@ -442,8 +442,8 @@ try {
 } catch (e) {
   this.ttBest = null;
 }
-    // 2) Base spec
-    const baseSpec = CAR_SPECS[this.carId] || CAR_SPECS.stock;
+// 2) Base spec (guardar en la escena para usarlo en create/update)
+this.baseSpec = CAR_SPECS[this.carId] || CAR_SPECS.stock;
 
 
     // === UPGRADES: cargar niveles por coche ===
@@ -488,7 +488,7 @@ try {
 
     // Helper para aplicar params al “motor”
     this.applyCarParams = () => {
-      this.carParams = resolveCarParams(baseSpec, this.tuning);
+this.carParams = resolveCarParams(this.baseSpec, this.tuning);
 
       this.accel = this.carParams.accel;
       this.maxFwd = this.carParams.maxFwd;
@@ -587,7 +587,7 @@ try {
     // 1) Track meta primero (define world real)
 const t01 = (this.trackKey === 'track01') ? makeTrack01Oval() : makeTrack02Technical();
 
-
+const spec = this.baseSpec || CAR_SPECS.stock;
     this.worldW = t01.worldW;
     this.worldH = t01.worldH;
 
