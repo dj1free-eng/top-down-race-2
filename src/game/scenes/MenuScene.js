@@ -188,6 +188,23 @@ export class MenuScene extends Phaser.Scene {
       color: '#ffffff'
     }).setOrigin(0.5);
     hero.add(placeholder);
+    // Animación “viva” tipo lobby (sin cargar assets)
+this.tweens.add({
+  targets: placeholder,
+  y: placeholder.y - 10,
+  duration: 900,
+  yoyo: true,
+  repeat: -1,
+  ease: 'Sine.easeInOut'
+});
+this.tweens.add({
+  targets: placeholder,
+  angle: 3,
+  duration: 1200,
+  yoyo: true,
+  repeat: -1,
+  ease: 'Sine.easeInOut'
+});
 
     // Track label (real)
     const trackLabel = this.add.text(cardX + cardW / 2, cardY + cardH - 44, `Circuito: ${this._trackTitle(this.selectedTrackKey)}`, {
@@ -495,43 +512,46 @@ export class MenuScene extends Phaser.Scene {
   // =========================
   // UI helpers
   // =========================
-  _makeButton(x, y, w, h, label, onClick, opts = {}) {
-    const c = this.add.container(x, y);
+_makeButton(x, y, w, h, label, onClick, opts = {}) {
+  const c = this.add.container(x, y);
 
-    const primary = !!opts.primary;
-    const bgCol = primary ? 0x2bff88 : 0x141b33;
-    const bgAlpha = primary ? 0.92 : 0.55;
+  const primary = !!opts.primary;
+  const bgCol = primary ? 0x2bff88 : 0x141b33;
+  const bgAlpha = primary ? 0.92 : 0.55;
 
-    const bg = this.add.rectangle(0, 0, w, h, bgCol, bgAlpha).setOrigin(0);
-    bg.setStrokeStyle(1, primary ? 0xffffff : 0xb7c0ff, primary ? 0.22 : 0.18);
+  // Sombra/relieve
+  const shadow = this.add.rectangle(4, 4, w, h, 0x000000, primary ? 0.25 : 0.18).setOrigin(0);
 
-    const txt = this.add.text(w / 2, h / 2, label, {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: primary ? '16px' : '14px',
-      color: primary ? '#0b1020' : '#ffffff',
-      fontStyle: 'bold'
-    }).setOrigin(0.5);
+  const bg = this.add.rectangle(0, 0, w, h, bgCol, bgAlpha).setOrigin(0);
+  bg.setStrokeStyle(1, primary ? 0xffffff : 0xb7c0ff, primary ? 0.22 : 0.18);
 
-    const hit = this.add.rectangle(0, 0, w, h, 0x000000, 0.001)
-      .setOrigin(0)
-      .setInteractive({ useHandCursor: true });
+  const txt = this.add.text(w / 2, h / 2, label, {
+    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: primary ? '16px' : '14px',
+    color: primary ? '#0b1020' : '#ffffff',
+    fontStyle: 'bold'
+  }).setOrigin(0.5);
 
-    hit.on('pointerdown', () => onClick && onClick());
+  const hit = this.add.rectangle(0, 0, w, h, 0x000000, 0.001)
+    .setOrigin(0)
+    .setInteractive({ useHandCursor: true });
 
-    hit.on('pointerover', () => {
-      bg.setAlpha(primary ? 0.98 : 0.70);
-      bg.setStrokeStyle(1, 0x2bff88, 0.35);
-    });
+  const setHover = (on) => {
+    bg.setAlpha(on ? (primary ? 0.98 : 0.70) : bgAlpha);
+    bg.setStrokeStyle(1, on ? 0x2bff88 : (primary ? 0xffffff : 0xb7c0ff), on ? 0.35 : (primary ? 0.22 : 0.18));
+  };
 
-    hit.on('pointerout', () => {
-      bg.setAlpha(bgAlpha);
-      bg.setStrokeStyle(1, primary ? 0xffffff : 0xb7c0ff, primary ? 0.22 : 0.18);
-    });
+  const press = () => { c.setScale(0.985); shadow.setAlpha(primary ? 0.18 : 0.12); };
+  const release = () => { c.setScale(1.0); shadow.setAlpha(primary ? 0.25 : 0.18); };
 
-    c.add([bg, txt, hit]);
-    return c;
-  }
+  hit.on('pointerdown', () => { press(); });
+  hit.on('pointerup', () => { release(); onClick && onClick(); });
+  hit.on('pointerout', () => { release(); setHover(false); });
+  hit.on('pointerover', () => { setHover(true); });
 
+  c.add([shadow, bg, txt, hit]);
+  return c;
+}
   _toast(msg) {
     const { width, height } = this.scale;
     const t = this.add.text(width / 2, Math.floor(height * 0.90), msg, {
