@@ -190,6 +190,60 @@ renderUI() {
   let xCursor = -Math.floor(totalW / 2);
   pillRow.setPosition(width / 2, titleY + 78);
 
+// =====================================================
+// Car selector: horizontal carousel (mask + drag)
+// - Keeps selector usable with MANY cars (no pills off-screen)
+// - Does NOT change pill sizing / layout, only adds scrolling
+// =====================================================
+const viewW = Math.min(width - 24, 420);     // viewport width for pills
+const viewH = pillH + 14;
+const viewLeft = (width / 2) - (viewW / 2);
+const viewTop = (titleY + 78) - (viewH / 2);
+
+// Mask so pills outside viewport don't render
+if (this._carPillMaskGfx) this._carPillMaskGfx.destroy();
+this._carPillMaskGfx = this.make.graphics({ x: 0, y: 0, add: false });
+this._carPillMaskGfx.fillStyle(0xffffff, 1);
+this._carPillMaskGfx.fillRect(viewLeft, viewTop, viewW, viewH);
+pillRow.setMask(this._carPillMaskGfx.createGeometryMask());
+
+// Scroll bounds for pillRow.x
+const maxRowX = (width / 2 - viewW / 2) + (totalW / 2); // show left edge
+const minRowX = (width / 2 + viewW / 2) - (totalW / 2); // show right edge
+
+const clampRowX = () => {
+  // If everything fits, keep centered
+  if (totalW <= viewW) {
+    pillRow.x = width / 2;
+    return;
+  }
+  pillRow.x = Math.max(minRowX, Math.min(maxRowX, pillRow.x));
+};
+
+// Drag move handler (works even when finger starts on a pill)
+this.input.off('pointermove', this._onCarPillDragMove);
+this._onCarPillDragMove = (pointer) => {
+  const d = this._carPillDrag;
+  if (!d?.active || !pointer.isDown) return;
+
+  const dx = pointer.x - d.startX;
+  if (Math.abs(dx) > 6) d.moved = true;
+
+  pillRow.x = d.startRowX + dx;
+  clampRowX();
+};
+this.input.on('pointermove', this._onCarPillDragMove);
+
+// Cleanup drag on pointerup (anywhere)
+this.input.off('pointerup', this._onCarPillDragUp);
+this._onCarPillDragUp = () => {
+  if (this._carPillDrag) this._carPillDrag.active = false;
+};
+this.input.on('pointerup', this._onCarPillDragUp);
+
+clampRowX();
+
+
   pills.forEach((p, idx) => {
     const pill = pillRow.list[idx];
     pill.x = xCursor;
