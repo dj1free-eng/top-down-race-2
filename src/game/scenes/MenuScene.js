@@ -16,6 +16,8 @@ export class MenuScene extends Phaser.Scene {
     // Overlays
     this._overlay = null;
     this._overlayType = null; // 'garage' | 'tracks'
+    // Cache para no reintentar skins que no existen
+    this._skinFail = new Set();
   }
 
   create() {
@@ -184,9 +186,12 @@ const eventY = height - bottomH - eventH - 10;
     hero.add(carSub);
 
 // “Ventana” coche: sprite real (fallback procedural) en vez de emoji
+// Preview coche: skin real si existe, si no fallback a 'car'
 this._ensureCarTexture();
+this._tryEnsureSkinTexture(carId);
 
-const carPreview = this.add.sprite(cardX + cardW / 2, cardY + cardH / 2 + 14, 'car').setOrigin(0.5);
+const texKey = this._previewTextureKey(carId);
+const carPreview = this.add.sprite(cardX + cardW / 2, cardY + cardH / 2 + 14, texKey).setOrigin(0.5);
 
 // Ajuste de tamaño para que encaje bonito en la card
 const maxW = cardW * 0.42;
@@ -481,6 +486,7 @@ bottom.add([progBg, progFill, progText]);
         try { localStorage.setItem('tdr2:carId', c.id); } catch {}
         pills.forEach(p => drawPill(this, p.g, p.w, p.id === this.selectedCarId));
         this._toast(`Coche: ${label}`);
+        this._tryEnsureSkinTexture(this.selectedCarId); 
         this.renderUI(); // refresca lobby
       });
 
@@ -715,6 +721,59 @@ _ensureCarTexture() {
 
   g.generateTexture('car', w + 4, h + 6);
   g.destroy();
+}
+  _skinKey(carId) {
+  return `skin:${carId}`;
+}
+
+_tryEnsureSkinTexture(carId) {
+  if (!carId) return;
+
+  const key = this._skinKey(carId);
+
+  // Ya está cargada
+  if (this.textures.exists(key)) return;
+
+  // Ya falló antes, no insistimos
+  if (this._skinFail?.has(carId)) return;
+
+  const url = `assets/skins/skin_${carId}.webp`;
+
+  // Cargamos on-demand (BootScene NO las precarga)
+  this.load.image(key, url);
+
+  const onFileComplete = (k) => {
+    if (k !== key) return;
+    cleanup();
+    // Re-render para que el preview cambie al momento
+    this.renderUI();
+  };
+
+  const onLoadError = (file) => {
+    if (!file || file.key !== key) return;
+    cleanup();
+    this._skinFail.add(carId);
+    // No re-render obligatorio (seguirá fallback), pero lo hacemos por consistencia
+    this.renderUI();
+  };
+
+  const cleanup = () => {
+    this.load.off('filecomplete-image-' + key, onFileComplete);
+    this.load.off('loaderror', onLoadError);
+  };
+
+  // Listeners one-shot para ESTE archivo
+  this.load.once('filecomplete-image-' + key, onFileComplete);
+  this.load.on('loaderror', onLoadError);
+
+  // Arranca carga
+  this.load.start();
+}
+
+_previewTextureKey(carId) {
+  const key = this._skinKey(carId);
+  if (this.textures.exists(key)) return key;
+  return 'car';
 }
   _trackTitle(key) {
     if (key === 'track01') return 'Óvalo';
