@@ -82,4 +82,49 @@ function registerServiceWorker() {
 }
 
 registerServiceWorker();
-createGame('app');
+
+// --- LANDSCAPE-ONLY gate (no rompe escenas) ---
+let __game = null;
+
+function __isLandscape() {
+  return window.innerWidth >= window.innerHeight;
+}
+
+function __setOverlayVisible(visible) {
+  const ov = document.getElementById('rotateOverlay');
+  if (!ov) return;
+  ov.style.display = visible ? 'flex' : 'none';
+  ov.setAttribute('aria-hidden', visible ? 'false' : 'true');
+}
+
+function __sleepGame() {
+  try { __game?.loop?.sleep?.(); } catch {}
+}
+
+function __wakeGame() {
+  try { __game?.loop?.wake?.(); } catch {}
+}
+
+function __tickOrientation() {
+  const landscape = __isLandscape();
+
+  // Overlay
+  __setOverlayVisible(!landscape);
+
+  // Arranque diferido
+  if (landscape && !__game) {
+    __game = createGame('app');
+    return;
+  }
+
+  // Si ya existe, dormimos/despertamos el loop
+  if (__game) {
+    if (landscape) __wakeGame();
+    else __sleepGame();
+  }
+}
+
+// Primer chequeo + eventos
+__tickOrientation();
+window.addEventListener('resize', __tickOrientation);
+window.addEventListener('orientationchange', __tickOrientation);
