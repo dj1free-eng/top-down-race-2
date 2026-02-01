@@ -1112,7 +1112,15 @@ this.ttHud.progress01 = 0;        // 0..1
     
 const safeTop = 12;
 const safeLeft = 12;
-
+// Formato TT: M:SS.xx (centésimas)
+this._fmtTT2 = (ms) => {
+  if (!Number.isFinite(ms)) return '--:--.--';
+  const t = Math.max(0, ms);
+  const m = Math.floor(t / 60000);
+  const s = Math.floor((t % 60000) / 1000);
+  const cs = Math.floor((t % 1000) / 10);
+  return `${m}:${String(s).padStart(2,'0')}.${String(cs).padStart(2,'0')}`;
+};
 // --- A) Tiempo principal (top-center)
 this.ttHud.timeText = this.add.text(this.scale.width / 2, safeTop + 6, '0:00.00', {
   fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
@@ -1184,7 +1192,20 @@ this.ttHud.ticksGfx.fillStyle(tickColor, tickAlpha);
 for (const tx of tickXs) {
   this.ttHud.ticksGfx.fillRect(Math.floor(tx - tickW / 2), Math.floor(barY - tickH / 2), tickW, tickH);
 }
+// --- Mejor tiempo (siempre visible) debajo de la barra
+const bestMs = this.ttBest?.lapMs;
+this.ttHud.bestLapText = this.add.text(barX, barY + 10, `MEJOR ${this._fmtTT2(bestMs)}`, {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '12px',
+  fontStyle: '800',
+  color: '#CFCFCF'
+})
+  .setOrigin(0, 0)
+  .setAlpha(0.85)
+  .setScrollFactor(0)
+  .setDepth(2000);
 
+this.ttHud.bestLapText.setShadow(0, 1, '#000000', 2, false, true);
 // Fade-in suave (100–150ms)
 this.ttHud.timeText.setAlpha(0);
 this.ttHud.lapText.setAlpha(0);
