@@ -645,21 +645,30 @@ body.rotation = t01.start.r;
 
 // Sprite visual: por defecto usa procedural 'car' (fallback seguro)
 const carSprite = this.add.sprite(0, 0, 'car');
+
+// Offset del sprite dentro del rig (si lo necesitas)
 carSprite.x = 12;
 carSprite.y = 0;
-carSprite.setScale(vScale);
 
-// ✅ FIX: el arte está "mirando abajo" pero la física mira a la derecha
-carSprite.setRotation(-Math.PI / 2);
-
-// ✅ Tamaño fijo en pista (independiente de si el PNG es 256x128)
-const BASE_W = 64;   // ajusta si quieres más grande/pequeño
-const BASE_H = 32;   // proporción típica top-down
-carSprite.setDisplaySize(BASE_W * vScale, BASE_H * vScale);
-
-// ✅ Orientación: tu física avanza hacia +X (derecha).
-// Si tus skins están dibujadas “morro arriba”, rota +90°.
+// Orientación: en tu juego el avance es +X (derecha)
 carSprite.rotation = Math.PI / 2;
+
+// Tamaño objetivo “caja” en pista (NO fuerza proporción, solo limita)
+const TARGET_W = 64 * vScale;
+const TARGET_H = 32 * vScale;
+
+// Escala uniforme para que NO se deforme (fit inside box)
+const fitSpriteToBox = () => {
+  // width/height aquí son los del frame/textura actual
+  const sw = carSprite.width || 1;
+  const sh = carSprite.height || 1;
+
+  const s = Math.min(TARGET_W / sw, TARGET_H / sh);
+  carSprite.setScale(s);
+};
+
+// Ajuste inicial con el procedural
+fitSpriteToBox();
 
 // Mantén tu offset si lo necesitas (aunque idealmente debería ser 0)
 carSprite.x = 12;
@@ -675,13 +684,13 @@ this.car = body; // compat con tu update()
 this.ensureCarSkinTexture(spec).then((texKey) => {
   if (!texKey) return;
 
-  carSprite.setTexture(texKey);
+carSprite.setTexture(texKey);
 
-  // ✅ Reaplica tamaño fijo tras cambiar textura
-  carSprite.setDisplaySize(BASE_W * vScale, BASE_H * vScale);
+// Mantén orientación
+carSprite.rotation = Math.PI / 2;
 
-  // ✅ Reaplica orientación
-  carSprite.rotation = Math.PI / 2;
+// Refit sin deformar (misma caja objetivo)
+fitSpriteToBox();
 });
 
 // 5) Track ribbon (geom + culling state)
