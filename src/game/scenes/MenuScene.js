@@ -281,23 +281,30 @@ this.tweens.add({
     bottomBg.setStrokeStyle(1, 0xb7c0ff, 0.10);
     bottom.add(bottomBg);
 // Mini progreso (placeholder premium)
-const progW = clamp(Math.floor(width * 0.22), 150, 240);
-const progH = 10;
+const progW = clamp(Math.floor(width * 0.28), 180, 300);
+const progH = 16;
 const progX = Math.floor(width / 2 - progW / 2);
-const progY = 10;
+const progY = 8;
 
-const progBg = this.add.rectangle(progX, progY, progW, progH, 0x141b33, 0.65).setOrigin(0);
-progBg.setStrokeStyle(1, 0xb7c0ff, 0.14);
+const progBg = this.add.rectangle(progX, progY, progW, progH, 0x0b1020, 0.85)
+  .setOrigin(0)
+  .setStrokeStyle(1, 0xb7c0ff, 0.35);
 
 const fakeProgress = 0.35; // placeholder
-const progFill = this.add.rectangle(progX + 1, progY + 1, Math.floor((progW - 2) * fakeProgress), progH - 2, 0x2bff88, 0.85)
-  .setOrigin(0);
+const progFill = this.add.rectangle(
+  progX + 2,
+  progY + 2,
+  Math.floor((progW - 4) * fakeProgress),
+  progH - 4,
+  0x2bff88,
+  1
+).setOrigin(0);
 
-const progText = this.add.text(width / 2, progY + progH + 8, 'Progreso: 35% (placeholder)', {
+const progText = this.add.text(width / 2, progY - 14, 'Progreso · 35%', {
   fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
   fontSize: '11px',
   color: '#b7c0ff'
-}).setOrigin(0.5, 0);
+}).setOrigin(0.5);
 
 bottom.add([progBg, progFill, progText]);
     // Botón: GARAGE
@@ -618,8 +625,17 @@ _makeButton(x, y, w, h, label, onClick, opts = {}) {
     bg.setStrokeStyle(1, on ? 0x2bff88 : (primary ? 0xffffff : 0xb7c0ff), on ? 0.35 : (primary ? 0.22 : 0.18));
   };
 
-  const press = () => { c.setScale(0.985); shadow.setAlpha(primary ? 0.18 : 0.12); };
-  const release = () => { c.setScale(1.0); shadow.setAlpha(primary ? 0.25 : 0.18); };
+  const press = () => {
+  c.setScale(0.97);
+  c.y += 2;
+  shadow.setAlpha(primary ? 0.12 : 0.08);
+};
+
+const release = () => {
+  c.setScale(1.0);
+  c.y -= 2;
+  shadow.setAlpha(primary ? 0.25 : 0.18);
+};
 
   hit.on('pointerdown', () => { press(); });
   hit.on('pointerup', () => { release(); onClick && onClick(); });
@@ -629,24 +645,33 @@ _makeButton(x, y, w, h, label, onClick, opts = {}) {
   c.add([shadow, bg, txt, hit]);
   return c;
 }
-  _toast(msg) {
-    const { width, height } = this.scale;
-    const t = this.add.text(width / 2, Math.floor(height * 0.90), msg, {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '14px',
-      color: '#2bff88',
-      fontStyle: 'bold'
-    }).setOrigin(0.5).setAlpha(0);
+_toast(msg) {
+  const { width, height } = this.scale;
 
-    this.tweens.add({
-      targets: t,
-      alpha: 1,
-      duration: 120,
-      yoyo: true,
-      hold: 650,
-      onComplete: () => t.destroy()
-    });
-  }
+  // Colocarlo por encima del bottom bar
+  const y = Math.floor(height - (height * 0.18) - 24);
+
+  const t = this.add.text(width / 2, y, msg, {
+    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: '14px',
+    color: '#2bff88',
+    fontStyle: 'bold',
+    backgroundColor: 'rgba(11,16,32,0.85)',
+    padding: { left: 12, right: 12, top: 6, bottom: 6 }
+  })
+    .setOrigin(0.5)
+    .setAlpha(0)
+    .setDepth(999999); // 🔑 siempre encima
+
+  this.tweens.add({
+    targets: t,
+    alpha: 1,
+    duration: 120,
+    yoyo: true,
+    hold: 900,
+    onComplete: () => t.destroy()
+  });
+}
 
   _trackTitle(key) {
     if (key === 'track01') return 'Óvalo';
