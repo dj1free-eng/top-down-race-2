@@ -183,24 +183,30 @@ const eventY = height - bottomH - eventH - 10;
     }).setOrigin(0.5, 0);
     hero.add(carSub);
 
-    // “Ventana” para futura skin del coche (por ahora icono)
-    const placeholder = this.add.text(cardX + cardW / 2, cardY + cardH / 2 + 10, '🚗', {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '74px',
-      color: '#ffffff'
-    }).setOrigin(0.5);
-    hero.add(placeholder);
-    // Animación “viva” tipo lobby (sin cargar assets)
+// “Ventana” coche: sprite real (fallback procedural) en vez de emoji
+this._ensureCarTexture();
+
+const carPreview = this.add.sprite(cardX + cardW / 2, cardY + cardH / 2 + 14, 'car').setOrigin(0.5);
+
+// Ajuste de tamaño para que encaje bonito en la card
+const maxW = cardW * 0.42;
+const maxH = cardH * 0.28;
+const s = Math.min(maxW / carPreview.width, maxH / carPreview.height);
+carPreview.setScale(s);
+
+hero.add(carPreview);
+
+// Animación “viva” tipo lobby
 this.tweens.add({
-  targets: placeholder,
-  y: placeholder.y - 10,
+  targets: carPreview,
+  y: carPreview.y - 10,
   duration: 900,
   yoyo: true,
   repeat: -1,
   ease: 'Sine.easeInOut'
 });
 this.tweens.add({
-  targets: placeholder,
+  targets: carPreview,
   angle: 3,
   duration: 1200,
   yoyo: true,
@@ -672,7 +678,44 @@ _toast(msg) {
     onComplete: () => t.destroy()
   });
 }
+_ensureCarTexture() {
+  // Igual idea que en RaceScene: si ya existe, no hacemos nada
+  if (this.textures.exists('car')) return;
 
+  const w = 42;
+  const h = 22;
+
+  const g = this.add.graphics();
+
+  // Sombra
+  g.fillStyle(0x000000, 0.25);
+  g.fillEllipse(w * 0.52, h * 0.78, w * 0.85, h * 0.45);
+
+  // Carrocería
+  g.fillStyle(0xff3b30, 1);
+  g.fillRoundedRect(6, 10, w - 12, 10, 6);
+
+  // Cabina
+  g.fillStyle(0xff6b63, 1);
+  g.fillRoundedRect(14, 6, 16, 8, 5);
+
+  // Cristal
+  g.fillStyle(0x9fe7ff, 0.9);
+  g.fillRoundedRect(16, 7, 12, 6, 4);
+
+  // Ruedas
+  g.fillStyle(0x222222, 1);
+  g.fillCircle(14, 21, 4);
+  g.fillCircle(w - 14, 21, 4);
+
+  // Llantas
+  g.fillStyle(0xaaaaaa, 1);
+  g.fillCircle(14, 21, 2);
+  g.fillCircle(w - 14, 21, 2);
+
+  g.generateTexture('car', w + 4, h + 6);
+  g.destroy();
+}
   _trackTitle(key) {
     if (key === 'track01') return 'Óvalo';
     if (key === 'track02') return 'Técnico';
