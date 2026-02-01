@@ -131,7 +131,9 @@ export class MenuScene extends Phaser.Scene {
     const centerY0 = topH + 10;
     const bottomH = clamp(Math.floor(height * 0.18), 78, 110);
     const centerH = height - centerY0 - bottomH - 10;
-
+// Evento (tipo Brawl): tarjeta informativa encima del bottom bar
+const eventH = clamp(Math.floor(height * 0.13), 54, 76);
+const eventY = height - bottomH - eventH - 10;
     const hero = this.add.container(0, centerY0);
     this._ui.add(hero);
 
@@ -213,7 +215,63 @@ this.tweens.add({
       color: '#b7c0ff'
     }).setOrigin(0.5);
     hero.add(trackLabel);
+// ===== Event card (Brawl-ish) =====
+const event = this.add.container(0, eventY);
+this._ui.add(event);
 
+const eventPad = pad;
+const eventW = width - eventPad * 2;
+
+const eventBg = this.add.rectangle(eventPad, 0, eventW, eventH, 0x141b33, 0.60)
+  .setOrigin(0)
+  .setStrokeStyle(1, 0xb7c0ff, 0.18);
+event.add(eventBg);
+
+// Banda izquierda tipo “modo”
+const bandW = clamp(Math.floor(eventW * 0.18), 90, 150);
+const band = this.add.rectangle(eventPad, 0, bandW, eventH, 0x2bff88, 0.85).setOrigin(0);
+event.add(band);
+
+const bandText = this.add.text(eventPad + bandW / 2, Math.floor(eventH / 2), 'EVENT', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '14px',
+  color: '#0b1020',
+  fontStyle: 'bold'
+}).setOrigin(0.5);
+event.add(bandText);
+
+const modeTitle = this.add.text(eventPad + bandW + 14, 12, `Modo: ${this._trackTitle(this.selectedTrackKey)}`, {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '14px',
+  color: '#ffffff',
+  fontStyle: 'bold'
+}).setOrigin(0, 0);
+event.add(modeTitle);
+
+const modeSub = this.add.text(eventPad + bandW + 14, 32, 'Recompensa: (próximamente) · Objetivo: mejora tu tiempo', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '12px',
+  color: '#b7c0ff'
+}).setOrigin(0, 0);
+event.add(modeSub);
+
+// Botón “i”
+const infoW = 38;
+const infoX = width - eventPad - infoW;
+const infoBtn = this._makeButton(infoX, 10, infoW, eventH - 20, 'i', () => {
+  this._toast('Eventos: más adelante meteremos recompensas y misiones diarias 😉');
+});
+event.add(infoBtn);
+
+// animación sutil (respira)
+this.tweens.add({
+  targets: eventBg,
+  alpha: { from: 0.58, to: 0.66 },
+  duration: 1200,
+  yoyo: true,
+  repeat: -1,
+  ease: 'Sine.easeInOut'
+});
     // ===== Bottom bar (Brawl-ish) =====
     const bottomY = height - bottomH;
     const bottom = this.add.container(0, bottomY);
@@ -222,7 +280,26 @@ this.tweens.add({
     const bottomBg = this.add.rectangle(0, 0, width, bottomH, 0x0b1020, 0.55).setOrigin(0);
     bottomBg.setStrokeStyle(1, 0xb7c0ff, 0.10);
     bottom.add(bottomBg);
+// Mini progreso (placeholder premium)
+const progW = clamp(Math.floor(width * 0.22), 150, 240);
+const progH = 10;
+const progX = Math.floor(width / 2 - progW / 2);
+const progY = 10;
 
+const progBg = this.add.rectangle(progX, progY, progW, progH, 0x141b33, 0.65).setOrigin(0);
+progBg.setStrokeStyle(1, 0xb7c0ff, 0.14);
+
+const fakeProgress = 0.35; // placeholder
+const progFill = this.add.rectangle(progX + 1, progY + 1, Math.floor((progW - 2) * fakeProgress), progH - 2, 0x2bff88, 0.85)
+  .setOrigin(0);
+
+const progText = this.add.text(width / 2, progY + progH + 8, 'Progreso: 35% (placeholder)', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '11px',
+  color: '#b7c0ff'
+}).setOrigin(0.5, 0);
+
+bottom.add([progBg, progFill, progText]);
     // Botón: GARAGE
     const btnH = clamp(Math.floor(bottomH * 0.62), 42, 62);
     const smallW = clamp(Math.floor(width * 0.20), 120, 170);
