@@ -2384,6 +2384,10 @@ if (this.ttHistory && this.ttHistKey) {
     };
     try {
       localStorage.setItem(this.ttKey, JSON.stringify(this.ttBest));
+      // Actualiza HUD "MEJOR" al instante si existe
+    if (this.ttHud?.bestLapText) {
+      this.ttHud.bestLapText.setText(`MEJOR ${this._fmtTT2(this.ttBest.lapMs)}`);
+    }
     } catch (e) {}
   }
 
