@@ -645,7 +645,12 @@ body.rotation = t01.start.r;
 
 // Sprite visual: por defecto usa procedural 'car' (fallback seguro)
 const carSprite = this.add.sprite(0, 0, 'car');
-carSprite.setOrigin(0.5, 0.5);
+carSprite.x = 12;
+carSprite.y = 0;
+carSprite.setScale(vScale);
+
+// ✅ FIX: el arte está "mirando abajo" pero la física mira a la derecha
+carSprite.setRotation(-Math.PI / 2);
 
 // ✅ Tamaño fijo en pista (independiente de si el PNG es 256x128)
 const BASE_W = 64;   // ajusta si quieres más grande/pequeño
