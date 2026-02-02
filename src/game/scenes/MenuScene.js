@@ -332,20 +332,31 @@ const progText = this.add.text(width / 2, progY - 14, 'Progreso · 35%', {
 }).setOrigin(0.5);
 
 bottom.add([progBg, progFill, progText]);
-    // Botón: GARAGE
-    const btnH = clamp(Math.floor(bottomH * 0.62), 42, 62);
-    const smallW = clamp(Math.floor(width * 0.20), 120, 170);
+// Botón: GARAGE
+const btnH = clamp(Math.floor(bottomH * 0.62), 42, 62);
+const smallW = clamp(Math.floor(width * 0.20), 120, 170);
 
-    const garageBtn = this._makeButton(pad, Math.floor((bottomH - btnH) / 2), smallW, btnH, 'GARAGE', () => {
-      this._openOverlay('garage');
-    });
-    bottom.add(garageBtn);
-
-    // Botón: TRACKS
-    const tracksBtn = this._makeButton(width - pad - smallW, Math.floor((bottomH - btnH) / 2), smallW, btnH, 'TRACKS', () => {
-      this._openOverlay('tracks');
-    });
-    bottom.add(tracksBtn);
+const garageBtn = this._makeButton(
+  pad,
+  Math.floor((bottomH - btnH) / 2),
+  smallW,
+  btnH,
+  'GARAGE',
+  () => { this._openOverlay('garage'); },
+  { accent: 0x00d4ff }
+);
+bottom.add(garageBtn);
+// Botón: TRACKS
+const tracksBtn = this._makeButton(
+  width - pad - smallW,
+  Math.floor((bottomH - btnH) / 2),
+  smallW,
+  btnH,
+  'TRACKS',
+  () => { this._openOverlay('tracks'); },
+  { accent: 0xffc400 }
+);
+bottom.add(tracksBtn);
 
     // Botón grande: PLAY
     const playW = clamp(Math.floor(width * 0.34), 200, 360);
@@ -625,8 +636,9 @@ bottom.add([progBg, progFill, progText]);
 _makeButton(x, y, w, h, label, onClick, opts = {}) {
   const c = this.add.container(x, y);
 
-  const primary = !!opts.primary;
-  const bgCol = primary ? 0x2bff88 : 0x141b33;
+const primary = !!opts.primary;
+const accent = opts.accent ?? null;
+const bgCol = primary ? 0x2bff88 : (accent ?? 0x141b33);
   const bgAlpha = primary ? 0.92 : 0.55;
 
   // Sombra/relieve
