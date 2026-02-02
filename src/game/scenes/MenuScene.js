@@ -48,17 +48,29 @@ export class MenuScene extends Phaser.Scene {
     }
     this._ui = this.add.container(0, 0);
 
-    // Fondo sutil (sin ruido)
-    const bg = this.add.graphics();
-    bg.fillStyle(0x0b1020, 1);
-    bg.fillRect(0, 0, width, height);
+// Fondo más colorido (Brawl-ish) sin texturas
+const bg = this.add.graphics();
 
-    bg.fillStyle(0x141b33, 0.35);
-    bg.fillRect(0, 0, width, height);
+// Base
+bg.fillStyle(0x071027, 1);
+bg.fillRect(0, 0, width, height);
 
-    // brillo suave arriba
-    bg.fillStyle(0x2bff88, 0.06);
-    bg.fillEllipse(width * 0.55, height * 0.15, width * 0.9, height * 0.55);
+// Gradiente falso por “capas” (blobs)
+bg.fillStyle(0x7c4dff, 0.14); // violeta
+bg.fillEllipse(width * 0.20, height * 0.22, width * 0.75, height * 0.65);
+
+bg.fillStyle(0x00d4ff, 0.10); // cian
+bg.fillEllipse(width * 0.70, height * 0.30, width * 0.90, height * 0.70);
+
+bg.fillStyle(0xffc400, 0.07); // amarillo
+bg.fillEllipse(width * 0.55, height * 0.12, width * 0.70, height * 0.45);
+
+bg.fillStyle(0x2bff88, 0.08); // verde
+bg.fillEllipse(width * 0.55, height * 0.70, width * 0.85, height * 0.70);
+
+// “Neblina” para unificar
+bg.fillStyle(0x141b33, 0.18);
+bg.fillRect(0, 0, width, height);
 
     // rejilla MUY ligera (casi nada)
     bg.lineStyle(1, 0xffffff, 0.02);
@@ -233,11 +245,13 @@ this._ui.add(event);
 const eventPad = pad;
 const eventW = width - eventPad * 2;
 
-const eventBg = this.add.rectangle(eventPad, 0, eventW, eventH, 0x141b33, 0.60)
+const eventBg = this.add.rectangle(eventPad, 0, eventW, eventH, 0x1b2a57, 0.78)
   .setOrigin(0)
   .setStrokeStyle(1, 0xb7c0ff, 0.18);
 event.add(eventBg);
-
+const eventGlow = this.add.rectangle(eventPad + 1, 1, eventW - 2, 6, 0xffffff, 0.10).setOrigin(0);
+event.add(eventGlow);
+    
 // Banda izquierda tipo “modo”
 const bandW = clamp(Math.floor(eventW * 0.18), 90, 150);
 const band = this.add.rectangle(eventPad, 0, bandW, eventH, 0x2bff88, 0.85).setOrigin(0);
@@ -617,7 +631,8 @@ _makeButton(x, y, w, h, label, onClick, opts = {}) {
 
   // Sombra/relieve
   const shadow = this.add.rectangle(4, 4, w, h, 0x000000, primary ? 0.25 : 0.18).setOrigin(0);
-
+const topHi = this.add.rectangle(2, 2, w - 4, Math.max(6, Math.floor(h * 0.28)), 0xffffff, primary ? 0.18 : 0.10)
+  .setOrigin(0);
   const bg = this.add.rectangle(0, 0, w, h, bgCol, bgAlpha).setOrigin(0);
   bg.setStrokeStyle(1, primary ? 0xffffff : 0xb7c0ff, primary ? 0.22 : 0.18);
 
@@ -654,7 +669,13 @@ const release = () => {
   hit.on('pointerout', () => { release(); setHover(false); });
   hit.on('pointerover', () => { setHover(true); });
 
-  c.add([shadow, bg, txt, hit]);
+// Glow suave para el primario
+let glow = null;
+if (primary) {
+  glow = this.add.rectangle(-6, -6, w + 12, h + 12, 0x2bff88, 0.10).setOrigin(0);
+}
+
+c.add([glow, shadow, bg, topHi, txt, hit].filter(Boolean));
   return c;
 }
 _toast(msg) {
