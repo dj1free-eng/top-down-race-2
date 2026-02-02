@@ -14,10 +14,17 @@ export default defineConfig(({ command }) => {
 
   // En build: base "/<repo>/" para GitHub Pages
   // Se puede sobreescribir con BASE=/mi-repo/ npm run build
-  const repo = readPackageName();
-  const base = process.env.BASE ?? `/${repo}/`;
+    const repo = readPackageName();
 
-    return {
+  // PRIORIDAD:
+  // 1) BASE explícita (override manual)
+  // 2) Netlify (sirve en "/")
+  // 3) GitHub Pages (sirve en "/<repo>/")
+  const base =
+    process.env.BASE ??
+    (process.env.NETLIFY ? '/' : `/${repo}/`);
+
+  return {
     base,
     build: {
       target: 'es2020'
