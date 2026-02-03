@@ -2088,10 +2088,10 @@ const speed01 = clamp(speed / maxFwd, 0, 1);
 const TURN_SAT = 0.35;
 
 // Normaliza 0..TURN_SAT a 0..1, y luego lo capamos a 1 para que haga plateau.
-const t = clamp(speed01 / TURN_SAT, 0, 1);
+const turnT = clamp(speed01 / TURN_SAT, 0, 1);
 
 // turnMin = giro mínimo a velocidad casi 0 (ej: 0.15)
-const turnFactor = turnMin + (1 - turnMin) * t;
+const turnFactor = turnMin + (1 - turnMin) * turnT;
 
 // maxTurn se vuelve constante cuando t llega a 1
 const maxTurn = turnRate * turnFactor; // rad/s
