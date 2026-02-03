@@ -655,19 +655,18 @@ carSprite.setOrigin(0.78, 0.50);
 carSprite.x = 0;
 carSprite.y = 0;
 
-// Orientación: en tu juego el avance es +X (derecha)
-carSprite.rotation = Math.PI / 2;
+// Orientación: dejamos el sprite “neutro” y aplicamos el offset al rig.
+// Así SOLO rota el rig (pivot consistente entre skins).
+this._carVisualRotOffset = Math.PI / 2;
 
 // Tamaño objetivo “caja” en pista (NO fuerza proporción, solo limita)
-// Caja objetivo más generosa (menos reducción artificial)
 const TARGET_W = 96 * vScale;
 const TARGET_H = 48 * vScale;
+
 // Escala uniforme para que NO se deforme (fit inside box)
 const fitSpriteToBox = () => {
-  // width/height aquí son los del frame/textura actual
   const sw = carSprite.width || 1;
   const sh = carSprite.height || 1;
-
   const s = Math.min(TARGET_W / sw, TARGET_H / sh);
   carSprite.setScale(s);
 };
@@ -675,9 +674,12 @@ const fitSpriteToBox = () => {
 // Ajuste inicial con el procedural
 fitSpriteToBox();
 
-// Mantén tu offset si lo necesitas (aunque idealmente debería ser 0)
-carSprite.x = 12;
+// Sin offsets: el pivot lo marca el origin
+carSprite.x = 0;
 carSprite.y = 0;
+
+// Rotación del sprite a 0 (rotará el rig)
+carSprite.rotation = 0;
 const rig = this.add.container(body.x, body.y, [carSprite]);
 rig.setDepth(30);
 
@@ -691,8 +693,8 @@ this.ensureCarSkinTexture(spec).then((texKey) => {
 
 carSprite.setTexture(texKey);
 carSprite.setOrigin(0.78, 0.50);
-// Mantén orientación
-carSprite.rotation = Math.PI / 2;
+// El sprite sigue neutro: rota el rig
+carSprite.rotation = 0;
 
 // Refit sin deformar (misma caja objetivo)
 fitSpriteToBox();
