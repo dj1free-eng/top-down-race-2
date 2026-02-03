@@ -204,7 +204,21 @@ this._tryEnsureSkinTexture(carId);
 
 const texKey = this._previewTextureKey(carId);
 const carPreview = this.add.sprite(cardX + cardW / 2, cardY + cardH / 2 + 14, texKey).setOrigin(0.5);
+// --- CLIP DEL PREVIEW (no puede salirse de la tarjeta) ---
+const clip = this.make.graphics({ x: 0, y: 0, add: false });
+clip.fillStyle(0xffffff, 1);
 
+// Ajusta estas variables a las de TU card
+clip.fillRoundedRect(
+  cardX + 16,
+  cardY + 20,
+  cardW - 32,
+  cardH - 60,
+  16
+);
+
+const mask = clip.createGeometryMask();
+carPreview.setMask(mask);
 // Ajuste de tamaño para que encaje bonito en la card
 const maxW = cardW * 0.42;
 const maxH = cardH * 0.28;
