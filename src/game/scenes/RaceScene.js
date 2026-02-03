@@ -2752,34 +2752,6 @@ this.touchUI = ui; // ← referencia para cámaras
       state.btnW = btnW;
       state.btnH = btnH;
 
-      const zoneG = this.add.graphics();
-      zoneG.fillStyle(0x000000, 0.14);
-
-      const leftW = Math.floor(w * 0.46) - 14;
-      const rightW = Math.floor(w * 0.46) - 14;
-
-      zoneG.fillRoundedRect(10, h - 230, leftW, 220, 18);
-      zoneG.lineStyle(2, 0xb7c0ff, 0.18);
-      zoneG.strokeRoundedRect(10, h - 230, leftW, 220, 18);
-
-      zoneG.fillRoundedRect(Math.floor(w * 0.54) + 4, h - 230, rightW, 220, 18);
-      zoneG.lineStyle(2, 0xb7c0ff, 0.18);
-      zoneG.strokeRoundedRect(Math.floor(w * 0.54) + 4, h - 230, rightW, 220, 18);
-
-      const leftLabel = this.add.text(22, h - 220, 'GIRO', {
-        fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-        fontSize: '12px',
-        color: '#b7c0ff',
-        fontStyle: 'bold'
-      });
-
-      const rightLabel = this.add.text(Math.floor(w * 0.54) + 16, h - 220, 'GAS / FRENO', {
-        fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-        fontSize: '12px',
-        color: '#b7c0ff',
-        fontStyle: 'bold'
-      });
-
       const g = this.add.graphics();
 
       const draw = () => {
@@ -2823,7 +2795,7 @@ this.touchUI = ui; // ← referencia para cámaras
         fontStyle: 'bold'
       }).setOrigin(0.5);
 
-      ui.add([zoneG, leftLabel, rightLabel, g, tText, bText]);
+ui.add([g, tText, bText]);
 
       state._draw = draw;
       state._draw();
