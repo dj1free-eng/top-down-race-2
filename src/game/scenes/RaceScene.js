@@ -1475,10 +1475,11 @@ this.scale.on('resize', (gameSize) => {
 });
 // =================================================
 // START LIGHTS (F1) — modal + bloqueo de coche hasta salida
-// (PNG pro + luces transparentes)
 // =================================================
 this._raceStarted = false;
-this._startState = 'WAIT_GAS'; // WAIT_GAS -> COUNTDOWN -> GO -> RACING
+
+// Ya no esperamos GAS: arrancamos automáticamente
+this._startState = 'COUNTDOWN'; // COUNTDOWN -> GO -> RACING
 this._prevThrottleDown = false;
 
 // Modal container (UI)
@@ -1490,12 +1491,11 @@ const h = this.scale.height;
 // Fondo modal (oscurece)
 const modalBg = this.add.rectangle(0, 0, w, h, 0x000000, 0.45).setOrigin(0, 0);
 
-// “Panel” invisible: solo para layout (no hace falta caja grande)
-const panelW = Math.min(760, Math.floor(w * 0.94));
-const panelH = 320;
+// Panel RESPONSIVE (en landscape manda la altura)
+const panelW = Math.min(760, Math.floor(w * 0.92));
+const panelH = Math.min(260, Math.floor(h * 0.42));   // ⬅️ más pequeño en landscape
 const panelX = Math.floor((w - panelW) / 2);
-const panelY = Math.floor(h * 0.14);
-
+const panelY = Math.floor(h * 0.10);
 // Texto
 this._startTitle = this.add.text(panelX + 18, panelY + 6, 'START', {
   fontFamily: 'Orbitron, monospace',
@@ -1504,7 +1504,7 @@ this._startTitle = this.add.text(panelX + 18, panelY + 6, 'START', {
   fontStyle: '600'
 });
 
-this._startHint = this.add.text(panelX + 18, panelY + 34, 'Pulsa GAS para iniciar el semáforo', {
+this._startHint = this.add.text(panelX + 18, panelY + 34, 'Prepárate...', {
   fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
   fontSize: '13px',
   color: '#b7c0ff'
@@ -1517,13 +1517,17 @@ this._startStatus = this.add.text(panelX + 18, panelY + panelH - 30, 'WAITING', 
 });
 
 // PNG del semáforo (lo más grande posible)
-this._startAsset = this.add.image(panelX + panelW / 2, panelY + 160, 'start_base')
+this._startAsset = this.add.image(panelX + panelW / 2, panelY + Math.floor(panelH * 0.60), 'start_base')
+  .setOrigin(0.5, 0.5);
   .setOrigin(0.5, 0.5);
 
-// Escala: casi ancho completo del “panel”
+// Escala: limita por ancho Y por alto (clave en landscape)
 {
-  const targetW = Math.min(panelW * 0.92, 720);
-  const s = targetW / this._startAsset.width;
+  const targetW = Math.min(panelW * 0.82, 620);
+  const targetH = Math.min(panelH * 0.62, Math.floor(h * 0.22)); // ⬅️ manda la altura
+  const sW = targetW / this._startAsset.width;
+  const sH = targetH / this._startAsset.height;
+  const s = Math.min(sW, sH);
   this._startAsset.setScale(s);
 }
 // Aseguramos que TODO el semáforo vive dentro del modal
@@ -1575,7 +1579,7 @@ this._reflowStartModal = () => {
   this._startStatus.setPosition(px + 18, py + panelH - 30);
 
   // Repos asset + escala
-  this._startAsset.setPosition(px + pw / 2, py + 160);
+this._startAsset.setPosition(px + pw / 2, py + Math.floor(panelH * 0.60))
 
   const targetW = Math.min(pw * 0.92, 720);
   const s = targetW / this._startAsset.width;
@@ -1583,7 +1587,55 @@ this._reflowStartModal = () => {
 };
 
 this.scale.on('resize', this._reflowStartModal);
-  // 12) Volver al menú
+// Arranque automático del semáforo al cargar (sin GAS)
+this.time.delayedCall(150, () => {
+  if (this._startState !== 'COUNTDOWN') this._startState = 'COUNTDOWN';
+
+  if (this._startHint) this._startHint.setText('Mantente listo...');
+  if (this._startStatus) {
+    this._startStatus.setText('RED LIGHTS');
+    this._startStatus.setColor('#ffffff');
+  }
+
+  if (this._startAsset) this._startAsset.setTexture('start_base');
+
+  const stepMs = 600;
+
+  for (let i = 1; i <= 6; i++) {
+    this.time.delayedCall(stepMs * i, () => {
+      if (this._startAsset) this._startAsset.setTexture(`start_l${i}`);
+    });
+  }
+
+  const randMs = 800 + Math.floor(Math.random() * 700);
+
+  this.time.delayedCall(stepMs * 6 + randMs, () => {
+    this._startState = 'GO';
+
+    if (this._startAsset) this._startAsset.setTexture('start_base');
+
+    if (this._startStatus) {
+      this._startStatus.setText('GO!');
+      this._startStatus.setColor('#2bff88');
+    }
+
+    // Iniciar cronómetro EXACTAMENTE en lights out
+    if (this.timing) {
+      this.timing.lapStart = performance.now();
+      this.timing.started = true;
+      this.timing.s1 = null;
+      this.timing.s2 = null;
+      this.timing.s3 = null;
+    }
+
+    this.time.delayedCall(350, () => {
+      this._startState = 'RACING';
+      this._raceStarted = true;
+      if (this._startModal) this._startModal.setVisible(false);
+    });
+  });
+}); 
+    // 12) Volver al menú
   if (this.keys?.back) {
     this.keys.back.on('down', () => this.scene.start('menu'));
   }
@@ -1823,60 +1875,8 @@ const throttleDown = (t.throttle > 0.5);
 const throttleJustPressed = throttleDown && !this._prevThrottleDown;
 this._prevThrottleDown = throttleDown;
 
-// En WAIT_GAS: si pulsa GAS, arranca secuencia
-if (this._startState === 'WAIT_GAS' && throttleJustPressed) {
-  this._startState = 'COUNTDOWN';
-
-  if (this._startHint) this._startHint.setText('Manténte listo...');
-  if (this._startStatus) {
-    this._startStatus.setText('RED LIGHTS');
-    this._startStatus.setColor('#ffffff');
-  }
-
-  // Asegura frame base antes de empezar
-  if (this._startAsset) this._startAsset.setTexture('start_base');
-
-  const stepMs = 600;
-
-  // Enciende 6 rojas secuencial: start_l1 ... start_l6
-  for (let i = 1; i <= 6; i++) {
-    this.time.delayedCall(stepMs * i, () => {
-      if (this._startAsset) this._startAsset.setTexture(`start_l${i}`);
-    });
-  }
-
-  // Delay aleatorio estilo F1 antes de apagar (lights out)
-  const randMs = 800 + Math.floor(Math.random() * 700);
-
-  this.time.delayedCall(stepMs * 6 + randMs, () => {
-    // Lights out -> GO
-    this._startState = 'GO';
-
-    // Apaga (vuelve al base)
-    if (this._startAsset) this._startAsset.setTexture('start_base');
-
-    if (this._startStatus) {
-      this._startStatus.setText('GO!');
-      this._startStatus.setColor('#2bff88');
-    }
-
-    // Iniciar cronómetro EXACTAMENTE en lights out
-    if (this.timing) {
-      this.timing.lapStart = performance.now();
-      this.timing.started = true;
-      this.timing.s1 = null;
-      this.timing.s2 = null;
-      this.timing.s3 = null;
-    }
-
-    // Cierra modal y habilita carrera
-    this.time.delayedCall(350, () => {
-  this._startState = 'RACING';
-  this._raceStarted = true;
-  if (this._startModal) this._startModal.setVisible(false);
-});
-  });
-}
+//-------------------//
+//-------------------//
 
 // Bloqueo del coche mientras no haya salida (pero NO cortamos el update,
 // para que la pista/culling se siga dibujando durante la modal)
