@@ -202,13 +202,26 @@ const eventY = height - bottomH - eventH - 10;
 this._ensureCarTexture();
 this._tryEnsureSkinTexture(carId);
 
-const texKey = this._previewTextureKey(carId);
-const carPreview = this.add.sprite(cardX + cardW / 2, cardY + cardH / 2 + 14, texKey).setOrigin(0.5);
+// Preview coche: skin real si existe, si no fallback a 'car'
+this._ensureCarTexture();
+this._tryEnsureSkinTexture(carId);
+
+// ✅ Textura segura: si no existe, usa 'car' (y además evita keys raras)
+let texKey = this._previewTextureKey(carId);
+if (!this.textures.exists(texKey)) texKey = 'car';
+
+const carPreview = this.add.sprite(
+  cardX + cardW / 2,
+  cardY + cardH / 2 + 14,
+  texKey
+).setOrigin(0.5);
+
+carPreview.setDepth(50); // ✅ por encima de la card, siempre
+
 // --- CLIP DEL PREVIEW (no puede salirse de la tarjeta) ---
 const clip = this.make.graphics({ x: 0, y: 0, add: false });
 clip.fillStyle(0xffffff, 1);
 
-// Ajusta estas variables a las de TU card
 clip.fillRoundedRect(
   cardX + 16,
   cardY + 20,
@@ -219,16 +232,28 @@ clip.fillRoundedRect(
 
 const mask = clip.createGeometryMask();
 carPreview.setMask(mask);
-// Ajuste de tamaño para que encaje bonito en la card (más conservador)
-const maxW = cardW * 0.30;
-const maxH = cardH * 0.20;
 
-let s = Math.min(maxW / carPreview.width, maxH / carPreview.height);
+// ✅ Refit robusto (evita width/height = 0 justo al crearlo)
+const refitPreview = () => {
+  const maxW = cardW * 0.42;
+  const maxH = cardH * 0.28;
 
-// Blindaje: en menú NO permitimos gigantismos (tapa UI en landscape)
-s = clamp(s, 0.12, 1.35);
+  const sw = carPreview.width || 1;
+  const sh = carPreview.height || 1;
 
-carPreview.setScale(s);
+  let s = Math.min(maxW / sw, maxH / sh);
+  s = clamp(s, 0.15, 3.0);
+  carPreview.setScale(s);
+};
+
+// 1) ajuste inmediato
+refitPreview();
+
+// 2) ajuste en el siguiente tick (cuando Phaser ya “midió” el sprite)
+this.time.delayedCall(0, () => {
+  if (!carPreview || !carPreview.active) return;
+  refitPreview();
+});
 
 hero.add(carPreview);
 
