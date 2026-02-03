@@ -1877,6 +1877,53 @@ this._prevThrottleDown = throttleDown;
 
 //-------------------//
 //-------------------//
+    // START LIGHTS: arrancar automáticamente 1 vez
+if (!this._startAutoFired && this._startState === 'COUNTDOWN') {
+  this._startAutoFired = true;
+
+  if (this._startHint) this._startHint.setText('Mantente listo...');
+  if (this._startStatus) {
+    this._startStatus.setText('RED LIGHTS');
+    this._startStatus.setColor('#ffffff');
+  }
+
+  if (this._startAsset) this._startAsset.setTexture('start_base');
+
+  const stepMs = 600;
+
+  for (let i = 1; i <= 6; i++) {
+    this.time.delayedCall(stepMs * i, () => {
+      if (this._startAsset) this._startAsset.setTexture(`start_l${i}`);
+    });
+  }
+
+  const randMs = 800 + Math.floor(Math.random() * 700);
+
+  this.time.delayedCall(stepMs * 6 + randMs, () => {
+    this._startState = 'GO';
+
+    if (this._startAsset) this._startAsset.setTexture('start_base');
+
+    if (this._startStatus) {
+      this._startStatus.setText('GO!');
+      this._startStatus.setColor('#2bff88');
+    }
+
+    if (this.timing) {
+      this.timing.lapStart = performance.now();
+      this.timing.started = true;
+      this.timing.s1 = null;
+      this.timing.s2 = null;
+      this.timing.s3 = null;
+    }
+
+    this.time.delayedCall(350, () => {
+      this._startState = 'RACING';
+      this._raceStarted = true;
+      if (this._startModal) this._startModal.setVisible(false);
+    });
+  });
+}
 
 // Bloqueo del coche mientras no haya salida (pero NO cortamos el update,
 // para que la pista/culling se siga dibujando durante la modal)
