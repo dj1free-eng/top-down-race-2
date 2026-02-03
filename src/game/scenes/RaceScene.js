@@ -1517,9 +1517,11 @@ this._startStatus = this.add.text(panelX + 18, panelY + panelH - 30, 'WAITING', 
 });
 
 // PNG del semáforo (lo más grande posible)
-this._startAsset = this.add.image(panelX + panelW / 2, panelY + Math.floor(panelH * 0.60), 'start_base')
-  .setOrigin(0.5, 0.5);
-  .setOrigin(0.5, 0.5);
+this._startAsset = this.add.image(
+  panelX + panelW / 2,
+  panelY + Math.floor(panelH * 0.60),
+  'start_base'
+).setOrigin(0.5, 0.5);
 
 // Escala: limita por ancho Y por alto (clave en landscape)
 {
