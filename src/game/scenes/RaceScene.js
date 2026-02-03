@@ -690,7 +690,7 @@ this.ensureCarSkinTexture(spec).then((texKey) => {
   if (!texKey) return;
 
 carSprite.setTexture(texKey);
-carSprite.setOrigin(0.5, 0.30);
+carSprite.setOrigin(0.78, 0.50);
 // Mantén orientación
 carSprite.rotation = Math.PI / 2;
 
