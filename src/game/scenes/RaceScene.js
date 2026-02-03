@@ -2586,7 +2586,7 @@ if (DEV_TOOLS && this.devInfo && this._devVisible) {
     if (this.carRig && this.carBody) {
       this.carRig.x = this.carBody.x;
       this.carRig.y = this.carBody.y;
-      this.carRig.rotation = this.carBody.rotation;
+this.carRig.rotation = this.carBody.rotation + (this._carVisualRotOffset || 0);
     }
 
 
