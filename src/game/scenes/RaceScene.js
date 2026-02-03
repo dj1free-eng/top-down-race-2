@@ -2078,10 +2078,23 @@ if (this._surface === 'OFF') {
       body.velocity.y *= s;
     }
 
-    // Giro (depende de velocidad)
-    const speed01 = clamp(speed / maxFwd, 0, 1);
-    const turnFactor = clamp(1 - speed01, turnMin, 1);
-    const maxTurn = turnRate * turnFactor; // rad/s
+// Giro (depende de velocidad) con SATURACIÓN:
+// - Muy lento => giro contenido (turnMin)
+// - A partir de un umbral => giro constante (turnRate)
+const speed01 = clamp(speed / maxFwd, 0, 1);
+
+// Umbral de saturación: a partir de aquí el giro ya es "normal" y no aumenta más.
+// 0.35 = cuando vas al 35% de tu velocidad máxima ya giras al 100%.
+const TURN_SAT = 0.35;
+
+// Normaliza 0..TURN_SAT a 0..1, y luego lo capamos a 1 para que haga plateau.
+const t = clamp(speed01 / TURN_SAT, 0, 1);
+
+// turnMin = giro mínimo a velocidad casi 0 (ej: 0.15)
+const turnFactor = turnMin + (1 - turnMin) * t;
+
+// maxTurn se vuelve constante cuando t llega a 1
+const maxTurn = turnRate * turnFactor; // rad/s
 
     // 1) Teclado: volante clásico
     if (left && !right) this.car.rotation -= maxTurn * dt;
