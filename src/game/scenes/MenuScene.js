@@ -222,7 +222,11 @@ carPreview.setMask(mask);
 // Ajuste de tamaño para que encaje bonito en la card
 const maxW = cardW * 0.42;
 const maxH = cardH * 0.28;
-const s = Math.min(maxW / carPreview.width, maxH / carPreview.height);
+let s = Math.min(maxW / carPreview.width, maxH / carPreview.height);
+
+// Blindaje: evita escalas ridículas por medidas raras
+s = clamp(s, 0.15, 3.0);
+
 carPreview.setScale(s);
 
 hero.add(carPreview);
@@ -573,7 +577,7 @@ bottom.add(tracksBtn);
     ov.add(info);
 
     const cardW = clamp(Math.floor((w - pad * 3) / 2), 220, 360);
-    const cardH = clamp(Math.floor(h * 0.62), 150, 240);
+const cardH = clamp(Math.floor(height * 0.46), 180, 360);
     const topY = y + 44;
 
     const makeCard = (cx, cy, t) => {
