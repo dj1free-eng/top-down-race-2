@@ -588,7 +588,7 @@ bottom.add(tracksBtn);
     ov.add(info);
 
     const cardW = clamp(Math.floor((w - pad * 3) / 2), 220, 360);
-const cardH = clamp(Math.floor(height * 0.46), 180, 360);
+const cardH = clamp(Math.floor(h * 0.62), 150, 240);
     const topY = y + 44;
 
     const makeCard = (cx, cy, t) => {
