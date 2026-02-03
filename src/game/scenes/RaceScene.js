@@ -646,11 +646,12 @@ body.rotation = t01.start.r;
 // Sprite visual: por defecto usa procedural 'car' (fallback seguro)
 const carSprite = this.add.sprite(0, 0, 'car');
 
-// Pivot (origin) adelantado hacia el morro.
-// Como el sprite luego rota +90º, este "adelante" (Y menor) acaba siendo el "frontal" en carrera.
-carSprite.setOrigin(0.5, 0.30);
+// 👇 Ancla el punto “ruedas delanteras” al (0,0) del container.
+// Como estás rotando el sprite con Math.PI/2, normalmente el “morro” queda hacia la derecha.
+// Este origin hace que el pivot esté adelantado (tren delantero).
+carSprite.setOrigin(0.78, 0.50);
 
-// Sin offsets raros: el rig ya lo posiciona
+// Sin offsets: el pivot lo define el origin
 carSprite.x = 0;
 carSprite.y = 0;
 
