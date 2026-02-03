@@ -218,21 +218,6 @@ const carPreview = this.add.sprite(
 
 carPreview.setDepth(50); // ✅ por encima de la card, siempre
 
-// --- CLIP DEL PREVIEW (no puede salirse de la tarjeta) ---
-const clip = this.make.graphics({ x: 0, y: 0, add: false });
-clip.fillStyle(0xffffff, 1);
-
-clip.fillRoundedRect(
-  cardX + 16,
-  cardY + 20,
-  cardW - 32,
-  cardH - 60,
-  16
-);
-
-const mask = clip.createGeometryMask();
-carPreview.setMask(mask);
-
 // ✅ Refit robusto (evita width/height = 0 justo al crearlo)
 const refitPreview = () => {
   const maxW = cardW * 0.42;
