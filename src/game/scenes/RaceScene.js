@@ -654,9 +654,9 @@ carSprite.y = 0;
 carSprite.rotation = Math.PI / 2;
 
 // Tamaño objetivo “caja” en pista (NO fuerza proporción, solo limita)
-const TARGET_W = 64 * vScale;
-const TARGET_H = 32 * vScale;
-
+// Caja objetivo más generosa (menos reducción artificial)
+const TARGET_W = 96 * vScale;
+const TARGET_H = 48 * vScale;
 // Escala uniforme para que NO se deforme (fit inside box)
 const fitSpriteToBox = () => {
   // width/height aquí son los del frame/textura actual
