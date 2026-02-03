@@ -1525,8 +1525,8 @@ this._startAsset = this.add.image(
 
 // Escala: limita por ancho Y por alto (clave en landscape)
 {
-  const targetW = Math.min(panelW * 0.82, 620);
-  const targetH = Math.min(panelH * 0.62, Math.floor(h * 0.22)); // ⬅️ manda la altura
+const targetW = Math.min(panelW * 0.88, 640);
+const targetH = Math.min(panelH * 0.70, Math.floor(this.scale.height * 0.32));
   const sW = targetW / this._startAsset.width;
   const sH = targetH / this._startAsset.height;
   const s = Math.min(sW, sH);
