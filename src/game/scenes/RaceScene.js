@@ -646,8 +646,12 @@ body.rotation = t01.start.r;
 // Sprite visual: por defecto usa procedural 'car' (fallback seguro)
 const carSprite = this.add.sprite(0, 0, 'car');
 
-// Offset del sprite dentro del rig (si lo necesitas)
-carSprite.x = 12;
+// Pivot (origin) adelantado hacia el morro.
+// Como el sprite luego rota +90º, este "adelante" (Y menor) acaba siendo el "frontal" en carrera.
+carSprite.setOrigin(0.5, 0.30);
+
+// Sin offsets raros: el rig ya lo posiciona
+carSprite.x = 0;
 carSprite.y = 0;
 
 // Orientación: en tu juego el avance es +X (derecha)
@@ -685,7 +689,7 @@ this.ensureCarSkinTexture(spec).then((texKey) => {
   if (!texKey) return;
 
 carSprite.setTexture(texKey);
-
+carSprite.setOrigin(0.5, 0.30);
 // Mantén orientación
 carSprite.rotation = Math.PI / 2;
 
