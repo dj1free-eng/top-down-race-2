@@ -219,13 +219,14 @@ clip.fillRoundedRect(
 
 const mask = clip.createGeometryMask();
 carPreview.setMask(mask);
-// Ajuste de tamaño para que encaje bonito en la card
-const maxW = cardW * 0.42;
-const maxH = cardH * 0.28;
+// Ajuste de tamaño para que encaje bonito en la card (más conservador)
+const maxW = cardW * 0.30;
+const maxH = cardH * 0.20;
+
 let s = Math.min(maxW / carPreview.width, maxH / carPreview.height);
 
-// Blindaje: evita escalas ridículas por medidas raras
-s = clamp(s, 0.15, 3.0);
+// Blindaje: en menú NO permitimos gigantismos (tapa UI en landscape)
+s = clamp(s, 0.12, 1.35);
 
 carPreview.setScale(s);
 
