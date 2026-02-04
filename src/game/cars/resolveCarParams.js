@@ -56,7 +56,7 @@ export function resolveCarParams(baseSpec, tuning = {}) {
   const out = {
     ...baseSpec,
     name: baseSpec.name || baseSpec.id,
-
+steering,
     // Longitudinal
     accel: Math.max(0, (baseSpec.accel || 0) * t.accelMult),
     brakeForce: Math.max(0, (baseSpec.brakeForce || 0) * t.brakeMult),
