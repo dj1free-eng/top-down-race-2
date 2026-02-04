@@ -2083,14 +2083,16 @@ if (this._surface === 'OFF') {
 // ===============================
 
 // Perfil de dirección (si por lo que sea no existe, usa fallback ARCADE)
-const S = (this.carParams && this.carParams.steering) ? this.carParams.steering : {
-  profile: 'ARCADE',
+const BASE_STEERING = {
+  profile: 'BASE',
   yawSpeedMin: 12,
   steerSat: 0.45,
   lowSpeedSteer: 0.35,
   highSpeedLimit: 0.75,
   lateralGrip: 6
 };
+
+const S = (this.carParams && this.carParams.steering) ? this.carParams.steering : BASE_STEERING;
 
 // Velocidad longitudinal (solo avance real)
 const forwardSpeed =
