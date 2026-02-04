@@ -51,7 +51,7 @@ export const CAR_SPECS = {
   power: {
     id: 'power',
     name: 'Power (más nervioso)',
-
+steeringProfile: 'DIRECT',
     // Más punta y más empuje
     maxFwd: 600,
     maxRev: 260,
@@ -118,7 +118,7 @@ export const CAR_SPECS = {
     country: 'España',
     category: 'All-Rounder',
     role: 'Transición',
-
+steeringProfile: 'DIRECT',
     // UI / Colección
     collectionNo: 2,
     rarity: 'Poco común',
@@ -229,7 +229,7 @@ export const CAR_SPECS = {
     country: 'Reino Unido',
     category: 'All-Rounder',
     role: 'Competitivo avanzado',
-
+steeringProfile: 'DIRECT',
     // UI / Colección
     collectionNo: 5,
     rarity: 'Raro',
@@ -488,7 +488,7 @@ export const CAR_SPECS = {
     country: 'Italia',
     category: 'Velocidad',
     role: 'Velocidad élite',
-
+steeringProfile: 'DIRECT',
     // UI / Colección
     collectionNo: 12,
     rarity: 'Élite',
@@ -562,7 +562,7 @@ export const CAR_SPECS = {
     country: 'EE.UU.',
     category: 'Potencia',
     role: 'Monster truck',
-
+steeringProfile: 'DIRECT',
     // UI / Colección
     collectionNo: 14,
     rarity: 'Élite',
