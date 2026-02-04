@@ -2146,6 +2146,43 @@ if (
     this.car.rotation = target;
   }
 }
+    // =======================================
+// FRONT-STEER FEEL: reduce slip lateral
+// =======================================
+
+// Si el jugador está intentando girar (teclas o stick), aplicamos "agarre" lateral.
+// Esto hace que la velocidad se alinee con el morro y deja de sentirse como "ruedas traseras directrices".
+const steeringInput =
+  (left && !right) ||
+  (right && !left) ||
+  (stickMag > 0.15);
+
+if (steeringInput) {
+  const vx0 = body.velocity.x;
+  const vy0 = body.velocity.y;
+
+  // Ejes del coche
+  const fx = Math.cos(this.car.rotation);
+  const fy = Math.sin(this.car.rotation);
+  const rx = -fy; // right vector
+  const ry = fx;
+
+  // Componentes de velocidad: forward y lateral
+  const vF = vx0 * fx + vy0 * fy;
+  const vL = vx0 * rx + vy0 * ry;
+
+  // "Grip" lateral: cuanto más alto, más mata el deslizamiento lateral.
+  // Ajustable: 6–14 suele ir bien en arcade.
+  const LATERAL_GRIP = 10;
+
+  // A baja velocidad no lo mates demasiado (para que no parezca que va "sobre raíles")
+  const k = clamp(LATERAL_GRIP * dt, 0, 1);
+  const vL2 = vL * (1 - k);
+
+  // Reconstruimos el vector velocidad ya más alineado
+  body.velocity.x = fx * vF + rx * vL2;
+  body.velocity.y = fy * vF + ry * vL2;
+}
 
 // === Track culling render (solo celdas cercanas) ===
 // IMPORTANTE: si aquí explota, no debe tumbar el update entero.
