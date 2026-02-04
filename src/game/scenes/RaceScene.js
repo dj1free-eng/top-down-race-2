@@ -482,12 +482,64 @@ this.baseSpec = CAR_SPECS[this.carId] || CAR_SPECS.stock;
         gripBrakeAdd: tiresLv * 0.015
       };
     };
+// ===============================
+// DEV TUNING (localStorage) — overrides en caliente
+// ===============================
+this._devTuneKey = 'tdr2:devTune:v1';
 
+// Defaults (mínimos y seguros)
+this._devTuning = {
+  accelMult: 1.0,
+  maxFwdAdd: 0,
+  brakeMult: 1.0,
+  dragMult: 1.0,
+  turnRateMult: 1.0,
+  turnMinAdd: 0,
+  maxRevAdd: 0,
+  gripDriveAdd: 0,
+  gripCoastAdd: 0,
+  gripBrakeAdd: 0
+};
+
+// Load (si existe)
+try {
+  const raw = localStorage.getItem(this._devTuneKey);
+  const parsed = raw ? JSON.parse(raw) : null;
+  if (parsed && typeof parsed === 'object') {
+    // Solo copiar claves conocidas (evita basura)
+    for (const k of Object.keys(this._devTuning)) {
+      if (Number.isFinite(parsed[k])) this._devTuning[k] = parsed[k];
+    }
+  }
+} catch {}
+
+// Helpers
+this._saveDevTuning = () => {
+  try { localStorage.setItem(this._devTuneKey, JSON.stringify(this._devTuning)); } catch {}
+};
+
+this._resetDevTuning = () => {
+  this._devTuning.accelMult = 1.0;
+  this._devTuning.maxFwdAdd = 0;
+  this._devTuning.brakeMult = 1.0;
+  this._devTuning.dragMult = 1.0;
+  this._devTuning.turnRateMult = 1.0;
+  this._devTuning.turnMinAdd = 0;
+  this._devTuning.maxRevAdd = 0;
+  this._devTuning.gripDriveAdd = 0;
+  this._devTuning.gripCoastAdd = 0;
+  this._devTuning.gripBrakeAdd = 0;
+  this._saveDevTuning();
+};
     // Tuning derivado desde upgrades
-    this.tuning = tuningFromUpgrades(this.upgrades);
+this.tuningBase = tuningFromUpgrades(this.upgrades);
+// tuning final = upgrades + devTuning (dev manda por encima)
+this.tuning = { ...this.tuningBase, ...this._devTuning };
 
     // Helper para aplicar params al “motor”
     this.applyCarParams = () => {
+      // Recalcular tuning final en cada apply (por si cambió devTuning)
+this.tuning = { ...this.tuningBase, ...this._devTuning };
 this.carParams = resolveCarParams(this.baseSpec, this.tuning);
 
       this.accel = this.carParams.accel;
