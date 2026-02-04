@@ -22,7 +22,37 @@ export function resolveCarParams(baseSpec, tuning = {}) {
 
     ...tuning
   };
+  // ---------------------------------
+  // STEERING PROFILES
+  // ---------------------------------
+  const steeringProfile = baseSpec.steeringProfile || 'ARCADE';
 
+  let steering = null;
+
+  if (steeringProfile === 'DIRECT') {
+    steering = {
+      profile: 'DIRECT',
+
+      yawSpeedMin: 18,
+      steerSat: 0.35,
+      lowSpeedSteer: 0.20,
+      highSpeedLimit: 0.55,
+
+      lateralGrip: 10
+    };
+  } else {
+    // ARCADE (por ahora suave y estable)
+    steering = {
+      profile: 'ARCADE',
+
+      yawSpeedMin: 12,
+      steerSat: 0.45,
+      lowSpeedSteer: 0.35,
+      highSpeedLimit: 0.75,
+
+      lateralGrip: 6
+    };
+  }
   const out = {
     ...baseSpec,
     name: baseSpec.name || baseSpec.id,
