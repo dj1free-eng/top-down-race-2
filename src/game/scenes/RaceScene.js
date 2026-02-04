@@ -1347,7 +1347,49 @@ if (DEV_TOOLS) {
     lineSpacing: 2,
     wordWrap: { width: panelW - 20, useAdvancedWrap: false }
   }).setScrollFactor(0).setDepth(1100);
+// ===============================
+// DEV BUTTONS (mínimo viable)
+// ===============================
+const mkBtn = (x, y, label, onClick) => {
+  const b = this.add.text(x, y, label, {
+    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: '12px',
+    color: '#ffffff',
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    padding: { left: 6, right: 6, top: 3, bottom: 3 }
+  })
+    .setScrollFactor(0)
+    .setDepth(1100)
+    .setInteractive({ useHandCursor: true });
 
+  b.on('pointerdown', () => onClick?.());
+  return b;
+};
+
+const bx = panelX + 10;
+const by = panelY + 146;
+
+// A+ / A- = accelMult
+this.devBtnAPlus = mkBtn(bx, by, 'A+', () => {
+  this._devTuning.accelMult = Math.min(2.5, this._devTuning.accelMult + 0.05);
+  this.applyCarParams();
+});
+this.devBtnAMinus = mkBtn(bx + 44, by, 'A-', () => {
+  this._devTuning.accelMult = Math.max(0.4, this._devTuning.accelMult - 0.05);
+  this.applyCarParams();
+});
+
+// SAVE / RST
+this.devBtnSave = mkBtn(bx + 88, by, 'SAVE', () => {
+  this._saveDevTuning();
+});
+this.devBtnReset = mkBtn(bx + 144, by, 'RST', () => {
+  this._resetDevTuning();
+  this.applyCarParams();
+});
+
+// Registrar para toggle ON/OFF
+this._devRegister(this.devBtnAPlus, this.devBtnAMinus, this.devBtnSave, this.devBtnReset);
   // Recolocar logs (_dbgText) dentro del panel (si existe ya)
   if (this._dbgText) {
     this._dbgText.setPosition(panelX + 10, panelY + 120);
