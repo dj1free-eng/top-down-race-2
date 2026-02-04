@@ -229,7 +229,7 @@ steeringProfile: 'DIRECT',
     country: 'Reino Unido',
     category: 'All-Rounder',
     role: 'Competitivo avanzado',
-handlingProfile: 'F1_DOWNFORCE'
+handlingProfile: 'F1_DOWNFORCE',
     // UI / Colección
     collectionNo: 5,
     rarity: 'Raro',
