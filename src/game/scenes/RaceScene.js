@@ -2079,39 +2079,41 @@ if (this._surface === 'OFF') {
     }
 
 // ===============================
-// GIRO REALISTA ARCADE (STEERING)
+// STEERING (por perfil en carParams)
 // ===============================
 
-// Velocidad longitudinal (solo avance real del coche)
+// Perfil de dirección (si por lo que sea no existe, usa fallback ARCADE)
+const S = (this.carParams && this.carParams.steering) ? this.carParams.steering : {
+  profile: 'ARCADE',
+  yawSpeedMin: 12,
+  steerSat: 0.45,
+  lowSpeedSteer: 0.35,
+  highSpeedLimit: 0.75,
+  lateralGrip: 6
+};
+
+// Velocidad longitudinal (solo avance real)
 const forwardSpeed =
   body.velocity.x * dirX +
   body.velocity.y * dirY;
 
 const absFwdSpeed = Math.abs(forwardSpeed);
-
-// Normalizamos respecto a la velocidad máxima
 const speed01 = clamp(absFwdSpeed / maxFwd, 0, 1);
 
-// --- Parámetros de dirección ---
-const YAW_SPEED_MIN = 18;   // por debajo de esto, el coche casi no rota
-const TURN_SAT = 0.35;      // a partir de aquí el giro es “normal”
-const LOW_SPEED_STEER = 0.20; // 20% de giro a muy baja velocidad
-const HIGH_SPEED_LIMIT = 0.55; // a vmax solo 55% de dirección
-
-// Rampa de giro hasta régimen
-const steerT = clamp(speed01 / TURN_SAT, 0, 1);
+// Rampa hasta “régimen”
+const steerT = clamp(speed01 / S.steerSat, 0, 1);
 const baseSteer =
-  LOW_SPEED_STEER + (1 - LOW_SPEED_STEER) * steerT;
+  S.lowSpeedSteer + (1 - S.lowSpeedSteer) * steerT;
 
-// Limitación de dirección a alta velocidad
+// Limitación a alta velocidad (estabilidad)
 const highSpeedSteer =
-  1 - (1 - HIGH_SPEED_LIMIT) * speed01;
+  1 - (1 - S.highSpeedLimit) * speed01;
 
 let turnFactor = baseSteer * highSpeedSteer;
 
-// En casi parado: capar giro fuerte
-if (absFwdSpeed < YAW_SPEED_MIN) {
-  turnFactor *= absFwdSpeed / YAW_SPEED_MIN;
+// En casi parado: el coche NO rota (ruedas pueden girar, pero no hay yaw real)
+if (absFwdSpeed < S.yawSpeedMin) {
+  turnFactor *= absFwdSpeed / S.yawSpeedMin;
 }
 
 const maxTurn = turnRate * turnFactor; // rad/s
@@ -2133,7 +2135,7 @@ if (
   !left &&
   !right &&
   stickMag > 0.15 &&
-  absFwdSpeed > YAW_SPEED_MIN
+  absFwdSpeed > S.yawSpeedMin
 ) {
   const target = Math.atan2(t.stickY, t.stickX);
   const diff = wrapPi(target - this.car.rotation);
@@ -2146,12 +2148,10 @@ if (
     this.car.rotation = target;
   }
 }
-    // =======================================
+
+// =======================================
 // FRONT-STEER FEEL: reduce slip lateral
 // =======================================
-
-// Si el jugador está intentando girar (teclas o stick), aplicamos "agarre" lateral.
-// Esto hace que la velocidad se alinee con el morro y deja de sentirse como "ruedas traseras directrices".
 const steeringInput =
   (left && !right) ||
   (right && !left) ||
@@ -2164,22 +2164,16 @@ if (steeringInput) {
   // Ejes del coche
   const fx = Math.cos(this.car.rotation);
   const fy = Math.sin(this.car.rotation);
-  const rx = -fy; // right vector
+  const rx = -fy;
   const ry = fx;
 
-  // Componentes de velocidad: forward y lateral
+  // vF = componente forward, vL = componente lateral
   const vF = vx0 * fx + vy0 * fy;
   const vL = vx0 * rx + vy0 * ry;
 
-  // "Grip" lateral: cuanto más alto, más mata el deslizamiento lateral.
-  // Ajustable: 6–14 suele ir bien en arcade.
-  const LATERAL_GRIP = 10;
-
-  // A baja velocidad no lo mates demasiado (para que no parezca que va "sobre raíles")
-  const k = clamp(LATERAL_GRIP * dt, 0, 1);
+  const k = clamp((S.lateralGrip || 0) * dt, 0, 1);
   const vL2 = vL * (1 - k);
 
-  // Reconstruimos el vector velocidad ya más alineado
   body.velocity.x = fx * vF + rx * vL2;
   body.velocity.y = fy * vF + ry * vL2;
 }
