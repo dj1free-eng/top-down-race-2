@@ -2078,44 +2078,74 @@ if (this._surface === 'OFF') {
       body.velocity.y *= s;
     }
 
-// Giro (depende de velocidad) con SATURACIÓN:
-// - Muy lento => giro contenido (turnMin)
-// - A partir de un umbral => giro constante (turnRate)
-const speed01 = clamp(speed / maxFwd, 0, 1);
+// ===============================
+// GIRO REALISTA ARCADE (STEERING)
+// ===============================
 
-// Umbral de saturación: a partir de aquí el giro ya es "normal" y no aumenta más.
-// 0.35 = cuando vas al 35% de tu velocidad máxima ya giras al 100%.
-const TURN_SAT = 0.35;
+// Velocidad longitudinal (solo avance real del coche)
+const forwardSpeed =
+  body.velocity.x * dirX +
+  body.velocity.y * dirY;
 
-// Normaliza 0..TURN_SAT a 0..1, y luego lo capamos a 1 para que haga plateau.
-const turnT = clamp(speed01 / TURN_SAT, 0, 1);
+const absFwdSpeed = Math.abs(forwardSpeed);
 
-// turnMin = giro mínimo a velocidad casi 0 (ej: 0.15)
-const turnFactor = turnMin + (1 - turnMin) * turnT;
+// Normalizamos respecto a la velocidad máxima
+const speed01 = clamp(absFwdSpeed / maxFwd, 0, 1);
 
-// maxTurn se vuelve constante cuando t llega a 1
+// --- Parámetros de dirección ---
+const YAW_SPEED_MIN = 18;   // por debajo de esto, el coche casi no rota
+const TURN_SAT = 0.35;      // a partir de aquí el giro es “normal”
+const LOW_SPEED_STEER = 0.20; // 20% de giro a muy baja velocidad
+const HIGH_SPEED_LIMIT = 0.55; // a vmax solo 55% de dirección
+
+// Rampa de giro hasta régimen
+const steerT = clamp(speed01 / TURN_SAT, 0, 1);
+const baseSteer =
+  LOW_SPEED_STEER + (1 - LOW_SPEED_STEER) * steerT;
+
+// Limitación de dirección a alta velocidad
+const highSpeedSteer =
+  1 - (1 - HIGH_SPEED_LIMIT) * speed01;
+
+let turnFactor = baseSteer * highSpeedSteer;
+
+// En casi parado: capar giro fuerte
+if (absFwdSpeed < YAW_SPEED_MIN) {
+  turnFactor *= absFwdSpeed / YAW_SPEED_MIN;
+}
+
 const maxTurn = turnRate * turnFactor; // rad/s
 
-    // 1) Teclado: volante clásico
-    if (left && !right) this.car.rotation -= maxTurn * dt;
-    if (right && !left) this.car.rotation += maxTurn * dt;
+// --------------------------------
+// 1) Teclado: volante clásico
+// --------------------------------
+if (left && !right) this.car.rotation -= maxTurn * dt;
+if (right && !left) this.car.rotation += maxTurn * dt;
 
-    // 2) Táctil: alineamiento por stick (solo si hay stick activo)
-    const stickMag = Math.sqrt(t.stickX * t.stickX + t.stickY * t.stickY);
-    const movingEnough = speed > 8;
+// --------------------------------
+// 2) Táctil: stick (solo si hay avance)
+// --------------------------------
+const stickMag = Math.sqrt(
+  t.stickX * t.stickX + t.stickY * t.stickY
+);
 
-    if (!left && !right && stickMag > 0.15 && movingEnough) {
-      const target = Math.atan2(t.stickY, t.stickX);
-      const diff = wrapPi(target - this.car.rotation);
+if (
+  !left &&
+  !right &&
+  stickMag > 0.15 &&
+  absFwdSpeed > YAW_SPEED_MIN
+) {
+  const target = Math.atan2(t.stickY, t.stickX);
+  const diff = wrapPi(target - this.car.rotation);
 
-      const EPS = 0.02;
-      if (Math.abs(diff) > EPS) {
-        const step = clamp(diff, -maxTurn * dt, maxTurn * dt);
-        this.car.rotation += step;
-      } else {
-        this.car.rotation = target;
-      }
-    }
+  const EPS = 0.02;
+  if (Math.abs(diff) > EPS) {
+    const step = clamp(diff, -maxTurn * dt, maxTurn * dt);
+    this.car.rotation += step;
+  } else {
+    this.car.rotation = target;
+  }
+}
 
 // === Track culling render (solo celdas cercanas) ===
 // IMPORTANTE: si aquí explota, no debe tumbar el update entero.
