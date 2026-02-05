@@ -1599,7 +1599,7 @@ this._devModalSync = () => {
 
 const btnY = mPanelY + mPanelH - 44;  
   const contentTop = mPanelY + 58;
-const contentBottom = btnY - 10;
+const contentBottom = btnY - 18; // más margen para que no pise botones
 const contentH = Math.max(120, contentBottom - contentTop);
 
 this._devModalScroll = {
@@ -1615,8 +1615,8 @@ this._devModal.add(this._devModalContent);
 
 // Máscara (recorta lo que se sale)
 this._devModalMaskRect = this.add.rectangle(mPanelX + 10, contentTop, mPanelW - 20, contentH, 0x000000, 0)
-  .setOrigin(0, 0)
-  .setInteractive(); // captura toques para scroll
+  .setOrigin(0, 0);
+// OJO: NO setInteractive aquí, si no bloquea sliders y botones
 
 this._devModalMask = this._devModalMaskRect.createGeometryMask();
 this._devModalContent.setMask(this._devModalMask);
