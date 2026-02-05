@@ -1441,22 +1441,155 @@ this._devModalHint = this.add.text(mPanelX + 14, mPanelY + 34, 'Ajusta parámetr
   fontSize: '12px',
   color: '#b7c0ff'
 });
+// -------------------------------
+// SLIDERS (UI + live values)
+// -------------------------------
+const clamp01 = (v) => Math.max(0, Math.min(1, v));
+const snap = (v, step) => (step ? Math.round(v / step) * step : v);
 
-this._devModalBody = this.add.text(mPanelX + 14, mPanelY + 64,
-  'Aquí irán los sliders (Paso 2).\n\n' +
-  'Por ahora:\n' +
-  '- APPLY: aplica y cierra\n' +
-  '- SAVE: guarda en el móvil\n' +
-  '- RESET: vuelve a defaults\n' +
-  '- CLOSE: cierra sin aplicar',
-  {
+this._devModalSliders = [];
+this._devModalLastApply = 0;
+
+const fmt = (v, step) => {
+  // Si step es entero o múltiplo de 1, mostrar sin decimales
+  if (!step || step >= 1) return String(Math.round(v));
+  // Si step pequeño, 2 decimales
+  return Number(v).toFixed(step <= 0.01 ? 2 : 2);
+};
+
+const mkSlider = (opts) => {
+  const {
+    key, label, min, max, step,
+    x, y, w
+  } = opts;
+
+  const rowH = 34;
+
+  const txtLabel = this.add.text(x, y, label, {
+    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: '12px',
+    color: '#ffffff'
+  });
+
+  const txtVal = this.add.text(x + w - 62, y, '', {
     fontFamily: 'monospace',
     fontSize: '12px',
+    color: '#b7c0ff'
+  });
+
+  const trackY = y + 18;
+  const track = this.add.rectangle(x, trackY, w - 80, 6, 0xffffff, 0.14).setOrigin(0, 0.5);
+  const fill = this.add.rectangle(x, trackY, 10, 6, 0xffffff, 0.28).setOrigin(0, 0.5);
+
+  const thumb = this.add.circle(x, trackY, 9, 0xffffff, 0.65)
+    .setStrokeStyle(1, 0xffffff, 0.25)
+    .setInteractive({ useHandCursor: true });
+
+  this.input.setDraggable(thumb);
+
+  const setFromValue = (value) => {
+    const v = Math.max(min, Math.min(max, value));
+    const t = (v - min) / (max - min);
+    const px = x + (track.width) * t;
+
+    thumb.x = px;
+    fill.width = Math.max(10, track.width * t);
+    txtVal.setText(fmt(v, step));
+
+    // Guardar el valor “snap”
+    this._devTuning[key] = snap(v, step);
+  };
+
+  const setFromPointerX = (px) => {
+    const t = clamp01((px - x) / track.width);
+    const v = min + t * (max - min);
+    setFromValue(v);
+  };
+
+  // Sync inicial
+  setFromValue(this._devTuning[key]);
+
+  // Drag en tiempo real
+  thumb.on('drag', (_p, dragX) => {
+    setFromPointerX(dragX);
+
+    // Apply live con throttle suave (no cada pixel)
+    const now = performance.now();
+    if (now - this._devModalLastApply > 60) {
+      this._devModalLastApply = now;
+      this.applyCarParams?.();
+    }
+  });
+
+  // Tap sobre la pista para saltar
+  track.setInteractive({ useHandCursor: true });
+  track.on('pointerdown', (p) => {
+    setFromPointerX(p.worldX);
+    this.applyCarParams?.();
+  });
+
+  // Botones - / + finos (para clavar valores)
+  const btnMinus = this.add.text(x + (w - 74), y + 15, '−', {
+    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: '16px',
     color: '#ffffff',
-    lineSpacing: 3,
-    wordWrap: { width: mPanelW - 28, useAdvancedWrap: false }
-  }
-);
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    padding: { left: 8, right: 8, top: 2, bottom: 2 }
+  }).setInteractive({ useHandCursor: true });
+
+  const btnPlus = this.add.text(x + (w - 40), y + 15, '+', {
+    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: '16px',
+    color: '#ffffff',
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    padding: { left: 8, right: 8, top: 2, bottom: 2 }
+  }).setInteractive({ useHandCursor: true });
+
+  btnMinus.on('pointerdown', () => {
+    setFromValue((this._devTuning[key] ?? 0) - (step || 1));
+    this.applyCarParams?.();
+  });
+  btnPlus.on('pointerdown', () => {
+    setFromValue((this._devTuning[key] ?? 0) + (step || 1));
+    this.applyCarParams?.();
+  });
+
+  const items = [txtLabel, txtVal, track, fill, thumb, btnMinus, btnPlus];
+
+  // Método sync (cuando abres la modal)
+  const sync = () => setFromValue(this._devTuning[key]);
+
+  return { key, items, sync, yBottom: y + rowH };
+};
+
+// Para sincronizar todos al abrir modal
+this._devModalSync = () => {
+  for (const s of this._devModalSliders) s.sync?.();
+};
+  
+// Panel de sliders (compacto)
+const sx = mPanelX + 14;
+let sy = mPanelY + 64;
+const sw = mPanelW - 28;
+
+const sliderDefs = [
+  { key: 'accelMult',     label: 'Aceleración (accelMult)',   min: 0.40, max: 2.50, step: 0.05 },
+  { key: 'maxFwdAdd',     label: 'V.Max (maxFwdAdd)',         min: -200, max:  300, step: 10 },
+  { key: 'brakeMult',     label: 'Freno (brakeMult)',         min: 0.40, max: 2.50, step: 0.05 },
+  { key: 'dragMult',      label: 'Drag (dragMult)',           min: 0.30, max: 2.00, step: 0.05 },
+  { key: 'turnRateMult',  label: 'Giro (turnRateMult)',       min: 0.50, max: 2.00, step: 0.05 },
+  { key: 'turnMinAdd',    label: 'Giro mínimo (turnMinAdd)',  min: -0.20, max: 0.20, step: 0.01 },
+  { key: 'gripDriveAdd',  label: 'Grip drive (gripDriveAdd)', min: -0.20, max: 0.20, step: 0.01 },
+  { key: 'gripCoastAdd',  label: 'Grip coast (gripCoastAdd)', min: -0.20, max: 0.20, step: 0.01 },
+  { key: 'gripBrakeAdd',  label: 'Grip brake (gripBrakeAdd)', min: -0.20, max: 0.20, step: 0.01 }
+];
+
+for (const d of sliderDefs) {
+  const s = mkSlider({ ...d, x: sx, y: sy, w: sw });
+  this._devModal.add(s.items);
+  this._devModalSliders.push(s);
+  sy = s.yBottom;
+}
 
 // Botonera inferior
 const btnY = mPanelY + mPanelH - 44;
@@ -1516,6 +1649,7 @@ this._setDevModal = (open) => {
   // Ajustar tamaño si rotas pantalla
   if (this._devModalOpen) {
     this._devModalBg.setSize(this.scale.width, this.scale.height);
+ this._devModalSync?.();
   }
 };
 
