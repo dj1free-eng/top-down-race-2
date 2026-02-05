@@ -1735,28 +1735,27 @@ this._setDevModal = (open) => {
 };
 
 // Cerrar tocando fuera (en el fondo)
-this._devModalBg.on('pointerdown', () => this._setDevModal(false));
-// -------------------------------
-// Z-ORDER FIX: panel al fondo, UI arriba
+this._devModalBg.on('pointerdown', () => this._setDevModal(// -------------------------------
+// Z-ORDER FIX: orden correcto modal
 // -------------------------------
 
-// 1) Fondo atrás del todo
+// Fondo al fondo
 this._devModal.sendToBack(this._devModalBg);
 
-// 2) Panel detrás del contenido (pero encima del fondo)
-this._devModal.sendToBack(this._devModalPanel);
+// Panel por encima del fondo
+this._devModal.bringToTop(this._devModalPanel);
 
-// 3) La zona de máscara (si existe) encima del panel para capturar scroll
-if (this._devModalMaskRect) this._devModal.bringToTop(this._devModalMaskRect);
-
-// 4) Contenido (sliders) encima del panel
+// Contenido (sliders) por encima del panel
 if (this._devModalContent) this._devModal.bringToTop(this._devModalContent);
 
-// 5) Título y hint arriba
+// La máscara NO debe quedar encima del contenido
+if (this._devModalMaskRect) this._devModal.sendToBack(this._devModalMaskRect);
+
+// Título/hint por encima del contenido
 this._devModal.bringToTop(this._devModalTitle);
 this._devModal.bringToTop(this._devModalHint);
 
-// 6) Botonera arriba del todo
+// Botonera arriba del todo
 this._devModal.bringToTop(this._devModalBtnApply);
 this._devModal.bringToTop(this._devModalBtnSave);
 this._devModal.bringToTop(this._devModalBtnReset);
