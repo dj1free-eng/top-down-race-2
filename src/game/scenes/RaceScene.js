@@ -1398,7 +1398,152 @@ this._devRegister(this.devBtnAPlus, this.devBtnAMinus, this.devBtnSave, this.dev
 
   // Registrar para toggle ON/OFF
   this._devRegister(this.devBox, this.devTitle, this.devInfo, this._dbgText);
+// -------------------------------
+// DEV MODAL (Tuning) — shell
+// -------------------------------
+this._devModalOpen = false;
 
+// Contenedor modal (UI)
+this._devModal = this.add.container(0, 0)
+  .setScrollFactor(0)
+  .setDepth(2200)
+  .setVisible(false);
+
+// Fondo (oscurece y bloquea clicks al juego)
+this._devModalBg = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0x000000, 0.55)
+  .setOrigin(0, 0)
+  .setInteractive();
+
+this._devModal.add(this._devModalBg);
+
+// Panel responsive
+const mw = this.scale.width;
+const mh = this.scale.height;
+const mPanelW = Math.min(780, Math.floor(mw * 0.94));
+const mPanelH = Math.min(520, Math.floor(mh * 0.86));
+const mPanelX = Math.floor((mw - mPanelW) / 2);
+const mPanelY = Math.floor((mh - mPanelH) / 2);
+
+this._devModalPanel = this.add.rectangle(mPanelX, mPanelY, mPanelW, mPanelH, 0x0b1020, 0.95)
+  .setOrigin(0, 0)
+  .setStrokeStyle(1, 0xffffff, 0.14);
+
+this._devModalTitle = this.add.text(mPanelX + 14, mPanelY + 10, 'DEV TUNING', {
+  fontFamily: 'Orbitron, monospace',
+  fontSize: '16px',
+  color: '#ffffff',
+  fontStyle: '800'
+});
+
+this._devModalHint = this.add.text(mPanelX + 14, mPanelY + 34, 'Ajusta parámetros y prueba en pista', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '12px',
+  color: '#b7c0ff'
+});
+
+this._devModalBody = this.add.text(mPanelX + 14, mPanelY + 64,
+  'Aquí irán los sliders (Paso 2).\n\n' +
+  'Por ahora:\n' +
+  '- APPLY: aplica y cierra\n' +
+  '- SAVE: guarda en el móvil\n' +
+  '- RESET: vuelve a defaults\n' +
+  '- CLOSE: cierra sin aplicar',
+  {
+    fontFamily: 'monospace',
+    fontSize: '12px',
+    color: '#ffffff',
+    lineSpacing: 3,
+    wordWrap: { width: mPanelW - 28, useAdvancedWrap: false }
+  }
+);
+
+// Botonera inferior
+const btnY = mPanelY + mPanelH - 44;
+
+const mkModalBtn = (x, label, onClick) => {
+  const b = this.add.text(x, btnY, label, {
+    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: '13px',
+    color: '#ffffff',
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    padding: { left: 10, right: 10, top: 6, bottom: 6 }
+  }).setInteractive({ useHandCursor: true });
+
+  b.on('pointerdown', () => onClick?.());
+  return b;
+};
+
+this._devModalBtnApply = mkModalBtn(mPanelX + 14, 'APPLY', () => {
+  // Aplica (recalc tuning + carParams) y cierra
+  this.applyCarParams?.();
+  this._setDevModal(false);
+});
+
+this._devModalBtnSave = mkModalBtn(mPanelX + 92, 'SAVE', () => {
+  this._saveDevTuning?.();
+});
+
+this._devModalBtnReset = mkModalBtn(mPanelX + 164, 'RESET', () => {
+  this._resetDevTuning?.();
+  this.applyCarParams?.();
+});
+
+this._devModalBtnClose = mkModalBtn(mPanelX + mPanelW - 82, 'CLOSE', () => {
+  this._setDevModal(false);
+});
+
+// Añadir al container modal
+this._devModal.add([
+  this._devModalPanel,
+  this._devModalTitle,
+  this._devModalHint,
+  this._devModalBody,
+  this._devModalBtnApply,
+  this._devModalBtnSave,
+  this._devModalBtnReset,
+  this._devModalBtnClose
+]);
+
+// Funciones abrir/cerrar
+this._setDevModal = (open) => {
+  this._devModalOpen = !!open;
+  this._devModal.setVisible(this._devModalOpen);
+
+  // Cuando modal está abierta, ocultamos el panel DEV para que no moleste
+  if (this._devModalOpen) this._setDevVisible(false);
+
+  // Ajustar tamaño si rotas pantalla
+  if (this._devModalOpen) {
+    this._devModalBg.setSize(this.scale.width, this.scale.height);
+  }
+};
+
+// Cerrar tocando fuera (en el fondo)
+this._devModalBg.on('pointerdown', () => this._setDevModal(false));
+// Botón para abrir modal de tuning
+this.devTuneBtn = this.add.text(panelX + panelW - 54, panelY + 6, 'TUNE', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '12px',
+  color: '#ffffff',
+  backgroundColor: 'rgba(255,255,255,0.10)',
+  padding: { left: 6, right: 6, top: 3, bottom: 3 }
+})
+  .setScrollFactor(0)
+  .setDepth(1101)
+  .setInteractive({ useHandCursor: true });
+
+this.devTuneBtn.on('pointerdown', () => {
+  this._setDevModal?.(true);
+});
+
+// Registrar para toggle ON/OFF
+this._devRegister(this.devTuneBtn);
+// Responder a resize (rotación)
+this.scale.on('resize', (gameSize) => {
+  if (!this._devModal) return;
+  this._devModalBg.setSize(gameSize.width, gameSize.height);
+});
+  
   // Estado inicial: oculto (lo mostrará el gesto 2 dedos)
   this._setDevVisible(false);
 }
