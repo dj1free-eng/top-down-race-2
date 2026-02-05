@@ -1480,12 +1480,11 @@ const mkSlider = (opts) => {
 });
 
   const trackY = y + 18;
-  const track = this.add.rectangle(x, trackY, w - 80, 6, 0xffffff, 0.14).setOrigin(0, 0.5);
-  const fill = this.add.rectangle(x, trackY, 10, 6, 0xffffff, 0.28).setOrigin(0, 0.5);
-
-  const thumb = this.add.circle(x, trackY, 9, 0xffffff, 0.65)
-    .setStrokeStyle(1, 0xffffff, 0.25)
-    .setInteractive({ useHandCursor: true });
+  const track = this.add.rectangle(x, trackY, w - 110, 8, 0xffffff, 0.22).setOrigin(0, 0.5);
+const fill  = this.add.rectangle(x, trackY, 10, 8, 0xffffff, 0.50).setOrigin(0, 0.5);
+  const thumb = this.add.circle(x, trackY, 10, 0xffffff, 0.90)
+  .setStrokeStyle(2, 0x000000, 0.25)
+  .setInteractive({ useHandCursor: true });
 
 
   const setFromValue = (value) => {
@@ -1594,8 +1593,34 @@ thumb.on('pointerdown', (pointer) => {
 this._devModalSync = () => {
   for (const s of this._devModalSliders) s.sync?.();
 };
-  
-// Panel de sliders (compacto)
+  // -------------------------------
+// Scroll area para sliders
+// -------------------------------
+const contentTop = mPanelY + 58;
+const contentBottom = btnY - 10;
+const contentH = Math.max(120, contentBottom - contentTop);
+
+this._devModalScroll = {
+  y: 0,
+  minY: 0,
+  maxY: 0,
+  dragging: false,
+  lastY: 0
+};
+
+this._devModalContent = this.add.container(0, 0);
+this._devModal.add(this._devModalContent);
+
+// Máscara (recorta lo que se sale)
+this._devModalMaskRect = this.add.rectangle(mPanelX + 10, contentTop, mPanelW - 20, contentH, 0x000000, 0)
+  .setOrigin(0, 0)
+  .setInteractive(); // captura toques para scroll
+
+this._devModalMask = this._devModalMaskRect.createGeometryMask();
+this._devModalContent.setMask(this._devModalMask);
+this._devModal.add(this._devModalMaskRect);
+
+  // Panel de sliders (compacto)
 const sx = mPanelX + 14;
 let sy = mPanelY + 64;
 const sw = mPanelW - 28;
@@ -1618,8 +1643,36 @@ for (const d of sliderDefs) {
   this._devModalSliders.push(s);
   sy = s.yBottom;
 }
+// Límites de scroll (si el contenido es más alto que el área visible)
+const contentTotalH = sy - contentTop + 12;
+this._devModalScroll.minY = 0;
+this._devModalScroll.maxY = Math.max(0, contentTotalH - contentH);
+this._devModalContent.y = contentTop;
+// Scroll por arrastre en la zona (móvil friendly)
+this._devModalMaskRect.on('pointerdown', (p) => {
+  this._devModalScroll.dragging = true;
+  this._devModalScroll.lastY = p.worldY;
 
-// Botonera inferior
+  const onMove = (pp) => {
+    if (!this._devModalScroll.dragging) return;
+    const dy = pp.worldY - this._devModalScroll.lastY;
+    this._devModalScroll.lastY = pp.worldY;
+
+    this._devModalScroll.y = Math.max(-this._devModalScroll.maxY, Math.min(0, this._devModalScroll.y + dy));
+    this._devModalContent.y = contentTop + this._devModalScroll.y;
+  };
+
+  const onUp = () => {
+    this._devModalScroll.dragging = false;
+    this.input.off('pointermove', onMove);
+    this.input.off('pointerup', onUp);
+  };
+
+  this.input.on('pointermove', onMove);
+  this.input.on('pointerup', onUp);
+});
+  
+  // Botonera inferior
 const btnY = mPanelY + mPanelH - 44;
 
 const mkModalBtn = (x, label, onClick) => {
