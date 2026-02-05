@@ -2742,15 +2742,16 @@ if (DEV_TOOLS && this.devInfo && this._devVisible) {
   const diag2 = this._trackDiag2 || '';
 
   this.devInfo.setText(
-    `Track: ${this.track?.meta?.id || this.track?.meta?.name || ''}\n` +
-    `CP: ${cp} | Lap: ${this.lapCount || 0}\n` +
-    `Surface: ${surf}\n` +
-    `Cull: ${cull}\n` +
-    `Zoom: ${zoom}\n` +
-    (carCell ? `Cell: ${carCell}\n` : '') +
-    (diag ? `Diag: ${diag}\n` : '') +
-    (diag2 ? `Diag2: ${diag2}\n` : '')
-  );
+  `Track: ${this.track?.meta?.id || this.track?.meta?.name || ''}\n` +
+  `CP: ${cp} | Lap: ${this.lapCount || 0}\n` +
+  `Surface: ${surf}\n` +
+  `Cull: ${cull}\n` +
+  `Zoom: ${zoom}\n` +
+  `accelMult: ${this._devTuning?.accelMult?.toFixed?.(2) ?? '1.00'}\n` +
+  (carCell ? `Cell: ${carCell}\n` : '') +
+  (diag ? `Diag: ${diag}\n` : '') +
+  (diag2 ? `Diag2: ${diag2}\n` : '')
+);
 }
     // Sincronizar rig visual con body físico
     if (this.carRig && this.carBody) {
