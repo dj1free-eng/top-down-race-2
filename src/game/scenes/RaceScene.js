@@ -1596,7 +1596,9 @@ this._devModalSync = () => {
   // -------------------------------
 // Scroll area para sliders
 // -------------------------------
-const contentTop = mPanelY + 58;
+
+const btnY = mPanelY + mPanelH - 44;  
+  const contentTop = mPanelY + 58;
 const contentBottom = btnY - 10;
 const contentH = Math.max(120, contentBottom - contentTop);
 
