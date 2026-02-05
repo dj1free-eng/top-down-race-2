@@ -1665,8 +1665,9 @@ this._devModalBtnSave = mkModalBtn(mPanelX + 92, 'SAVE', () => {
 });
 
 this._devModalBtnReset = mkModalBtn(mPanelX + 164, 'RESET', () => {
-  this._resetDevTuning?.();
-  this.applyCarParams?.();
+  this._resetDevTuning?.();     // resetea valores
+  this._devModalSync?.();       // sincroniza sliders inmediatamente
+  this.applyCarParams?.();      // aplica al coche YA
 });
 
 this._devModalBtnClose = mkModalBtn(mPanelX + mPanelW - 82, 'CLOSE', () => {
