@@ -1736,7 +1736,33 @@ this._setDevModal = (open) => {
 
 // Cerrar tocando fuera (en el fondo)
 this._devModalBg.on('pointerdown', () => this._setDevModal(false));
-// Botón para abrir modal de tuning
+// -------------------------------
+// Z-ORDER FIX: panel al fondo, UI arriba
+// -------------------------------
+
+// 1) Fondo atrás del todo
+this._devModal.sendToBack(this._devModalBg);
+
+// 2) Panel detrás del contenido (pero encima del fondo)
+this._devModal.sendToBack(this._devModalPanel);
+
+// 3) La zona de máscara (si existe) encima del panel para capturar scroll
+if (this._devModalMaskRect) this._devModal.bringToTop(this._devModalMaskRect);
+
+// 4) Contenido (sliders) encima del panel
+if (this._devModalContent) this._devModal.bringToTop(this._devModalContent);
+
+// 5) Título y hint arriba
+this._devModal.bringToTop(this._devModalTitle);
+this._devModal.bringToTop(this._devModalHint);
+
+// 6) Botonera arriba del todo
+this._devModal.bringToTop(this._devModalBtnApply);
+this._devModal.bringToTop(this._devModalBtnSave);
+this._devModal.bringToTop(this._devModalBtnReset);
+this._devModal.bringToTop(this._devModalBtnClose);
+  
+  // Botón para abrir modal de tuning
 this.devTuneBtn = this.add.text(panelX + panelW - 54, panelY + 6, 'TUNE', {
   fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
   fontSize: '12px',
