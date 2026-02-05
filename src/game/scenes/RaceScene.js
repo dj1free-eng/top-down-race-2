@@ -1400,7 +1400,7 @@ this._devRegister(this.devBtnAPlus, this.devBtnAMinus, this.devBtnSave, this.dev
   // Registrar para toggle ON/OFF
   this._devRegister(this.devBox, this.devTitle, this.devInfo, this._dbgText);
 // -------------------------------
-// DEV MODAL (Tuning) — shell
+// DEV MODAL (Tuning) — FIX total (orden + input + contraste)
 // -------------------------------
 this._devModalOpen = false;
 
@@ -1410,26 +1410,30 @@ this._devModal = this.add.container(0, 0)
   .setDepth(2200)
   .setVisible(false);
 
-// Fondo (oscurece y bloquea clicks al juego)
-this._devModalBg = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0x000000, 0.55)
+// Fondo (oscurece y cierra si tocas FUERA)
+this._devModalBg = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0x000000, 0.60)
   .setOrigin(0, 0)
   .setInteractive();
-
-this._devModal.add(this._devModalBg);
 
 // Panel responsive
 const mw = this.scale.width;
 const mh = this.scale.height;
 const mPanelW = Math.min(780, Math.floor(mw * 0.94));
-const mPanelH = Math.min(520, Math.floor(mh * 0.86));
+const mPanelH = Math.min(560, Math.floor(mh * 0.88));
 const mPanelX = Math.floor((mw - mPanelW) / 2);
 const mPanelY = Math.floor((mh - mPanelH) / 2);
 
-this._devModalPanel = this.add.rectangle(mPanelX, mPanelY, mPanelW, mPanelH, 0x0a0f1a, 0.92)
+// Panel (TRAGA el click para que NO cierre)
+this._devModalPanel = this.add.rectangle(mPanelX, mPanelY, mPanelW, mPanelH, 0x0b1324, 0.96)
   .setOrigin(0, 0)
-  .setStrokeStyle(2, 0xffffff, 0.20);
-this._devModalPanel.setInteractive();
-this._devModalPanel.on('pointerdown', () => {}); // traga el click
+  .setStrokeStyle(2, 0xffffff, 0.22)
+  .setInteractive();
+
+this._devModalPanel.on('pointerdown', (p, lx, ly, e) => {
+  e?.stopPropagation?.();
+});
+
+// Título / hint (más legible en móvil)
 this._devModalTitle = this.add.text(mPanelX + 14, mPanelY + 10, 'DEV TUNING', {
   fontFamily: 'Orbitron, monospace',
   fontSize: '16px',
@@ -1440,8 +1444,9 @@ this._devModalTitle = this.add.text(mPanelX + 14, mPanelY + 10, 'DEV TUNING', {
 this._devModalHint = this.add.text(mPanelX + 14, mPanelY + 34, 'Ajusta parámetros y prueba en pista', {
   fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
   fontSize: '12px',
-  color: '#d7dcff'
+  color: '#dfe6ff'
 });
+
 // -------------------------------
 // SLIDERS (UI + live values)
 // -------------------------------
@@ -1452,18 +1457,12 @@ this._devModalSliders = [];
 this._devModalLastApply = 0;
 
 const fmt = (v, step) => {
-  // Si step es entero o múltiplo de 1, mostrar sin decimales
   if (!step || step >= 1) return String(Math.round(v));
-  // Si step pequeño, 2 decimales
   return Number(v).toFixed(step <= 0.01 ? 2 : 2);
 };
 
 const mkSlider = (opts) => {
-  const {
-    key, label, min, max, step,
-    x, y, w
-  } = opts;
-
+  const { key, label, min, max, step, x, y, w } = opts;
   const rowH = 34;
 
   const txtLabel = this.add.text(x, y, label, {
@@ -1473,35 +1472,34 @@ const mkSlider = (opts) => {
   });
 
   const txtVal = this.add.text(x + w - 74, y, '', {
-  fontFamily: 'monospace',
-  fontSize: '13px',
-  color: '#ffffff',
-  backgroundColor: 'rgba(0,0,0,0.35)',
-  padding: { left: 6, right: 6, top: 2, bottom: 2 }
-});
+    fontFamily: 'monospace',
+    fontSize: '13px',
+    color: '#ffffff',
+    backgroundColor: 'rgba(0,0,0,0.40)',
+    padding: { left: 6, right: 6, top: 2, bottom: 2 }
+  });
 
   const trackY = y + 18;
   const track = this.add.rectangle(x, trackY, w - 110, 8, 0xffffff, 0.22).setOrigin(0, 0.5);
-const fill  = this.add.rectangle(x, trackY, 10, 8, 0xffffff, 0.50).setOrigin(0, 0.5);
-  const thumb = this.add.circle(x, trackY, 10, 0xffffff, 0.90)
-  .setStrokeStyle(2, 0x000000, 0.25)
-  .setInteractive({ useHandCursor: true });
+  const fill  = this.add.rectangle(x, trackY, 10, 8, 0xffffff, 0.55).setOrigin(0, 0.5);
 
+  const thumb = this.add.circle(x, trackY, 10, 0xffffff, 0.92)
+    .setStrokeStyle(2, 0x000000, 0.25)
+    .setInteractive({ useHandCursor: true });
 
   const setFromValue = (value) => {
-const raw = Number.isFinite(value)
-  ? value
-  : (Number.isFinite(this._devTuning?.[key]) ? this._devTuning[key] : min);
+    const raw = Number.isFinite(value)
+      ? value
+      : (Number.isFinite(this._devTuning?.[key]) ? this._devTuning[key] : min);
 
-const v = Math.max(min, Math.min(max, raw));
+    const v = Math.max(min, Math.min(max, raw));
     const t = (v - min) / (max - min);
-    const px = x + (track.width) * t;
 
+    const px = x + track.width * t;
     thumb.x = px;
     fill.width = Math.max(10, track.width * t);
     txtVal.setText(fmt(v, step));
 
-    // Guardar el valor “snap”
     this._devTuning[key] = snap(v, step);
   };
 
@@ -1511,57 +1509,59 @@ const v = Math.max(min, Math.min(max, raw));
     setFromValue(v);
   };
 
-  // Sync inicial
   setFromValue(this._devTuning[key]);
 
-// Drag manual (más estable en iPhone que setDraggable en shapes)
-let dragging = false;
+  // Drag manual (iPhone friendly)
+  let dragging = false;
 
-const onMove = (pointer) => {
-  if (!dragging) return;
+  const onMove = (pointer) => {
+    if (!dragging) return;
 
-  setFromPointerX(pointer.worldX);
+    setFromPointerX(pointer.worldX);
 
-  const now = performance.now();
-  if (now - this._devModalLastApply > 60) {
-    this._devModalLastApply = now;
-    this.applyCarParams?.();
-  }
-};
-
-const stopDrag = () => {
-  if (!dragging) return;
-  dragging = false;
-  this.input.off('pointermove', onMove);
-};
-
-thumb.on('pointerdown', (pointer) => {
-  dragging = true;
-  setFromPointerX(pointer.worldX);
-  this.applyCarParams?.();
-
-  this.input.on('pointermove', onMove);
-
-  const onUp = () => {
-    this.input.off('pointerup', onUp);
-    stopDrag();
+    const now = performance.now();
+    if (now - this._devModalLastApply > 60) {
+      this._devModalLastApply = now;
+      this.applyCarParams?.();
+    }
   };
-  this.input.on('pointerup', onUp);
-});
+
+  const stopDrag = () => {
+    if (!dragging) return;
+    dragging = false;
+    this.input.off('pointermove', onMove);
+  };
+
+  thumb.on('pointerdown', (pointer, lx, ly, e) => {
+    e?.stopPropagation?.();
+    dragging = true;
+    setFromPointerX(pointer.worldX);
+    this.applyCarParams?.();
+
+    this.input.on('pointermove', onMove);
+
+    const onUp = (pp, ex, ey, ee) => {
+      ee?.stopPropagation?.();
+      this.input.off('pointerup', onUp);
+      stopDrag();
+    };
+    this.input.on('pointerup', onUp);
+  });
 
   // Tap sobre la pista para saltar
   track.setInteractive({ useHandCursor: true });
-  track.on('pointerdown', (p) => {
+  track.on('pointerdown', (p, lx, ly, e) => {
+    e?.stopPropagation?.();
     setFromPointerX(p.worldX);
     this.applyCarParams?.();
   });
 
-  // Botones - / + finos (para clavar valores)
+  // Botones - / + finos
   const btnMinus = this.add.text(x + (w - 74), y + 15, '−', {
     fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
     fontSize: '16px',
     color: '#ffffff',
-    backgroundColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
     padding: { left: 8, right: 8, top: 2, bottom: 2 }
   }).setInteractive({ useHandCursor: true });
 
@@ -1569,22 +1569,23 @@ thumb.on('pointerdown', (pointer) => {
     fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
     fontSize: '16px',
     color: '#ffffff',
-    backgroundColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
     padding: { left: 8, right: 8, top: 2, bottom: 2 }
   }).setInteractive({ useHandCursor: true });
 
-  btnMinus.on('pointerdown', () => {
+  btnMinus.on('pointerdown', (p, lx, ly, e) => {
+    e?.stopPropagation?.();
     setFromValue((this._devTuning[key] ?? 0) - (step || 1));
     this.applyCarParams?.();
   });
-  btnPlus.on('pointerdown', () => {
+
+  btnPlus.on('pointerdown', (p, lx, ly, e) => {
+    e?.stopPropagation?.();
     setFromValue((this._devTuning[key] ?? 0) + (step || 1));
     this.applyCarParams?.();
   });
 
   const items = [txtLabel, txtVal, track, fill, thumb, btnMinus, btnPlus];
-
-  // Método sync (cuando abres la modal)
   const sync = () => setFromValue(this._devTuning[key]);
 
   return { key, items, sync, yBottom: y + rowH };
@@ -1594,104 +1595,67 @@ thumb.on('pointerdown', (pointer) => {
 this._devModalSync = () => {
   for (const s of this._devModalSliders) s.sync?.();
 };
-  // -------------------------------
-// Scroll area para sliders
+
 // -------------------------------
+// Layout: área de contenido + footer fijo (sin scroll todavía)
+// -------------------------------
+const btnY = mPanelY + mPanelH - 44;
+const contentTop = mPanelY + 58;
+const contentBottom = btnY - 14;
 
-const btnY = mPanelY + mPanelH - 44;  
-  const contentTop = mPanelY + 58;
-const contentBottom = btnY - 18; // más margen para que no pise botones
-const contentH = Math.max(120, contentBottom - contentTop);
-
-this._devModalScroll = {
-  y: 0,
-  minY: 0,
-  maxY: 0,
-  dragging: false,
-  lastY: 0
-};
-
+// Container SOLO para sliders (así no hay rects invisibles bloqueando)
 this._devModalContent = this.add.container(0, 0);
-this._devModal.add(this._devModalContent);
 
-// Máscara (recorta lo que se sale)
-this._devModalMaskRect = this.add.rectangle(mPanelX + 10, contentTop, mPanelW - 20, contentH, 0x000000, 0)
-  .setOrigin(0, 0);
-// OJO: NO setInteractive aquí, si no bloquea sliders y botones
-
-this._devModalMask = this._devModalMaskRect.createGeometryMask();
-this._devModalContent.setMask(this._devModalMask);
-this._devModal.add(this._devModalMaskRect);
-
-  // Panel de sliders (compacto)
+// Panel de sliders (compacto)
 const sx = mPanelX + 14;
-let sy = mPanelY + 64;
+let sy = contentTop + 6;
 const sw = mPanelW - 28;
 
+// Definiciones
 const sliderDefs = [
   { key: 'accelMult',     label: 'Aceleración (accelMult)',   min: 0.40, max: 2.50, step: 0.05 },
-  { key: 'maxFwdAdd',     label: 'V.Max (maxFwdAdd)',         min: -200, max:  300, step: 10 },
+  { key: 'maxFwdAdd',     label: 'Vel máx + (maxFwdAdd)',     min: 0.00, max: 2.00, step: 0.05 },
+  { key: 'maxRevAdd',     label: 'Vel rev + (maxRevAdd)',     min: 0.00, max: 2.00, step: 0.05 },
+  { key: 'turnRateMult',  label: 'Giro (turnRateMult)',       min: 0.40, max: 2.50, step: 0.05 },
+  { key: 'gripAdd',       label: 'Grip + (gripAdd)',          min: -0.40, max: 0.80, step: 0.02 },
+  { key: 'driftAdd',      label: 'Drift + (driftAdd)',        min: -0.20, max: 0.50, step: 0.02 },
   { key: 'brakeMult',     label: 'Freno (brakeMult)',         min: 0.40, max: 2.50, step: 0.05 },
-  { key: 'dragMult',      label: 'Drag (dragMult)',           min: 0.30, max: 2.00, step: 0.05 },
-  { key: 'turnRateMult',  label: 'Giro (turnRateMult)',       min: 0.50, max: 2.00, step: 0.05 },
-  { key: 'turnMinAdd',    label: 'Giro mínimo (turnMinAdd)',  min: -0.20, max: 0.20, step: 0.01 },
-  { key: 'gripDriveAdd',  label: 'Grip drive (gripDriveAdd)', min: -0.20, max: 0.20, step: 0.01 },
-  { key: 'gripCoastAdd',  label: 'Grip coast (gripCoastAdd)', min: -0.20, max: 0.20, step: 0.01 },
-  { key: 'gripBrakeAdd',  label: 'Grip brake (gripBrakeAdd)', min: -0.20, max: 0.20, step: 0.01 }
+  { key: 'camberAdd',     label: 'Camber + (camberAdd)',      min: -0.20, max: 0.20, step: 0.01 }
 ];
 
 for (const d of sliderDefs) {
   const s = mkSlider({ ...d, x: sx, y: sy, w: sw });
-  this._devModal.add(s.items);
+  this._devModalContent.add(s.items);
   this._devModalSliders.push(s);
   sy = s.yBottom;
 }
-// Límites de scroll (si el contenido es más alto que el área visible)
-const contentTotalH = sy - contentTop + 12;
-this._devModalScroll.minY = 0;
-this._devModalScroll.maxY = Math.max(0, contentTotalH - contentH);
-this._devModalContent.y = contentTop;
-// Scroll por arrastre en la zona (móvil friendly)
-this._devModalMaskRect.on('pointerdown', (p) => {
-  this._devModalScroll.dragging = true;
-  this._devModalScroll.lastY = p.worldY;
 
-  const onMove = (pp) => {
-    if (!this._devModalScroll.dragging) return;
-    const dy = pp.worldY - this._devModalScroll.lastY;
-    this._devModalScroll.lastY = pp.worldY;
+// Si se sale del panel, por ahora lo dejamos (Paso 4 reintroduce scroll seguro)
+if (sy > contentBottom) {
+  // opcional: podríamos reducir spacing aquí en el futuro
+}
 
-    this._devModalScroll.y = Math.max(-this._devModalScroll.maxY, Math.min(0, this._devModalScroll.y + dy));
-    this._devModalContent.y = contentTop + this._devModalScroll.y;
-  };
-
-  const onUp = () => {
-    this._devModalScroll.dragging = false;
-    this.input.off('pointermove', onMove);
-    this.input.off('pointerup', onUp);
-  };
-
-  this.input.on('pointermove', onMove);
-  this.input.on('pointerup', onUp);
-});
-  
-  // Botonera inferior
-
+// -------------------------------
+// Botonera inferior (SIEMPRE visible)
+// -------------------------------
 const mkModalBtn = (x, label, onClick) => {
   const b = this.add.text(x, btnY, label, {
     fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
     fontSize: '13px',
     color: '#ffffff',
-    backgroundColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
     padding: { left: 10, right: 10, top: 6, bottom: 6 }
   }).setInteractive({ useHandCursor: true });
 
-  b.on('pointerdown', () => onClick?.());
+  b.on('pointerdown', (p, lx, ly, e) => {
+    e?.stopPropagation?.();
+    onClick?.();
+  });
+
   return b;
 };
 
 this._devModalBtnApply = mkModalBtn(mPanelX + 14, 'APPLY', () => {
-  // Aplica (recalc tuning + carParams) y cierra
   this.applyCarParams?.();
   this._setDevModal(false);
 });
@@ -1709,9 +1673,14 @@ this._devModalBtnClose = mkModalBtn(mPanelX + mPanelW - 82, 'CLOSE', () => {
   this._setDevModal(false);
 });
 
-// Añadir al container modal
+// -------------------------------
+// Orden de dibujo REAL (sin moveTo hacks):
+// bg -> panel -> content -> title/hint -> botones
+// -------------------------------
 this._devModal.add([
+  this._devModalBg,
   this._devModalPanel,
+  this._devModalContent,
   this._devModalTitle,
   this._devModalHint,
   this._devModalBtnApply,
@@ -1728,51 +1697,20 @@ this._setDevModal = (open) => {
   // Cuando modal está abierta, ocultamos el panel DEV para que no moleste
   if (this._devModalOpen) this._setDevVisible(false);
 
-  // Ajustar tamaño si rotas pantalla
+  // Ajustar tamaño si rotas pantalla + sync valores
   if (this._devModalOpen) {
     this._devModalBg.setSize(this.scale.width, this.scale.height);
- this._devModalSync?.();
+    this._devModalSync?.();
   }
 };
 
-// Cerrar tocando fuera (en el fondo)
-this._devModalBg.on('pointerdown', () => this._setDevModal(false));
+// Cerrar tocando fuera (SOLO bg)
+this._devModalBg.on('pointerdown', (p, lx, ly, e) => {
+  e?.stopPropagation?.();
+  this._setDevModal(false);
+});
 
-// -------------------------------
-// Z-ORDER FIX (definitivo): ordenar hijos del container
-// -------------------------------
-const _bringFront = (go) => {
-  if (!go) return;
-  this._devModal.moveTo(go, this._devModal.length - 1);
-};
-const _sendBack = (go) => {
-  if (!go) return;
-  this._devModal.moveTo(go, 0);
-};
-
-// 1) Fondo (bg) al fondo para que NO se coma los clicks
-_sendBack(this._devModalBg);
-
-// 2) Panel encima del fondo
-_bringFront(this._devModalPanel);
-
-// 3) Contenido (sliders) encima del panel
-_bringFront(this._devModalContent);
-
-// 4) Mask rect (si existe) detrás del contenido (NO interactivo, solo visual/geom)
-_sendBack(this._devModalMaskRect);
-
-// 5) Título y hint arriba
-_bringFront(this._devModalTitle);
-_bringFront(this._devModalHint);
-
-// 6) Botonera arriba del todo
-_bringFront(this._devModalBtnApply);
-_bringFront(this._devModalBtnSave);
-_bringFront(this._devModalBtnReset);
-_bringFront(this._devModalBtnClose);
-  
-  // Botón para abrir modal de tuning
+// Botón para abrir modal de tuning (en el panel DEV)
 this.devTuneBtn = this.add.text(panelX + panelW - 54, panelY + 6, 'TUNE', {
   fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
   fontSize: '12px',
@@ -1784,12 +1722,14 @@ this.devTuneBtn = this.add.text(panelX + panelW - 54, panelY + 6, 'TUNE', {
   .setDepth(1101)
   .setInteractive({ useHandCursor: true });
 
-this.devTuneBtn.on('pointerdown', () => {
+this.devTuneBtn.on('pointerdown', (p, lx, ly, e) => {
+  e?.stopPropagation?.();
   this._setDevModal?.(true);
 });
 
 // Registrar para toggle ON/OFF
 this._devRegister(this.devTuneBtn);
+
 // Responder a resize (rotación)
 this.scale.on('resize', (gameSize) => {
   if (!this._devModal) return;
