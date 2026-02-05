@@ -1425,10 +1425,11 @@ const mPanelH = Math.min(520, Math.floor(mh * 0.86));
 const mPanelX = Math.floor((mw - mPanelW) / 2);
 const mPanelY = Math.floor((mh - mPanelH) / 2);
 
-this._devModalPanel = this.add.rectangle(mPanelX, mPanelY, mPanelW, mPanelH, 0x0a0f1a, 0.98)
+this._devModalPanel = this.add.rectangle(mPanelX, mPanelY, mPanelW, mPanelH, 0x0a0f1a, 0.92)
   .setOrigin(0, 0)
   .setStrokeStyle(2, 0xffffff, 0.20);
-
+this._devModalPanel.setInteractive();
+this._devModalPanel.on('pointerdown', () => {}); // traga el click
 this._devModalTitle = this.add.text(mPanelX + 14, mPanelY + 10, 'DEV TUNING', {
   fontFamily: 'Orbitron, monospace',
   fontSize: '16px',
@@ -1736,31 +1737,40 @@ this._setDevModal = (open) => {
 
 // Cerrar tocando fuera (en el fondo)
 this._devModalBg.on('pointerdown', () => this._setDevModal(false));
+
 // -------------------------------
-// Z-ORDER FIX: orden correcto modal
+// Z-ORDER FIX (definitivo): ordenar hijos del container
 // -------------------------------
+const _bringFront = (go) => {
+  if (!go) return;
+  this._devModal.moveTo(go, this._devModal.length - 1);
+};
+const _sendBack = (go) => {
+  if (!go) return;
+  this._devModal.moveTo(go, 0);
+};
 
-// Fondo al fondo
-this._devModal.sendToBack(this._devModalBg);
+// 1) Fondo (bg) al fondo para que NO se coma los clicks
+_sendBack(this._devModalBg);
 
-// Panel por encima del fondo
-this._devModal.bringToTop(this._devModalPanel);
+// 2) Panel encima del fondo
+_bringFront(this._devModalPanel);
 
-// Contenido (sliders) por encima del panel
-if (this._devModalContent) this._devModal.bringToTop(this._devModalContent);
+// 3) Contenido (sliders) encima del panel
+_bringFront(this._devModalContent);
 
-// La máscara NO debe quedar encima del contenido
-if (this._devModalMaskRect) this._devModal.sendToBack(this._devModalMaskRect);
+// 4) Mask rect (si existe) detrás del contenido (NO interactivo, solo visual/geom)
+_sendBack(this._devModalMaskRect);
 
-// Título/hint por encima del contenido
-this._devModal.bringToTop(this._devModalTitle);
-this._devModal.bringToTop(this._devModalHint);
+// 5) Título y hint arriba
+_bringFront(this._devModalTitle);
+_bringFront(this._devModalHint);
 
-// Botonera arriba del todo
-this._devModal.bringToTop(this._devModalBtnApply);
-this._devModal.bringToTop(this._devModalBtnSave);
-this._devModal.bringToTop(this._devModalBtnReset);
-this._devModal.bringToTop(this._devModalBtnClose);
+// 6) Botonera arriba del todo
+_bringFront(this._devModalBtnApply);
+_bringFront(this._devModalBtnSave);
+_bringFront(this._devModalBtnReset);
+_bringFront(this._devModalBtnClose);
   
   // Botón para abrir modal de tuning
 this.devTuneBtn = this.add.text(panelX + panelW - 54, panelY + 6, 'TUNE', {
