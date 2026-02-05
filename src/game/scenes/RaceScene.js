@@ -1735,7 +1735,8 @@ this._setDevModal = (open) => {
 };
 
 // Cerrar tocando fuera (en el fondo)
-this._devModalBg.on('pointerdown', () => this._setDevModal(// -------------------------------
+this._devModalBg.on('pointerdown', () => this._setDevModal(false));
+// -------------------------------
 // Z-ORDER FIX: orden correcto modal
 // -------------------------------
 
