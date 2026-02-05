@@ -1368,7 +1368,7 @@ const mkBtn = (x, y, label, onClick) => {
 
 const bx = panelX + 10;
 const by = panelY + 146;
-
+/*
 // A+ / A- = accelMult
 this.devBtnAPlus = mkBtn(bx, by, 'A+', () => {
   this._devTuning.accelMult = Math.min(2.5, this._devTuning.accelMult + 0.05);
@@ -1390,6 +1390,7 @@ this.devBtnReset = mkBtn(bx + 144, by, 'RST', () => {
 
 // Registrar para toggle ON/OFF
 this._devRegister(this.devBtnAPlus, this.devBtnAMinus, this.devBtnSave, this.devBtnReset);
+*/
   // Recolocar logs (_dbgText) dentro del panel (si existe ya)
   if (this._dbgText) {
     this._dbgText.setPosition(panelX + 10, panelY + 120);
