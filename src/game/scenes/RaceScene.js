@@ -1425,9 +1425,9 @@ const mPanelH = Math.min(520, Math.floor(mh * 0.86));
 const mPanelX = Math.floor((mw - mPanelW) / 2);
 const mPanelY = Math.floor((mh - mPanelH) / 2);
 
-this._devModalPanel = this.add.rectangle(mPanelX, mPanelY, mPanelW, mPanelH, 0x0b1020, 0.95)
+this._devModalPanel = this.add.rectangle(mPanelX, mPanelY, mPanelW, mPanelH, 0x0a0f1a, 0.98)
   .setOrigin(0, 0)
-  .setStrokeStyle(1, 0xffffff, 0.14);
+  .setStrokeStyle(2, 0xffffff, 0.20);
 
 this._devModalTitle = this.add.text(mPanelX + 14, mPanelY + 10, 'DEV TUNING', {
   fontFamily: 'Orbitron, monospace',
@@ -1439,7 +1439,7 @@ this._devModalTitle = this.add.text(mPanelX + 14, mPanelY + 10, 'DEV TUNING', {
 this._devModalHint = this.add.text(mPanelX + 14, mPanelY + 34, 'Ajusta parámetros y prueba en pista', {
   fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
   fontSize: '12px',
-  color: '#b7c0ff'
+  color: '#d7dcff'
 });
 // -------------------------------
 // SLIDERS (UI + live values)
@@ -1467,15 +1467,17 @@ const mkSlider = (opts) => {
 
   const txtLabel = this.add.text(x, y, label, {
     fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-    fontSize: '12px',
+    fontSize: '13px',
     color: '#ffffff'
   });
 
-  const txtVal = this.add.text(x + w - 62, y, '', {
-    fontFamily: 'monospace',
-    fontSize: '12px',
-    color: '#b7c0ff'
-  });
+  const txtVal = this.add.text(x + w - 74, y, '', {
+  fontFamily: 'monospace',
+  fontSize: '13px',
+  color: '#ffffff',
+  backgroundColor: 'rgba(0,0,0,0.35)',
+  padding: { left: 6, right: 6, top: 2, bottom: 2 }
+});
 
   const trackY = y + 18;
   const track = this.add.rectangle(x, trackY, w - 80, 6, 0xffffff, 0.14).setOrigin(0, 0.5);
