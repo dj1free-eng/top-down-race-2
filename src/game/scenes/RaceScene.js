@@ -1485,10 +1485,13 @@ const mkSlider = (opts) => {
     .setStrokeStyle(1, 0xffffff, 0.25)
     .setInteractive({ useHandCursor: true });
 
-  this.input.setDraggable(thumb);
 
   const setFromValue = (value) => {
-    const v = Math.max(min, Math.min(max, value));
+const raw = Number.isFinite(value)
+  ? value
+  : (Number.isFinite(this._devTuning?.[key]) ? this._devTuning[key] : min);
+
+const v = Math.max(min, Math.min(max, raw));
     const t = (v - min) / (max - min);
     const px = x + (track.width) * t;
 
@@ -1509,17 +1512,40 @@ const mkSlider = (opts) => {
   // Sync inicial
   setFromValue(this._devTuning[key]);
 
-  // Drag en tiempo real
-  thumb.on('drag', (_p, dragX) => {
-    setFromPointerX(dragX);
+// Drag manual (más estable en iPhone que setDraggable en shapes)
+let dragging = false;
 
-    // Apply live con throttle suave (no cada pixel)
-    const now = performance.now();
-    if (now - this._devModalLastApply > 60) {
-      this._devModalLastApply = now;
-      this.applyCarParams?.();
-    }
-  });
+const onMove = (pointer) => {
+  if (!dragging) return;
+
+  setFromPointerX(pointer.worldX);
+
+  const now = performance.now();
+  if (now - this._devModalLastApply > 60) {
+    this._devModalLastApply = now;
+    this.applyCarParams?.();
+  }
+};
+
+const stopDrag = () => {
+  if (!dragging) return;
+  dragging = false;
+  this.input.off('pointermove', onMove);
+};
+
+thumb.on('pointerdown', (pointer) => {
+  dragging = true;
+  setFromPointerX(pointer.worldX);
+  this.applyCarParams?.();
+
+  this.input.on('pointermove', onMove);
+
+  const onUp = () => {
+    this.input.off('pointerup', onUp);
+    stopDrag();
+  };
+  this.input.on('pointerup', onUp);
+});
 
   // Tap sobre la pista para saltar
   track.setInteractive({ useHandCursor: true });
@@ -1631,7 +1657,6 @@ this._devModal.add([
   this._devModalPanel,
   this._devModalTitle,
   this._devModalHint,
-  this._devModalBody,
   this._devModalBtnApply,
   this._devModalBtnSave,
   this._devModalBtnReset,
