@@ -1675,7 +1675,6 @@ this._devModalMaskRect.on('pointerdown', (p) => {
 });
   
   // Botonera inferior
-const btnY = mPanelY + mPanelH - 44;
 
 const mkModalBtn = (x, label, onClick) => {
   const b = this.add.text(x, btnY, label, {
