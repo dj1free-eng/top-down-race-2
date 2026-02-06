@@ -3390,15 +3390,14 @@ ensureOffTexture() {
   const key = 'off';
   const size = 512;
 
-  if (this.textures.exists(key)) this.textures.remove(key);
+  // ✅ NO borrar en caliente (WebGL). Create-once.
+  if (this.textures.exists(key)) return;
 
   const g = this.make.graphics({ x: 0, y: 0, add: false });
 
-  // Base: tierra/arena APAGADA (más oscura que grass para “no entres aquí”)
   g.fillStyle(0x6a5a3a, 1);
   g.fillRect(0, 0, size, size);
 
-  // Variación GRANDE y DIFUSA (sin piedras ni puntos)
   const blobs = 26;
   for (let i = 0; i < blobs; i++) {
     const r = 80 + Math.random() * 210;
@@ -3412,7 +3411,6 @@ ensureOffTexture() {
     g.fillCircle(x, y, r);
   }
 
-  // “Zona compactada” sutil (oscura)
   for (let i = 0; i < 8; i++) {
     const r = 60 + Math.random() * 160;
     const x = Math.random() * size;
@@ -3424,28 +3422,25 @@ ensureOffTexture() {
   g.generateTexture(key, size, size);
   g.destroy();
 }
-  ensureBgTexture() {
-  const key = 'grass';
-  const size = 512; // más grande => menos patrón repetido
 
-  // Recrear siempre (evita caches raras)
-  if (this.textures.exists(key)) this.textures.remove(key);
-  if (this.textures.exists('bgGrid')) this.textures.remove('bgGrid');
+ensureBgTexture() {
+  const key = 'grass';
+  const size = 512;
+
+  // ✅ NO borrar en caliente (WebGL). Create-once.
+  if (this.textures.exists(key)) return;
 
   const g = this.make.graphics({ x: 0, y: 0, add: false });
 
-  // Base: verde apagado (sin saturación “juguete”)
   g.fillStyle(0x2f5e36, 1);
   g.fillRect(0, 0, size, size);
 
-  // Variación GRANDE y DIFUSA (nada de puntitos / grano)
   const blobs = 28;
   for (let i = 0; i < blobs; i++) {
-    const r = 70 + Math.random() * 190; // manchas grandes
+    const r = 70 + Math.random() * 190;
     const x = Math.random() * size;
     const y = Math.random() * size;
 
-    // tonos cercanos, muy sutiles
     const col = (Math.random() > 0.5) ? 0x355c3b : 0x2b552f;
     const alpha = 0.035 + Math.random() * 0.045;
 
@@ -3453,7 +3448,6 @@ ensureOffTexture() {
     g.fillCircle(x, y, r);
   }
 
-  // Un par de “zonas secas” (ligero amarillento, muy suave)
   for (let i = 0; i < 6; i++) {
     const r = 90 + Math.random() * 180;
     const x = Math.random() * size;
@@ -3465,27 +3459,25 @@ ensureOffTexture() {
   g.generateTexture(key, size, size);
   g.destroy();
 }
-  ensureAsphaltTexture() {
-  const key = 'asphalt';
-  const size = 512; // grande para que el tile no cante
 
-  // Re-crear SIEMPRE para evitar que quede una textura vieja colgada en caché
-  if (this.textures.exists(key)) this.textures.remove(key);
+ensureAsphaltTexture() {
+  const key = 'asphalt';
+  const size = 512;
+
+  // ✅ NO borrar en caliente (WebGL). Create-once.
+  if (this.textures.exists(key)) return;
 
   const g = this.make.graphics({ x: 0, y: 0, add: false });
 
-  // Base: casi liso (sin grano ni bandas)
   g.fillStyle(0x2b2234, 1);
   g.fillRect(0, 0, size, size);
 
-  // Variación GRANDE y DIFUSA (sin dirección)
   const patches = 22;
   for (let i = 0; i < patches; i++) {
     const r = 120 + Math.random() * 260;
     const x = Math.random() * size;
     const y = Math.random() * size;
 
-    // ± muy poco
     const col = (Math.random() > 0.5) ? 0x272a30 : 0x33343a;
     const alpha = 0.018 + Math.random() * 0.028;
 
@@ -3493,7 +3485,6 @@ ensureOffTexture() {
     g.fillCircle(x, y, r);
   }
 
-  // “Zonas de goma” MUY suaves (más oscuras), en manchas grandes
   for (let i = 0; i < 10; i++) {
     const r = 110 + Math.random() * 230;
     const x = Math.random() * size;
@@ -3505,38 +3496,30 @@ ensureOffTexture() {
   g.generateTexture(key, size, size);
   g.destroy();
 }
-  ensureCarTexture() {
-    if (!this.textures.exists('__BODY__')) {
-  const g = this.add.graphics();
-  g.fillStyle(0xffffff, 0.001);
-  g.fillRect(0, 0, 2, 2);
-  g.generateTexture('__BODY__', 2, 2);
-  g.destroy();
-}
-    if (this.textures.exists('car')) return;
+  ensureAsphaltOverlayTexture() {
+  const key = 'asphaltOverlay';
+  const size = 512;
 
-    const w = 44, h = 26;
-    const g = this.add.graphics();
+  // ✅ Create-once
+  if (this.textures.exists(key)) return;
 
-    g.fillStyle(0x000000, 0.25);
-    g.fillRoundedRect(2, 4, w, h, 10);
+  const g = this.make.graphics({ x: 0, y: 0, add: false });
+  g.clear();
 
-    g.fillStyle(0xffffff, 0.95);
-    g.fillRoundedRect(0, 0, w, h, 10);
+  // Overlay sutil: manchas grandes suaves (sin grano)
+  const patches = 18;
+  for (let i = 0; i < patches; i++) {
+    const r = 140 + Math.random() * 260;
+    const x = Math.random() * size;
+    const y = Math.random() * size;
 
-    g.fillStyle(0x141b33, 0.9);
-    g.fillRoundedRect(16, 6, 18, 14, 6);
-
-    g.fillStyle(0x2bff88, 0.95);
-    g.fillRoundedRect(34, 9, 10, 8, 4);
-
-    g.lineStyle(2, 0x0b1020, 0.6);
-    g.strokeRoundedRect(0, 0, w, h, 10);
-
-    g.generateTexture('car', w + 4, h + 6);
-    g.destroy();
+    g.fillStyle(0xffffff, 0.06 + Math.random() * 0.08);
+    g.fillCircle(x, y, r);
   }
 
+  g.generateTexture(key, size, size);
+  g.destroy();
+}
   createTouchControls() {
     const state = {
       steer: 0,
