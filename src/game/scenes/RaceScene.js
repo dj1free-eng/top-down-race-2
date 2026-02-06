@@ -1936,6 +1936,14 @@ this.ttPanel.c.setVisible(false);
 // =================================================
 // GPS SPEED HUD (abajo-centro) — usa asset base + textos
 // =================================================
+
+// --- FIX DEFINITIVO: x e y siempre definidos en este scope
+const w = this.scale.width;
+const h = this.scale.height;
+const marginBottom = 0;
+const x = w / 2;
+const y = h - marginBottom;
+    
 this.speedHud = this.speedHud || {};
 this.speedHud.key = 'hud_gps_base';
 this.speedHud.url = 'assets/ui/hud_gps_base.webp';
