@@ -697,7 +697,8 @@ const vScale = (spec?.visualScale ?? 1.0);
 // Colisión: si quieres que el camión “ocupe pista”, esto es CLAVE
 const baseRadius = 14;
 body.setCircle(Math.round(baseRadius * vScale));
-
+// Aumento SOLO visual del coche (no afecta a físicas)
+const VISUAL_SCALE_MULT = 1.35;
 body.setCollideWorldBounds(true);
 body.setBounce(0);
 body.setDrag(0, 0);
@@ -720,8 +721,8 @@ carSprite.y = 0;
 this._carVisualRotOffset = Math.PI / 2;
 
 // Tamaño objetivo “caja” en pista (NO fuerza proporción, solo limita)
-const TARGET_W = 96 * vScale;
-const TARGET_H = 48 * vScale;
+const TARGET_W = 96 * vScale * VISUAL_SCALE_MULT;
+const TARGET_H = 48 * vScale * VISUAL_SCALE_MULT;
 
 // Escala uniforme para que NO se deforme (fit inside box)
 const fitSpriteToBox = () => {
