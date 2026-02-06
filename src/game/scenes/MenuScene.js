@@ -807,6 +807,10 @@ _tryEnsureSkinTexture(carId) {
   const onFileComplete = (k) => {
     if (k !== key) return;
     cleanup();
+
+    // ✅ DEBUG visible (no depende de consola)
+    this._toast(`Skin OK: ${carId}`);
+
     // Re-render para que el preview cambie al momento
     this.renderUI();
   };
@@ -814,8 +818,13 @@ _tryEnsureSkinTexture(carId) {
   const onLoadError = (file) => {
     if (!file || file.key !== key) return;
     cleanup();
+
     this._skinFail.add(carId);
-    // No re-render obligatorio (seguirá fallback), pero lo hacemos por consistencia
+
+    // ✅ DEBUG visible (url exacta)
+    this._toast(`Skin FAIL: ${carId} · ${url}`);
+
+    // Re-render (seguirá fallback a 'car')
     this.renderUI();
   };
 
@@ -829,7 +838,7 @@ _tryEnsureSkinTexture(carId) {
   this.load.on('loaderror', onLoadError);
 
   // Arranca carga
-  this.load.start();
+  if (!this.load.isLoading()) this.load.start();
 }
 
 _previewTextureKey(carId) {
