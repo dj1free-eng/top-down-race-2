@@ -2089,7 +2089,30 @@ this.time.delayedCall(150, () => {
   if (this.keys?.back) {
     this.keys.back.on('down', () => this.scene.start('menu'));
   }
+// 12b) Botón táctil MENU (volver al menú)
+const menuBtnX = 12;
+const menuBtnY = 72; // debajo del HUD superior izquierdo (no molesta cronos/progreso)
 
+this.uiMenuBtn = this.add.text(menuBtnX, menuBtnY, 'MENU', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '12px',
+  color: '#ffffff',
+  backgroundColor: 'rgba(0,0,0,0.55)',
+  padding: { left: 10, right: 10, top: 6, bottom: 6 }
+})
+  .setOrigin(0, 0)
+  .setScrollFactor(0)
+  .setDepth(1205)
+  .setInteractive({ useHandCursor: true });
+
+this.uiMenuBtn.on('pointerdown', (p, lx, ly, e) => {
+  e?.stopPropagation?.();
+
+  // Si el dev modal estuviera abierto, lo cerramos limpio
+  if (this._devModalOpen) this._setDevModal(false);
+
+  this.scene.start('menu');
+});
   // =================================================
   // 👇 AQUÍ VA EL PUNTO B (ESTO ES LO QUE AÑADES)
   // =================================================
