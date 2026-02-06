@@ -691,6 +691,7 @@ try { this.ensureBgTexture(); } catch (e) {}
 try { this.ensureOffTexture(); } catch (e) {}   // ← NUEVO (OFF visual)
 try {
   this.ensureAsphaltTexture();
+  this.ensureAsphaltOverlayTexture();
   this._dbg('asphalt OK');
 } catch (e) {
   this._dbg('asphalt ERROR');
