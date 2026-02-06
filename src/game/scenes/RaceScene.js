@@ -129,41 +129,49 @@ export class RaceScene extends Phaser.Scene {
     // =========================================
   // Skins: carga dinámica por coche (runtime)
   // =========================================
-  ensureCarSkinTexture(spec) {
-    const file = spec?.skin;
-    if (!file) return Promise.resolve(null);
+ensureCarSkinTexture(spec) {
+  const file = spec?.skin;
+  if (!file) return Promise.resolve(null);
 
-    const texKey = `car_${spec.id}`;
-    if (this.textures.exists(texKey)) return Promise.resolve(texKey);
+  const texKey = `car_${spec.id}`;
+  if (this.textures.exists(texKey)) return Promise.resolve(texKey);
 
-    return new Promise((resolve) => {
-      const url = `${CAR_SKIN_BASE}${file}`;
+  return new Promise((resolve) => {
+    const url = `${CAR_SKIN_BASE}${file}`;
 
-      const onComplete = () => {
-        cleanup();
-        resolve(texKey);
-      };
+    const onFileOk = (key) => {
+      if (key !== texKey) return;
+      cleanup();
+      resolve(texKey);
+    };
 
-      const onError = (fileObj) => {
-        // Si falla este fichero, no reventamos: usamos el procedural 'car'
-        if (fileObj?.key === texKey) {
-          cleanup();
-          resolve(null);
-        }
-      };
+    const onLoadError = (fileObj) => {
+      if (fileObj?.key !== texKey) return;
+      cleanup();
 
-      const cleanup = () => {
-        this.load.off(Phaser.Loader.Events.COMPLETE, onComplete);
-        this.load.off(Phaser.Loader.Events.LOAD_ERROR, onError);
-      };
+      // 👇 Debug real (iPhone friendly). Si te molesta, luego lo quitamos.
+      try { console.warn('[TDR2] Skin load FAIL:', texKey, url); } catch (_) {}
 
-      this.load.once(Phaser.Loader.Events.COMPLETE, onComplete);
-      this.load.on(Phaser.Loader.Events.LOAD_ERROR, onError);
+      // Fallback seguro
+      resolve(null);
+    };
 
-      this.load.image(texKey, url);
-      this.load.start();
-    });
-  }
+    const cleanup = () => {
+      this.load.off(`filecomplete-image-${texKey}`, onFileOk);
+      this.load.off(Phaser.Loader.Events.LOAD_ERROR, onLoadError);
+    };
+
+    // ✅ Eventos por ARCHIVO, no por COMPLETE global
+    this.load.once(`filecomplete-image-${texKey}`, onFileOk);
+    this.load.on(Phaser.Loader.Events.LOAD_ERROR, onLoadError);
+
+    this.load.image(texKey, url);
+
+    // ✅ Si ya está cargando, NO forzamos start (evita rarezas).
+    // Phaser arrancará el loader si está idle.
+    if (!this.load.isLoading()) this.load.start();
+  });
+}
   // =================================================
   // Time Trial: precompute distancias acumuladas centerline
   // =================================================
