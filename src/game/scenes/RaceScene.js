@@ -625,8 +625,9 @@ this.carParams = resolveCarParams(this.baseSpec, this.tuning);
 
   return { count, offenders };
 }
-  _dbg(msg) {
-  if (!this._dbgText) {
+_dbg(msg) {
+  // Si existe pero ya fue destruido al cambiar de escena, lo recreamos
+  if (!this._dbgText || !this._dbgText.scene) {
     this._dbgText = this.add.text(12, 130, '', {
       fontFamily: 'monospace',
       fontSize: '11px',
@@ -635,7 +636,7 @@ this.carParams = resolveCarParams(this.baseSpec, this.tuning);
       padding: { x: 6, y: 4 }
     }).setScrollFactor(0).setDepth(5000);
   }
-  this._dbgText.setText(msg);
+  this._dbgText.setText(String(msg));
 }
     _hudLog(msg) {
     // Logs en pantalla (mata-logs friendly)
@@ -644,6 +645,30 @@ this.carParams = resolveCarParams(this.baseSpec, this.tuning);
   create() {
     // Alias compatible con código viejo
     this._dbgSet = (m) => this._dbg(m);
+ // Limpieza al salir de RaceScene (evita refs a objetos destruidos al volver del menú)
+this.events.off(Phaser.Scenes.Events.SHUTDOWN, this._onShutdownRaceScene, this);
+
+this._onShutdownRaceScene = () => {
+  // Debug text
+  this._dbgText = null;
+
+  // Speed HUD (por si acaso)
+  if (this.speedHud) {
+    this.speedHud.base = null;
+    this.speedHud.speedText = null;
+    this.speedHud.unitText = null;
+    this.speedHud.clockText = null;
+    this.speedHud.built = false;
+  }
+
+  // Quitar listener de resize para no duplicarlo al reentrar
+  if (this._onResizeSpeedHud) {
+    this.scale.off('resize', this._onResizeSpeedHud);
+  }
+};
+
+this.events.once(Phaser.Scenes.Events.SHUTDOWN, this._onShutdownRaceScene, this);
+    
     // 1) Track meta primero (define world real)
 const t01 = (this.trackKey === 'track01') ? makeTrack01Oval() : makeTrack02Technical();
 
