@@ -1938,8 +1938,7 @@ this.ttPanel.c.setVisible(false);
 // =================================================
 
 // --- FIX DEFINITIVO: x e y siempre definidos en este scope
-const w = this.scale.width;
-const h = this.scale.height;
+
 const marginBottom = 0;
 const x = w / 2;
 const y = h - marginBottom;
