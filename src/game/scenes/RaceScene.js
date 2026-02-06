@@ -1948,10 +1948,15 @@ this._buildSpeedHud = () => {
   const h = this.scale.height;
 
   // Tamaño y posición: pegado abajo y centrado
-  const marginBottom = 2;
-  const baseW = Math.min(520, Math.floor(w * 0.78));
-  const baseScale = baseW / 600; // referencia suave (ajusta visual)
-  const x = w / 2;
+  // Tamaño compacto para no tapar pista
+const marginBottom = 0;
+
+// Mucho más estrecho
+const baseW = Math.min(360, Math.floor(w * 0.52));
+
+// Escala controlada (asset muy ancho)
+let baseScale = baseW / 1200;
+baseScale = Math.max(0.22, Math.min(0.30, baseScale));
   const y = h - marginBottom;
 
   // Base (imagen)
