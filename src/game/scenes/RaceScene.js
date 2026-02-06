@@ -1934,126 +1934,158 @@ this.scale.on('resize', () => {
 this.ttPanel.c.setVisible(false);
 
 // =================================================
-// GPS SPEED HUD (abajo-centro) — usa asset base + textos
+// GPS SPEED HUD (abajo-centro) — asset base + textos (SAFE)
 // =================================================
-
-// --- FIX DEFINITIVO: x e y siempre definidos en este scope
-
-const marginBottom = 0;
-const x = w / 2;
-const y = h - marginBottom;
-    
 this.speedHud = this.speedHud || {};
 this.speedHud.key = 'hud_gps_base';
 this.speedHud.url = 'assets/ui/hud_gps_base.webp';
+this.speedHud.built = false;
 
-this._buildSpeedHud = () => {
-  if (this.speedHud.built) return;
-  this.speedHud.built = true;
-
+// Layout (NO destruye, solo recoloca y re-escala)
+this._layoutSpeedHud = () => {
+  if (!this.speedHud?.built) return;
   const w = this.scale.width;
   const h = this.scale.height;
 
-  // Tamaño y posición: pegado abajo y centrado
-  // Tamaño compacto para no tapar pista
-const marginBottom = 0;
+  // Más pequeño para no tapar pista (ajusta aquí)
+  const marginBottom = 0;
+  const baseW = Math.min(360, Math.floor(w * 0.52));
 
-// Mucho más estrecho
-const baseW = Math.min(360, Math.floor(w * 0.52));
+  // Tu PNG es ancho; referencia 1200px (según el asset que pasaste)
+  let baseScale = baseW / 1200;
+  baseScale = Math.max(0.22, Math.min(0.30, baseScale));
 
-// Escala controlada (asset muy ancho)
-let baseScale = baseW / 1200;
-baseScale = Math.max(0.22, Math.min(0.30, baseScale));
+  const x = w / 2;
   const y = h - marginBottom;
 
-  // Base (imagen)
-  this.speedHud.base = this.add.image(x, y, this.speedHud.key)
+  if (this.speedHud.base) {
+    this.speedHud.base
+      .setPosition(x, y)
+      .setScale(baseScale);
+  }
+
+  // Tipos proporcionales
+  const fontMain = `${Math.max(22, Math.floor(34 * baseScale))}px`;
+  const fontSmall = `${Math.max(12, Math.floor(16 * baseScale))}px`;
+
+  if (this.speedHud.speedText) {
+    this.speedHud.speedText
+      .setPosition(x + (0 * baseScale), y - (58 * baseScale))
+      .setFontSize(fontMain);
+  }
+
+  if (this.speedHud.unitText) {
+    this.speedHud.unitText
+      .setPosition(x + (78 * baseScale), y - (60 * baseScale))
+      .setFontSize(fontSmall);
+  }
+
+  if (this.speedHud.clockText) {
+    this.speedHud.clockText
+      .setPosition(x + (150 * baseScale), y - (86 * baseScale))
+      .setFontSize(fontSmall);
+  }
+};
+
+// Build (crea una sola vez)
+this._buildSpeedHud = () => {
+  if (this.speedHud.built) return;
+  if (!this.textures.exists(this.speedHud.key)) return; // todavía no cargado
+
+  this.speedHud.built = true;
+
+  // Base
+  this.speedHud.base = this.add.image(0, 0, this.speedHud.key)
     .setOrigin(0.5, 1)
     .setScrollFactor(0)
     .setDepth(2000);
 
-  this.speedHud.base.setScale(baseScale);
-
-  // Textos encima (velocidad grande + reloj)
-  const fontMain = `${Math.max(26, Math.floor(40 * baseScale))}px`;
-  const fontSmall = `${Math.max(14, Math.floor(18 * baseScale))}px`;
-
-  // Velocidad (centrada)
-  this.speedHud.speedText = this.add.text(x + (0 * baseScale), y - (58 * baseScale), '0', {
+  // Textos
+  this.speedHud.speedText = this.add.text(0, 0, '0', {
     fontFamily: 'Orbitron, system-ui, -apple-system, Segoe UI, Roboto, Arial',
-    fontSize: fontMain,
+    fontSize: '28px',
     color: '#FFFFFF',
     fontStyle: '900'
   })
     .setOrigin(0.5, 1)
     .setScrollFactor(0)
-    .setDepth(2001);
+    .setDepth(2001)
+    .setShadow(0, 2, '#000000', 3, false, true);
 
-  this.speedHud.speedText.setShadow(0, 2, '#000000', 3, false, true);
-
-  // Unidad KM/H (pequeño)
-  this.speedHud.unitText = this.add.text(x + (78 * baseScale), y - (60 * baseScale), 'KM/H', {
+  this.speedHud.unitText = this.add.text(0, 0, 'KM/H', {
     fontFamily: 'Orbitron, system-ui, -apple-system, Segoe UI, Roboto, Arial',
-    fontSize: fontSmall,
+    fontSize: '14px',
     color: '#CFE8FF',
     fontStyle: '800'
   })
     .setOrigin(0, 1)
     .setScrollFactor(0)
-    .setDepth(2001);
+    .setDepth(2001)
+    .setShadow(0, 2, '#000000', 3, false, true);
 
-  this.speedHud.unitText.setShadow(0, 2, '#000000', 3, false, true);
-
-  // Reloj (arriba-derecha del “display”)
-  this.speedHud.clockText = this.add.text(x + (150 * baseScale), y - (86 * baseScale), '0:00.00', {
+  this.speedHud.clockText = this.add.text(0, 0, '0:00.00', {
     fontFamily: 'Orbitron, system-ui, -apple-system, Segoe UI, Roboto, Arial',
-    fontSize: fontSmall,
+    fontSize: '14px',
     color: '#FFFFFF',
     fontStyle: '900'
   })
     .setOrigin(1, 1)
     .setScrollFactor(0)
-    .setDepth(2001);
+    .setDepth(2001)
+    .setShadow(0, 2, '#000000', 3, false, true);
 
-  this.speedHud.clockText.setShadow(0, 2, '#000000', 3, false, true);
-
-  // Asegurar que la cámara del mundo NO lo pinte
+  // Que el mundo NO lo pinte (solo UI cam)
   this.cameras.main.ignore([
     this.speedHud.base,
     this.speedHud.speedText,
     this.speedHud.unitText,
     this.speedHud.clockText
   ]);
+
+  this._layoutSpeedHud();
 };
 
-// Cargar textura si falta, y construir
-if (!this.textures.exists(this.speedHud.key)) {
-  this.load.image(this.speedHud.key, this.speedHud.url);
-  this.load.once('complete', () => {
-    this._buildSpeedHud();
-  });
-  this.load.start();
-} else {
-  this._buildSpeedHud();
-}
+// Cargar textura si falta (evento por archivo, NO complete global)
+this._ensureSpeedHudLoaded = () => {
+  const key = this.speedHud.key;
 
-// Re-layout en resize (móvil / rotación)
+  if (this.textures.exists(key)) {
+    this._buildSpeedHud();
+    return;
+  }
+
+  const onOk = (loadedKey) => {
+    if (loadedKey !== key) return;
+    cleanup();
+    this._buildSpeedHud();
+  };
+
+  const onErr = (fileObj) => {
+    if (fileObj?.key !== key) return;
+    cleanup();
+    // Si falla, no rompemos el juego: simplemente no se muestra
+  };
+
+  const cleanup = () => {
+    this.load.off(`filecomplete-image-${key}`, onOk);
+    this.load.off(Phaser.Loader.Events.LOAD_ERROR, onErr);
+  };
+
+  this.load.once(`filecomplete-image-${key}`, onOk);
+  this.load.on(Phaser.Loader.Events.LOAD_ERROR, onErr);
+
+  this.load.image(key, this.speedHud.url);
+  if (!this.load.isLoading()) this.load.start();
+};
+
+this._ensureSpeedHudLoaded();
+
+// Re-layout seguro en resize (NO destruir)
 this.scale.off('resize', this._onResizeSpeedHud);
 this._onResizeSpeedHud = () => {
-  // destruir y reconstruir para recolocar limpio (pero anulando refs)
-  if (this.speedHud?.base) { this.speedHud.base.destroy(); this.speedHud.base = null; }
-  if (this.speedHud?.speedText) { this.speedHud.speedText.destroy(); this.speedHud.speedText = null; }
-  if (this.speedHud?.unitText) { this.speedHud.unitText.destroy(); this.speedHud.unitText = null; }
-  if (this.speedHud?.clockText) { this.speedHud.clockText.destroy(); this.speedHud.clockText = null; }
-
-  this.speedHud.built = false;
-
-  // Solo reconstruimos si la textura existe (si no, ya se construirá al cargar)
-  if (this.textures.exists(this.speedHud.key)) {
-    this._buildSpeedHud();
-  }
+  this._layoutSpeedHud?.();
 };
-this.scale.on('resize', this._onResizeSpeedHud);    
+this.scale.on('resize', this._onResizeSpeedHud);
     
     // 1) La cámara principal NO debe renderizar UI
 this.cameras.main.ignore([
