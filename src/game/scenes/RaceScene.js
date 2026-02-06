@@ -665,6 +665,11 @@ this._onShutdownRaceScene = () => {
   if (this._onResizeSpeedHud) {
     this.scale.off('resize', this._onResizeSpeedHud);
   }
+    // Quitar resize del modal de semáforo (evita geom null al rotar tras salir)
+  if (this._reflowStartModal) {
+    this.scale.off('resize', this._reflowStartModal);
+  }
+  this._startModalBg = null;
 };
 
 this.events.once(Phaser.Scenes.Events.SHUTDOWN, this._onShutdownRaceScene, this);
@@ -2178,7 +2183,7 @@ const h = this.scale.height;
 
 // Fondo modal (oscurece)
 const modalBg = this.add.rectangle(0, 0, w, h, 0x000000, 0.45).setOrigin(0, 0);
-
+this._startModalBg = modalBg;
 // Panel RESPONSIVE (en landscape manda la altura)
 const panelW = Math.min(760, Math.floor(w * 0.92));
 const panelH = Math.min(260, Math.floor(h * 0.42));   // ⬅️ más pequeño en landscape
@@ -2254,10 +2259,13 @@ this.cameras.main.ignore(this._startModal);
 
 // Si rota/cambia viewport, reajusta modal y reubica luces
 this._reflowStartModal = () => {
+  // Si la escena se está cerrando o el modal ya no existe, no hacemos nada
+  if (!this._startModalBg || !this._startModalBg.scene) return;
+
   const w2 = this.scale.width;
   const h2 = this.scale.height;
 
-  modalBg.setSize(w2, h2);
+  this._startModalBg.setSize(w2, h2);
 
   const pw = Math.min(760, Math.floor(w2 * 0.94));
   const px = Math.floor((w2 - pw) / 2);
