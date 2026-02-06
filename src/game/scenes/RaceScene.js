@@ -1306,6 +1306,63 @@ this.tweens.add({
 this.scale.on('resize', (gameSize) => {
   if (this.ttHud?.timeText) this.ttHud.timeText.setX(gameSize.width / 2);
 });
+    // =================================================
+// SPEED HUD v1 (km/h) — top-right (simple y legible)
+// =================================================
+const spdPad = 12;
+
+// Fondo para contraste
+this.speedHudBg = this.add.rectangle(
+  this.scale.width - spdPad,   // x
+  spdPad,                      // y
+  112,                         // w
+  46,                          // h
+  0x000000,
+  0.45
+)
+  .setOrigin(1, 0)
+  .setScrollFactor(0)
+  .setDepth(1205);
+
+// Texto grande
+this.speedHudText = this.add.text(
+  this.scale.width - spdPad - 10,
+  spdPad + 6,
+  '0',
+  {
+    fontFamily: 'Orbitron, system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: '22px',
+    color: '#ffffff',
+    fontStyle: '800'
+  }
+)
+  .setOrigin(1, 0)
+  .setScrollFactor(0)
+  .setDepth(1206);
+
+// Unidad
+this.speedHudUnit = this.add.text(
+  this.scale.width - spdPad - 10,
+  spdPad + 30,
+  'km/h',
+  {
+    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: '12px',
+    color: '#dfe6ff'
+  }
+)
+  .setOrigin(1, 0)
+  .setScrollFactor(0)
+  .setDepth(1206);
+
+// Resize/rotación: recolocar a top-right
+this.scale.on('resize', (gs) => {
+  if (!this.speedHudBg) return;
+  const x = gs.width - spdPad;
+  this.speedHudBg.setPosition(x, spdPad);
+  this.speedHudText.setPosition(x - 10, spdPad + 6);
+  this.speedHudUnit.setPosition(x - 10, spdPad + 30);
+});
 // =================================================
 // DEV HUD (panel derecha) — solo para desarrollo
 // (sin botones: zoom/cull se operarán desde Config más adelante)
@@ -3084,7 +3141,11 @@ if (shouldShow) {
 
     // === HUD ===
     const kmh = speed * 0.12;
-
+// SPEED HUD
+if (this.speedHudText) {
+  const k = Math.max(0, Math.round(kmh));
+  this.speedHudText.setText(String(k));
+}
     if (this.hud?.setText) {
       const lapNow = (this.timing?.started && this.timing.lapStart != null)
         ? (performance.now() - this.timing.lapStart)
