@@ -1306,44 +1306,44 @@ this.tweens.add({
 this.scale.on('resize', (gameSize) => {
   if (this.ttHud?.timeText) this.ttHud.timeText.setX(gameSize.width / 2);
 });
-    // =================================================
-// SPEED HUD v1 (km/h) — top-right (simple y legible)
 // =================================================
-const spdPad = 12;
+// SPEED HUD v1 (km/h) — bottom center
+// =================================================
+const spdPadB = 12;
+const spdY = this.scale.height - spdPadB;
 
-// Fondo para contraste
 this.speedHudBg = this.add.rectangle(
-  this.scale.width - spdPad,   // x
-  spdPad,                      // y
-  112,                         // w
-  46,                          // h
+  this.scale.width / 2,
+  spdY,
+  140,
+  54,
   0x000000,
-  0.45
+  0.55
 )
-  .setOrigin(1, 0)
+  .setOrigin(0.5, 1)
   .setScrollFactor(0)
   .setDepth(1205);
 
-// Texto grande
+// Texto grande (velocidad)
 this.speedHudText = this.add.text(
-  this.scale.width - spdPad - 10,
-  spdPad + 6,
+  this.scale.width / 2,
+  spdY - 36,
   '0',
   {
     fontFamily: 'Orbitron, system-ui, -apple-system, Segoe UI, Roboto, Arial',
-    fontSize: '22px',
+    fontSize: '28px',
     color: '#ffffff',
     fontStyle: '800'
   }
 )
-  .setOrigin(1, 0)
+  .setOrigin(0.5, 0)
   .setScrollFactor(0)
   .setDepth(1206);
 
 // Unidad
 this.speedHudUnit = this.add.text(
-  this.scale.width - spdPad - 10,
-  spdPad + 30,
+  this.scale.width / 2,
+  spdY - 14,
   'km/h',
   {
     fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
@@ -1351,17 +1351,19 @@ this.speedHudUnit = this.add.text(
     color: '#dfe6ff'
   }
 )
-  .setOrigin(1, 0)
+  .setOrigin(0.5, 0)
   .setScrollFactor(0)
   .setDepth(1206);
 
-// Resize/rotación: recolocar a top-right
+// Reposicionar en resize / rotación
 this.scale.on('resize', (gs) => {
   if (!this.speedHudBg) return;
-  const x = gs.width - spdPad;
-  this.speedHudBg.setPosition(x, spdPad);
-  this.speedHudText.setPosition(x - 10, spdPad + 6);
-  this.speedHudUnit.setPosition(x - 10, spdPad + 30);
+
+  const y = gs.height - spdPadB;
+
+  this.speedHudBg.setPosition(gs.width / 2, y);
+  this.speedHudText.setPosition(gs.width / 2, y - 36);
+  this.speedHudUnit.setPosition(gs.width / 2, y - 14);
 });
 // =================================================
 // DEV HUD (panel derecha) — solo para desarrollo
