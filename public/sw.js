@@ -62,20 +62,24 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Assets: cache-first con actualización en segundo plano
-  event.respondWith(
-    (async () => {
-      const cached = await caches.match(req);
-      if (cached) return cached;
+// Assets: cache-first, pero NO cacheamos errores (404/500/etc.)
+event.respondWith(
+  (async () => {
+    const cached = await caches.match(req);
+    if (cached) return cached;
 
-      try {
-        const fresh = await fetch(req);
-        const cache = await caches.open(CACHE_VERSION);
-        cache.put(req, fresh.clone());
-        return fresh;
-      } catch {
-        return new Response('', { status: 504 });
-      }
-    })()
-  );
+    try {
+      const fresh = await fetch(req);
+
+      // 👇 CLAVE: si no es OK (p.ej. 404), lo devolvemos pero NO lo cacheamos
+      if (!fresh || !fresh.ok) return fresh;
+
+      const cache = await caches.open(CACHE_VERSION);
+      cache.put(req, fresh.clone());
+      return fresh;
+    } catch {
+      return new Response('', { status: 504 });
+    }
+  })()
+);
 });
