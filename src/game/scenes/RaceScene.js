@@ -1932,7 +1932,113 @@ this.scale.on('resize', () => {
 
 // Estado inicial: oculto
 this.ttPanel.c.setVisible(false);
-// 1) La cámara principal NO debe renderizar UI
+
+// =================================================
+// GPS SPEED HUD (abajo-centro) — usa asset base + textos
+// =================================================
+this.speedHud = this.speedHud || {};
+this.speedHud.key = 'hud_gps_base';
+this.speedHud.url = 'assets/ui/hud_gps_base.webp';
+
+this._buildSpeedHud = () => {
+  if (this.speedHud.built) return;
+  this.speedHud.built = true;
+
+  const w = this.scale.width;
+  const h = this.scale.height;
+
+  // Tamaño y posición: pegado abajo y centrado
+  const marginBottom = 2;
+  const baseW = Math.min(520, Math.floor(w * 0.78));
+  const baseScale = baseW / 600; // referencia suave (ajusta visual)
+  const x = w / 2;
+  const y = h - marginBottom;
+
+  // Base (imagen)
+  this.speedHud.base = this.add.image(x, y, this.speedHud.key)
+    .setOrigin(0.5, 1)
+    .setScrollFactor(0)
+    .setDepth(2000);
+
+  this.speedHud.base.setScale(baseScale);
+
+  // Textos encima (velocidad grande + reloj)
+  const fontMain = `${Math.max(26, Math.floor(40 * baseScale))}px`;
+  const fontSmall = `${Math.max(14, Math.floor(18 * baseScale))}px`;
+
+  // Velocidad (centrada)
+  this.speedHud.speedText = this.add.text(x + (0 * baseScale), y - (58 * baseScale), '0', {
+    fontFamily: 'Orbitron, system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: fontMain,
+    color: '#FFFFFF',
+    fontStyle: '900'
+  })
+    .setOrigin(0.5, 1)
+    .setScrollFactor(0)
+    .setDepth(2001);
+
+  this.speedHud.speedText.setShadow(0, 2, '#000000', 3, false, true);
+
+  // Unidad KM/H (pequeño)
+  this.speedHud.unitText = this.add.text(x + (78 * baseScale), y - (60 * baseScale), 'KM/H', {
+    fontFamily: 'Orbitron, system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: fontSmall,
+    color: '#CFE8FF',
+    fontStyle: '800'
+  })
+    .setOrigin(0, 1)
+    .setScrollFactor(0)
+    .setDepth(2001);
+
+  this.speedHud.unitText.setShadow(0, 2, '#000000', 3, false, true);
+
+  // Reloj (arriba-derecha del “display”)
+  this.speedHud.clockText = this.add.text(x + (150 * baseScale), y - (86 * baseScale), '0:00.00', {
+    fontFamily: 'Orbitron, system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: fontSmall,
+    color: '#FFFFFF',
+    fontStyle: '900'
+  })
+    .setOrigin(1, 1)
+    .setScrollFactor(0)
+    .setDepth(2001);
+
+  this.speedHud.clockText.setShadow(0, 2, '#000000', 3, false, true);
+
+  // Asegurar que la cámara del mundo NO lo pinte
+  this.cameras.main.ignore([
+    this.speedHud.base,
+    this.speedHud.speedText,
+    this.speedHud.unitText,
+    this.speedHud.clockText
+  ]);
+};
+
+// Cargar textura si falta, y construir
+if (!this.textures.exists(this.speedHud.key)) {
+  this.load.image(this.speedHud.key, this.speedHud.url);
+  this.load.once('complete', () => {
+    this._buildSpeedHud();
+  });
+  this.load.start();
+} else {
+  this._buildSpeedHud();
+}
+
+// Re-layout en resize (móvil / rotación)
+this.scale.off('resize', this._onResizeSpeedHud);
+this._onResizeSpeedHud = () => {
+  // destruir y reconstruir para recolocar limpio
+  if (this.speedHud?.base) this.speedHud.base.destroy();
+  if (this.speedHud?.speedText) this.speedHud.speedText.destroy();
+  if (this.speedHud?.unitText) this.speedHud.unitText.destroy();
+  if (this.speedHud?.clockText) this.speedHud.clockText.destroy();
+  this.speedHud.built = false;
+  this._buildSpeedHud();
+};
+this.scale.on('resize', this._onResizeSpeedHud);    
+    
+    // 1) La cámara principal NO debe renderizar UI
 this.cameras.main.ignore([
   this.hudBox,
   this.hud,
@@ -3143,6 +3249,17 @@ if (shouldShow) {
 
     // === HUD ===
     const kmh = speed * 0.12;
+// GPS HUD (abajo-centro)
+if (this.speedHud?.speedText) {
+  const v = Math.max(0, Math.round(kmh));
+  this.speedHud.speedText.setText(String(v));
+}
+
+if (this.speedHud?.clockText) {
+  // Reutiliza el texto del TT HUD si existe (ya viene formateado M:SS.xx)
+  const t = this.ttHud?.timeText?.text;
+  this.speedHud.clockText.setText(t || '0:00.00');
+}    
 // SPEED HUD
 if (this.speedHudText) {
   const k = Math.max(0, Math.round(kmh));
