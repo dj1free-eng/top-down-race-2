@@ -2033,13 +2033,18 @@ if (!this.textures.exists(this.speedHud.key)) {
 // Re-layout en resize (móvil / rotación)
 this.scale.off('resize', this._onResizeSpeedHud);
 this._onResizeSpeedHud = () => {
-  // destruir y reconstruir para recolocar limpio
-  if (this.speedHud?.base) this.speedHud.base.destroy();
-  if (this.speedHud?.speedText) this.speedHud.speedText.destroy();
-  if (this.speedHud?.unitText) this.speedHud.unitText.destroy();
-  if (this.speedHud?.clockText) this.speedHud.clockText.destroy();
+  // destruir y reconstruir para recolocar limpio (pero anulando refs)
+  if (this.speedHud?.base) { this.speedHud.base.destroy(); this.speedHud.base = null; }
+  if (this.speedHud?.speedText) { this.speedHud.speedText.destroy(); this.speedHud.speedText = null; }
+  if (this.speedHud?.unitText) { this.speedHud.unitText.destroy(); this.speedHud.unitText = null; }
+  if (this.speedHud?.clockText) { this.speedHud.clockText.destroy(); this.speedHud.clockText = null; }
+
   this.speedHud.built = false;
-  this._buildSpeedHud();
+
+  // Solo reconstruimos si la textura existe (si no, ya se construirá al cargar)
+  if (this.textures.exists(this.speedHud.key)) {
+    this._buildSpeedHud();
+  }
 };
 this.scale.on('resize', this._onResizeSpeedHud);    
     
@@ -3254,17 +3259,16 @@ if (shouldShow) {
 
     // === HUD ===
     const kmh = speed * 0.12;
-// GPS HUD (abajo-centro)
-if (this.speedHud?.speedText) {
+// GPS HUD (abajo-centro) — safe (no tocar objetos destruidos)
+if (this.speedHud?.speedText?.scene) {
   const v = Math.max(0, Math.round(kmh));
   this.speedHud.speedText.setText(String(v));
 }
 
-if (this.speedHud?.clockText) {
-  // Reutiliza el texto del TT HUD si existe (ya viene formateado M:SS.xx)
+if (this.speedHud?.clockText?.scene) {
   const t = this.ttHud?.timeText?.text;
   this.speedHud.clockText.setText(t || '0:00.00');
-}    
+}
 // SPEED HUD
 if (this.speedHudText) {
   const k = Math.max(0, Math.round(kmh));
