@@ -1217,10 +1217,12 @@ const _drawGate = (gate, color) => {
 _drawGate(this.checkpoints.cp1, 0xffd400);
 _drawGate(this.checkpoints.cp2, 0x2dff6a);
 
-    // 7) Cámara
-    this.cameras.main.startFollow(this.carRig, true, 0.12, 0.12);
-    this.cameras.main.setZoom(this.zoom);
-    this.cameras.main.roundPixels = true;
+// 7) Cámara
+this.cameras.main.stopFollow();          // <-- NUEVO
+this.cameras.main.setScroll(0, 0);       // <-- NUEVO
+this.cameras.main.startFollow(this.carRig, true, 0.12, 0.12);
+this.cameras.main.setZoom(this.zoom);
+this.cameras.main.roundPixels = true;
 
     // 8) Input teclado
     this.keys = this.input.keyboard.addKeys({
