@@ -3439,13 +3439,27 @@ if (DEV_TOOLS && this.devInfo && this._devVisible) {
   const carCell = this._carCellKey || ''; // si no existe, queda vacío
   const diag = this._trackDiag || '';
   const diag2 = this._trackDiag2 || '';
+  const cam = this.cameras?.main;
+  const sx = cam ? Math.round(cam.scrollX) : 0;
+  const sy = cam ? Math.round(cam.scrollY) : 0;
+  const fx = cam?.followTarget ? 'YES' : 'NO';
 
+  const cx = this.carBody ? Math.round(this.carBody.x) : 0;
+  const cy = this.carBody ? Math.round(this.carBody.y) : 0;
+
+  const rigOK = (this.carRig && this.carRig.scene) ? 'YES' : 'NO';
+  const rigVis = (this.carRig && this.carRig.visible !== undefined) ? (this.carRig.visible ? 'VIS' : 'HID') : '??';
+  const rigA = (this.carRig && this.carRig.alpha !== undefined) ? this.carRig.alpha.toFixed(2) : '??';
+  
   this.devInfo.setText(
   `Track: ${this.track?.meta?.id || this.track?.meta?.name || ''}\n` +
   `CP: ${cp} | Lap: ${this.lapCount || 0}\n` +
   `Surface: ${surf}\n` +
   `Cull: ${cull}\n` +
   `Zoom: ${zoom}\n` +
+  `Cam: ${sx},${sy} | Follow: ${fx}\n` +
+  `Car: ${cx},${cy}\n` +
+  `Rig: ${rigOK} | ${rigVis} | a:${rigA}\n` +
   `accelMult: ${this._devTuning?.accelMult?.toFixed?.(2) ?? '1.00'}\n` +
   (carCell ? `Cell: ${carCell}\n` : '') +
   (diag ? `Diag: ${diag}\n` : '') +
