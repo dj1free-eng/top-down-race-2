@@ -3651,11 +3651,17 @@ this.touchUI = ui; // ← referencia para cámaras
       const stickR = Math.max(54, Math.floor(Math.min(w, h) * 0.07));
       const stickMax = stickR * 0.85;
 
-      const JOY_HW_OFFSET_X = Math.round(stickR * 0.85); // derecha (~35% del radio)
-const JOY_HW_OFFSET_Y = Math.round(stickR * 0.28); // arriba  (~20% del radio)
+      // Ajuste fino para alinear con joystick físico (hardware)
+// (negativo = más a la izquierda / más arriba)
+const JOY_OFFSET_X = -24;
+const JOY_OFFSET_Y = -18;
 
-const baseX = pad + stickR + 10 + JOY_HW_OFFSET_X;
-const baseY = h - pad - stickR - 10 - JOY_HW_OFFSET_Y;
+// Posición base del stick (con offsets)
+const baseX = pad + stickR + 10 + JOY_OFFSET_X;
+const baseY = h - pad - stickR - 10 + JOY_OFFSET_Y;
+
+state.baseX = baseX;
+state.baseY = baseY;
 
       state.baseX = baseX;
       state.baseY = baseY;
