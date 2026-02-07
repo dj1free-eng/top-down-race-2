@@ -662,13 +662,37 @@ this._onShutdownRaceScene = () => {
   if (this._onResizeSpeedHud) this.scale.off('resize', this._onResizeSpeedHud);
   if (this._reflowStartModal) this.scale.off('resize', this._reflowStartModal);
 
-  // 2) Debug text
+  // 2) Destruir semáforo/modal (si quedó vivo)
+  try { if (this._startModal?.scene) this._startModal.destroy(true); } catch (e) {}
+  this._startModal = null;
+  this._startAsset = null;
+  this._startTitle = null;
+  this._startHint = null;
+  this._startStatus = null;
+  this._startModalBg = null;
+  this._startLights = null;
+
+  // 3) Reventar TODA la pista dinámica (celdas + masks + overlays)
+  try {
+    if (this.track?.gfxByCell) {
+      for (const cell of this.track.gfxByCell.values()) {
+        try { cell.overlay?.destroy?.(); } catch (e) {}
+        try { cell.mask?.destroy?.(); } catch (e) {}
+        try { cell.maskG?.destroy?.(); } catch (e) {}
+        try { cell.tile?.destroy?.(); } catch (e) {}
+        try { cell.stroke?.destroy?.(); } catch (e) {}
+      }
+      this.track.gfxByCell.clear();
+    }
+    if (this.track?.activeCells) this.track.activeCells.clear();
+  } catch (e) {}
+
+  this.track = null;
+
+  // 4) Debug text
   this._dbgText = null;
 
-  // 3) Modal semáforo refs
-  this._startModalBg = null;
-
-  // 4) Destruir HUD GPS para evitar “doble HUD” / layouts rotos en 2ª entrada
+  // 5) HUD GPS (evitar doble HUD / refs muertas)
   if (this.speedHud) {
     const list = [
       this.speedHud.base,
