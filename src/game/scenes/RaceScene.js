@@ -1220,12 +1220,23 @@ const _drawGate = (gate, color) => {
 _drawGate(this.checkpoints.cp1, 0xffd400);
 _drawGate(this.checkpoints.cp2, 0x2dff6a);
 
-// 7) Cámara
-this.cameras.main.stopFollow();          // <-- NUEVO
-this.cameras.main.setScroll(0, 0);       // <-- NUEVO
+// 7) Cámara (FIX: 2ª entrada puede quedarse en (0,0))
+this.cameras.main.stopFollow();
+this.cameras.main.setScroll(0, 0);
+
 this.cameras.main.startFollow(this.carRig, true, 0.12, 0.12);
 this.cameras.main.setZoom(this.zoom);
 this.cameras.main.roundPixels = true;
+
+// Snap inmediato al coche (si no, puedes quedarte viendo el off en (0,0))
+this.cameras.main.centerOn(this.carBody.x, this.carBody.y);
+
+// iOS: a veces el follow no “engancha” hasta el siguiente tick al reentrar
+this.time.delayedCall(0, () => {
+  if (!this.carRig || !this.carBody) return;
+  this.cameras.main.startFollow(this.carRig, true, 0.12, 0.12);
+  this.cameras.main.centerOn(this.carBody.x, this.carBody.y);
+});
 
     // 8) Input teclado
     this.keys = this.input.keyboard.addKeys({
