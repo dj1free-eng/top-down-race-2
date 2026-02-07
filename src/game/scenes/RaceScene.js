@@ -649,27 +649,35 @@ _dbg(msg) {
 this.events.off(Phaser.Scenes.Events.SHUTDOWN, this._onShutdownRaceScene, this);
 
 this._onShutdownRaceScene = () => {
-  // Debug text
+  // 1) Quitar listeners de resize (si no, se duplican al reentrar)
+  if (this._onResizeSpeedHud) this.scale.off('resize', this._onResizeSpeedHud);
+  if (this._reflowStartModal) this.scale.off('resize', this._reflowStartModal);
+
+  // 2) Debug text
   this._dbgText = null;
 
-  // Speed HUD (por si acaso)
+  // 3) Modal semáforo refs
+  this._startModalBg = null;
+
+  // 4) Destruir HUD GPS para evitar “doble HUD” / layouts rotos en 2ª entrada
   if (this.speedHud) {
+    const list = [
+      this.speedHud.base,
+      this.speedHud.speedText,
+      this.speedHud.unitText,
+      this.speedHud.clockText,
+    ].filter(Boolean);
+
+    list.forEach(o => {
+      try { if (o.scene) o.destroy(); } catch (e) {}
+    });
+
     this.speedHud.base = null;
     this.speedHud.speedText = null;
     this.speedHud.unitText = null;
     this.speedHud.clockText = null;
     this.speedHud.built = false;
   }
-
-  // Quitar listener de resize para no duplicarlo al reentrar
-  if (this._onResizeSpeedHud) {
-    this.scale.off('resize', this._onResizeSpeedHud);
-  }
-    // Quitar resize del modal de semáforo (evita geom null al rotar tras salir)
-  if (this._reflowStartModal) {
-    this.scale.off('resize', this._reflowStartModal);
-  }
-  this._startModalBg = null;
 };
 
 this.events.once(Phaser.Scenes.Events.SHUTDOWN, this._onShutdownRaceScene, this);
