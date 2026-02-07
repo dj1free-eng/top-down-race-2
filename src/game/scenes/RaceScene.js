@@ -643,6 +643,15 @@ _dbg(msg) {
     try { this._dbg(String(msg)); } catch {}
   }
   create() {
+    // -------------------------------------------------
+// RESET DURO DE ESTADO (obligatorio al volver del menú)
+// -------------------------------------------------
+this._trackBuilt = false;
+this._trackInitialized = false;
+this._trackContainer = null;
+this._chunks = null;
+this._cells = null;
+this._visibleTiles = null;
     // Alias compatible con código viejo
     this._dbgSet = (m) => this._dbg(m);
  // Limpieza al salir de RaceScene (evita refs a objetos destruidos al volver del menú)
