@@ -30,7 +30,9 @@ Reglas del proyecto:
 - [ ] Coast real (soltar gas ≠ frenar)
 - [ ] Frenado separado y creíble
 - [ ] Ajustar grip por superficie
-- [ ] Sistema de upgrades de coche (preparar arquitectura)
+- [ ] Sistema de upgrades de coche
+- [ ] La velocidad de marcha atrás no se ve afectada por el terreno
+- [ ] (preparar arquitectura)
 
 ---
 
