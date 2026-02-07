@@ -652,6 +652,9 @@ this._trackContainer = null;
 this._chunks = null;
 this._cells = null;
 this._visibleTiles = null;
+    // FIX: si venimos del menú, puede quedar un rig viejo (y la cámara seguirlo mal)
+try { if (this.carRig?.scene) this.carRig.destroy(true); } catch (e) {}
+this.carRig = null;
     // Alias compatible con código viejo
     this._dbgSet = (m) => this._dbg(m);
  // Limpieza al salir de RaceScene (evita refs a objetos destruidos al volver del menú)
