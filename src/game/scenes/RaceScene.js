@@ -658,41 +658,34 @@ this._visibleTiles = null;
 this.events.off(Phaser.Scenes.Events.SHUTDOWN, this._onShutdownRaceScene, this);
 
 this._onShutdownRaceScene = () => {
+  // 0) SUPER IMPORTANTE: limpiar listeners de input de la Scene
+  // (touch controls + gesto DEV + etc). Si no, en 2ª entrada quedan “viejos”
+  // y revientan con refs muertas.
+  try { this.input.removeAllListeners(); } catch (e) {}
+
+  // También limpia el postupdate que usamos para debug (DEV)
+  try { this.events.removeAllListeners('postupdate'); } catch (e) {}
+
   // 1) Quitar listeners de resize (si no, se duplican al reentrar)
   if (this._onResizeSpeedHud) this.scale.off('resize', this._onResizeSpeedHud);
   if (this._reflowStartModal) this.scale.off('resize', this._reflowStartModal);
 
-  // 2) Destruir semáforo/modal (si quedó vivo)
-  try { if (this._startModal?.scene) this._startModal.destroy(true); } catch (e) {}
-  this._startModal = null;
-  this._startAsset = null;
-  this._startTitle = null;
-  this._startHint = null;
-  this._startStatus = null;
-  this._startModalBg = null;
-  this._startLights = null;
+  // 1b) Touch UI container (si existe) — evita que queden objetos colgando
+  try { if (this.touchUI?.scene) this.touchUI.destroy(true); } catch (e) {}
+  this.touchUI = null;
+  this.touch = null;
 
-  // 3) Reventar TODA la pista dinámica (celdas + masks + overlays)
-  try {
-    if (this.track?.gfxByCell) {
-      for (const cell of this.track.gfxByCell.values()) {
-        try { cell.overlay?.destroy?.(); } catch (e) {}
-        try { cell.mask?.destroy?.(); } catch (e) {}
-        try { cell.maskG?.destroy?.(); } catch (e) {}
-        try { cell.tile?.destroy?.(); } catch (e) {}
-        try { cell.stroke?.destroy?.(); } catch (e) {}
-      }
-      this.track.gfxByCell.clear();
-    }
-    if (this.track?.activeCells) this.track.activeCells.clear();
-  } catch (e) {}
+  // 1c) DEV touch dbg
+  try { if (this._touchDbg?.scene) this._touchDbg.destroy(); } catch (e) {}
+  this._touchDbg = null;
 
-  this.track = null;
-
-  // 4) Debug text
+  // 2) Debug text
   this._dbgText = null;
 
-  // 5) HUD GPS (evitar doble HUD / refs muertas)
+  // 3) Modal semáforo refs
+  this._startModalBg = null;
+
+  // 4) Destruir HUD GPS para evitar “doble HUD” / layouts rotos en 2ª entrada
   if (this.speedHud) {
     const list = [
       this.speedHud.base,
@@ -712,7 +705,6 @@ this._onShutdownRaceScene = () => {
     this.speedHud.built = false;
   }
 };
-
 this.events.once(Phaser.Scenes.Events.SHUTDOWN, this._onShutdownRaceScene, this);
     
     // 1) Track meta primero (define world real)
