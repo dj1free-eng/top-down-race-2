@@ -669,7 +669,7 @@ this._onShutdownRaceScene = () => {
   // 1) Quitar listeners de resize (si no, se duplican al reentrar)
   if (this._onResizeSpeedHud) this.scale.off('resize', this._onResizeSpeedHud);
   if (this._reflowStartModal) this.scale.off('resize', this._reflowStartModal);
-
+  if (this._onResizeUiCam) this.scale.off('resize', this._onResizeUiCam);
   // 1b) Touch UI container (si existe) — evita que queden objetos colgando
   try { if (this.touchUI?.scene) this.touchUI.destroy(true); } catch (e) {}
   this.touchUI = null;
@@ -2195,10 +2195,13 @@ if (this.bgWorld) this.uiCam.ignore(this.bgWorld);
 if (this.carRig) this.uiCam.ignore(this.carRig);
 if (this.finishGfx) this.uiCam.ignore(this.finishGfx);
 
-// Mantener tamaño si rota/cambia viewport
-this.scale.on('resize', (gameSize) => {
+// Mantener tamaño si rota/cambia viewport (SIN duplicar listeners)
+this.scale.off('resize', this._onResizeUiCam);
+this._onResizeUiCam = (gameSize) => {
+  if (!this.uiCam) return;
   this.uiCam.setSize(gameSize.width, gameSize.height);
-});
+};
+this.scale.on('resize', this._onResizeUiCam);
 // =================================================
 // START LIGHTS (F1) — modal + bloqueo de coche hasta salida
 // =================================================
