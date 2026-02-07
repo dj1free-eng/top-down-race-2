@@ -3651,7 +3651,7 @@ this.touchUI = ui; // ← referencia para cámaras
       const stickR = Math.max(54, Math.floor(Math.min(w, h) * 0.07));
       const stickMax = stickR * 0.85;
 
-      const JOY_HW_OFFSET_X = Math.round(stickR * 0.35); // derecha (~35% del radio)
+      const JOY_HW_OFFSET_X = Math.round(stickR * 0.45); // derecha (~35% del radio)
 const JOY_HW_OFFSET_Y = Math.round(stickR * 0.20); // arriba  (~20% del radio)
 
 const baseX = pad + stickR + 10 + JOY_HW_OFFSET_X;
