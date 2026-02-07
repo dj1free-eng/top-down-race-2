@@ -2267,33 +2267,48 @@ this.cameras.main.ignore(this._startModal);
 
 // Si rota/cambia viewport, reajusta modal y reubica luces
 this._reflowStartModal = () => {
-  // Si la escena se está cerrando o el modal ya no existe, no hacemos nada
-  if (!this._startModalBg || !this._startModalBg.scene) return;
-
   const w2 = this.scale.width;
   const h2 = this.scale.height;
 
-  this._startModalBg.setSize(w2, h2);
+  // Fondo cubre toda la pantalla
+  modalBg.setSize(w2, h2);
 
-  const pw = Math.min(760, Math.floor(w2 * 0.94));
+  // Recalcular panel SIEMPRE (no usar el panelH/panelW antiguos)
+  const pw = Math.min(760, Math.floor(w2 * 0.92));
+  const ph = Math.min(260, Math.floor(h2 * 0.42)); // mismo criterio que en create
   const px = Math.floor((w2 - pw) / 2);
-  const py = Math.floor(h2 * 0.14);
+  const py = Math.floor(h2 * 0.10);
 
-  // Repos texto
-  this._startTitle.setPosition(px + 18, py + 6);
-  this._startHint.setPosition(px + 18, py + 34);
-  this._startStatus.setPosition(px + 18, py + panelH - 30);
+  // Texto
+  if (this._startTitle) this._startTitle.setPosition(px + 18, py + 6);
+  if (this._startHint) this._startHint.setPosition(px + 18, py + 34);
+  if (this._startStatus) this._startStatus.setPosition(px + 18, py + ph - 30);
 
-  // Repos asset + escala
-this._startAsset.setPosition(px + pw / 2, py + Math.floor(panelH * 0.60))
+  // Asset (posición)
+  if (this._startAsset) {
+    this._startAsset.setPosition(px + pw / 2, py + Math.floor(ph * 0.60));
 
-  const targetW = Math.min(pw * 0.92, 720);
-  const s = targetW / this._startAsset.width;
-  this._startAsset.setScale(s);
+    // Escala: limitar por ancho Y por alto (clave para que NO se haga gigante)
+    const targetW = Math.min(pw * 0.88, 640);
+    const targetH = Math.min(ph * 0.70, Math.floor(h2 * 0.32));
+    const sW = targetW / this._startAsset.width;
+    const sH = targetH / this._startAsset.height;
+    const s = Math.min(sW, sH);
+
+    this._startAsset.setScale(s);
+  }
+
+  // Reposicionar las luces encima del PNG (si existe el helper)
+  try { positionLights(); } catch (e) {}
 };
 
 this.scale.on('resize', this._reflowStartModal);
-// Arranque automático del semáforo al cargar (sin GAS)
+
+// iOS: al entrar a la escena el tamaño real llega "un pelín después"
+this._reflowStartModal();
+this.time.delayedCall(0, () => this._reflowStartModal());
+this.time.delayedCall(120, () => this._reflowStartModal());    
+    // Arranque automático del semáforo al cargar (sin GAS)
 this.time.delayedCall(150, () => {
   if (this._startState !== 'COUNTDOWN') this._startState = 'COUNTDOWN';
 
