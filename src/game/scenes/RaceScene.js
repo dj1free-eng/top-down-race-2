@@ -2088,7 +2088,7 @@ this._buildSpeedHud = () => {
   // Textos
   this.speedHud.speedText = this.add.text(0, 0, '0', {
     fontFamily: 'Orbitron, system-ui, -apple-system, Segoe UI, Roboto, Arial',
-    fontSize: '28px',
+    fontSize: '44px',
     color: '#FFFFFF',
     fontStyle: '900'
   })
@@ -2099,7 +2099,7 @@ this._buildSpeedHud = () => {
 
   this.speedHud.unitText = this.add.text(0, 0, 'KM/H', {
     fontFamily: 'Orbitron, system-ui, -apple-system, Segoe UI, Roboto, Arial',
-    fontSize: '14px',
+    fontSize: '18px',
     color: '#CFE8FF',
     fontStyle: '800'
   })
