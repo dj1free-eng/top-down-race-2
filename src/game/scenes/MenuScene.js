@@ -577,7 +577,13 @@ bottom.add(tracksBtn);
         title: 'Track 02 — Técnico',
         desc: 'Chicane + horquilla + enlazadas.\nAquí se ve quién frena… y quién reza.',
         tag: 'TECH'
-      }
+      },
+      {
+        key: 'track03',
+        title: 'Track 03 — Drift Test',
+        desc: 'Pista ancha y enlazada.\nHecha para derrapar y encadenar.',
+        tag: 'DRIFT'
+    }
     ];
 
     const info = this.add.text(x + pad, y + pad, 'Elige circuito:', {
@@ -650,7 +656,8 @@ const cardH = clamp(Math.floor(h * 0.62), 150, 240);
 
     ov.add(makeCard(leftX, topY, tracks[0]));
     ov.add(makeCard(rightX, topY, tracks[1]));
-
+    ov.add(makeCard(leftX, topY + cardH + 14, tracks[2]));
+    
     const tip = this.add.text(x + pad, y + h - 26, 'Tip: el circuito elegido se usa al pulsar PLAY.', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
       fontSize: '12px',
@@ -849,6 +856,7 @@ _previewTextureKey(carId) {
   _trackTitle(key) {
     if (key === 'track01') return 'Óvalo';
     if (key === 'track02') return 'Técnico';
+    if (key === 'track03') return 'Drift';
     return key || '—';
   }
 }
