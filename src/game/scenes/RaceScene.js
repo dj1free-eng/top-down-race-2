@@ -2088,7 +2088,7 @@ this._buildSpeedHud = () => {
   // Textos
   this.speedHud.speedText = this.add.text(0, 0, '0', {
     fontFamily: 'Orbitron, system-ui, -apple-system, Segoe UI, Roboto, Arial',
-    fontSize: '44px',
+    fontSize: '28px',
     color: '#FFFFFF',
     fontStyle: '900'
   })
@@ -2099,7 +2099,7 @@ this._buildSpeedHud = () => {
 
   this.speedHud.unitText = this.add.text(0, 0, 'KM/H', {
     fontFamily: 'Orbitron, system-ui, -apple-system, Segoe UI, Roboto, Arial',
-    fontSize: '18px',
+    fontSize: '14px',
     color: '#CFE8FF',
     fontStyle: '800'
   })
@@ -2833,21 +2833,46 @@ if (this._surface === 'OFF') {
   body.velocity.y *= extra;
 }
 
-    // Aceleración / freno
-    if (up && !down) {
-      body.velocity.x += dirX * accel * dt;
-      body.velocity.y += dirY * accel * dt;
-    }
-    if (down) {
-      body.velocity.x -= dirX * brakeForce * dt;
-      body.velocity.y -= dirY * brakeForce * dt;
-    }
+// Aceleración / freno (con curva para que cueste llegar a punta)
+{
+  // velocidad longitudinal (signada)
+  const fwdSpeedNow = body.velocity.x * dirX + body.velocity.y * dirY;
+  const absFwdNow = Math.abs(fwdSpeedNow);
 
-    // Drag base
-    const drag = Math.max(0, 1 - linearDrag * dt * 60);
-    body.velocity.x *= drag;
-    body.velocity.y *= drag;
+  // 0..1 respecto a maxFwd (usa maxFwd, no maxSpeed, para que el feeling sea consistente)
+  const v01 = clamp(absFwdNow / Math.max(1, maxFwd), 0, 1);
 
+  // Curva de empuje: al principio empuja mucho, al final casi nada
+  // (sube el 1.8 si quieres aún MÁS difícil llegar a punta)
+  const accelCurve = 1 - Math.pow(v01, 1.8);
+
+  // Empuje efectivo
+  const accelEff = accel * accelCurve;
+
+  if (up && !down) {
+    body.velocity.x += dirX * accelEff * dt;
+    body.velocity.y += dirY * accelEff * dt;
+  }
+
+  if (down) {
+    body.velocity.x -= dirX * brakeForce * dt;
+    body.velocity.y -= dirY * brakeForce * dt;
+  }
+
+  // Freno motor suave SOLO si no estás acelerando ni frenando
+  // (baja el 0.35 si quieres aún más “vela”)
+  if (!up && !down && engineBrake > 0) {
+    const eb = Math.exp(-engineBrake * dt * 60 * 0.35);
+    body.velocity.x *= eb;
+    body.velocity.y *= eb;
+  }
+
+  // Drag base (exponencial = estable y suave)
+  // Nota: linearDrag sigue mandando, pero ahora se aplica “bien”
+  const drag = Math.exp(-linearDrag * dt * 60);
+  body.velocity.x *= drag;
+  body.velocity.y *= drag;
+}
     // Límite de velocidad por sentido
     const fwdSpeed = body.velocity.x * dirX + body.velocity.y * dirY;
     const newSpeed = Math.sqrt(
