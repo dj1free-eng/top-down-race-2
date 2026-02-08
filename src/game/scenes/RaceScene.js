@@ -2114,12 +2114,11 @@ this._buildSpeedHud = () => {
     color: '#FFFFFF',
     fontStyle: '900'
   })
-    this.speedHud.clockText.setVisible(false);
     .setOrigin(1, 1)
     .setScrollFactor(0)
     .setDepth(2001)
     .setShadow(0, 2, '#000000', 3, false, true);
-
+    this.speedHud.clockText.setVisible(false);
   // Que el mundo NO lo pinte (solo UI cam)
   this.cameras.main.ignore([
     this.speedHud.base,
