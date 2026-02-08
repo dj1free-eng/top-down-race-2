@@ -407,7 +407,7 @@ else this._ttProg.idx = startIdx;
     const incomingTrack = data?.trackKey;
     const savedTrack = localStorage.getItem('tdr2:trackKey');
 
-    const valid = (k) => (k === 'track01' || k === 'track02');
+const valid = (k) => (k === 'track01' || k === 'track02' || k === 'track03');
 
     this.trackKey = valid(incomingTrack)
       ? incomingTrack
@@ -712,7 +712,11 @@ this._onShutdownRaceScene = () => {
 this.events.once(Phaser.Scenes.Events.SHUTDOWN, this._onShutdownRaceScene, this);
     
     // 1) Track meta primero (define world real)
-const t01 = (this.trackKey === 'track01') ? makeTrack01Oval() : makeTrack02Technical();
+let t01;
+if (this.trackKey === 'track01') t01 = makeTrack01Oval();
+else if (this.trackKey === 'track02') t01 = makeTrack02Technical();
+else if (this.trackKey === 'track03') t01 = makeTrack03Drift();
+else t01 = makeTrack02Technical(); // fallback seguro
 
 const spec = this.baseSpec || CAR_SPECS.stock;
     this.worldW = t01.worldW;
