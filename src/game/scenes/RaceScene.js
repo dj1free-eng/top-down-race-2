@@ -2114,6 +2114,7 @@ this._buildSpeedHud = () => {
     color: '#FFFFFF',
     fontStyle: '900'
   })
+    this.speedHud.clockText.setVisible(false);
     .setOrigin(1, 1)
     .setScrollFactor(0)
     .setDepth(2001)
