@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { makeTrack01Oval } from '../tracks/track01_oval.js';
 import { makeTrack02Technical } from '../tracks/track02_technical.js';
+import { makeTrack03Drift } from '../tracks/track03_drift.js';
 import { buildTrackRibbon } from '../tracks/TrackBuilder.js';
 import { CAR_SPECS } from '../cars/carSpecs.js';
 import { resolveCarParams } from '../cars/resolveCarParams.js';
