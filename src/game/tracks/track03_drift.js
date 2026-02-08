@@ -45,13 +45,13 @@ export function makeTrack03Drift() {
 
     // Subida izquierda con curva larga (otro drift sostenido)
     [0.28, 0.72],
-    [0.26, 0.66],
-    [0.26, 0.58],
-    [0.28, 0.50],
-    [0.30, 0.44],
-    [0.30, 0.38],
-    [0.29, 0.34],
-    [0.28, 0.32]
+    [0.27, 0.66],
+    [0.27, 0.60],
+    [0.29, 0.54],
+    [0.31, 0.48],
+    [0.32, 0.42],
+    [0.32, 0.36],
+    [0.31, 0.32]
   ];
 
   const centerline = centerlineNorm.map(([nx, ny]) => ({
