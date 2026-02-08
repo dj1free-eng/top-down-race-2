@@ -2832,7 +2832,8 @@ if (this._surface === 'OFF') {
   body.velocity.x *= extra;
   body.velocity.y *= extra;
 }
-
+// Freno motor base (suave)
+const engineBrake = 0.04; // ← ajustable
 // Aceleración / freno (con curva para que cueste llegar a punta)
 {
   // velocidad longitudinal (signada)
