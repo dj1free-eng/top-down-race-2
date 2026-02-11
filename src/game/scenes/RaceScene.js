@@ -2839,8 +2839,8 @@ maxRev *= 0.75;
   body.velocity.x *= extra;
   body.velocity.y *= extra;
 }
-// Freno motor base (suave)
-const engineBrake = 0.04; // ← ajustable
+// Freno motor "global" (coeficiente para suavizar, NO pisa engineBrake del coche)
+const engineBrakeCoef = 0.04; // ajustable
 // Aceleración / freno (con curva para que cueste llegar a punta)
 {
   // velocidad longitudinal (signada)
