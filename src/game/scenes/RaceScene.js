@@ -1767,8 +1767,8 @@ const sw = mPanelW - 28;
 // Definiciones
 const sliderDefs = [
   { key: 'accelMult',     label: 'Aceleración (accelMult)',   min: 0.40, max: 2.50, step: 0.05 },
-  { key: 'maxFwdAdd',     label: 'Vel máx + (maxFwdAdd)',     min: 0.00, max: 2.00, step: 0.05 },
-  { key: 'maxRevAdd',     label: 'Vel rev + (maxRevAdd)',     min: 0.00, max: 2.00, step: 0.05 },
+  { key: 'maxFwdAdd',     label: 'Vel máx + (px/s)',          min: 0, max: 400, step: 5 },
+  { key: 'maxRevAdd',     label: 'Vel rev + (px/s)',          min: 0, max: 200, step: 5 },
   { key: 'turnRateMult',  label: 'Giro (turnRateMult)',       min: 0.40, max: 2.50, step: 0.05 },
   { key: 'gripAdd',       label: 'Grip + (gripAdd)',          min: -0.40, max: 0.80, step: 0.02 },
   { key: 'driftAdd',      label: 'Drift + (driftAdd)',        min: -0.20, max: 0.50, step: 0.02 },
