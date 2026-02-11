@@ -1767,6 +1767,7 @@ const sw = mPanelW - 28;
 // Definiciones
 const sliderDefs = [
   { key: 'accelMult',     label: 'Aceleración (accelMult)',   min: 0.40, max: 2.50, step: 0.05 },
+  { key: 'dragMult',      label: 'Drag (dragMult)',           min: 0.40, max: 2.50, step: 0.05 }, 
   { key: 'maxFwdAdd',     label: 'Vel máx + (px/s)',          min: 0, max: 400, step: 5 },
   { key: 'maxRevAdd',     label: 'Vel rev + (px/s)',          min: 0, max: 200, step: 5 },
   { key: 'turnRateMult',  label: 'Giro (turnRateMult)',       min: 0.40, max: 2.50, step: 0.05 },
