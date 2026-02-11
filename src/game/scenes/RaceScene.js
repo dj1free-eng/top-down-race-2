@@ -2874,7 +2874,7 @@ if (!up && !down && engineBrake > 0) {
 
   if (Math.abs(fwd) > 0.0001) {
     // ⚠️ multiplicamos por 0.35 para suavizar
-    const dec = engineBrake * 0.25 * dt;
+    const dec = engineBrake * 0.05 * dt;
 
     const newAbs = Math.max(0, Math.abs(fwd) - dec);
     const newFwd = Math.sign(fwd) * newAbs;
