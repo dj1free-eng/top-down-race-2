@@ -2868,22 +2868,17 @@ const engineBrakeCoef = 0.04; // ajustable
     body.velocity.y -= dirY * brakeForce * dt;
   }
 
-  // Freno motor suave SOLO si no estás acelerando ni frenando
-  // (baja el 0.35 si quieres aún más “vela”)
-  if (!up && !down && engineBrake > 0) {
-    const eb = Math.exp(-engineBrake * dt * 60 * 0.35);
-    body.velocity.x *= eb;
-    body.velocity.y *= eb;
-  }
 // Freno motor (solo cuando NO hay gas NI freno)
 if (!up && !down && engineBrake > 0) {
   const fwd = body.velocity.x * dirX + body.velocity.y * dirY;
+
   if (Math.abs(fwd) > 0.0001) {
-    const dec = engineBrake * dt;
+    // ⚠️ multiplicamos por 0.35 para suavizar
+    const dec = engineBrake * 0.35 * dt;
+
     const newAbs = Math.max(0, Math.abs(fwd) - dec);
     const newFwd = Math.sign(fwd) * newAbs;
 
-    // Ajustar solo la componente longitudinal (manteniendo lateral)
     const dv = newFwd - fwd;
     body.velocity.x += dirX * dv;
     body.velocity.y += dirY * dv;
