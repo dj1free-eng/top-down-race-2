@@ -2794,8 +2794,11 @@ this._surface = surface;
 let accel = this.accel ?? 0;
 const brakeForce = this.brakeForce ?? 0;
 const linearDrag = this.linearDrag ?? 0;
-const maxFwd = this.maxFwd ?? 1;
-const maxRev = this.maxRev ?? 1;
+const engineBrake = this.engineBrake ?? 0; // <- IMPORTANTE (evita "engineBrake is not defined")
+
+let maxFwd = this.maxFwd ?? 1; // let (lo vamos a poder penalizar por terreno)
+let maxRev = this.maxRev ?? 1;
+
 let turnRate = this.turnRate ?? 0;
 const turnMin = this.turnMin ?? 0.1;
 
@@ -2810,7 +2813,9 @@ if (this._surface === 'GRASS') {
 
   // 2) menos capacidad de giro pero menos
   turnRate *= 0.80;
-
+// penalizamos velocidad maxima en ambos sentidos
+  maxFwd *= 0.90;
+maxRev *= 0.90;
   // 3) drag medio y estable por tiempo (independiente de FPS)
   //    En ~1s te deja aprox al 55% de velocidad
   const extra = Math.pow(0.55, dt);
@@ -2825,7 +2830,9 @@ if (this._surface === 'OFF') {
 
   // 2) menos capacidad de giro
   turnRate *= 0.60;
-
+// penalizamos velocidad maxima en ambos sentidos
+ maxFwd *= 0.75;
+maxRev *= 0.75; 
   // 3) drag extra fuerte y estable por tiempo (independiente de FPS)
   //    En ~1s te deja aprox al 18% de velocidad (muy penalizante)
   const extra = Math.pow(0.18, dt);
@@ -2867,7 +2874,20 @@ const engineBrake = 0.04; // ← ajustable
     body.velocity.x *= eb;
     body.velocity.y *= eb;
   }
+// Freno motor (solo cuando NO hay gas NI freno)
+if (!up && !down && engineBrake > 0) {
+  const fwd = body.velocity.x * dirX + body.velocity.y * dirY;
+  if (Math.abs(fwd) > 0.0001) {
+    const dec = engineBrake * dt;
+    const newAbs = Math.max(0, Math.abs(fwd) - dec);
+    const newFwd = Math.sign(fwd) * newAbs;
 
+    // Ajustar solo la componente longitudinal (manteniendo lateral)
+    const dv = newFwd - fwd;
+    body.velocity.x += dirX * dv;
+    body.velocity.y += dirY * dv;
+  }
+}
   // Drag base (exponencial = estable y suave)
   // Nota: linearDrag sigue mandando, pero ahora se aplica “bien”
   const drag = Math.exp(-linearDrag * dt * 60);
