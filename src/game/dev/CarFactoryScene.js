@@ -499,6 +499,117 @@ btnReset.x = -452;
 // Línea divisoria bajo barra acciones
 this.add.rectangle(midX + 10, actionY + actionH + 6, midW - 20, 1, 0xb7c0ff, 0.10)
   .setOrigin(0);
+    // ===========================
+// PREVIEW LAYER (showroom)
+// ===========================
+const previewTop = actionY + actionH + 16;
+const previewPad = 16;
+
+// Zona preview (derecha del texto)
+const infoW = 240; // ancho reservado para texto/info
+const previewX = midX + infoW + previewPad;
+const previewY = previewTop;
+const previewW = midW - infoW - previewPad * 2;
+const previewH = midY + midH - previewTop - previewPad;
+
+// Marco preview
+const prevFrame = this.add.rectangle(previewX, previewY, previewW, previewH, 0x000000, 0.10)
+  .setOrigin(0)
+  .setStrokeStyle(1, 0x2cf6ff, 0.10);
+
+// Glow circular suave (decor)
+const glow = this.add.circle(previewX + previewW * 0.62, previewY + previewH * 0.55, Math.min(previewW, previewH) * 0.38, 0x2cf6ff, 0.05);
+
+// Contenedor preview (sprite/placeholder)
+this._previewContainer = this.add.container(0, 0);
+
+// Placeholder (si no hay textura)
+this._previewPlaceholder = this.add.rectangle(previewX + previewW * 0.65, previewY + previewH * 0.55, 180, 90, 0xffffff, 0.06)
+  .setStrokeStyle(1, 0xffffff, 0.12);
+this._previewPlaceholder.setAngle(-18);
+
+this._previewPlaceholder2 = this.add.rectangle(previewX + previewW * 0.62, previewY + previewH * 0.55, 180, 90, 0x2cf6ff, 0.06)
+  .setStrokeStyle(1, 0x2cf6ff, 0.18);
+this._previewPlaceholder2.setAngle(-18);
+
+this._previewCarSprite = null;
+
+// Helper: resolve texture key
+const resolveCarTextureKey = (spec) => {
+  // Si en tus specs existe algo como skinKey/texture/key, lo probamos:
+  if (!spec) return null;
+
+  const candidates = [
+    spec.textureKey,
+    spec.skinKey,
+    spec.spriteKey,
+    spec.key,
+    spec.id
+  ].filter(Boolean);
+
+  for (const k of candidates) {
+    if (this.textures.exists(k)) return k;
+  }
+  return null;
+};
+
+// Crear/actualizar preview
+this._refreshPreview = () => {
+  const spec = this._factoryCar || CAR_SPECS.stock;
+  const key = resolveCarTextureKey(spec);
+
+  // Actualizar texto
+  const p = normalizeSpecForCarSpecs(spec);
+  this._previewText.setText(
+    `ID: ${p.id}\n` +
+    `NAME: ${p.name}\n` +
+    `MAX FWD: ${p.maxFwd}\n` +
+    `ACCEL: ${p.accel}\n` +
+    `TURN: ${p.turnRate}\n` +
+    `GRIP: ${p.gripDrive}`
+  );
+
+  // Si existe sprite previo, destruir
+  if (this._previewCarSprite) {
+    this._previewCarSprite.destroy();
+    this._previewCarSprite = null;
+  }
+
+  if (key) {
+    // Ocultar placeholders
+    this._previewPlaceholder.setVisible(false);
+    this._previewPlaceholder2.setVisible(false);
+
+    // Crear sprite
+    const s = this.add.image(previewX + previewW * 0.65, previewY + previewH * 0.55, key);
+    s.setOrigin(0.5);
+    s.setAlpha(0.95);
+
+    // Escalado para encajar
+    const boundsW = previewW * 0.70;
+    const boundsH = previewH * 0.60;
+
+    const tex = this.textures.get(key).getSourceImage();
+    const iw = tex?.width || 256;
+    const ih = tex?.height || 256;
+
+    const scale = Math.min(boundsW / iw, boundsH / ih);
+    s.setScale(scale);
+
+    // Ligera rotación estética
+    s.setRotation(0);
+
+    // Guardar
+    this._previewCarSprite = s;
+  } else {
+    // Mostrar placeholders
+    this._previewPlaceholder.setVisible(true);
+    this._previewPlaceholder2.setVisible(true);
+  }
+};
+
+// Refresco inicial
+this._refreshPreview();
 // ===========================
 // PREVIEW
 // ===========================
