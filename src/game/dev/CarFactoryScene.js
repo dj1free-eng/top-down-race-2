@@ -487,7 +487,12 @@ const driveSpec = normalizeSpecForCarSpecs(this._factoryCar);
 
 // En pista usamos un ID que exista visualmente (skin/texture)
 // El ID "real" (new_car) lo sigues teniendo en la fábrica para exportar
-driveSpec.id = this._visualCarId || driveSpec.id || 'stock';
+const visualId = this._visualCarId || driveSpec.id || 'stock';
+driveSpec.id = visualId;
+
+// Importante: RaceScene solo aplica skin si factorySpec trae 'skin'
+const skinFile = (CAR_SPECS?.[visualId]?.skin) || this._factoryCar?.skin || null;
+if (skinFile) driveSpec.skin = skinFile;
 
 this.scene.start('race', { factorySpec: driveSpec });
 }, 120);
@@ -591,41 +596,35 @@ this._previewCarSprite = null;
 const resolveCarTextureKey = (spec) => {
   if (!spec) return null;
 
-  const texKey = `car_${spec.id}`;
+  const visualId = this._visualCarId || spec.id || 'stock';
+  const texKey = `car_${visualId}`;
+
   if (this.textures.exists(texKey)) return texKey;
 
   return null;
 };
-    // Si no está cargada pero el spec tiene skin, la cargamos
-if (!key && spec?.skin) {
-  const texKey = `car_${spec.id}`;
-  const url = `assets/skins/${spec.skin}`;
-
-  if (!this.load.isLoading()) {
-    this.load.image(texKey, url);
-    this.load.once(`filecomplete-image-${texKey}`, () => {
-      this._refreshPreview?.();
-    });
-    this.load.start();
-  }
-}
 
 // Crear/actualizar preview
 this._refreshPreview = () => {
   const spec = this._factoryCar || CAR_SPECS.stock;
-  const key = resolveCarTextureKey(spec);
-// Debug: qué textura está usando (para comprobar rápido)
-if (!this._texKeyText) {
-  this._texKeyText = this.add.text(previewX + 12, previewY + 10, '', {
-    fontFamily: 'monospace',
-    fontSize: '11px',
-    color: '#b7c0ff'
-  });
-}
-this._texKeyText.setText(key ? `TEX: ${key}` : 'TEX: (no encontrada)');
-  // Actualizar texto
-  const p = normalizeSpecForCarSpecs(spec);
 
+  const visualId = this._visualCarId || spec.id || 'stock';
+  const skinFile = spec?.skin || CAR_SPECS?.[visualId]?.skin || null;
+
+  const key = resolveCarTextureKey(spec);
+
+  // Debug: qué textura está usando
+  if (!this._texKeyText) {
+    this._texKeyText = this.add.text(previewX + 12, previewY + 10, '', {
+      fontFamily: 'monospace',
+      fontSize: '11px',
+      color: '#b7c0ff'
+    });
+  }
+  this._texKeyText.setText(key ? `TEX: ${key}` : 'TEX: (no encontrada)');
+
+  // Texto de info
+  const p = normalizeSpecForCarSpecs(spec);
   if (this._previewText) {
     this._previewText.setText(
       `ID: ${p.id}\n` +
@@ -643,48 +642,58 @@ this._texKeyText.setText(key ? `TEX: ${key}` : 'TEX: (no encontrada)');
     this._previewCarSprite = null;
   }
 
-  if (key) {
-    // Ocultar placeholders
-    this._previewPlaceholder.setVisible(false);
-    this._previewPlaceholder2.setVisible(false);
-
-    // Crear sprite
-    // Centro exacto del área preview
-const centerX = previewX + previewW / 2;
-const centerY = previewY + previewH / 2;
-
-// Crear sprite centrado
-const s = this.add.image(centerX, centerY, key);
-s.setOrigin(0.5);
-s.setAlpha(0.98);
-
-// Medidas reales de la textura
-const frame = this.textures.getFrame(key);
-const iw = frame ? frame.width : 256;
-const ih = frame ? frame.height : 256;
-
-// Margen interno para que no toque el marco
-const margin = 24;
-const maxW = previewW - margin * 2;
-const maxH = previewH - margin * 2;
-
-// Escala proporcional perfecta
-const scale = Math.min(maxW / iw, maxH / ih);
-s.setScale(scale);
-
-// Sin rotación rara
-s.setRotation(0);
-
-// Guardar referencia
-this._previewCarSprite = s;
-
-    // Guardar
-    this._previewCarSprite = s;
-  } else {
-    // Mostrar placeholders
+  // Si NO hay textura, intentamos cargarla (runtime) y mientras mostramos placeholder
+  if (!key) {
     this._previewPlaceholder.setVisible(true);
     this._previewPlaceholder2.setVisible(true);
+
+    if (skinFile) {
+      const texKey = `car_${visualId}`;
+
+      // Evitar spam de carga
+      if (this._loadingSkinKey !== texKey && !this.textures.exists(texKey)) {
+        this._loadingSkinKey = texKey;
+
+        this.ensureCarSkinTexture({ id: visualId, skin: skinFile }).then((loadedKey) => {
+          // Si la escena ya no está activa, no hagas nada
+          if (!this.scene?.isActive?.()) return;
+
+          // Limpiar flag
+          if (this._loadingSkinKey === texKey) this._loadingSkinKey = null;
+
+          // Si cargó OK, refrescar (ahora key existirá)
+          if (loadedKey) this._refreshPreview?.();
+        });
+      }
+    }
+
+    return;
   }
+
+  // Si hay textura, pintar sprite y ocultar placeholder
+  this._previewPlaceholder.setVisible(false);
+  this._previewPlaceholder2.setVisible(false);
+
+  const centerX = previewX + previewW / 2;
+  const centerY = previewY + previewH / 2;
+
+  const s = this.add.image(centerX, centerY, key);
+  s.setOrigin(0.5);
+  s.setAlpha(0.98);
+
+  const frame = this.textures.getFrame(key);
+  const iw = frame ? frame.width : 256;
+  const ih = frame ? frame.height : 256;
+
+  const margin = 24;
+  const maxW = previewW - margin * 2;
+  const maxH = previewH - margin * 2;
+
+  const scale = Math.min(maxW / iw, maxH / ih);
+  s.setScale(scale);
+  s.setRotation(0);
+
+  this._previewCarSprite = s;
 };
 
 // Refresco inicial
