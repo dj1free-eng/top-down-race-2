@@ -399,65 +399,79 @@ else this._ttProg.idx = startIdx;
       pbIndex
     };
   }
-    init(data) {
-    // 1) Resolver coche seleccionado (prioridad: data -> localStorage -> stock)
-    this.carId = data?.carId || localStorage.getItem('tdr2:carId') || 'stock';
+init(data) {
+  // ========================================
+  // FACTORY TEST DRIVE (opcional)
+  // ========================================
+  this.factorySpec = data?.factorySpec || null;
+  this._useFactorySpec = !!this.factorySpec;
 
-    // 1.1) Resolver circuito seleccionado (prioridad: data -> localStorage -> track02)
-    const incomingTrack = data?.trackKey;
-    const savedTrack = localStorage.getItem('tdr2:trackKey');
+  // 1) Resolver coche seleccionado (prioridad: factorySpec -> data -> localStorage -> stock)
+  this.carId = this._useFactorySpec
+    ? (this.factorySpec.id || '__factory__')
+    : (data?.carId || localStorage.getItem('tdr2:carId') || 'stock');
 
-const valid = (k) => (k === 'track01' || k === 'track02' || k === 'track03');
+  // 1.1) Resolver circuito seleccionado (prioridad: data -> localStorage -> track02)
+  const incomingTrack = data?.trackKey;
+  const savedTrack = localStorage.getItem('tdr2:trackKey');
 
-    this.trackKey = valid(incomingTrack)
-      ? incomingTrack
-      : (valid(savedTrack) ? savedTrack : 'track02');
+  const valid = (k) => (k === 'track01' || k === 'track02' || k === 'track03');
 
-    localStorage.setItem('tdr2:trackKey', this.trackKey);
-// ========================================
-// Time Trial: histórico de vueltas (por pista) — máx 500
-// ========================================
-this.ttHistKey = `tdr2:ttHist:${this.trackKey}`;
-this.ttHistory = [];
+  this.trackKey = valid(incomingTrack)
+    ? incomingTrack
+    : (valid(savedTrack) ? savedTrack : 'track02');
 
-try {
-  const raw = localStorage.getItem(this.ttHistKey);
-  const parsed = raw ? JSON.parse(raw) : null;
-  const arr = parsed?.history;
-  if (Array.isArray(arr)) {
-    this.ttHistory = arr
-      .filter(r => r && Number.isFinite(r.lapMs))
-      .slice(-500);
-  }
-} catch (e) {
+  localStorage.setItem('tdr2:trackKey', this.trackKey);
+
+  // ========================================
+  // Time Trial: histórico de vueltas (por pista) — máx 500
+  // ========================================
+  this.ttHistKey = `tdr2:ttHist:${this.trackKey}`;
   this.ttHistory = [];
-}
-// ========================================
-// Time Trial: best lap + splits por pista
-// ========================================
-this.ttKey = `tdr2:ttBest:${this.trackKey}`; // por pista
-this.ttBest = null;
 
-try {
-  const raw = localStorage.getItem(this.ttKey);
-  const parsed = raw ? JSON.parse(raw) : null;
-  if (parsed && Number.isFinite(parsed.lapMs)) {
-    this.ttBest = {
-      lapMs: parsed.lapMs,
-      s1: Number.isFinite(parsed.s1) ? parsed.s1 : null,
-      s2: Number.isFinite(parsed.s2) ? parsed.s2 : null
-    };
+  try {
+    const raw = localStorage.getItem(this.ttHistKey);
+    const parsed = raw ? JSON.parse(raw) : null;
+    const arr = parsed?.history;
+    if (Array.isArray(arr)) {
+      this.ttHistory = arr
+        .filter(r => r && Number.isFinite(r.lapMs))
+        .slice(-500);
+    }
+  } catch (e) {
+    this.ttHistory = [];
   }
-} catch (e) {
+
+  // ========================================
+  // Time Trial: best lap + splits por pista
+  // ========================================
+  this.ttKey = `tdr2:ttBest:${this.trackKey}`; // por pista
   this.ttBest = null;
-}
-// 2) Base spec (guardar en la escena para usarlo en create/update)
-this.baseSpec = CAR_SPECS[this.carId] || CAR_SPECS.stock;
 
+  try {
+    const raw = localStorage.getItem(this.ttKey);
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (parsed && Number.isFinite(parsed.lapMs)) {
+      this.ttBest = {
+        lapMs: parsed.lapMs,
+        s1: Number.isFinite(parsed.s1) ? parsed.s1 : null,
+        s2: Number.isFinite(parsed.s2) ? parsed.s2 : null
+      };
+    }
+  } catch (e) {
+    this.ttBest = null;
+  }
 
-    // === UPGRADES: cargar niveles por coche ===
+  // 2) Base spec (factorySpec tiene prioridad)
+  this.baseSpec = this._useFactorySpec
+    ? this.factorySpec
+    : (CAR_SPECS[this.carId] || CAR_SPECS.stock);
+
+  // === UPGRADES: cargar niveles por coche (solo si NO es factorySpec) ===
+  const defaultUpgrades = { engine: 0, brakes: 0, tires: 0 };
+
+  if (!this._useFactorySpec) {
     const upgradesKey = `tdr2:upgrades:${this.carId}`;
-    const defaultUpgrades = { engine: 0, brakes: 0, tires: 0 };
 
     try {
       this.upgrades = JSON.parse(localStorage.getItem(upgradesKey) || 'null') || defaultUpgrades;
@@ -465,32 +479,40 @@ this.baseSpec = CAR_SPECS[this.carId] || CAR_SPECS.stock;
       this.upgrades = defaultUpgrades;
     }
 
-    // Convierte niveles -> “tornillos”
-    const tuningFromUpgrades = (u) => {
-      const engineLv = u.engine || 0;
-      const brakesLv = u.brakes || 0;
-      const tiresLv  = u.tires  || 0;
-
-      return {
-        // Motor
-        accelMult: 1.0 + engineLv * 0.08, // +8% por nivel
-        maxFwdAdd: engineLv * 35,         // +35 px/s por nivel
-
-        // Frenos
-        brakeMult: 1.0 + brakesLv * 0.10, // +10% por nivel
-
-        // Otros neutros (por ahora)
-        dragMult: 1.0,
-        turnRateMult: 1.0,
-        turnMinAdd: 0,
-        maxRevAdd: 0,
-
-        // Neumáticos (si tu resolveCarParams los usa, perfecto; si no, se ignoran sin romper)
-        gripDriveAdd: tiresLv * 0.02,
-        gripCoastAdd: tiresLv * 0.01,
-        gripBrakeAdd: tiresLv * 0.015
-      };
+    // Guardar upgrades
+    this._saveUpgrades = () => {
+      try { localStorage.setItem(upgradesKey, JSON.stringify(this.upgrades)); } catch {}
     };
+  } else {
+    // En Test Drive de fábrica: upgrades neutros y no persistentes
+    this.upgrades = defaultUpgrades;
+    this._saveUpgrades = () => {};
+  }
+
+  // Convierte niveles -> “tornillos”
+  const tuningFromUpgrades = (u) => {
+    const engineLv = u.engine || 0;
+    const brakesLv = u.brakes || 0;
+    const tiresLv  = u.tires  || 0;
+
+    return {
+      accelMult: 1.0 + engineLv * 0.05,
+      maxFwdAdd: engineLv * 12,
+
+      brakeMult: 1.0 + brakesLv * 0.06,
+
+      gripDriveAdd: tiresLv * 0.015,
+      gripCoastAdd: tiresLv * 0.010,
+      gripBrakeAdd: tiresLv * 0.012,
+
+      dragMult: 1.0 - tiresLv * 0.01,
+      turnRateMult: 1.0 + tiresLv * 0.02
+    };
+  };
+
+  // Tuning derivado desde upgrades
+  this.tuningBase = tuningFromUpgrades(this.upgrades);
+}
 // ===============================
 // DEV TUNING (localStorage) — overrides en caliente
 // ===============================
