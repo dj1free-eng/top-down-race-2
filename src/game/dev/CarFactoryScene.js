@@ -1,6 +1,8 @@
 // src/game/dev/CarFactoryScene.js
 import Phaser from 'phaser';
-
+import { CAR_SPECS } from '../cars/carSpecs.js';
+import { resolveCarParams } from '../cars/resolveCarParams.js';
+import { HANDLING_PROFILES } from '../cars/handlingProfiles.js';
 export class CarFactoryScene extends Phaser.Scene {
   constructor() {
     super('factory');
