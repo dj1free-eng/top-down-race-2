@@ -323,9 +323,6 @@ const midT = this.add.text(midX + 12, midY + 10, 'ZONA DE MONTAJE (preview + par
   fontStyle: '800'
 });
 
-// Reposicionar previewText para que quede dentro del panel central
-this._previewText.setPosition(midX + 22, midY + 48);
-
 // ===========================
 // PREVIEW
 // ===========================
