@@ -322,7 +322,183 @@ const midT = this.add.text(midX + 12, midY + 10, 'ZONA DE MONTAJE (preview + par
   color: '#b7c0ff',
   fontStyle: '800'
 });
+// ===========================
+// ACTION BAR (panel central)
+// ===========================
+const actionH = 46;
 
+// Bandeja superior derecha (contenedor)
+const actionX = midX + midW - 12;
+const actionY = midY + 10;
+
+// Helper botón compacto (para barra)
+const mkActionBtn = (label, onClick, w = 112) => {
+  const h = 30;
+
+  const r = this.add.rectangle(0, 0, w, h, 0x0b1020, 0.85)
+    .setOrigin(1, 0) // anclado a la derecha
+    .setStrokeStyle(1, 0x2cf6ff, 0.22)
+    .setInteractive({ useHandCursor: true });
+
+  const t = this.add.text(-w / 2, h / 2, label, {
+    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: '11px',
+    color: '#eaffff',
+    fontStyle: '800'
+  }).setOrigin(0.5);
+
+  r.on('pointerdown', () => onClick?.());
+
+  const c = this.add.container(0, 0, [r, t]);
+  return c;
+};
+
+// Toast simple (feedback en pantalla)
+if (!this._toastText) {
+  this._toastText = this.add.text(midX + 14, midY + actionH, '', {
+    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: '12px',
+    color: '#eaffff',
+    backgroundColor: 'rgba(44,246,255,0.10)',
+    padding: { left: 8, right: 8, top: 6, bottom: 6 }
+  }).setOrigin(0, 0).setAlpha(0);
+}
+
+const toast = (msg) => {
+  this._toastText.setText(msg);
+  this._toastText.setAlpha(1);
+  this.tweens.killTweensOf(this._toastText);
+  this.tweens.add({
+    targets: this._toastText,
+    alpha: 0,
+    duration: 900,
+    delay: 700
+  });
+};
+
+// Normaliza el spec para exportarlo a carSpecs (solo campos relevantes)
+const normalizeSpecForCarSpecs = (spec) => {
+  const s = spec || {};
+  return {
+    id: String(s.id || 'new_car'),
+    name: String(s.name || 'New Car'),
+    brand: String(s.brand || ''),
+    country: String(s.country || ''),
+    category: String(s.category || 'sport'),
+    rarity: String(s.rarity || 'common'),
+    handlingProfile: String(s.handlingProfile || 'default'),
+
+    maxFwd: Number(s.maxFwd ?? 460),
+    maxRev: Number(s.maxRev ?? 220),
+    accel: Number(s.accel ?? 640),
+    brakeForce: Number(s.brakeForce ?? 920),
+    engineBrake: Number(s.engineBrake ?? 520),
+    linearDrag: Number(s.linearDrag ?? 0.70),
+
+    turnRate: Number(s.turnRate ?? 3.4),
+    turnMin: Number(s.turnMin ?? 0.9),
+
+    gripCoast: Number(s.gripCoast ?? 0.055),
+    gripDrive: Number(s.gripDrive ?? 0.060),
+    gripBrake: Number(s.gripBrake ?? 0.050),
+  };
+};
+
+const exportCarSpecText = () => {
+  const clean = normalizeSpecForCarSpecs(this._factoryCar);
+  // Formato listo para pegar en carSpecs.js (objeto)
+  return JSON.stringify(clean, null, 2);
+};
+
+const writeClipboard = async (txt) => {
+  try {
+    if (navigator?.clipboard?.writeText) {
+      await navigator.clipboard.writeText(txt);
+      return true;
+    }
+  } catch {}
+  return false;
+};
+
+const readClipboard = async () => {
+  try {
+    if (navigator?.clipboard?.readText) {
+      return await navigator.clipboard.readText();
+    }
+  } catch {}
+  return null;
+};
+
+// Botonera (derecha a izquierda)
+const actions = this.add.container(actionX, actionY);
+
+const btnTest = mkActionBtn('TEST DRIVE', () => {
+  if (!this._factoryCar) return;
+  // RaceScene ya soporta factorySpec (por el paso anterior)
+  this.scene.start('race', { factorySpec: normalizeSpecForCarSpecs(this._factoryCar) });
+}, 120);
+
+const btnExport = mkActionBtn('EXPORT JSON', async () => {
+  const txt = exportCarSpecText();
+  const ok = await writeClipboard(txt);
+  if (ok) toast('✅ Export copiado al portapapeles');
+  else {
+    // fallback iOS / permisos
+    window.prompt('Copia este JSON:', txt);
+  }
+}, 120);
+
+const btnCopy = mkActionBtn('COPY', async () => {
+  const txt = exportCarSpecText();
+  const ok = await writeClipboard(txt);
+  if (ok) toast('📋 Copiado');
+  else window.prompt('Copia el JSON:', txt);
+}, 88);
+
+const btnPaste = mkActionBtn('PASTE', async () => {
+  let txt = await readClipboard();
+  if (!txt) txt = window.prompt('Pega aquí el JSON:');
+  if (!txt) return;
+
+  try {
+    const obj = JSON.parse(txt);
+    // mezcla suave: solo claves conocidas
+    const clean = normalizeSpecForCarSpecs({ ...this._factoryCar, ...obj });
+    this._factoryCar = clean;
+    this._refreshPreview?.();
+    toast('📥 Pegado OK');
+  } catch {
+    toast('❌ JSON inválido');
+  }
+}, 88);
+
+const btnReset = mkActionBtn('RESET', () => {
+  this._factoryCar = structuredClone(CAR_SPECS.stock);
+  this._factoryCar.id = 'new_car';
+  this._factoryCar.name = 'New Car';
+  this._refreshPreview?.();
+  toast('↩️ Reset');
+}, 88);
+
+// Orden visual: derecha -> izquierda
+actions.add(btnTest);
+btnTest.x = 0;
+
+actions.add(btnExport);
+btnExport.x = -128;
+
+actions.add(btnCopy);
+btnCopy.x = -260;
+
+actions.add(btnPaste);
+btnPaste.x = -356;
+
+actions.add(btnReset);
+btnReset.x = -452;
+
+// Línea divisoria bajo barra acciones
+this.add.rectangle(midX + 10, midY + actionH + 8, midW - 20, 1, 0xb7c0ff, 0.10)
+  .setOrigin(0);
 // ===========================
 // PREVIEW
 // ===========================
