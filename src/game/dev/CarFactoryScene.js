@@ -293,7 +293,7 @@ const mkWideBtn = (x, y, label, onClick) => {
   return [r, t];
 };
 
-const [newR, newT] = mkWideBtn(..., () => {
+const [newR, newT] = mkWideBtn(leftX + 12, leftY + leftH - 80, 'NEW BASE', () => {
   this._factoryCar = structuredClone(CAR_SPECS.stock);
   this._factoryCar.id = 'new_car';
   this._factoryCar.name = 'New Car';
@@ -303,7 +303,7 @@ const [newR, newT] = mkWideBtn(..., () => {
   this._refreshPreview?.();
 });
 
-const [cloneR, cloneT] = mkWideBtn(..., () => {
+const [cloneR, cloneT] = mkWideBtn(leftX + 12, leftY + leftH - 40, 'CLONAR SELECCIONADO', () => {
   if (!this._selectedCarId) return;
   this._factoryCar = structuredClone(CAR_SPECS[this._selectedCarId]);
   this._factoryCar.id += '_mk1';
