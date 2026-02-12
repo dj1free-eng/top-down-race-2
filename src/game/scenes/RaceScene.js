@@ -1767,7 +1767,7 @@ this._devModalContent = this.add.container(0, 0);
 
 // Panel de sliders (compacto)
 const sx = mPanelX + 14;
-sy = contentTop + 10;
+let sy = contentTop + 10;
 const sw = mPanelW - 28;
 
 // Definiciones
