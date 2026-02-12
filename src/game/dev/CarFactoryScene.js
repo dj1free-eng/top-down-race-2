@@ -123,80 +123,208 @@ this._selectedCarId = null;
       this.scene.start('menu');
     });
 
- // ===========================
-// CATÁLOGO
 // ===========================
-const left = this.add.rectangle(32, 92, 240, h - 170, 0x000000, 0.20)
+// LAYOUT (grid limpio)
+// ===========================
+const M = 16;
+const headerH = 76;
+const footerH = 70;
+const gap = 16;
+
+const uiW = this.scale.width;
+const uiH = this.scale.height;
+
+const leftW = 260;
+
+const topY = 16 + headerH;
+const bottomY = uiH - 16 - footerH;
+const contentH = bottomY - topY;
+
+const leftX = 32;
+const leftY = topY;
+const leftH = contentH;
+
+const midX = leftX + leftW + gap;
+const midY = topY;
+const midW = uiW - 32 - midX;
+const midH = contentH;
+
+// Mover el botón MENU a footer derecha (para que no choque con catálogo)
+backR.setPosition(uiW - 32 - 140, uiH - 60);
+backT.setPosition(uiW - 32 - 140 + 70, uiH - 60 + 19);
+
+// ===========================
+// CATÁLOGO (con scroll y botones en zona fija)
+// ===========================
+const left = this.add.rectangle(leftX, leftY, leftW, leftH, 0x000000, 0.20)
   .setOrigin(0)
   .setStrokeStyle(1, 0xb7c0ff, 0.10);
 
-this.add.text(44, 102, 'CATÁLOGO', {
+this.add.text(leftX + 12, leftY + 10, 'CATÁLOGO', {
   fontFamily: 'system-ui',
   fontSize: '12px',
   color: '#b7c0ff',
   fontStyle: '800'
 });
 
-const listStartY = 130;
-let listY = listStartY;
+// Área visible del listado (con máscara)
+const listPad = 12;
+const listTop = leftY + 34;
+const actionsH = 96; // espacio fijo para botones abajo
+const listH = leftH - (listTop - leftY) - actionsH;
 
+const maskRect = this.add.rectangle(leftX + listPad, listTop, leftW - listPad * 2, listH, 0x000000, 0)
+  .setOrigin(0);
+
+// Container scrolleable
+const listContainer = this.add.container(leftX + listPad, listTop);
+const mask = maskRect.createGeometryMask();
+listContainer.setMask(mask);
+
+// Crear items
 const carIds = Object.keys(CAR_SPECS);
-
 this._catalogButtons = [];
 
+let listY = 0;
+const rowH = 22;
+
+const setSelectedVisual = () => {
+  for (const b of this._catalogButtons) {
+    const isSel = b._carId === this._selectedCarId;
+    b.setStyle({
+      backgroundColor: isSel ? 'rgba(44,246,255,0.22)' : 'rgba(255,255,255,0.05)',
+      color: isSel ? '#eaffff' : '#ffffff'
+    });
+  }
+};
+
 for (const id of carIds) {
-  const btn = this.add.text(44, listY, id, {
+  const btn = this.add.text(0, listY, id, {
     fontFamily: 'monospace',
     fontSize: '12px',
     color: '#ffffff',
     backgroundColor: 'rgba(255,255,255,0.05)',
     padding: { left: 6, right: 6, top: 3, bottom: 3 }
-  })
-  .setInteractive({ useHandCursor: true });
+  }).setInteractive({ useHandCursor: true });
+
+  btn._carId = id;
 
   btn.on('pointerdown', () => {
     this._selectedCarId = id;
     this._factoryCar = structuredClone(CAR_SPECS[id]);
+    setSelectedVisual();
     this._refreshPreview?.();
   });
 
+  listContainer.add(btn);
   this._catalogButtons.push(btn);
-  listY += 22;
+  listY += rowH;
 }
-    // NEW BASE
-const newBtn = this.add.text(44, h - 90, 'NEW BASE', {
-  fontFamily: 'system-ui',
-  fontSize: '12px',
-  color: '#2cf6ff',
-  fontStyle: '800'
-})
-.setInteractive({ useHandCursor: true });
 
-newBtn.on('pointerdown', () => {
+// Scroll logic
+let scrollY = 0;
+const maxScroll = Math.max(0, listY - listH);
+
+const applyScroll = () => {
+  scrollY = Phaser.Math.Clamp(scrollY, 0, maxScroll);
+  listContainer.y = listTop - scrollY;
+};
+
+applyScroll();
+
+// Wheel scroll (desktop)
+this.input.on('wheel', (pointer, gameObjects, dx, dy) => {
+  // Solo si el puntero está encima del panel izquierdo
+  const px = pointer.worldX;
+  const py = pointer.worldY;
+  const inside =
+    px >= leftX && px <= leftX + leftW &&
+    py >= listTop && py <= listTop + listH;
+
+  if (!inside) return;
+
+  scrollY += dy * 0.6;
+  applyScroll();
+});
+
+// Drag scroll (móvil)
+let dragging = false;
+let dragStartY = 0;
+let dragStartScroll = 0;
+
+maskRect.setInteractive({ draggable: true });
+maskRect.on('pointerdown', (p) => {
+  dragging = true;
+  dragStartY = p.y;
+  dragStartScroll = scrollY;
+});
+this.input.on('pointerup', () => { dragging = false; });
+this.input.on('pointermove', (p) => {
+  if (!dragging) return;
+  const delta = (p.y - dragStartY);
+  scrollY = dragStartScroll - delta;
+  applyScroll();
+});
+
+// Separador acciones
+const actionsY = leftY + leftH - actionsH + 8;
+
+this.add.rectangle(leftX + 10, actionsY - 10, leftW - 20, 1, 0xb7c0ff, 0.10)
+  .setOrigin(0);
+
+// Botones de acciones (fijos abajo, sin pisar listado)
+const actionBtnW = leftW - 24;
+const mkWideBtn = (x, y, label, onClick) => {
+  const r = this.add.rectangle(x, y, actionBtnW, 36, 0x0b1020, 0.80)
+    .setOrigin(0)
+    .setStrokeStyle(1, 0x2cf6ff, 0.22)
+    .setInteractive({ useHandCursor: true });
+
+  const t = this.add.text(x + actionBtnW / 2, y + 18, label, {
+    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: '12px',
+    color: '#eaffff',
+    fontStyle: '800'
+  }).setOrigin(0.5);
+
+  r.on('pointerdown', () => onClick?.());
+  return [r, t];
+};
+
+const [newR, newT] = mkWideBtn(leftX + 12, leftY + leftH - 80, 'NEW BASE', () => {
   this._factoryCar = structuredClone(CAR_SPECS.stock);
   this._factoryCar.id = 'new_car';
   this._factoryCar.name = 'New Car';
   this._selectedCarId = null;
+  setSelectedVisual();
   this._refreshPreview?.();
 });
 
-// CLONAR
-const cloneBtn = this.add.text(44, h - 60, 'CLONAR SELECCIONADO', {
-  fontFamily: 'system-ui',
-  fontSize: '12px',
-  color: '#2cf6ff',
-  fontStyle: '800'
-})
-.setInteractive({ useHandCursor: true });
-
-cloneBtn.on('pointerdown', () => {
+const [cloneR, cloneT] = mkWideBtn(leftX + 12, leftY + leftH - 40, 'CLONAR SELECCIONADO', () => {
   if (!this._selectedCarId) return;
-
   this._factoryCar = structuredClone(CAR_SPECS[this._selectedCarId]);
   this._factoryCar.id += '_mk1';
   this._factoryCar.name += ' MK1';
+  setSelectedVisual();
   this._refreshPreview?.();
 });
+
+// ===========================
+// PANEL CENTRAL (usa el nuevo layout)
+// ===========================
+const mid = this.add.rectangle(midX, midY, midW, midH, 0x000000, 0.14)
+  .setOrigin(0)
+  .setStrokeStyle(1, 0xb7c0ff, 0.08);
+
+const midT = this.add.text(midX + 12, midY + 10, 'ZONA DE MONTAJE (preview + parámetros)', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '12px',
+  color: '#b7c0ff',
+  fontStyle: '800'
+});
+
+// Reposicionar previewText para que quede dentro del panel central
+this._previewText.setPosition(midX + 22, midY + 48);
 
     const mid = this.add.rectangle(288, 92, w - 288 - 32, h - 170, 0x000000, 0.14)
       .setOrigin(0)
