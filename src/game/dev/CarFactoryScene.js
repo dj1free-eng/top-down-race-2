@@ -326,7 +326,8 @@ const midT = this.add.text(midX + 12, midY + 10, 'ZONA DE MONTAJE (preview + par
 // ===========================
 // PREVIEW
 // ===========================
-this._previewText = this.add.text(310, 140, '', {
+// Posicionar el preview dentro del panel central (grid nuevo)
+this._previewText = this.add.text(midX + 22, midY + 48, '', {
   fontFamily: 'monospace',
   fontSize: '12px',
   color: '#ffffff',
