@@ -1575,7 +1575,13 @@ const mPanelW = Math.min(780, Math.floor(mw * 0.94));
 const mPanelH = Math.min(560, Math.floor(mh * 0.88));
 const mPanelX = Math.floor((mw - mPanelW) / 2);
 const mPanelY = Math.floor((mh - mPanelH) / 2);
+// Alturas estructurales
+const headerH = 56;
+const footerH = 56;
 
+// Área útil de contenido (entre header y footer)
+const contentTop = mPanelY + headerH;
+const contentBottom = mPanelY + mPanelH - footerH;
 // Panel (TRAGA el click para que NO cierre)
 this._devModalPanel = this.add.rectangle(mPanelX, mPanelY, mPanelW, mPanelH, 0x0b1324, 0.96)
   .setOrigin(0, 0)
@@ -1752,7 +1758,8 @@ this._devModalSync = () => {
 // -------------------------------
 // Layout: área de contenido + footer fijo (sin scroll todavía)
 // -------------------------------
-const btnY = mPanelY + mPanelH - 44;
+const footerH = 56; // altura reservada para botonera
+const btnY = mPanelY + mPanelH - footerH + 12;
 const contentTop = mPanelY + 58;
 const contentBottom = btnY - 14;
 
@@ -1761,7 +1768,7 @@ this._devModalContent = this.add.container(0, 0);
 
 // Panel de sliders (compacto)
 const sx = mPanelX + 14;
-let sy = contentTop + 6;
+let sy = contentTop + 10;
 const sw = mPanelW - 28;
 
 // Definiciones
