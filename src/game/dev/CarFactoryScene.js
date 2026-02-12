@@ -7,6 +7,12 @@ export class CarFactoryScene extends Phaser.Scene {
   }
 
   create() {
+
+// ===========================
+// FACTORY STATE
+// ===========================
+this._factoryCar = structuredClone(CAR_SPECS.stock);
+this._selectedCarId = null;
     const w = this.scale.width;
     const h = this.scale.height;
 
@@ -115,16 +121,80 @@ export class CarFactoryScene extends Phaser.Scene {
       this.scene.start('menu');
     });
 
-    // Placeholder “zonas” (para que ya parezca herramienta pro)
-    const left = this.add.rectangle(32, 92, 240, h - 170, 0x000000, 0.20)
-      .setOrigin(0)
-      .setStrokeStyle(1, 0xb7c0ff, 0.10);
-    const leftT = this.add.text(44, 102, 'CATÁLOGO (próximo paso)', {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '12px',
-      color: '#b7c0ff',
-      fontStyle: '800'
-    });
+ // ===========================
+// CATÁLOGO
+// ===========================
+const left = this.add.rectangle(32, 92, 240, h - 170, 0x000000, 0.20)
+  .setOrigin(0)
+  .setStrokeStyle(1, 0xb7c0ff, 0.10);
+
+this.add.text(44, 102, 'CATÁLOGO', {
+  fontFamily: 'system-ui',
+  fontSize: '12px',
+  color: '#b7c0ff',
+  fontStyle: '800'
+});
+
+const listStartY = 130;
+let listY = listStartY;
+
+const carIds = Object.keys(CAR_SPECS);
+
+this._catalogButtons = [];
+
+for (const id of carIds) {
+  const btn = this.add.text(44, listY, id, {
+    fontFamily: 'monospace',
+    fontSize: '12px',
+    color: '#ffffff',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    padding: { left: 6, right: 6, top: 3, bottom: 3 }
+  })
+  .setInteractive({ useHandCursor: true });
+
+  btn.on('pointerdown', () => {
+    this._selectedCarId = id;
+    this._factoryCar = structuredClone(CAR_SPECS[id]);
+    this._refreshPreview?.();
+  });
+
+  this._catalogButtons.push(btn);
+  listY += 22;
+}
+    // NEW BASE
+const newBtn = this.add.text(44, h - 90, 'NEW BASE', {
+  fontFamily: 'system-ui',
+  fontSize: '12px',
+  color: '#2cf6ff',
+  fontStyle: '800'
+})
+.setInteractive({ useHandCursor: true });
+
+newBtn.on('pointerdown', () => {
+  this._factoryCar = structuredClone(CAR_SPECS.stock);
+  this._factoryCar.id = 'new_car';
+  this._factoryCar.name = 'New Car';
+  this._selectedCarId = null;
+  this._refreshPreview?.();
+});
+
+// CLONAR
+const cloneBtn = this.add.text(44, h - 60, 'CLONAR SELECCIONADO', {
+  fontFamily: 'system-ui',
+  fontSize: '12px',
+  color: '#2cf6ff',
+  fontStyle: '800'
+})
+.setInteractive({ useHandCursor: true });
+
+cloneBtn.on('pointerdown', () => {
+  if (!this._selectedCarId) return;
+
+  this._factoryCar = structuredClone(CAR_SPECS[this._selectedCarId]);
+  this._factoryCar.id += '_mk1';
+  this._factoryCar.name += ' MK1';
+  this._refreshPreview?.();
+});
 
     const mid = this.add.rectangle(288, 92, w - 288 - 32, h - 170, 0x000000, 0.14)
       .setOrigin(0)
@@ -136,7 +206,31 @@ export class CarFactoryScene extends Phaser.Scene {
       color: '#b7c0ff',
       fontStyle: '800'
     });
+// ===========================
+// PREVIEW
+// ===========================
+this._previewText = this.add.text(310, 140, '', {
+  fontFamily: 'monospace',
+  fontSize: '12px',
+  color: '#ffffff',
+  lineSpacing: 4
+});
 
+this._refreshPreview = () => {
+  if (!this._factoryCar) return;
+
+  this._previewText.setText(
+    `ID: ${this._factoryCar.id}\n` +
+    `NAME: ${this._factoryCar.name}\n` +
+    `MAX FWD: ${this._factoryCar.maxFwd}\n` +
+    `ACCEL: ${this._factoryCar.accel}\n` +
+    `TURN: ${this._factoryCar.turnRate}\n` +
+    `GRIP: ${this._factoryCar.gripDrive}`
+  );
+};
+
+// Inicial
+this._refreshPreview();
     // “Sello” visual: un foco/halo en el centro como mesa de montaje
     const halo = this.add.circle(Math.floor(w * 0.62), Math.floor(h * 0.52), 160, 0x2cf6ff, 0.05);
     const halo2 = this.add.circle(Math.floor(w * 0.62), Math.floor(h * 0.52), 92, 0x66a3ff, 0.06);
