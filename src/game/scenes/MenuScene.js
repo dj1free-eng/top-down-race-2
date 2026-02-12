@@ -119,7 +119,18 @@ bg.fillRect(0, 0, width, height);
       fontStyle: 'bold'
     }).setOrigin(0.5);
     topBar.add([chip, chipText]);
+// DEV: botón Car Factory (solo si DEV_FACTORY)
+const factoryW = 104;
+const factoryGap = 10;
+const factoryX = width - pad - 44 - factoryGap - factoryW;
 
+if (DEV_FACTORY) {
+  const factoryBtn = this._makeButton(factoryX, Math.floor((topH - 36) / 2), factoryW, 36, '🏭 FACTORY', () => {
+    this.scene.start('factory');
+  }, { accent: 0x2cf6ff });
+
+  topBar.add(factoryBtn);
+}
     // Settings button
     const gearW = 44;
     const gearX = width - pad - gearW;
