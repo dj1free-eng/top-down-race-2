@@ -553,21 +553,68 @@ this._previewCarSprite = null;
 
 // Helper: resolve texture key
 const resolveCarTextureKey = (spec) => {
-  // Si en tus specs existe algo como skinKey/texture/key, lo probamos:
   if (!spec) return null;
 
-  const candidates = [
-  spec.textureKey,
-  spec.skinKey,
-  spec.spriteKey,
-  spec.key,
-  this._visualCarId,   // 👈 prioridad visual
-  spec.id
-].filter(Boolean);
+  // Lista de keys disponibles en Phaser
+  const keys = (typeof this.textures.getTextureKeys === 'function')
+    ? this.textures.getTextureKeys()
+    : Object.keys(this.textures.list || {});
 
-  for (const k of candidates) {
-    if (this.textures.exists(k)) return k;
+  const rawCandidates = [
+    spec.textureKey,
+    spec.skinKey,
+    spec.spriteKey,
+    spec.key,
+    this._visualCarId,
+    spec.id
+  ].filter(Boolean).map(String);
+
+  // 1) Direct hit
+  for (const c of rawCandidates) {
+    if (this.textures.exists(c)) return c;
   }
+
+  // 2) Patrones típicos
+  const patternize = (base) => ([
+    `car_${base}`,
+    `car-${base}`,
+    `skin_${base}`,
+    `skin-${base}`,
+    `${base}_car`,
+    `${base}_skin`,
+    `${base}_top`,
+    `top_${base}`,
+  ]);
+
+  for (const base of rawCandidates) {
+    for (const p of patternize(base)) {
+      if (this.textures.exists(p)) return p;
+    }
+  }
+
+  // 3) Fuzzy match (si las keys no siguen convención)
+  const norm = (s) => String(s).toLowerCase().replace(/\s+/g, '_');
+
+  const safeKeys = keys
+    .filter(k => k && k !== '__DEFAULT' && k !== '__MISSING')
+    .map(String);
+
+  for (const base of rawCandidates.map(norm)) {
+    if (!base) continue;
+
+    // primero: keys que contienen el id + palabras típicas
+    const hit = safeKeys.find(k => {
+      const lk = k.toLowerCase();
+      return lk.includes(base) && (lk.includes('car') || lk.includes('skin') || lk.includes('vehicle'));
+    });
+
+    if (hit && this.textures.exists(hit)) return hit;
+
+    // segundo: cualquier key que contenga el id
+    const hit2 = safeKeys.find(k => k.toLowerCase().includes(base));
+    if (hit2 && this.textures.exists(hit2)) return hit2;
+  }
+
   return null;
 };
 
@@ -575,7 +622,15 @@ const resolveCarTextureKey = (spec) => {
 this._refreshPreview = () => {
   const spec = this._factoryCar || CAR_SPECS.stock;
   const key = resolveCarTextureKey(spec);
-
+// Debug: qué textura está usando (para comprobar rápido)
+if (!this._texKeyText) {
+  this._texKeyText = this.add.text(previewX + 12, previewY + 10, '', {
+    fontFamily: 'monospace',
+    fontSize: '11px',
+    color: '#b7c0ff'
+  });
+}
+this._texKeyText.setText(key ? `TEX: ${key}` : 'TEX: (no encontrada)');
   // Actualizar texto
   const p = normalizeSpecForCarSpecs(spec);
 
