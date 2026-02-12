@@ -15,6 +15,7 @@ export class CarFactoryScene extends Phaser.Scene {
 // ===========================
 this._factoryCar = structuredClone(CAR_SPECS.stock);
 this._selectedCarId = null;
+this._visualCarId = 'stock'; // qué skin se usa para preview + test drive
     const w = this.scale.width;
     const h = this.scale.height;
 
@@ -210,11 +211,12 @@ for (const id of carIds) {
   btn._carId = id;
 
   btn.on('pointerdown', () => {
-    this._selectedCarId = id;
-    this._factoryCar = structuredClone(CAR_SPECS[id]);
-    setSelectedVisual();
-    this._refreshPreview?.();
-  });
+  this._selectedCarId = id;
+  this._visualCarId = id; // 👈 importante
+  this._factoryCar = structuredClone(CAR_SPECS[id]);
+  setSelectedVisual();
+  this._refreshPreview?.();
+});
 
   listContainer.add(btn);
   this._catalogButtons.push(btn);
@@ -291,20 +293,22 @@ const mkWideBtn = (x, y, label, onClick) => {
   return [r, t];
 };
 
-const [newR, newT] = mkWideBtn(leftX + 12, leftY + leftH - 80, 'NEW BASE', () => {
+const [newR, newT] = mkWideBtn(..., () => {
   this._factoryCar = structuredClone(CAR_SPECS.stock);
   this._factoryCar.id = 'new_car';
   this._factoryCar.name = 'New Car';
   this._selectedCarId = null;
+  this._visualCarId = 'stock';
   setSelectedVisual();
   this._refreshPreview?.();
 });
 
-const [cloneR, cloneT] = mkWideBtn(leftX + 12, leftY + leftH - 40, 'CLONAR SELECCIONADO', () => {
+const [cloneR, cloneT] = mkWideBtn(..., () => {
   if (!this._selectedCarId) return;
   this._factoryCar = structuredClone(CAR_SPECS[this._selectedCarId]);
   this._factoryCar.id += '_mk1';
   this._factoryCar.name += ' MK1';
+  this._visualCarId = this._selectedCarId;
   setSelectedVisual();
   this._refreshPreview?.();
 });
@@ -442,7 +446,13 @@ const actions = this.add.container(actionX, actionY);
 const btnTest = mkActionBtn('TEST DRIVE', () => {
   if (!this._factoryCar) return;
   // RaceScene ya soporta factorySpec (por el paso anterior)
-  this.scene.start('race', { factorySpec: normalizeSpecForCarSpecs(this._factoryCar) });
+const driveSpec = normalizeSpecForCarSpecs(this._factoryCar);
+
+// En pista usamos un ID que exista visualmente (skin/texture)
+// El ID "real" (new_car) lo sigues teniendo en la fábrica para exportar
+driveSpec.id = this._visualCarId || driveSpec.id || 'stock';
+
+this.scene.start('race', { factorySpec: driveSpec });
 }, 120);
 
 const btnExport = mkActionBtn('EXPORT JSON', async () => {
@@ -547,12 +557,13 @@ const resolveCarTextureKey = (spec) => {
   if (!spec) return null;
 
   const candidates = [
-    spec.textureKey,
-    spec.skinKey,
-    spec.spriteKey,
-    spec.key,
-    spec.id
-  ].filter(Boolean);
+  spec.textureKey,
+  spec.skinKey,
+  spec.spriteKey,
+  spec.key,
+  this._visualCarId,   // 👈 prioridad visual
+  spec.id
+].filter(Boolean);
 
   for (const k of candidates) {
     if (this.textures.exists(k)) return k;
