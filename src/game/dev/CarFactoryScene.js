@@ -3,11 +3,48 @@ import Phaser from 'phaser';
 import { CAR_SPECS } from '../cars/carSpecs.js';
 import { resolveCarParams } from '../cars/resolveCarParams.js';
 import { HANDLING_PROFILES } from '../cars/handlingProfiles.js';
+const CAR_SKIN_BASE = 'assets/skins/'; // mismo base que RaceScene
 export class CarFactoryScene extends Phaser.Scene {
   constructor() {
     super('factory');
   }
+// =========================================
+// Skins: carga dinámica por coche (igual que RaceScene)
+// =========================================
+ensureCarSkinTexture(spec) {
+  const file = spec?.skin;
+  if (!file) return Promise.resolve(null);
 
+  const texKey = `car_${spec.id}`;
+  if (this.textures.exists(texKey)) return Promise.resolve(texKey);
+
+  return new Promise((resolve) => {
+    const url = `${CAR_SKIN_BASE}${file}`;
+
+    const onFileOk = (key) => {
+      if (key !== texKey) return;
+      cleanup();
+      resolve(texKey);
+    };
+
+    const onLoadError = (fileObj) => {
+      if (fileObj?.key !== texKey) return;
+      cleanup();
+      resolve(null);
+    };
+
+    const cleanup = () => {
+      this.load.off(`filecomplete-image-${texKey}`, onFileOk);
+      this.load.off(Phaser.Loader.Events.LOAD_ERROR, onLoadError);
+    };
+
+    this.load.once(`filecomplete-image-${texKey}`, onFileOk);
+    this.load.on(Phaser.Loader.Events.LOAD_ERROR, onLoadError);
+
+    this.load.image(texKey, url);
+    if (!this.load.isLoading()) this.load.start();
+  });
+}
   create() {
 
 // ===========================
@@ -551,72 +588,27 @@ this._previewPlaceholder2.setAngle(-18);
 
 this._previewCarSprite = null;
 
-// Helper: resolve texture key
 const resolveCarTextureKey = (spec) => {
   if (!spec) return null;
 
-  // Lista de keys disponibles en Phaser
-  const keys = (typeof this.textures.getTextureKeys === 'function')
-    ? this.textures.getTextureKeys()
-    : Object.keys(this.textures.list || {});
-
-  const rawCandidates = [
-    spec.textureKey,
-    spec.skinKey,
-    spec.spriteKey,
-    spec.key,
-    this._visualCarId,
-    spec.id
-  ].filter(Boolean).map(String);
-
-  // 1) Direct hit
-  for (const c of rawCandidates) {
-    if (this.textures.exists(c)) return c;
-  }
-
-  // 2) Patrones típicos
-  const patternize = (base) => ([
-    `car_${base}`,
-    `car-${base}`,
-    `skin_${base}`,
-    `skin-${base}`,
-    `${base}_car`,
-    `${base}_skin`,
-    `${base}_top`,
-    `top_${base}`,
-  ]);
-
-  for (const base of rawCandidates) {
-    for (const p of patternize(base)) {
-      if (this.textures.exists(p)) return p;
-    }
-  }
-
-  // 3) Fuzzy match (si las keys no siguen convención)
-  const norm = (s) => String(s).toLowerCase().replace(/\s+/g, '_');
-
-  const safeKeys = keys
-    .filter(k => k && k !== '__DEFAULT' && k !== '__MISSING')
-    .map(String);
-
-  for (const base of rawCandidates.map(norm)) {
-    if (!base) continue;
-
-    // primero: keys que contienen el id + palabras típicas
-    const hit = safeKeys.find(k => {
-      const lk = k.toLowerCase();
-      return lk.includes(base) && (lk.includes('car') || lk.includes('skin') || lk.includes('vehicle'));
-    });
-
-    if (hit && this.textures.exists(hit)) return hit;
-
-    // segundo: cualquier key que contenga el id
-    const hit2 = safeKeys.find(k => k.toLowerCase().includes(base));
-    if (hit2 && this.textures.exists(hit2)) return hit2;
-  }
+  const texKey = `car_${spec.id}`;
+  if (this.textures.exists(texKey)) return texKey;
 
   return null;
 };
+    // Si no está cargada pero el spec tiene skin, la cargamos
+if (!key && spec?.skin) {
+  const texKey = `car_${spec.id}`;
+  const url = `assets/skins/${spec.skin}`;
+
+  if (!this.load.isLoading()) {
+    this.load.image(texKey, url);
+    this.load.once(`filecomplete-image-${texKey}`, () => {
+      this._refreshPreview?.();
+    });
+    this.load.start();
+  }
+}
 
 // Crear/actualizar preview
 this._refreshPreview = () => {
