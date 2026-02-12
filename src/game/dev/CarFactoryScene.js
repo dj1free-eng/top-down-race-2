@@ -591,23 +591,34 @@ this._refreshPreview = () => {
     this._previewPlaceholder2.setVisible(false);
 
     // Crear sprite
-    const s = this.add.image(previewX + previewW * 0.65, previewY + previewH * 0.55, key);
-    s.setOrigin(0.5);
-    s.setAlpha(0.95);
+    // Centro exacto del área preview
+const centerX = previewX + previewW / 2;
+const centerY = previewY + previewH / 2;
 
-    // Escalado para encajar
-    const boundsW = previewW * 0.70;
-    const boundsH = previewH * 0.60;
+// Crear sprite centrado
+const s = this.add.image(centerX, centerY, key);
+s.setOrigin(0.5);
+s.setAlpha(0.98);
 
-    const tex = this.textures.get(key).getSourceImage();
-    const iw = tex?.width || 256;
-    const ih = tex?.height || 256;
+// Medidas reales de la textura
+const frame = this.textures.getFrame(key);
+const iw = frame ? frame.width : 256;
+const ih = frame ? frame.height : 256;
 
-    const scale = Math.min(boundsW / iw, boundsH / ih);
-    s.setScale(scale);
+// Margen interno para que no toque el marco
+const margin = 24;
+const maxW = previewW - margin * 2;
+const maxH = previewH - margin * 2;
 
-    // Ligera rotación estética
-    s.setRotation(0);
+// Escala proporcional perfecta
+const scale = Math.min(maxW / iw, maxH / ih);
+s.setScale(scale);
+
+// Sin rotación rara
+s.setRotation(0);
+
+// Guardar referencia
+this._previewCarSprite = s;
 
     // Guardar
     this._previewCarSprite = s;
