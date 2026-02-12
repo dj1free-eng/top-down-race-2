@@ -1760,8 +1760,7 @@ this._devModalSync = () => {
 // -------------------------------
 
 const btnY = mPanelY + mPanelH - footerH + 12;
-const contentTop = mPanelY + 58;
-const contentBottom = btnY - 14;
+
 
 // Container SOLO para sliders (así no hay rects invisibles bloqueando)
 this._devModalContent = this.add.container(0, 0);
