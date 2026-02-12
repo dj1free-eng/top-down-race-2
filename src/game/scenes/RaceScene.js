@@ -414,7 +414,6 @@ init(data) {
   // 1.1) Resolver circuito seleccionado (prioridad: data -> localStorage -> track02)
   const incomingTrack = data?.trackKey;
   const savedTrack = localStorage.getItem('tdr2:trackKey');
-
   const valid = (k) => (k === 'track01' || k === 'track02' || k === 'track03');
 
   this.trackKey = valid(incomingTrack)
@@ -469,148 +468,146 @@ init(data) {
 
   // === UPGRADES: cargar niveles por coche (solo si NO es factorySpec) ===
   const defaultUpgrades = { engine: 0, brakes: 0, tires: 0 };
+  const upgradesKey = `tdr2:upgrades:${this.carId}`;
 
   if (!this._useFactorySpec) {
-    const upgradesKey = `tdr2:upgrades:${this.carId}`;
-
     try {
       this.upgrades = JSON.parse(localStorage.getItem(upgradesKey) || 'null') || defaultUpgrades;
     } catch {
       this.upgrades = defaultUpgrades;
     }
-
-    // Guardar upgrades
-    this._saveUpgrades = () => {
-      try { localStorage.setItem(upgradesKey, JSON.stringify(this.upgrades)); } catch {}
-    };
   } else {
     // En Test Drive de fábrica: upgrades neutros y no persistentes
     this.upgrades = defaultUpgrades;
-    this._saveUpgrades = () => {};
   }
 
-  // Convierte niveles -> “tornillos”
+  // Convierte niveles -> “tornillos” (mantengo tus números originales)
   const tuningFromUpgrades = (u) => {
     const engineLv = u.engine || 0;
     const brakesLv = u.brakes || 0;
     const tiresLv  = u.tires  || 0;
 
     return {
-      accelMult: 1.0 + engineLv * 0.05,
-      maxFwdAdd: engineLv * 12,
+      // Motor
+      accelMult: 1.0 + engineLv * 0.08, // +8% por nivel
+      maxFwdAdd: engineLv * 35,         // +35 px/s por nivel
 
-      brakeMult: 1.0 + brakesLv * 0.06,
+      // Frenos
+      brakeMult: 1.0 + brakesLv * 0.10, // +10% por nivel
 
-      gripDriveAdd: tiresLv * 0.015,
-      gripCoastAdd: tiresLv * 0.010,
-      gripBrakeAdd: tiresLv * 0.012,
+      // Otros neutros (por ahora)
+      dragMult: 1.0,
+      turnRateMult: 1.0,
+      turnMinAdd: 0,
+      maxRevAdd: 0,
 
-      dragMult: 1.0 - tiresLv * 0.01,
-      turnRateMult: 1.0 + tiresLv * 0.02
+      // Neumáticos (si resolveCarParams los usa, perfecto; si no, se ignoran)
+      gripDriveAdd: tiresLv * 0.02,
+      gripCoastAdd: tiresLv * 0.01,
+      gripBrakeAdd: tiresLv * 0.015
     };
+  };
+
+  // ===============================
+  // DEV TUNING (localStorage) — overrides en caliente
+  // ===============================
+  this._devTuneKey = 'tdr2:devTune:v1';
+
+  // Defaults (mínimos y seguros)
+  this._devTuning = {
+    accelMult: 1.0,
+    maxFwdAdd: 0,
+    brakeMult: 1.0,
+    dragMult: 1.0,
+    turnRateMult: 1.0,
+    turnMinAdd: 0,
+    maxRevAdd: 0,
+    gripDriveAdd: 0,
+    gripCoastAdd: 0,
+    gripBrakeAdd: 0
+  };
+
+  // Load (si existe)
+  try {
+    const raw = localStorage.getItem(this._devTuneKey);
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (parsed && typeof parsed === 'object') {
+      // Solo copiar claves conocidas (evita basura)
+      for (const k of Object.keys(this._devTuning)) {
+        if (Number.isFinite(parsed[k])) this._devTuning[k] = parsed[k];
+      }
+    }
+  } catch {}
+
+  // Helpers
+  this._saveDevTuning = () => {
+    try { localStorage.setItem(this._devTuneKey, JSON.stringify(this._devTuning)); } catch {}
+  };
+
+  this._resetDevTuning = () => {
+    this._devTuning.accelMult = 1.0;
+    this._devTuning.maxFwdAdd = 0;
+    this._devTuning.brakeMult = 1.0;
+    this._devTuning.dragMult = 1.0;
+    this._devTuning.turnRateMult = 1.0;
+    this._devTuning.turnMinAdd = 0;
+    this._devTuning.maxRevAdd = 0;
+    this._devTuning.gripDriveAdd = 0;
+    this._devTuning.gripCoastAdd = 0;
+    this._devTuning.gripBrakeAdd = 0;
+    this._saveDevTuning();
   };
 
   // Tuning derivado desde upgrades
   this.tuningBase = tuningFromUpgrades(this.upgrades);
-}
-// ===============================
-// DEV TUNING (localStorage) — overrides en caliente
-// ===============================
-this._devTuneKey = 'tdr2:devTune:v1';
+  // tuning final = upgrades + devTuning (dev manda por encima)
+  this.tuning = { ...this.tuningBase, ...this._devTuning };
 
-// Defaults (mínimos y seguros)
-this._devTuning = {
-  accelMult: 1.0,
-  maxFwdAdd: 0,
-  brakeMult: 1.0,
-  dragMult: 1.0,
-  turnRateMult: 1.0,
-  turnMinAdd: 0,
-  maxRevAdd: 0,
-  gripDriveAdd: 0,
-  gripCoastAdd: 0,
-  gripBrakeAdd: 0
-};
+  // Helper para aplicar params al “motor”
+  this.applyCarParams = () => {
+    // Recalcular tuning final en cada apply (por si cambió devTuning)
+    this.tuning = { ...this.tuningBase, ...this._devTuning };
+    this.carParams = resolveCarParams(this.baseSpec, this.tuning);
 
-// Load (si existe)
-try {
-  const raw = localStorage.getItem(this._devTuneKey);
-  const parsed = raw ? JSON.parse(raw) : null;
-  if (parsed && typeof parsed === 'object') {
-    // Solo copiar claves conocidas (evita basura)
-    for (const k of Object.keys(this._devTuning)) {
-      if (Number.isFinite(parsed[k])) this._devTuning[k] = parsed[k];
-    }
-  }
-} catch {}
+    this.accel = this.carParams.accel;
+    this.maxFwd = this.carParams.maxFwd;
+    this.maxRev = this.carParams.maxRev;
 
-// Helpers
-this._saveDevTuning = () => {
-  try { localStorage.setItem(this._devTuneKey, JSON.stringify(this._devTuning)); } catch {}
-};
+    this.brakeForce = this.carParams.brakeForce;
+    this.engineBrake = this.carParams.engineBrake;
+    this.linearDrag = this.carParams.linearDrag;
 
-this._resetDevTuning = () => {
-  this._devTuning.accelMult = 1.0;
-  this._devTuning.maxFwdAdd = 0;
-  this._devTuning.brakeMult = 1.0;
-  this._devTuning.dragMult = 1.0;
-  this._devTuning.turnRateMult = 1.0;
-  this._devTuning.turnMinAdd = 0;
-  this._devTuning.maxRevAdd = 0;
-  this._devTuning.gripDriveAdd = 0;
-  this._devTuning.gripCoastAdd = 0;
-  this._devTuning.gripBrakeAdd = 0;
-  this._saveDevTuning();
-};
-    // Tuning derivado desde upgrades
-this.tuningBase = tuningFromUpgrades(this.upgrades);
-// tuning final = upgrades + devTuning (dev manda por encima)
-this.tuning = { ...this.tuningBase, ...this._devTuning };
+    this.turnRate = this.carParams.turnRate;
+    this.turnMin = this.carParams.turnMin;
 
-    // Helper para aplicar params al “motor”
-    this.applyCarParams = () => {
-      // Recalcular tuning final en cada apply (por si cambió devTuning)
-this.tuning = { ...this.tuningBase, ...this._devTuning };
-this.carParams = resolveCarParams(this.baseSpec, this.tuning);
+    this.gripCoast = this.carParams.gripCoast;
+    this.gripDrive = this.carParams.gripDrive;
+    this.gripBrake = this.carParams.gripBrake;
+  };
 
-      this.accel = this.carParams.accel;
-      this.maxFwd = this.carParams.maxFwd;
-      this.maxRev = this.carParams.maxRev;
+  this.applyCarParams();
 
-      this.brakeForce = this.carParams.brakeForce;
-      this.engineBrake = this.carParams.engineBrake;
-      this.linearDrag = this.carParams.linearDrag;
+  // Guardar upgrades (en factorySpec: no persistimos)
+  this._saveUpgrades = () => {
+    if (this._useFactorySpec) return;
+    try { localStorage.setItem(upgradesKey, JSON.stringify(this.upgrades)); } catch {}
+  };
 
-      this.turnRate = this.carParams.turnRate;
-      this.turnMin = this.carParams.turnMin;
+  // Comprar upgrades
+  this.buyUpgrade = (kind) => {
+    const cap = this.UPGRADE_CAPS[kind] ?? 0;
+    const cur = this.upgrades[kind] ?? 0;
+    if (cur >= cap) return false;
 
-      this.gripCoast = this.carParams.gripCoast;
-      this.gripDrive = this.carParams.gripDrive;
-      this.gripBrake = this.carParams.gripBrake;
-    };
+    this.upgrades[kind] = cur + 1;
+    this._saveUpgrades();
 
+    this.tuningBase = tuningFromUpgrades(this.upgrades);
     this.applyCarParams();
 
-    // Guardar upgrades
-    this._saveUpgrades = () => {
-      try { localStorage.setItem(upgradesKey, JSON.stringify(this.upgrades)); } catch {}
-    };
-
-    // Comprar upgrades
-    this.buyUpgrade = (kind) => {
-      const cap = this.UPGRADE_CAPS[kind] ?? 0;
-      const cur = this.upgrades[kind] ?? 0;
-      if (cur >= cap) return false;
-
-      this.upgrades[kind] = cur + 1;
-      this._saveUpgrades();
-
-      this.tuning = tuningFromUpgrades(this.upgrades);
-      this.applyCarParams();
-
-      return true;
-    };
-  }
+    return true;
+  };
+}
   _hideMissingTextures() {
   const missKeys = new Set(['__MISSING', '__missing', 'missing', 'MISSING']);
   let count = 0;
