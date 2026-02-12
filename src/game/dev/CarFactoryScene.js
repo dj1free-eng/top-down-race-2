@@ -322,6 +322,13 @@ const midT = this.add.text(midX + 12, midY + 10, 'ZONA DE MONTAJE (preview + par
   color: '#b7c0ff',
   fontStyle: '800'
 });
+// Texto de info (izquierda del panel central)
+this._previewText = this.add.text(midX + 22, midY + 90, '', {
+  fontFamily: 'monospace',
+  fontSize: '13px',
+  color: '#ffffff',
+  lineSpacing: 6
+});
 // ===========================
 // ACTION BAR (panel central)
 // ===========================
@@ -499,7 +506,7 @@ btnReset.x = -452;
 // Línea divisoria bajo barra acciones
 this.add.rectangle(midX + 10, actionY + actionH + 6, midW - 20, 1, 0xb7c0ff, 0.10)
   .setOrigin(0);
-    // ===========================
+// ===========================
 // PREVIEW LAYER (showroom)
 // ===========================
 const previewTop = actionY + actionH + 16;
@@ -560,14 +567,17 @@ this._refreshPreview = () => {
 
   // Actualizar texto
   const p = normalizeSpecForCarSpecs(spec);
-  this._previewText.setText(
-    `ID: ${p.id}\n` +
-    `NAME: ${p.name}\n` +
-    `MAX FWD: ${p.maxFwd}\n` +
-    `ACCEL: ${p.accel}\n` +
-    `TURN: ${p.turnRate}\n` +
-    `GRIP: ${p.gripDrive}`
-  );
+
+  if (this._previewText) {
+    this._previewText.setText(
+      `ID: ${p.id}\n` +
+      `NAME: ${p.name}\n` +
+      `MAX FWD: ${p.maxFwd}\n` +
+      `ACCEL: ${p.accel}\n` +
+      `TURN: ${p.turnRate}\n` +
+      `GRIP: ${p.gripDrive}`
+    );
+  }
 
   // Si existe sprite previo, destruir
   if (this._previewCarSprite) {
@@ -609,32 +619,6 @@ this._refreshPreview = () => {
 };
 
 // Refresco inicial
-this._refreshPreview();
-// ===========================
-// PREVIEW
-// ===========================
-// Posicionar el preview dentro del panel central (grid nuevo)
-this._previewText = this.add.text(midX + 22, midY + 48, '', {
-  fontFamily: 'monospace',
-  fontSize: '13px',
-  color: '#ffffff',
-  lineSpacing: 6
-});
-
-this._refreshPreview = () => {
-  if (!this._factoryCar) return;
-
-  this._previewText.setText(
-    `ID: ${this._factoryCar.id}\n` +
-    `NAME: ${this._factoryCar.name}\n` +
-    `MAX FWD: ${this._factoryCar.maxFwd}\n` +
-    `ACCEL: ${this._factoryCar.accel}\n` +
-    `TURN: ${this._factoryCar.turnRate}\n` +
-    `GRIP: ${this._factoryCar.gripDrive}`
-  );
-};
-
-// Inicial
 this._refreshPreview();
     // “Sello” visual: un foco/halo en el centro como mesa de montaje
     const halo = this.add.circle(Math.floor(w * 0.62), Math.floor(h * 0.52), 160, 0x2cf6ff, 0.05);
