@@ -1758,7 +1758,7 @@ this._devModalSync = () => {
 // -------------------------------
 // Layout: área de contenido + footer fijo (sin scroll todavía)
 // -------------------------------
-const footerH = 56; // altura reservada para botonera
+
 const btnY = mPanelY + mPanelH - footerH + 12;
 const contentTop = mPanelY + 58;
 const contentBottom = btnY - 14;
