@@ -329,7 +329,7 @@ const actionH = 46;
 
 // Bandeja superior derecha (contenedor)
 const actionX = midX + midW - 12;
-const actionY = midY + 10;
+const actionY = midY + 34;
 
 // Helper botón compacto (para barra)
 const mkActionBtn = (label, onClick, w = 112) => {
@@ -497,7 +497,7 @@ actions.add(btnReset);
 btnReset.x = -452;
 
 // Línea divisoria bajo barra acciones
-this.add.rectangle(midX + 10, midY + actionH + 8, midW - 20, 1, 0xb7c0ff, 0.10)
+this.add.rectangle(midX + 10, actionY + actionH + 6, midW - 20, 1, 0xb7c0ff, 0.10)
   .setOrigin(0);
 // ===========================
 // PREVIEW
