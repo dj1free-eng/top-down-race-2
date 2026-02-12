@@ -326,16 +326,6 @@ const midT = this.add.text(midX + 12, midY + 10, 'ZONA DE MONTAJE (preview + par
 // Reposicionar previewText para que quede dentro del panel central
 this._previewText.setPosition(midX + 22, midY + 48);
 
-    const mid = this.add.rectangle(288, 92, w - 288 - 32, h - 170, 0x000000, 0.14)
-      .setOrigin(0)
-      .setStrokeStyle(1, 0xb7c0ff, 0.08);
-
-    const midT = this.add.text(300, 102, 'ZONA DE MONTAJE (preview + parámetros)', {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '12px',
-      color: '#b7c0ff',
-      fontStyle: '800'
-    });
 // ===========================
 // PREVIEW
 // ===========================
