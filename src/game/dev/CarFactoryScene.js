@@ -385,6 +385,35 @@ this.add.rectangle(inspectorX, inspectorY, inspectorW, inspectorH, 0x000000, 0.1
   .setOrigin(0)
   .setStrokeStyle(1, 0xb7c0ff, 0.08);
 
+// -------------------------------
+// INSPECTOR CLIP (mask + container)
+// -------------------------------
+// Todo el contenido del inspector vive en this._inspectorCont y se scrollea.
+// La máscara recorta el contenido para que no se "salga" del panel.
+const INSPECTOR_TOP = inspectorY + 6;
+const INSPECTOR_BOTTOM = inspectorY + inspectorH - 74;
+const INSPECTOR_VIEW_H = Math.max(60, INSPECTOR_BOTTOM - INSPECTOR_TOP);
+
+// Container scrolleable (si no existe ya)
+this._inspectorCont = this.add.container(0, 0);
+
+// Máscara geométrica (rectángulo visible)
+this._inspectorMaskGfx = this.add.graphics();
+this._inspectorMaskGfx.fillStyle(0xffffff, 1);
+this._inspectorMaskGfx.fillRect(
+  inspectorX + 4,
+  INSPECTOR_TOP,
+  inspectorW - 8,
+  INSPECTOR_VIEW_H
+);
+this._inspectorMask = this._inspectorMaskGfx.createGeometryMask();
+this._inspectorMaskGfx.setVisible(false);
+this._inspectorCont.setMask(this._inspectorMask);
+
+// Scroll state
+this._inspectorScroll = 0;
+this._inspectorScrollMax = 0;
+
 // helpers
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const fmtNum = (n) => (Number.isFinite(n) ? (Math.round(n * 1000) / 1000).toString() : '—');
