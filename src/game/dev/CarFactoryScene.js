@@ -599,60 +599,11 @@ pill.on('pointerup', () => hit.emit('pointerup'));
 pillT.on('pointerup', () => hit.emit('pointerup'));
 
 hit.on('pointerup', () => {
-  // Si hubo drag (scroll), NO editar
-  if (this._inspectorGesture?.moved) return;
-
-  const s = this._factoryCar || {};
+  const s = this._factoryCar;
   if (!s) return;
 
-  // dropdowns por ciclo (rápido y sin teclado)
-  if (key === 'category') {
-    s.category = cyclePick(CATEGORIES, String(s.category || 'sport'));
-    this._refreshPreview?.();
-    toast('🧩 category actualizado');
-    return;
-  }
-  if (key === 'rarity') {
-    s.rarity = cyclePick(RARITIES, String(s.rarity || 'common'));
-    this._refreshPreview?.();
-    toast('✨ rarity actualizado');
-    return;
-  }
-  if (key === 'handlingProfile') {
-    const base = String(s.handlingProfile || 'default');
-    s.handlingProfile = cyclePick(PROFILES.length ? PROFILES : ['default'], base);
-    this._refreshPreview?.();
-    toast('🧠 handlingProfile actualizado');
-    return;
-  }    // texto
-    if (isTextField(key)) {
-      const next = promptText(`Editar ${key}`, s[key] ?? '');
-      if (next == null) return;
-
-      // id: limpia mínimo para evitar espacios raros
-      if (key === 'id') {
-        s.id = next.trim().toLowerCase().replace(/\s+/g, '_') || s.id;
-      } else {
-        s[key] = next.trim();
-      }
-
-      this._refreshPreview?.();
-      toast(`✍️ ${key} actualizado`);
-      return;
-    }
-
-    // número
-    const lim = NUM_LIMITS[key];
-    const min = lim ? lim[0] : -999999;
-    const max = lim ? lim[1] :  999999;
-
-    const nextN = promptNumber(`Editar ${key}`, s[key], min, max);
-    if (nextN == null) return;
-
-    s[key] = nextN;
-    this._refreshPreview?.();
-    toast(`🎛 ${key} actualizado`);
-  });
+  this._openHtmlEditor(key, s[key]);
+});
 
   this._inspectorCont.add([hit, l, v, pill, pillT]);
 
@@ -803,6 +754,50 @@ this._syncInspector = (p) => {
       `TURN: ${fmtNum(p.turnRate)}  GRIP: ${fmtNum(p.gripDrive)}`
     );
   }
+};
+    // ===========================
+// HTML MODAL INTEGRATION
+// ===========================
+
+this._openHtmlEditor = (key, currentValue) => {
+  const modal = document.getElementById('carFactoryModal');
+  const input = document.getElementById('cf-input');
+  const title = document.getElementById('cf-title');
+  const save = document.getElementById('cf-save');
+  const cancel = document.getElementById('cf-cancel');
+
+  title.innerText = `Editar ${key}`;
+  input.value = currentValue ?? '';
+
+  modal.classList.remove('hidden');
+
+  input.focus();
+  input.select();
+
+  const close = () => {
+    modal.classList.add('hidden');
+    save.onclick = null;
+    cancel.onclick = null;
+  };
+
+  cancel.onclick = () => close();
+
+  save.onclick = () => {
+    const s = this._factoryCar;
+    if (!s) return close();
+
+    let value = input.value;
+
+    // número automático si corresponde
+    if (!isNaN(Number(currentValue))) {
+      value = Number(value);
+      if (!Number.isFinite(value)) return close();
+    }
+
+    s[key] = value;
+    this._refreshPreview?.();
+    close();
+  };
 };
 // ===========================
 // ACTION BAR (panel central)
