@@ -415,7 +415,54 @@ this._inspectorCont.setMask(this._inspectorMask);
 // Scroll state
 this._inspectorScroll = 0;
 this._inspectorScrollMax = 0;
+// ===============================
+// INSPECTOR SCROLL (DRAG SAFE)
+// ===============================
+let inspectorDragging = false;
+let inspectorDragStartY = 0;
+let inspectorStartScroll = 0;
+let inspectorMoved = false;
 
+const isInsideInspector = (p) => {
+  const x = p.worldX;
+  const y = p.worldY;
+  return (
+    x >= inspectorX &&
+    x <= inspectorX + inspectorW &&
+    y >= INSPECTOR_TOP &&
+    y <= INSPECTOR_TOP + INSPECTOR_VIEW_H
+  );
+};
+
+this.input.on('pointerdown', (p) => {
+  if (!isInsideInspector(p)) return;
+  inspectorDragging = true;
+  inspectorMoved = false;
+  inspectorDragStartY = p.y;
+  inspectorStartScroll = this._inspectorScroll;
+});
+
+this.input.on('pointermove', (p) => {
+  if (!inspectorDragging) return;
+
+  const delta = p.y - inspectorDragStartY;
+
+  if (Math.abs(delta) > 8) {
+    inspectorMoved = true;
+  }
+
+  this._inspectorScroll = clamp(
+    inspectorStartScroll - delta,
+    0,
+    this._inspectorScrollMax
+  );
+
+  this._inspectorCont.y = -this._inspectorScroll;
+});
+
+this.input.on('pointerup', () => {
+  inspectorDragging = false;
+});
 // helpers
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const fmtNum = (n) => (Number.isFinite(n) ? (Math.round(n * 1000) / 1000).toString() : '—');
@@ -515,7 +562,6 @@ const v = this.add.text(colValueX, y + rowH / 2, '', {
   fontSize: '11px',
   color: '#eaffff'
 }).setOrigin(1, 0.5);
-
 const pillW = 54;
 const pillH = 18;
 
@@ -538,48 +584,47 @@ hit.setDepth(10);
 pill.setDepth(20);
 pillT.setDepth(21);
 
-// ✅ Pill clicable: en móvil editamos en pointerup (si NO hubo drag)
+// ✅ Pill clicable
 pill.setInteractive({ useHandCursor: true });
 pillT.setInteractive({ useHandCursor: true });
 
-// Permitir iniciar drag desde cualquier parte de la fila (incluido el pill)
-hit.on('pointerdown', (p) => startInspectorGesture(p));
-pill.on('pointerdown', (p) => startInspectorGesture(p));
-pillT.on('pointerdown', (p) => startInspectorGesture(p));
+// ✅ Iniciar gesto (tap vs drag) desde cualquier parte (fila + pill)
+// PASAMOS "key" para saber qué fila se tocó
+hit.on('pointerdown', (p) => startInspectorGesture(p, key));
+pill.on('pointerdown', (p) => startInspectorGesture(p, key));
+pillT.on('pointerdown', (p) => startInspectorGesture(p, key));
 
-// Reenviar el "tap" del pill al handler de la fila
+// ✅ Reenviar tap del pill al handler de la fila
 pill.on('pointerup', () => hit.emit('pointerup'));
 pillT.on('pointerup', () => hit.emit('pointerup'));
 
-  hit.on('pointerup', () => {
-    // Si el usuario estaba scrolleando, NO abrimos prompt
-    if (_insDragged) return;
-  // (no toques interactivity ni depth aquí; ya están fijados arriba)
-    const s = this._factoryCar || {};
-    if (!s) return;
+hit.on('pointerup', () => {
+  // Si hubo drag (scroll), NO editar
+  if (this._inspectorGesture?.moved) return;
 
-    // dropdowns por ciclo (rápido y sin teclado)
-    if (key === 'category') {
-      s.category = cyclePick(CATEGORIES, String(s.category || 'sport'));
-      this._refreshPreview?.();
-      toast('🧩 category actualizado');
-      return;
-    }
-    if (key === 'rarity') {
-      s.rarity = cyclePick(RARITIES, String(s.rarity || 'common'));
-      this._refreshPreview?.();
-      toast('✨ rarity actualizado');
-      return;
-    }
-    if (key === 'handlingProfile') {
-      const base = String(s.handlingProfile || 'default');
-      s.handlingProfile = cyclePick(PROFILES.length ? PROFILES : ['default'], base);
-      this._refreshPreview?.();
-      toast('🧠 handlingProfile actualizado');
-      return;
-    }
+  const s = this._factoryCar || {};
+  if (!s) return;
 
-    // texto
+  // dropdowns por ciclo (rápido y sin teclado)
+  if (key === 'category') {
+    s.category = cyclePick(CATEGORIES, String(s.category || 'sport'));
+    this._refreshPreview?.();
+    toast('🧩 category actualizado');
+    return;
+  }
+  if (key === 'rarity') {
+    s.rarity = cyclePick(RARITIES, String(s.rarity || 'common'));
+    this._refreshPreview?.();
+    toast('✨ rarity actualizado');
+    return;
+  }
+  if (key === 'handlingProfile') {
+    const base = String(s.handlingProfile || 'default');
+    s.handlingProfile = cyclePick(PROFILES.length ? PROFILES : ['default'], base);
+    this._refreshPreview?.();
+    toast('🧠 handlingProfile actualizado');
+    return;
+  }    // texto
     if (isTextField(key)) {
       const next = promptText(`Editar ${key}`, s[key] ?? '');
       if (next == null) return;
