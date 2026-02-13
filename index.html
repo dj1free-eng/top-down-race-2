@@ -21,5 +21,89 @@
     </div>
     <div id="app"></div>
     <script type="module" src="/src/main.js"></script>
+<!-- ========================= -->
+<!-- CAR FACTORY HTML MODAL  -->
+<!-- ========================= -->
+<div id="carFactoryModal" class="cf-modal hidden">
+  <div class="cf-card">
+    <h3 id="cf-title">Editar</h3>
+
+    <input id="cf-input" type="text" />
+
+    <div class="cf-actions">
+      <button id="cf-cancel">Cancelar</button>
+      <button id="cf-save">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<style>
+.cf-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(4px);
+}
+
+.cf-card {
+  width: 320px;
+  background: #0b1020;
+  border: 1px solid rgba(44,246,255,0.4);
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 0 30px rgba(44,246,255,0.3);
+  color: white;
+  font-family: system-ui;
+}
+
+.cf-card h3 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  color: #2cf6ff;
+}
+
+.cf-card input {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: none;
+  background: #111a33;
+  color: white;
+  margin-bottom: 14px;
+  font-size: 14px;
+}
+
+.cf-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.cf-actions button {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+#cf-save {
+  background: #2cf6ff;
+  color: black;
+}
+
+#cf-cancel {
+  background: #333;
+  color: white;
+}
+
+.hidden {
+  display: none;
+}
+</style>
   </body>
 </html>
