@@ -684,7 +684,6 @@ this._inspectorScroll = Phaser.Math.Clamp(this._inspectorScroll || 0, 0, this._i
 
 const applyInspectorScroll = () => {
   this._inspectorScroll = Phaser.Math.Clamp(this._inspectorScroll, 0, this._inspectorScrollMax);
-  // scroll vertical: mover contenedor
   this._inspectorCont.y = -this._inspectorScroll;
 };
 applyInspectorScroll();
@@ -702,13 +701,16 @@ const inspectorScrollHit = this.add.rectangle(
 // Este hit es SOLO para drag-scroll. Debe quedar por debajo de las filas (EDIT).
 inspectorScrollHit.setDepth(-10);
 
-// Drag scroll en el área visible del inspector (y también cuando el drag empieza sobre una fila)
+// Iniciar gesto de scroll si pulsas dentro del viewport del inspector
 inspectorScrollHit.on('pointerdown', (p) => startInspectorGesture(p));
 
+// Terminar gesto al soltar en cualquier parte
 this.input.on('pointerup', () => endInspectorGesture());
 
+// 🔥 CLAVE: mover SOLO si el gesto está activo.
+// (No necesitamos isPointerInsideInspector para nada)
 this.input.on('pointermove', (p) => {
-  if (!isPointerInsideInspector(p)) return;
+  if (!_insGestureActive) return;
   moveInspectorGesture(p);
 });
 
@@ -719,7 +721,6 @@ this.input.on('wheel', (pointer, _go, _dx, dy) => {
   this._inspectorScroll += dy * 0.6;
   applyInspectorScroll();
 });
-
 // texto mini “stats” (opcional) — se queda dentro del inspector, arriba a la derecha
 this._previewText = this.add.text(inspectorX + 8, inspectorY + inspectorH - 30, '', {
   fontFamily: 'monospace',
