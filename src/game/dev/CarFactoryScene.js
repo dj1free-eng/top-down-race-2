@@ -388,14 +388,10 @@ this.add.rectangle(inspectorX, inspectorY, inspectorW, inspectorH, 0x000000, 0.1
 // -------------------------------
 // INSPECTOR CLIP (mask + container)
 // -------------------------------
-// Todo el contenido del inspector vive en this._inspectorCont y se scrollea.
-// La máscara recorta el contenido para que no se "salga" del panel.
+// Área visible real del inspector (sin mini-stats abajo)
 const INSPECTOR_TOP = inspectorY + 6;
-// Reserva inferior solo para el mini-resumen (MAX/ACC/TURN/GRIP)
-// (antes era 74 y dejaba el área visible ridículamente pequeña)
-const INSPECTOR_BOTTOM = inspectorY + inspectorH - 34;
-const INSPECTOR_VIEW_H = Math.max(60, INSPECTOR_BOTTOM - INSPECTOR_TOP);
-
+const INSPECTOR_BOTTOM = inspectorY + inspectorH - 12; // margen mínimo inferior
+const INSPECTOR_VIEW_H = Math.max(120, INSPECTOR_BOTTOM - INSPECTOR_TOP);
 // Container scrolleable (si no existe ya)
 this._inspectorCont = this.add.container(0, 0);
 
@@ -415,6 +411,45 @@ this._inspectorCont.setMask(this._inspectorMask);
 // Scroll state
 this._inspectorScroll = 0;
 this._inspectorScrollMax = 0;
+    // ================================
+// INSPECTOR SCROLL (solo arrastre)
+// ================================
+const inspectorDragHit = this.add.rectangle(
+  inspectorX + 4,
+  INSPECTOR_TOP,
+  inspectorW - 8,
+  INSPECTOR_VIEW_H,
+  0x000000,
+  0.001
+).setOrigin(0).setInteractive({ draggable: true });
+
+inspectorDragHit.setDepth(9999); // por encima para capturar drag (pero NO click de filas)
+
+let insDragging = false;
+let insStartY = 0;
+let insStartScroll = 0;
+
+const applyInspectorScroll = () => {
+  this._inspectorScroll = Math.max(0, Math.min(this._inspectorScroll, this._inspectorScrollMax));
+  if (this._inspectorCont) this._inspectorCont.y = -this._inspectorScroll;
+};
+
+inspectorDragHit.on('dragstart', (p) => {
+  insDragging = true;
+  insStartY = p.y;
+  insStartScroll = this._inspectorScroll;
+});
+
+inspectorDragHit.on('drag', (p) => {
+  if (!insDragging) return;
+  const delta = (p.y - insStartY);
+  this._inspectorScroll = insStartScroll - delta;
+  applyInspectorScroll();
+});
+
+inspectorDragHit.on('dragend', () => {
+  insDragging = false;
+});
 // ===============================
 // INSPECTOR SCROLL (DRAG SAFE)
 // ===============================
@@ -721,13 +756,7 @@ this.input.on('wheel', (pointer, _go, _dx, dy) => {
   this._inspectorScroll += dy * 0.6;
   applyInspectorScroll();
 });
-// texto mini “stats” (opcional) — se queda dentro del inspector, arriba a la derecha
-this._previewText = this.add.text(inspectorX + 8, inspectorY + inspectorH - 30, '', {
-  fontFamily: 'monospace',
-  fontSize: '11px',
-  color: '#ffffff',
-  lineSpacing: 4
-});
+
 
 // Sync desde _refreshPreview (se define aquí y se llama dentro)
 this._syncInspector = (p) => {
@@ -746,14 +775,6 @@ this._syncInspector = (p) => {
     const row = this._inspectorRows[k];
     if (!row) continue;
     row.valueText.setText(fmtNum(Number(get(k))));
-  }
-
-  // mini stats abajo (bonito y compacto)
-  if (this._previewText) {
-    this._previewText.setText(
-      `MAX: ${fmtNum(p.maxFwd)}  ACC: ${fmtNum(p.accel)}\n` +
-      `TURN: ${fmtNum(p.turnRate)}  GRIP: ${fmtNum(p.gripDrive)}`
-    );
   }
 };
     // ===========================
