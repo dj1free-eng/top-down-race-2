@@ -391,7 +391,9 @@ this.add.rectangle(inspectorX, inspectorY, inspectorW, inspectorH, 0x000000, 0.1
 // Todo el contenido del inspector vive en this._inspectorCont y se scrollea.
 // La máscara recorta el contenido para que no se "salga" del panel.
 const INSPECTOR_TOP = inspectorY + 6;
-const INSPECTOR_BOTTOM = inspectorY + inspectorH - 74;
+// Reserva inferior solo para el mini-resumen (MAX/ACC/TURN/GRIP)
+// (antes era 74 y dejaba el área visible ridículamente pequeña)
+const INSPECTOR_BOTTOM = inspectorY + inspectorH - 34;
 const INSPECTOR_VIEW_H = Math.max(60, INSPECTOR_BOTTOM - INSPECTOR_TOP);
 
 // Container scrolleable (si no existe ya)
@@ -459,6 +461,38 @@ const cyclePick = (arr, current) => {
   return next;
 };
 
+// -------------------------------
+// INSPECTOR GESTURE (drag vs tap)
+// -------------------------------
+// En móvil: si el "tap" abre el prompt al tocar, te quedas sin scroll.
+// Solución: editar SOLO en pointerup si NO hubo arrastre.
+let _insGestureActive = false;
+let _insStartY = 0;
+let _insStartScroll = 0;
+let _insDragged = false;
+const INS_DRAG_THRESHOLD = 8; // px
+
+const startInspectorGesture = (p) => {
+  _insGestureActive = true;
+  _insStartY = p.y;
+  _insStartScroll = this._inspectorScroll || 0;
+  _insDragged = false;
+};
+
+const moveInspectorGesture = (p) => {
+  if (!_insGestureActive) return;
+  const dy = p.y - _insStartY;
+  if (!_insDragged && Math.abs(dy) > INS_DRAG_THRESHOLD) _insDragged = true;
+  if (_insDragged) {
+    this._inspectorScroll = _insStartScroll - dy;
+    applyInspectorScroll();
+  }
+};
+
+const endInspectorGesture = () => {
+  _insGestureActive = false;
+};
+
 // fila UI
 const mkRow = (y, label, key) => {
   const rowH = 26;
@@ -504,14 +538,22 @@ hit.setDepth(10);
 pill.setDepth(20);
 pillT.setDepth(21);
 
-// ✅ Hacer pill clicable y reenviar click al hit
+// ✅ Pill clicable: en móvil editamos en pointerup (si NO hubo drag)
 pill.setInteractive({ useHandCursor: true });
 pillT.setInteractive({ useHandCursor: true });
 
-pill.on('pointerdown', () => hit.emit('pointerdown'));
-pillT.on('pointerdown', () => hit.emit('pointerdown'));
-  
-  hit.on('pointerdown', () => {
+// Permitir iniciar drag desde cualquier parte de la fila (incluido el pill)
+hit.on('pointerdown', (p) => startInspectorGesture(p));
+pill.on('pointerdown', (p) => startInspectorGesture(p));
+pillT.on('pointerdown', (p) => startInspectorGesture(p));
+
+// Reenviar el "tap" del pill al handler de la fila
+pill.on('pointerup', () => hit.emit('pointerup'));
+pillT.on('pointerup', () => hit.emit('pointerup'));
+
+  hit.on('pointerup', () => {
+    // Si el usuario estaba scrolleando, NO abrimos prompt
+    if (_insDragged) return;
   // (no toques interactivity ni depth aquí; ya están fijados arriba)
     const s = this._factoryCar || {};
     if (!s) return;
@@ -664,23 +706,14 @@ const inspectorScrollHit = this.add.rectangle(
 // Este hit es SOLO para drag-scroll. Debe quedar por debajo de las filas (EDIT).
 inspectorScrollHit.setDepth(-10);
 
-let _insDrag = false;
-let _insY0 = 0;
-let _insScroll0 = 0;
+// Drag scroll en el área visible del inspector (y también cuando el drag empieza sobre una fila)
+inspectorScrollHit.on('pointerdown', (p) => startInspectorGesture(p));
 
-inspectorScrollHit.on('pointerdown', (p) => {
-  _insDrag = true;
-  _insY0 = p.y;
-  _insScroll0 = this._inspectorScroll;
-});
-
-this.input.on('pointerup', () => { _insDrag = false; });
+this.input.on('pointerup', () => endInspectorGesture());
 
 this.input.on('pointermove', (p) => {
-  if (!_insDrag) return;
-  const dy = p.y - _insY0;
-  this._inspectorScroll = _insScroll0 - dy;
-  applyInspectorScroll();
+  if (!isPointerInsideInspector(p)) return;
+  moveInspectorGesture(p);
 });
 
 // wheel (desktop)
@@ -692,7 +725,7 @@ this.input.on('wheel', (pointer, _go, _dx, dy) => {
 });
 
 // texto mini “stats” (opcional) — se queda dentro del inspector, arriba a la derecha
-this._previewText = this.add.text(inspectorX + 8, inspectorY + inspectorH - 64, '', {
+this._previewText = this.add.text(inspectorX + 8, inspectorY + inspectorH - 30, '', {
   fontFamily: 'monospace',
   fontSize: '11px',
   color: '#ffffff',
