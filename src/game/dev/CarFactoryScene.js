@@ -499,6 +499,11 @@ const pillT = this.add.text(pillCX, pillCY, 'EDIT', {
   fontStyle: '900'
 }).setOrigin(0.5);
 
+// Z-order: filas por encima del área de scroll, y el pill por encima del hit
+hit.setDepth(10);
+pill.setDepth(20);
+pillT.setDepth(21);
+
 // ✅ Hacer pill clicable y reenviar click al hit
 pill.setInteractive({ useHandCursor: true });
 pillT.setInteractive({ useHandCursor: true });
@@ -507,10 +512,7 @@ pill.on('pointerdown', () => hit.emit('pointerdown'));
 pillT.on('pointerdown', () => hit.emit('pointerdown'));
   
   hit.on('pointerdown', () => {
-   hit.setInteractive({ useHandCursor: true });
-hit.setDepth(10);
-pill.setDepth(20);
-pillT.setDepth(21);   
+  // (no toques interactivity ni depth aquí; ya están fijados arriba)
     const s = this._factoryCar || {};
     if (!s) return;
 
@@ -658,6 +660,9 @@ const inspectorScrollHit = this.add.rectangle(
   0x000000,
   0.001
 ).setOrigin(0).setInteractive();
+
+// Este hit es SOLO para drag-scroll. Debe quedar por debajo de las filas (EDIT).
+inspectorScrollHit.setDepth(-10);
 
 let _insDrag = false;
 let _insY0 = 0;
