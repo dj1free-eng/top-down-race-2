@@ -536,6 +536,8 @@ pillT.setDepth(21);
     toast(`🎛 ${key} actualizado`);
   });
 
+  this._inspectorCont.add([hit, l, v, pill, pillT]);
+
   return { key, valueText: v, hit, labelText: l, pill, pillT };
 };
 
@@ -545,16 +547,23 @@ let iy = inspectorY + 10;
 
 // Grupo: identidad
 const mkGroup = (title) => {
-  this.add.text(inspectorX + 8, iy, title, {
+  const t = this.add.text(inspectorX + 8, iy, title, {
     fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
     fontSize: '10px',
     color: '#b7c0ff',
     fontStyle: '900'
   });
+
   iy += 18;
-  this.add.rectangle(inspectorX + 8, iy, inspectorW - 16, 1, 0xb7c0ff, 0.10).setOrigin(0);
+
+  const line = this.add.rectangle(inspectorX + 8, iy, inspectorW - 16, 1, 0xb7c0ff, 0.10)
+    .setOrigin(0);
+
   iy += 8;
+
+  this._inspectorCont.add([t, line]);
 };
+
 
 mkGroup('IDENTIDAD');
 for (const [lbl, key] of [
@@ -595,6 +604,58 @@ for (const [lbl, key] of [
   this._inspectorRows[key] = mkRow(iy, lbl, key);
   iy += 26;
 }
+
+
+// -------------------------------
+// INSPECTOR SCROLL (drag + wheel)
+// -------------------------------
+const inspectorContentH = Math.max(0, (iy + 6) - INSPECTOR_TOP);
+this._inspectorScrollMax = Math.max(0, inspectorContentH - INSPECTOR_VIEW_H);
+this._inspectorScroll = Phaser.Math.Clamp(this._inspectorScroll || 0, 0, this._inspectorScrollMax);
+
+const applyInspectorScroll = () => {
+  this._inspectorScroll = Phaser.Math.Clamp(this._inspectorScroll, 0, this._inspectorScrollMax);
+  // scroll vertical: mover contenedor
+  this._inspectorCont.y = -this._inspectorScroll;
+};
+applyInspectorScroll();
+
+// hit-area invisible para capturar drag/scroll dentro del inspector
+const inspectorScrollHit = this.add.rectangle(
+  inspectorX + 4,
+  INSPECTOR_TOP,
+  inspectorW - 8,
+  INSPECTOR_VIEW_H,
+  0x000000,
+  0.001
+).setOrigin(0).setInteractive();
+
+let _insDrag = false;
+let _insY0 = 0;
+let _insScroll0 = 0;
+
+inspectorScrollHit.on('pointerdown', (p) => {
+  _insDrag = true;
+  _insY0 = p.y;
+  _insScroll0 = this._inspectorScroll;
+});
+
+this.input.on('pointerup', () => { _insDrag = false; });
+
+this.input.on('pointermove', (p) => {
+  if (!_insDrag) return;
+  const dy = p.y - _insY0;
+  this._inspectorScroll = _insScroll0 - dy;
+  applyInspectorScroll();
+});
+
+// wheel (desktop)
+this.input.on('wheel', (pointer, _go, _dx, dy) => {
+  const b = inspectorScrollHit.getBounds();
+  if (!b.contains(pointer.x, pointer.y)) return;
+  this._inspectorScroll += dy * 0.6;
+  applyInspectorScroll();
+});
 
 // texto mini “stats” (opcional) — se queda dentro del inspector, arriba a la derecha
 this._previewText = this.add.text(inspectorX + 8, inspectorY + inspectorH - 64, '', {
