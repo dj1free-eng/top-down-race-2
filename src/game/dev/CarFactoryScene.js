@@ -675,7 +675,7 @@ const normalizeSpecForCarSpecs = (spec) => {
     category: String(s.category || 'sport'),
     rarity: String(s.rarity || 'common'),
     handlingProfile: String(s.handlingProfile || 'default'),
-
+    skin: s.skin ? String(s.skin) : undefined,
     maxFwd: Number(s.maxFwd ?? 460),
     maxRev: Number(s.maxRev ?? 220),
     accel: Number(s.accel ?? 640),
