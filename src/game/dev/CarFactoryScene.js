@@ -710,18 +710,6 @@ for (const [lbl, key] of [
 }
 
 
-// -------------------------------
-// INSPECTOR SCROLL (drag + wheel)
-// -------------------------------
-const inspectorContentH = Math.max(0, (iy + 6) - INSPECTOR_TOP);
-this._inspectorScrollMax = Math.max(0, inspectorContentH - INSPECTOR_VIEW_H);
-this._inspectorScroll = Phaser.Math.Clamp(this._inspectorScroll || 0, 0, this._inspectorScrollMax);
-
-const applyInspectorScroll = () => {
-  this._inspectorScroll = Phaser.Math.Clamp(this._inspectorScroll, 0, this._inspectorScrollMax);
-  this._inspectorCont.y = -this._inspectorScroll;
-};
-applyInspectorScroll();
 
 // hit-area invisible para capturar drag/scroll dentro del inspector
 const inspectorScrollHit = this.add.rectangle(
