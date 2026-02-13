@@ -172,7 +172,8 @@ const gap = 16;
 const uiW = this.scale.width;
 const uiH = this.scale.height;
 
-const leftW = 260;
+// Responsive: en móvil el catálogo no puede comerse la pantalla
+const leftW = Math.round(Phaser.Math.Clamp(uiW * 0.40, 160, 260));
 
 const topY = 16 + headerH;
 const bottomY = uiH - 16 - footerH;
@@ -444,24 +445,30 @@ const mkRow = (y, label, key) => {
     fontStyle: '800'
   }).setOrigin(0, 0.5);
 
-  const v = this.add.text(inspectorX + inspectorW - 10, y + rowH / 2, '', {
-    fontFamily: 'monospace',
-    fontSize: '11px',
-    color: '#eaffff'
-  }).setOrigin(1, 0.5);
+const v = this.add.text((inspectorX + inspectorW - 12 - 54 - 10), y + rowH / 2, '', {
+  fontFamily: 'monospace',
+  fontSize: '11px',
+  color: '#eaffff'
+}).setOrigin(1, 0.5);
 
-  // mini “pill” para indicar que es editable
-  const pill = this.add.rectangle(inspectorX + inspectorW - 58, y + rowH / 2, 46, 16, 0x2cf6ff, 0.10)
-    .setOrigin(0.5)
-    .setStrokeStyle(1, 0x2cf6ff, 0.20);
+// mini “pill” editable (anclada a la derecha)
+const pillW = 54;
+const pillH = 18;
 
-  const pillT = this.add.text(inspectorX + inspectorW - 58, y + rowH / 2, 'EDIT', {
-    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-    fontSize: '9px',
-    color: '#b7ffff',
-    fontStyle: '900'
-  }).setOrigin(0.5);
+// pill anclada a la derecha con margen
+const pillCX = inspectorX + inspectorW - 12 - (pillW / 2);
+const pillCY = y + rowH / 2;
 
+const pill = this.add.rectangle(pillCX, pillCY, pillW, pillH, 0x2cf6ff, 0.10)
+  .setOrigin(0.5)
+  .setStrokeStyle(1, 0x2cf6ff, 0.20);
+
+const pillT = this.add.text(pillCX, pillCY, 'EDIT', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '9px',
+  color: '#b7ffff',
+  fontStyle: '900'
+}).setOrigin(0.5);
   hit.on('pointerdown', () => {
     const s = this._factoryCar || {};
     if (!s) return;
