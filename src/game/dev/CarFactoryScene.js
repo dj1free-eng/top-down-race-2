@@ -798,6 +798,211 @@ btnReset.x = -452;
 // Línea divisoria bajo barra acciones
 this.add.rectangle(midX + 10, actionY + actionH + 6, midW - 20, 1, 0xb7c0ff, 0.10)
   .setOrigin(0);
+
+    // ===========================
+// SPEC EDITOR (panel izquierdo del mid)
+// ===========================
+const inspectorX = midX + 16;
+const inspectorY = midY + 84;
+const inspectorW = infoW - 28;
+const inspectorH = midH - (inspectorY - midY) - 16;
+
+this.add.text(inspectorX, inspectorY - 22, 'SPEC EDITOR', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '12px',
+  color: '#b7c0ff',
+  fontStyle: '900'
+});
+
+this.add.rectangle(inspectorX, inspectorY, inspectorW, inspectorH, 0x000000, 0.10)
+  .setOrigin(0)
+  .setStrokeStyle(1, 0xb7c0ff, 0.08);
+
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const fmtNum = (n) => (Number.isFinite(n) ? (Math.round(n * 1000) / 1000).toString() : '—');
+
+const CATEGORIES = ['sport', 'rally', 'drift', 'truck', 'classic', 'concept'];
+const RARITIES   = ['common', 'rare', 'epic', 'legendary'];
+const PROFILES   = Object.keys(HANDLING_PROFILES || { default: true });
+
+const NUM_LIMITS = {
+  maxFwd:      [0, 9999],
+  maxRev:      [0, 9999],
+  accel:       [0, 9999],
+  brakeForce:  [0, 9999],
+  engineBrake: [0, 9999],
+  linearDrag:  [0, 5],
+  turnRate:    [0, 20],
+  turnMin:     [0, 10],
+  gripCoast:   [0, 1],
+  gripDrive:   [0, 1],
+  gripBrake:   [0, 1],
+};
+
+const promptText = (title, def) => {
+  const v = window.prompt(title, def ?? '');
+  if (v == null) return null;
+  return String(v);
+};
+
+const promptNumber = (title, def, min, max) => {
+  const raw = window.prompt(`${title}\n(${min} → ${max})`, String(def ?? ''));
+  if (raw == null) return null;
+  const n = Number(String(raw).replace(',', '.'));
+  if (!Number.isFinite(n)) return null;
+  return clamp(n, min, max);
+};
+
+const cyclePick = (arr, current) => {
+  const idx = arr.indexOf(current);
+  const next = idx === -1 ? arr[0] : arr[(idx + 1) % arr.length];
+  return next;
+};
+
+const mkRow = (y, label, key) => {
+  const rowH = 26;
+
+  const hit = this.add.rectangle(inspectorX, y, inspectorW, rowH, 0x000000, 0.001)
+    .setOrigin(0)
+    .setInteractive({ useHandCursor: true });
+
+  const l = this.add.text(inspectorX + 8, y + rowH / 2, label, {
+    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: '11px',
+    color: '#dfe6ff',
+    fontStyle: '800'
+  }).setOrigin(0, 0.5);
+
+  const v = this.add.text(inspectorX + inspectorW - 10, y + rowH / 2, '', {
+    fontFamily: 'monospace',
+    fontSize: '11px',
+    color: '#eaffff'
+  }).setOrigin(1, 0.5);
+
+  hit.on('pointerdown', () => {
+    const s = this._factoryCar || {};
+    if (!s) return;
+
+    if (key === 'category') {
+      s.category = cyclePick(CATEGORIES, String(s.category || 'sport'));
+      this._refreshPreview?.();
+      toast('🧩 category actualizado');
+      return;
+    }
+    if (key === 'rarity') {
+      s.rarity = cyclePick(RARITIES, String(s.rarity || 'common'));
+      this._refreshPreview?.();
+      toast('✨ rarity actualizado');
+      return;
+    }
+    if (key === 'handlingProfile') {
+      const base = String(s.handlingProfile || 'default');
+      s.handlingProfile = cyclePick(PROFILES.length ? PROFILES : ['default'], base);
+      this._refreshPreview?.();
+      toast('🧠 handlingProfile actualizado');
+      return;
+    }
+
+    if (key === 'id') {
+      const next = promptText('Editar id (sin espacios)', s.id ?? '');
+      if (next == null) return;
+      s.id = next.trim().toLowerCase().replace(/\s+/g, '_') || s.id;
+      this._refreshPreview?.();
+      toast('✍️ id actualizado');
+      return;
+    }
+
+    if (['name','brand','country','skin'].includes(key)) {
+      const next = promptText(`Editar ${key}`, s[key] ?? '');
+      if (next == null) return;
+      s[key] = next.trim();
+      this._refreshPreview?.();
+      toast(`✍️ ${key} actualizado`);
+      return;
+    }
+
+    const lim = NUM_LIMITS[key] || [-999999, 999999];
+    const nextN = promptNumber(`Editar ${key}`, s[key], lim[0], lim[1]);
+    if (nextN == null) return;
+
+    s[key] = nextN;
+    this._refreshPreview?.();
+    toast(`🎛 ${key} actualizado`);
+  });
+
+  return { key, valueText: v, hit, labelText: l };
+};
+
+this._inspectorRows = {};
+let iy = inspectorY + 10;
+
+const mkGroup = (title) => {
+  this.add.text(inspectorX + 8, iy, title, {
+    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: '10px',
+    color: '#b7c0ff',
+    fontStyle: '900'
+  });
+  iy += 18;
+  this.add.rectangle(inspectorX + 8, iy, inspectorW - 16, 1, 0xb7c0ff, 0.10).setOrigin(0);
+  iy += 8;
+};
+
+mkGroup('IDENTIDAD');
+for (const [lbl, key] of [
+  ['id', 'id'],
+  ['name', 'name'],
+  ['brand', 'brand'],
+  ['country', 'country'],
+  ['skin file', 'skin'],
+]) {
+  this._inspectorRows[key] = mkRow(iy, lbl, key);
+  iy += 26;
+}
+
+mkGroup('META');
+for (const [lbl, key] of [
+  ['category (tap)', 'category'],
+  ['rarity (tap)', 'rarity'],
+  ['handlingProfile (tap)', 'handlingProfile'],
+]) {
+  this._inspectorRows[key] = mkRow(iy, lbl, key);
+  iy += 26;
+}
+
+mkGroup('HANDLING');
+for (const [lbl, key] of [
+  ['maxFwd', 'maxFwd'],
+  ['maxRev', 'maxRev'],
+  ['accel', 'accel'],
+  ['brakeForce', 'brakeForce'],
+  ['engineBrake', 'engineBrake'],
+  ['linearDrag', 'linearDrag'],
+  ['turnRate', 'turnRate'],
+  ['turnMin', 'turnMin'],
+  ['gripCoast', 'gripCoast'],
+  ['gripDrive', 'gripDrive'],
+  ['gripBrake', 'gripBrake'],
+]) {
+  this._inspectorRows[key] = mkRow(iy, lbl, key);
+  iy += 26;
+}
+
+// sync desde refresh
+this._syncInspector = (p) => {
+  if (!this._inspectorRows) return;
+  const get = (k) => (p?.[k] ?? this._factoryCar?.[k] ?? '');
+
+  for (const k of ['id','name','brand','country','skin','category','rarity','handlingProfile']) {
+    const row = this._inspectorRows[k];
+    if (row) row.valueText.setText(String(get(k) || '—'));
+  }
+
+  for (const k of Object.keys(NUM_LIMITS)) {
+    const row = this._inspectorRows[k];
+    if (row) row.valueText.setText(fmtNum(Number(get(k))));
+  }
+};
 // ===========================
 // PREVIEW LAYER (showroom)
 // ===========================
