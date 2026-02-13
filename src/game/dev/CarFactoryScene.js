@@ -469,9 +469,19 @@ const pillT = this.add.text(pillCX, pillCY, 'EDIT', {
   color: '#b7ffff',
   fontStyle: '900'
 }).setOrigin(0.5);
+
+// ✅ Hacer pill clicable y reenviar click al hit
+pill.setInteractive({ useHandCursor: true });
+pillT.setInteractive({ useHandCursor: true });
+
+pill.on('pointerdown', () => hit.emit('pointerdown'));
+pillT.on('pointerdown', () => hit.emit('pointerdown'));
   
   hit.on('pointerdown', () => {
-   
+   hit.setInteractive({ useHandCursor: true });
+hit.setDepth(10);
+pill.setDepth(20);
+pillT.setDepth(21);   
     const s = this._factoryCar || {};
     if (!s) return;
 
