@@ -444,19 +444,19 @@ const mkRow = (y, label, key) => {
     color: '#dfe6ff',
     fontStyle: '800'
   }).setOrigin(0, 0.5);
-
-const v = this.add.text((inspectorX + inspectorW - 12 - 54 - 10), y + rowH / 2, '', {
+const colLabelX = inspectorX + 14;
+const colEditX = inspectorX + inspectorW - 14;
+const colValueX = colEditX - 70;
+const v = this.add.text(colValueX, y + rowH / 2, '', {
   fontFamily: 'monospace',
   fontSize: '11px',
   color: '#eaffff'
 }).setOrigin(1, 0.5);
 
-// mini “pill” editable (anclada a la derecha)
 const pillW = 54;
 const pillH = 18;
 
-// pill anclada a la derecha con margen
-const pillCX = inspectorX + inspectorW - 12 - (pillW / 2);
+const pillCX = colEditX - pillW / 2;
 const pillCY = y + rowH / 2;
 
 const pill = this.add.rectangle(pillCX, pillCY, pillW, pillH, 0x2cf6ff, 0.10)
@@ -469,7 +469,9 @@ const pillT = this.add.text(pillCX, pillCY, 'EDIT', {
   color: '#b7ffff',
   fontStyle: '900'
 }).setOrigin(0.5);
+  
   hit.on('pointerdown', () => {
+   
     const s = this._factoryCar || {};
     if (!s) return;
 
