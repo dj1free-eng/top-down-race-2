@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { BootScene } from './scenes/BootScene.js';
 import { MenuScene } from './scenes/MenuScene.js';
 import { RaceScene } from './scenes/RaceScene.js';
-import { CarFactoryScene } from './dev/CarFactoryScene.js';
+import CarFactoryScene from './dev/CarFactoryScene.js';
 
 export function createGame(parentId = 'app') {
   return new Phaser.Game({
