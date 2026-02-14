@@ -3,934 +3,840 @@ import Phaser from 'phaser';
 import { CAR_SPECS } from '../cars/carSpecs.js';
 import { HANDLING_PROFILES } from '../cars/handlingProfiles.js';
 
-// ═══════════════════════════════════════════════════════════════════════════
-//  CONSTANTS
-// ═══════════════════════════════════════════════════════════════════════════
+// ---------------------------------------------------------------------------
+// CarFactoryScene (B) — “tarjetas + modal”
+// - Catálogo scrolleable
+// - Preview (sprite + resumen)
+// - Editor por pestañas con tarjetas grandes
+// - Modal única para editar (slider/picker/texto)
+// - Exporta DEFAULT + NAMED (para import { CarFactoryScene } en game.js)
+// ---------------------------------------------------------------------------
 
 const CATEGORIES = ['sport', 'rally', 'drift', 'truck', 'classic', 'concept'];
 const RARITIES = ['common', 'rare', 'epic', 'legendary'];
 
 const NUM_LIMITS = {
-  maxFwd: { min: 50, max: 500 },
-  maxRev: { min: 10, max: 200 },
-  accel: { min: 10, max: 300 },
-  brakeForce: { min: 50, max: 500 },
-  engineBrake: { min: 0, max: 100 },
-  linearDrag: { min: 0, max: 5 },
-  turnRate: { min: 0.5, max: 10 },
-  turnMin: { min: 0, max: 10 },
-  gripCoast: { min: 0, max: 1 },
-  gripDrive: { min: 0, max: 1 },
-  gripBrake: { min: 0, max: 1 },
+  maxFwd:      { min: 0,   max: 9999, step: 10 },
+  maxRev:      { min: 0,   max: 9999, step: 10 },
+  accel:       { min: 0,   max: 9999, step: 10 },
+  brakeForce:  { min: 0,   max: 9999, step: 10 },
+  engineBrake: { min: 0,   max: 9999, step: 10 },
+  linearDrag:  { min: 0,   max: 5,    step: 0.01 },
+  turnRate:    { min: 0,   max: 20,   step: 0.05 },
+  turnMin:     { min: 0,   max: 10,   step: 0.05 },
+  gripCoast:   { min: 0,   max: 1,    step: 0.005 },
+  gripDrive:   { min: 0,   max: 1,    step: 0.005 },
+  gripBrake:   { min: 0,   max: 1,    step: 0.005 },
 };
 
 const FIELD_GROUPS = {
   IDENTIDAD: ['id', 'name', 'brand', 'country', 'skin'],
   META: ['category', 'rarity', 'handlingProfile'],
   FÍSICAS: [
-    'maxFwd',
-    'maxRev',
-    'accel',
-    'brakeForce',
-    'engineBrake',
-    'linearDrag',
-    'turnRate',
-    'turnMin',
-    'gripCoast',
-    'gripDrive',
-    'gripBrake',
+    'maxFwd','maxRev','accel','brakeForce','engineBrake','linearDrag',
+    'turnRate','turnMin','gripCoast','gripDrive','gripBrake',
   ],
 };
 
 const COLORS = {
   bg: 0x0a0e27,
-  panelBg: 0x1a1f3a,
+  panelBg: 0x131a2d,
   panelStroke: 0x2a3f5f,
   glow: 0x00d9ff,
-  cardBg: 0x252b48,
-  cardStroke: 0x3a4a6a,
-  textPrimary: 0xffffff,
-  textSecondary: 0xa0b0d0,
+  cardBg: 0x1e2740,
+  cardStroke: 0x32486a,
   accent: 0xffcc00,
-  buttonBg: 0x4a5a8a,
-  buttonHover: 0x5a6a9a,
+  btnBg: 0x2a3f5f,
+  btnHover: 0x35537c,
 };
 
-// ═══════════════════════════════════════════════════════════════════════════
-//  SCENE
-// ═══════════════════════════════════════════════════════════════════════════
+const deepClone = (o) => JSON.parse(JSON.stringify(o));
+const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+const fmtNum = (n) => {
+  if (!Number.isFinite(n)) return '—';
+  return Number(n).toFixed(3).replace(/\.?0+$/, '');
+};
 
-export default class CarFactoryScene extends Phaser.Scene {
+export class CarFactoryScene extends Phaser.Scene {
   constructor() {
     super({ key: 'CarFactoryScene' });
-  }
 
-  create() {
-    const { width, height } = this.scale;
-// DEBUG overlay ultra simple (se verá SIEMPRE)
-const dbg = this.add.text(10, 10, 'CarFactoryScene: create() OK', {
-  fontFamily: 'monospace',
-  fontSize: '14px',
-  color: '#00ff88',
-}).setDepth(999999);
-
-// Captura errores en pantalla (móvil-friendly)
-window.onerror = (msg, src, line, col, err) => {
-  dbg.setText(
-    `ERROR:\n${msg}\n${src}\nL${line}:${col}\n${err?.stack || ''}`.slice(0, 800)
-  );
-};
-    // Background
-    this.add.rectangle(0, 0, width, height, COLORS.bg).setOrigin(0);
-
-    // State
     this._factoryCar = null;
     this._selectedCarId = null;
     this._currentTab = 'IDENTIDAD';
 
-    // refs / containers
+    this._catalogContainer = null;
+    this._catalogMaskGfx = null;
     this._catalogItems = [];
-    this._cardRefs = [];
-    this._modalContainer = null;
+    this._catalogScroll = 0;
 
-    this._topBarCont = null;
-    this._catalogCont = null;
-    this._previewCont = null;
-    this._editorCont = null;
+    this._cardContainer = null;
+    this._cardMaskGfx = null;
+    this._cards = [];
+    this._cardsScroll = 0;
 
-    // Layout
-    const isMobile = width < 768;
-    const catalogWidth = isMobile ? Math.max(180, width * 0.32) : 240;
-    const previewWidth = isMobile ? Math.max(220, width * 0.33) : 280;
-    const editorWidth = Math.max(260, width - catalogWidth - previewWidth - 60);
+    this._modal = null;
+    this._previewSprite = null;
+    this._previewText = null;
+    this._previewFallback = null;
+  }
+
+  create() {
+    const { width, height } = this.scale;
+
+    this.add.rectangle(0, 0, width, height, COLORS.bg).setOrigin(0);
+
+    const isMobile = width < 820;
+    const pad = 12;
+
+    const leftW = isMobile ? Math.floor(width * 0.34) : 260;
+    const midW  = isMobile ? Math.floor(width * 0.30) : 300;
+    const rightW = Math.max(260, width - leftW - midW - pad * 4);
+
+    const topH = 56;
+    const panelY = topH + pad;
+    const panelH = height - panelY - pad;
 
     this._layout = {
-      catalogX: 10,
-      catalogY: 60,
-      catalogW: catalogWidth,
-      catalogH: height - 70,
-      previewX: catalogWidth + 20,
-      previewY: 60,
-      previewW: previewWidth,
-      previewH: height - 70,
-      editorX: catalogWidth + previewWidth + 30,
-      editorY: 60,
-      editorW: editorWidth,
-      editorH: height - 70,
+      pad,
+      topH,
+      left:  { x: pad,                 y: panelY, w: leftW,  h: panelH },
+      mid:   { x: pad * 2 + leftW,     y: panelY, w: midW,   h: panelH },
+      right: { x: pad * 3 + leftW+midW,y: panelY, w: rightW, h: panelH },
     };
 
-    // Build UI
-    this.buildTopBar();
-    this.buildCatalog();
-    this.buildPreviewPanel();
-    this.buildEditorPanel();
+    this._buildTopBar();
+    this._buildCatalog();
+    this._buildPreview();
+    this._buildEditor();
 
-    // Select first car
-    const firstKey = Object.keys(CAR_SPECS)[0];
-    if (firstKey) this.selectCarFromCatalog(firstKey);
+    const first = Object.keys(CAR_SPECS)[0];
+    if (first) this._selectCar(first);
   }
 
-  // ───────────────────────────────────────────────────────────────────────
-  //  TOP BAR
-  // ───────────────────────────────────────────────────────────────────────
-
-  buildTopBar() {
-    if (this._topBarCont) this._topBarCont.destroy();
-
+  // ========================= TOP BAR =========================
+  _buildTopBar() {
     const { width } = this.scale;
-    const cont = this.add.container(0, 0);
-    this._topBarCont = cont;
+    const { pad } = this._layout;
 
-    const title = this.add
-      .text(width / 2, 25, 'CAR FACTORY', {
-        fontFamily: 'system-ui, -apple-system, sans-serif',
-        fontSize: '28px',
-        fontStyle: '900',
-        color: '#fff',
-      })
-      .setOrigin(0.5);
+    this.add.text(width / 2, 18, 'CAR FACTORY', {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: '28px',
+      fontStyle: '900',
+      color: '#ffffff',
+    }).setOrigin(0.5, 0);
 
-    const menuBtn = this.createButton(10, 10, 110, 40, 'MENU', () => {
-      this.scene.start('MenuScene');
-    });
+    this.add.text(width / 2, 42, 'Modo desarrollo · Diseña coches (clonar, exportar, test drive)', {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: '12px',
+      color: '#a0b0d0',
+    }).setOrigin(0.5, 0.5).setAlpha(0.95);
 
-    let devBtn = null;
+    this._btn(pad, 10, 96, 36, 'MENU', () => this.scene.start('MenuScene'));
+
     if (this.scene.get('DevAddonScene')) {
-      devBtn = this.createButton(width - 120, 10, 110, 40, 'DEV', () => {
-        this.scene.launch('DevAddonScene');
-      });
+      this._btn(width - pad - 120, 10, 120, 36, 'DEV ADDON', () => this.scene.launch('DevAddonScene'));
+    }
+  }
+
+  // ========================= CATALOG =========================
+  _buildCatalog() {
+    const { left } = this._layout;
+
+    this._panel(left.x, left.y, left.w, left.h);
+
+    this.add.text(left.x + left.w / 2, left.y + 10, 'CATÁLOGO', {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: '14px',
+      fontStyle: '900',
+      color: '#00d9ff',
+    }).setOrigin(0.5, 0);
+
+    const btnW = left.w - 16;
+    const bx = left.x + 8;
+    let by = left.y + 38;
+
+    this._btn(bx, by, btnW, 36, 'NEW BASE', () => this._newBase(), COLORS.accent, '#000');
+    by += 40;
+    this._btn(bx, by, btnW, 36, 'CLONE', () => this._clone(), COLORS.btnBg);
+    by += 40;
+    this._btn(bx, by, btnW, 36, 'EXPORT', () => this._exportJSON(), COLORS.btnBg);
+    by += 40;
+    this._btn(bx, by, btnW, 36, 'TEST DRIVE', () => this._testDrive(), COLORS.btnBg);
+
+    const listY = by + 46;
+    const listH = left.y + left.h - listY - 10;
+
+    this._catalogContainer = this.add.container(0, 0);
+
+    if (this._catalogMaskGfx) this._catalogMaskGfx.destroy();
+    this._catalogMaskGfx = this.add.graphics();
+    this._catalogMaskGfx.fillStyle(0xffffff, 1);
+    this._catalogMaskGfx.fillRect(left.x + 8, listY, left.w - 16, listH);
+    this._catalogMaskGfx.setVisible(false);
+    this._catalogContainer.setMask(this._catalogMaskGfx.createGeometryMask());
+
+    this._catalogRect = { x: left.x + 8, y: listY, w: left.w - 16, h: listH };
+    this._catalogScroll = 0;
+
+    this._rebuildCatalogItems();
+    this._wireCatalogScroll();
+  }
+
+  _rebuildCatalogItems() {
+    for (const o of this._catalogItems) o.destroy();
+    this._catalogItems = [];
+
+    const { x, y, w } = this._catalogRect;
+    let yy = y;
+
+    const ids = Object.keys(CAR_SPECS);
+    const rowH = 52;
+
+    for (const id of ids) {
+      const spec = CAR_SPECS[id] || {};
+      const selected = id === this._selectedCarId;
+
+      const card = this.add.rectangle(x, yy, w, rowH - 6, COLORS.cardBg)
+        .setOrigin(0)
+        .setStrokeStyle(2, selected ? COLORS.glow : COLORS.cardStroke)
+        .setInteractive({ useHandCursor: true });
+
+      const t1 = this.add.text(x + 10, yy + 8, spec.name || id, {
+        fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+        fontSize: '14px',
+        fontStyle: '900',
+        color: selected ? '#00d9ff' : '#ffffff',
+      }).setOrigin(0, 0);
+
+      const t2 = this.add.text(x + 10, yy + 30, `${spec.category || '—'} · ${spec.rarity || '—'}`, {
+        fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+        fontSize: '11px',
+        color: '#a0b0d0',
+      }).setOrigin(0, 0);
+
+      card.on('pointerdown', () => this._selectCar(id));
+
+      this._catalogContainer.add([card, t1, t2]);
+      this._catalogItems.push(card, t1, t2);
+
+      yy += rowH;
     }
 
-    cont.add([title, menuBtn]);
-    if (devBtn) cont.add(devBtn);
+    const totalH = Math.max(0, (ids.length * rowH) - this._catalogRect.h);
+    this._catalogScrollMax = totalH;
+    this._applyCatalogScroll();
   }
 
-  // ───────────────────────────────────────────────────────────────────────
-  //  CATALOG (Left Panel)
-  // ───────────────────────────────────────────────────────────────────────
+  _wireCatalogScroll() {
+    const r = this._catalogRect;
 
-  buildCatalog() {
-    if (this._catalogCont) this._catalogCont.destroy();
-
-    const { catalogX, catalogY, catalogW, catalogH } = this._layout;
-    const cont = this.add.container(0, 0);
-    this._catalogCont = cont;
-
-    cont.add(this.drawPanel(catalogX, catalogY, catalogW, catalogH));
-
-    cont.add(
-      this.add
-        .text(catalogX + catalogW / 2, catalogY + 15, 'CATALOG', {
-          fontFamily: 'system-ui',
-          fontSize: '16px',
-          fontStyle: '800',
-          color: '#00d9ff',
-        })
-        .setOrigin(0.5, 0)
-    );
-
-    const btnY = catalogY + 45;
-    const btnH = 40;
-    const btnGap = 8;
-
-    cont.add(
-      this.createButton(
-        catalogX + 5,
-        btnY,
-        catalogW - 10,
-        btnH,
-        'NEW BASE',
-        () => this.newBaseCar(),
-        COLORS.accent,
-        '#000'
-      )
-    );
-
-    cont.add(
-      this.createButton(
-        catalogX + 5,
-        btnY + (btnH + btnGap) * 1,
-        catalogW - 10,
-        btnH,
-        'CLONE',
-        () => this.cloneSelected(),
-        COLORS.buttonBg
-      )
-    );
-
-    cont.add(
-      this.createButton(
-        catalogX + 5,
-        btnY + (btnH + btnGap) * 2,
-        catalogW - 10,
-        btnH,
-        'EXPORT',
-        () => this.exportJSON(),
-        COLORS.buttonBg
-      )
-    );
-
-    cont.add(
-      this.createButton(
-        catalogX + 5,
-        btnY + (btnH + btnGap) * 3,
-        catalogW - 10,
-        btnH,
-        'TEST DRIVE',
-        () => this.testDrive(),
-        COLORS.buttonBg
-      )
-    );
-
-    const listY = btnY + (btnH + btnGap) * 4 + 12;
-    const listH = catalogH - (listY - catalogY) - 10;
-
-    this._catalogListY = listY;
-    this._catalogListH = listH;
-
-    this._catalogContainer = this.add.container(catalogX + 5, listY);
-    cont.add(this._catalogContainer);
-
-    this._catalogMask = this.add.graphics();
-    this._catalogMask.fillStyle(0xffffff, 1);
-    this._catalogMask.fillRect(catalogX + 5, listY, catalogW - 10, listH);
-    const mask = this._catalogMask.createGeometryMask();
-    this._catalogMask.setVisible(false);
-    this._catalogContainer.setMask(mask);
-    cont.add(this._catalogMask);
-
-    this.populateCatalog();
-
-    this._catalogScrollY = 0;
-
-    const applyCatalogScroll = () => {
-      const bounds = this._catalogContainer.getBounds();
-      const contentH = bounds.height || 0;
-      const minY = Math.min(0, listH - contentH);
-      this._catalogScrollY = Phaser.Math.Clamp(this._catalogScrollY, minY, 0);
-      this._catalogContainer.y = listY + this._catalogScrollY;
-    };
-
-    // Wheel (desktop)
-    this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY) => {
-      const inside =
-        pointer.x >= catalogX &&
-        pointer.x <= catalogX + catalogW &&
-        pointer.y >= listY &&
-        pointer.y <= listY + listH;
-
-      if (!inside) return;
-      this._catalogScrollY -= deltaY * 0.5;
-      applyCatalogScroll();
+    this.input.on('wheel', (pointer, gos, dx, dy) => {
+      if (!this._pointInRect(pointer.x, pointer.y, r)) return;
+      this._catalogScroll = clamp(this._catalogScroll + dy * 0.6, 0, this._catalogScrollMax);
+      this._applyCatalogScroll();
     });
-
-    // Drag (mobile)
-    const dragZone = this.add
-      .rectangle(catalogX + 5, listY, catalogW - 10, listH, 0x000000, 0.001)
-      .setOrigin(0)
-      .setInteractive();
-
-    cont.add(dragZone);
 
     let dragging = false;
     let startY = 0;
     let startScroll = 0;
 
+    const dragZone = this.add.rectangle(r.x, r.y, r.w, r.h, 0x000000, 0.001)
+      .setOrigin(0)
+      .setInteractive();
+
     dragZone.on('pointerdown', (p) => {
       dragging = true;
       startY = p.y;
-      startScroll = this._catalogScrollY;
+      startScroll = this._catalogScroll;
     });
 
-    this.input.on('pointerup', () => (dragging = false));
+    this.input.on('pointerup', () => { dragging = false; });
+
     this.input.on('pointermove', (p) => {
       if (!dragging) return;
-      const dy = p.y - startY;
-      this._catalogScrollY = startScroll + dy;
-      applyCatalogScroll();
+      const delta = (p.y - startY);
+      this._catalogScroll = clamp(startScroll - delta, 0, this._catalogScrollMax);
+      this._applyCatalogScroll();
     });
   }
 
-  populateCatalog() {
-    this._catalogItems.forEach((item) => item.destroy());
-    this._catalogItems = [];
-
-    let offsetY = 0;
-    const itemHeight = 54;
-    const itemWidth = this._layout.catalogW - 20;
-
-    Object.keys(CAR_SPECS).forEach((carId) => {
-      const spec = CAR_SPECS[carId];
-      const isSelected = carId === this._selectedCarId;
-
-      const bg = this.add
-        .rectangle(0, offsetY, itemWidth, itemHeight - 6, COLORS.cardBg)
-        .setOrigin(0)
-        .setStrokeStyle(2, isSelected ? COLORS.glow : COLORS.cardStroke)
-        .setInteractive({ useHandCursor: true });
-
-      const nameText = this.add
-        .text(10, offsetY + 10, spec.name || carId, {
-          fontFamily: 'system-ui',
-          fontSize: '14px',
-          fontStyle: '800',
-          color: isSelected ? '#00d9ff' : '#fff',
-        })
-        .setOrigin(0);
-
-      const categoryText = this.add
-        .text(10, offsetY + 32, spec.category || 'unknown', {
-          fontFamily: 'system-ui',
-          fontSize: '11px',
-          color: '#a0b0d0',
-        })
-        .setOrigin(0);
-
-      bg.on('pointerdown', () => this.selectCarFromCatalog(carId));
-
-      this._catalogContainer.add([bg, nameText, categoryText]);
-      this._catalogItems.push(bg, nameText, categoryText);
-
-      offsetY += itemHeight;
-    });
+  _applyCatalogScroll() {
+    if (!this._catalogContainer) return;
+    this._catalogContainer.y = -this._catalogScroll;
   }
 
-  selectCarFromCatalog(carId) {
-    this._selectedCarId = carId;
-    this._factoryCar = JSON.parse(JSON.stringify(CAR_SPECS[carId]));
-    this.populateCatalog();
-    this.refreshPreview();
-    this.refreshCards();
+  // ========================= PREVIEW =========================
+  _buildPreview() {
+    const { mid } = this._layout;
+
+    this._panel(mid.x, mid.y, mid.w, mid.h);
+
+    this.add.text(mid.x + mid.w / 2, mid.y + 10, 'PREVIEW', {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: '14px',
+      fontStyle: '900',
+      color: '#00d9ff',
+    }).setOrigin(0.5, 0);
+
+    const frameX = mid.x + 14;
+    const frameY = mid.y + 44;
+    const frameW = mid.w - 28;
+    const frameH = Math.floor(mid.h * 0.55);
+
+    this.add.rectangle(frameX, frameY, frameW, frameH, 0x000000, 0.18)
+      .setOrigin(0)
+      .setStrokeStyle(2, COLORS.cardStroke);
+
+    this._previewSprite = this.add.image(frameX + frameW / 2, frameY + frameH / 2, '__missing__')
+      .setOrigin(0.5)
+      .setVisible(false);
+
+    this._previewFallback = this.add.rectangle(frameX + frameW / 2, frameY + frameH / 2, 120, 70, COLORS.btnBg)
+      .setOrigin(0.5)
+      .setStrokeStyle(2, COLORS.glow, 0.4);
+
+    this._previewText = this.add.text(mid.x + 14, frameY + frameH + 14, '', {
+      fontFamily: 'monospace',
+      fontSize: '12px',
+      color: '#ffffff',
+      lineSpacing: 6,
+      wordWrap: { width: mid.w - 28 },
+    }).setOrigin(0, 0);
+
+    this._refreshPreview();
   }
 
-  newBaseCar() {
-    const baseId = 'stock_roadster';
-    if (!CAR_SPECS[baseId]) {
-      alert('Base car not found!');
-      return;
-    }
-
-    const timestamp = Date.now();
-    const newId = `custom_${timestamp}`;
-    const newCar = JSON.parse(JSON.stringify(CAR_SPECS[baseId]));
-    newCar.id = newId;
-    newCar.name = `Custom ${timestamp}`;
-
-    CAR_SPECS[newId] = newCar;
-    this.selectCarFromCatalog(newId);
-  }
-
-  cloneSelected() {
-    if (!this._selectedCarId) {
-      alert('No car selected!');
-      return;
-    }
-
-    const timestamp = Date.now();
-    const newId = `${this._selectedCarId}_clone_${timestamp}`;
-    const newCar = JSON.parse(JSON.stringify(this._factoryCar));
-    newCar.id = newId;
-    newCar.name = `${newCar.name || newId} (Clone)`;
-
-    CAR_SPECS[newId] = newCar;
-    this.selectCarFromCatalog(newId);
-  }
-
-  exportJSON() {
+  _refreshPreview() {
     if (!this._factoryCar) {
-      alert('No car to export!');
+      this._previewText?.setText('No car selected');
       return;
     }
 
-    const json = JSON.stringify(this._factoryCar, null, 2);
-    console.log('EXPORTED CAR:\n', json);
+    const c = this._factoryCar;
+    const hp = c.handlingProfile || 'default';
 
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(json).then(() => alert('Car JSON copied to clipboard!'));
+    const t =
+      `ID: ${c.id || '—'}\n` +
+      `NAME: ${c.name || '—'}\n` +
+      `BRAND: ${c.brand || '—'}\n` +
+      `CATEGORY: ${c.category || '—'}\n` +
+      `RARITY: ${c.rarity || '—'}\n` +
+      `PROFILE: ${hp}\n\n` +
+      `MAX FWD: ${fmtNum(Number(c.maxFwd))}\n` +
+      `ACCEL:   ${fmtNum(Number(c.accel))}\n` +
+      `TURN:    ${fmtNum(Number(c.turnRate))}\n` +
+      `GRIP:    ${fmtNum(Number(c.gripDrive))}`;
+
+    this._previewText.setText(t);
+
+    const keysToTry = [
+      c.skin,
+      c.skin ? `car_${c.skin}` : null,
+      c.id ? `car_${c.id}` : null,
+      this._selectedCarId ? `car_${this._selectedCarId}` : null,
+    ].filter(Boolean);
+
+    let foundKey = null;
+    for (const k of keysToTry) {
+      if (this.textures.exists(k)) { foundKey = k; break; }
+    }
+
+    if (foundKey) {
+      this._previewFallback.setVisible(false);
+      this._previewSprite.setTexture(foundKey).setVisible(true);
+
+      const frameW = (this._layout.mid.w - 28);
+      const frameH = Math.floor(this._layout.mid.h * 0.55);
+      const maxW = frameW * 0.86;
+      const maxH = frameH * 0.86;
+
+      const tex = this.textures.get(foundKey);
+      const src = tex.getSourceImage();
+      const sw = src?.width || 256;
+      const sh = src?.height || 256;
+
+      const s = Math.min(maxW / sw, maxH / sh);
+      this._previewSprite.setScale(s);
     } else {
-      alert('Car JSON logged to console!');
+      this._previewSprite.setVisible(false);
+      this._previewFallback.setVisible(true);
     }
   }
 
-  testDrive() {
-    if (!this._factoryCar) {
-      alert('No car to test!');
-      return;
-    }
+  // ========================= EDITOR =========================
+  _buildEditor() {
+    const { right } = this._layout;
 
-    CAR_SPECS.__test_drive__ = JSON.parse(JSON.stringify(this._factoryCar));
-    this.scene.start('GameScene', { testCarId: '__test_drive__' });
-  }
+    this._panel(right.x, right.y, right.w, right.h);
 
-  // ───────────────────────────────────────────────────────────────────────
-  //  PREVIEW PANEL
-  // ───────────────────────────────────────────────────────────────────────
+    this.add.text(right.x + right.w / 2, right.y + 10, 'EDITOR', {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: '14px',
+      fontStyle: '900',
+      color: '#00d9ff',
+    }).setOrigin(0.5, 0);
 
-  buildPreviewPanel() {
-    if (this._previewCont) this._previewCont.destroy();
-
-    const { previewX, previewY, previewW, previewH } = this._layout;
-    const cont = this.add.container(0, 0);
-    this._previewCont = cont;
-
-    cont.add(this.drawPanel(previewX, previewY, previewW, previewH));
-
-    cont.add(
-      this.add
-        .text(previewX + previewW / 2, previewY + 15, 'PREVIEW', {
-          fontFamily: 'system-ui',
-          fontSize: '16px',
-          fontStyle: '800',
-          color: '#00d9ff',
-        })
-        .setOrigin(0.5, 0)
-    );
-
-    this._previewSprite = this.add
-      .rectangle(previewX + previewW / 2, previewY + previewH / 2 - 50, 100, 50, 0x4a5a8a)
-      .setOrigin(0.5);
-
-    cont.add(this._previewSprite);
-
-    this._previewText = this.add
-      .text(previewX + previewW / 2, previewY + previewH / 2 + 40, '', {
-        fontFamily: 'system-ui',
-        fontSize: '13px',
-        color: '#a0b0d0',
-        align: 'center',
-        wordWrap: { width: previewW - 20 },
-      })
-      .setOrigin(0.5, 0);
-
-    cont.add(this._previewText);
-
-    this.refreshPreview();
-  }
-
-  refreshPreview() {
-    if (!this._previewText || !this._previewSprite) return;
-
-    if (!this._factoryCar) {
-      this._previewText.setText('No car selected');
-      return;
-    }
-
-    const car = this._factoryCar;
-    this._previewText.setText(
-      [
-        `ID: ${car.id || '—'}`,
-        `Name: ${car.name || '—'}`,
-        `Brand: ${car.brand || '—'}`,
-        `Category: ${car.category || '—'}`,
-        `Rarity: ${car.rarity || '—'}`,
-      ].join('\n')
-    );
-
-    const categoryColors = {
-      sport: 0xff4444,
-      rally: 0xffaa44,
-      drift: 0xaa44ff,
-      truck: 0x44ff44,
-      classic: 0x4444ff,
-      concept: 0xff44ff,
-    };
-    this._previewSprite.setFillStyle(categoryColors[car.category] || 0x4a5a8a);
-  }
-
-  // ───────────────────────────────────────────────────────────────────────
-  //  EDITOR PANEL (CARDS + MODAL)
-  // ───────────────────────────────────────────────────────────────────────
-
-  buildEditorPanel() {
-    if (this._editorCont) this._editorCont.destroy();
-
-    const { editorX, editorY, editorW, editorH } = this._layout;
-    const cont = this.add.container(0, 0);
-    this._editorCont = cont;
-
-    cont.add(this.drawPanel(editorX, editorY, editorW, editorH));
-
-    cont.add(
-      this.add
-        .text(editorX + editorW / 2, editorY + 15, 'EDITOR', {
-          fontFamily: 'system-ui',
-          fontSize: '16px',
-          fontStyle: '800',
-          color: '#00d9ff',
-        })
-        .setOrigin(0.5, 0)
-    );
-
-    const tabY = editorY + 45;
-    const tabH = 42;
-    const tabW = editorW / 3 - 4;
-
-    this._tabButtons = [];
+    const tabY = right.y + 36;
+    const tabH = 40;
+    const tabPad = 8;
+    const tabW = Math.floor((right.w - tabPad * 4) / 3);
 
     ['IDENTIDAD', 'META', 'FÍSICAS'].forEach((tab, i) => {
-      const isActive = this._currentTab === tab;
-      const btn = this.createButton(
-        editorX + 2 + i * (tabW + 2),
-        tabY,
-        tabW,
-        tabH,
-        tab,
-        () => this.switchTab(tab),
-        isActive ? COLORS.glow : COLORS.buttonBg,
-        isActive ? '#000' : '#fff'
-      );
-      this._tabButtons.push({ tab, btn });
-      cont.add(btn);
+      const x = right.x + tabPad + i * (tabW + tabPad);
+      const active = this._currentTab === tab;
+      this._btn(x, tabY, tabW, tabH, tab, () => this._switchTab(tab), active ? COLORS.glow : COLORS.btnBg, active ? '#000' : '#fff');
     });
 
-    this._cardGridY = tabY + tabH + 10;
-    this._cardGridH = editorH - (this._cardGridY - editorY) - 10;
+    const gridY = tabY + tabH + 10;
+    const gridH = right.y + right.h - gridY - 12;
+    const gridX = right.x + 10;
+    const gridW = right.w - 20;
 
-    this.buildCardGrid();
+    if (this._cardContainer) this._cardContainer.destroy();
+    if (this._cardMaskGfx) this._cardMaskGfx.destroy();
+
+    this._cardContainer = this.add.container(0, 0);
+
+    this._cardMaskGfx = this.add.graphics();
+    this._cardMaskGfx.fillStyle(0xffffff, 1);
+    this._cardMaskGfx.fillRect(gridX, gridY, gridW, gridH);
+    this._cardMaskGfx.setVisible(false);
+    this._cardContainer.setMask(this._cardMaskGfx.createGeometryMask());
+
+    this._cardsRect = { x: gridX, y: gridY, w: gridW, h: gridH };
+    this._cardsScroll = 0;
+
+    this._rebuildCards();
+    this._wireCardsScroll();
   }
 
-  switchTab(tab) {
-    if (this._currentTab === tab) return;
+  _switchTab(tab) {
     this._currentTab = tab;
-    this.buildEditorPanel();
-    this.refreshCards();
+    this._buildEditor();
+    this._refreshPreview();
   }
 
-  buildCardGrid() {
-    this._cardRefs.forEach((ref) => {
-      ref.shadow.destroy();
-      ref.bg.destroy();
-      ref.label.destroy();
-      ref.value.destroy();
-      if (ref.subtitle) ref.subtitle.destroy();
-    });
-    this._cardRefs = [];
+  _rebuildCards() {
+    for (const c of this._cards) c.destroy();
+    this._cards = [];
 
-    const { editorX, editorW } = this._layout;
+    if (!this._factoryCar) return;
+
+    const r = this._cardsRect;
     const fields = FIELD_GROUPS[this._currentTab] || [];
 
-    const isMobile = this.scale.width < 768;
+    const isMobile = this.scale.width < 820;
     const cols = isMobile ? 1 : 2;
-    const cardW = editorW / cols - 10;
-    const cardH = 92;
+
     const gap = 10;
+    const cardW = cols === 1 ? r.w : Math.floor((r.w - gap) / 2);
+    const cardH = 86;
 
-    let row = 0;
-    let col = 0;
+    let i = 0;
+    for (const key of fields) {
+      const col = (i % cols);
+      const row = Math.floor(i / cols);
 
-    fields.forEach((fieldKey) => {
-      const x = editorX + 5 + col * (cardW + gap);
-      const y = this._cardGridY + row * (cardH + gap);
+      const x = r.x + col * (cardW + gap);
+      const y = r.y + row * (cardH + gap);
 
-      this.createCard(x, y, cardW, cardH, fieldKey);
+      this._makeCard(x, y, cardW, cardH, key);
+      i++;
+    }
 
-      col++;
-      if (col >= cols) {
-        col = 0;
-        row++;
+    const rows = Math.ceil(fields.length / cols);
+    const totalH = Math.max(0, rows * (cardH + gap) - gap);
+    this._cardsScrollMax = Math.max(0, totalH - r.h);
+    this._applyCardsScroll();
+  }
+
+  _makeCard(x, y, w, h, key) {
+    const car = this._factoryCar;
+    const label = this._labelFor(key);
+    const value = this._valueFor(key, car[key]);
+
+    const shadow = this.add.rectangle(x + 3, y + 3, w, h, 0x000000, 0.35).setOrigin(0);
+    const bg = this.add.rectangle(x, y, w, h, COLORS.cardBg).setOrigin(0).setStrokeStyle(2, COLORS.cardStroke)
+      .setInteractive({ useHandCursor: true });
+
+    const tLabel = this.add.text(x + 12, y + 10, label, {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: '12px',
+      fontStyle: '900',
+      color: '#a0b0d0',
+    }).setOrigin(0, 0);
+
+    const tVal = this.add.text(x + w / 2, y + 46, value, {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: '22px',
+      fontStyle: '900',
+      color: '#ffffff',
+    }).setOrigin(0.5, 0.5);
+
+    bg._cf_key = key;
+    bg._cf_valueText = tVal;
+
+    bg.on('pointerdown', () => this._press(bg, () => this._openModal(key)));
+
+    this._cardContainer.add([shadow, bg, tLabel, tVal]);
+    this._cards.push(shadow, bg, tLabel, tVal);
+  }
+
+  _wireCardsScroll() {
+    const r = this._cardsRect;
+
+    this.input.on('wheel', (pointer, gos, dx, dy) => {
+      if (!this._pointInRect(pointer.x, pointer.y, r)) return;
+      this._cardsScroll = clamp(this._cardsScroll + dy * 0.6, 0, this._cardsScrollMax);
+      this._applyCardsScroll();
+    });
+
+    let dragging = false;
+    let startY = 0;
+    let startScroll = 0;
+
+    const dragZone = this.add.rectangle(r.x, r.y, r.w, r.h, 0x000000, 0.001)
+      .setOrigin(0)
+      .setInteractive();
+
+    dragZone.on('pointerdown', (p) => {
+      dragging = true;
+      startY = p.y;
+      startScroll = this._cardsScroll;
+    });
+
+    this.input.on('pointerup', () => { dragging = false; });
+
+    this.input.on('pointermove', (p) => {
+      if (!dragging) return;
+      const delta = (p.y - startY);
+      this._cardsScroll = clamp(startScroll - delta, 0, this._cardsScrollMax);
+      this._applyCardsScroll();
+    });
+  }
+
+  _applyCardsScroll() {
+    this._cardContainer.y = -this._cardsScroll;
+  }
+
+  _refreshCards() {
+    if (!this._factoryCar || !this._cardContainer) return;
+    this._cardContainer.list.forEach((obj) => {
+      if (obj && obj._cf_key && obj._cf_valueText) {
+        const k = obj._cf_key;
+        obj._cf_valueText.setText(this._valueFor(k, this._factoryCar[k]));
       }
     });
   }
 
-  createCard(x, y, w, h, fieldKey) {
+  // ========================= MODAL =========================
+  _openModal(key) {
     if (!this._factoryCar) return;
 
-    const value = this._factoryCar[fieldKey];
-    const displayValue = this.formatValue(fieldKey, value);
-
-    const shadow = this.add.rectangle(x + 3, y + 3, w, h, 0x000000, 0.35).setOrigin(0);
-
-    const bg = this.add
-      .rectangle(x, y, w, h, COLORS.cardBg)
-      .setOrigin(0)
-      .setStrokeStyle(2, COLORS.cardStroke)
-      .setInteractive({ useHandCursor: true });
-
-    const label = this.add
-      .text(x + 12, y + 10, this.formatLabel(fieldKey), {
-        fontFamily: 'system-ui',
-        fontSize: '12px',
-        fontStyle: '800',
-        color: '#a0b0d0',
-      })
-      .setOrigin(0);
-
-    const valueText = this.add
-      .text(x + w / 2, y + h / 2 + 6, displayValue, {
-        fontFamily: 'system-ui',
-        fontSize: '22px',
-        fontStyle: '900',
-        color: '#fff',
-      })
-      .setOrigin(0.5);
-
-    let subtitle = null;
-    const subtitleStr = this.getSubtitle(fieldKey);
-    if (subtitleStr) {
-      subtitle = this.add
-        .text(x + w / 2, y + h - 12, subtitleStr, {
-          fontFamily: 'system-ui',
-          fontSize: '10px',
-          color: '#6a7a9a',
-        })
-        .setOrigin(0.5);
-    }
-
-    bg.on('pointerdown', () => this.tweenPress(bg, () => this.openEditModal(fieldKey)));
-
-    this._editorCont.add([shadow, bg, label, valueText]);
-    if (subtitle) this._editorCont.add(subtitle);
-
-    this._cardRefs.push({ fieldKey, shadow, bg, label, value: valueText, subtitle });
-  }
-
-  refreshCards() {
-    if (!this._factoryCar) return;
-    this._cardRefs.forEach((ref) => ref.value.setText(this.formatValue(ref.fieldKey, this._factoryCar[ref.fieldKey])));
-  }
-
-  formatLabel(key) {
-    return key.replace(/([A-Z])/g, ' $1').toUpperCase().trim();
-  }
-
-  formatValue(key, value) {
-    if (value === null || value === undefined) return '—';
-    if (typeof value === 'number') return this.fmtNum(value);
-    return String(value);
-  }
-
-  fmtNum(n) {
-    return Number(n).toFixed(3).replace(/\.?0+$/, '');
-  }
-
-  getSubtitle(key) {
-    const limits = NUM_LIMITS[key];
-    if (limits) return `${limits.min} – ${limits.max}`;
-    if (key === 'category') return CATEGORIES.join(' · ');
-    if (key === 'rarity') return RARITIES.join(' · ');
-    if (key === 'handlingProfile') return Object.keys(HANDLING_PROFILES).join(' · ');
-    if (key === 'id') return 'text (lowercase + _ )';
-    if (['name', 'brand', 'country', 'skin'].includes(key)) return 'text';
-    return null;
-  }
-
-  // ───────────────────────────────────────────────────────────────────────
-  //  MODAL (BIG + RELIABLE)
-  // ───────────────────────────────────────────────────────────────────────
-
-  openEditModal(fieldKey) {
-    if (!this._factoryCar) return;
-
-    if (this._modalContainer) {
-      this._modalContainer.destroy();
-      this._modalContainer = null;
+    if (this._modal) {
+      this._modal.destroy();
+      this._modal = null;
     }
 
     const { width, height } = this.scale;
-    const car = this._factoryCar;
-    const currentValue = car[fieldKey];
 
-    const root = this.add.container(0, 0);
-    this._modalContainer = root;
-
-    const overlay = this.add.rectangle(0, 0, width, height, 0x000000, 0.65).setOrigin(0).setInteractive();
-
-    const modalW = Math.min(560, width - 40);
-    const modalH = Math.min(520, height - 120);
-    const modalX = width / 2 - modalW / 2;
-    const modalY = height / 2 - modalH / 2;
-
-    const shadow = this.add.rectangle(modalX + 6, modalY + 6, modalW, modalH, 0x000000, 0.35).setOrigin(0);
-
-    const modalBg = this.add
-      .rectangle(modalX, modalY, modalW, modalH, COLORS.panelBg)
+    const overlay = this.add.rectangle(0, 0, width, height, 0x000000, 0.65)
       .setOrigin(0)
-      .setStrokeStyle(3, COLORS.glow)
-      .setInteractive(); // swallow taps so overlay doesn't close immediately
+      .setInteractive();
 
-    overlay.on('pointerdown', () => this.closeModal());
-    modalBg.on('pointerdown', () => {}); // swallow
+    overlay.on('pointerdown', () => this._closeModal());
 
-    const title = this.add
-      .text(modalX + modalW / 2, modalY + 18, this.formatLabel(fieldKey), {
-        fontFamily: 'system-ui',
-        fontSize: '22px',
-        fontStyle: '900',
-        color: '#00d9ff',
-      })
-      .setOrigin(0.5, 0);
+    const modalW = Math.min(560, width - 24);
+    const modalH = Math.min(640, height - 90);
+    const mx = Math.floor(width / 2 - modalW / 2);
+    const my = Math.floor(height / 2 - modalH / 2);
 
-    const valueDisplay = this.add
-      .text(modalX + modalW / 2, modalY + 56, this.formatValue(fieldKey, currentValue), {
-        fontFamily: 'system-ui',
-        fontSize: '34px',
-        fontStyle: '900',
-        color: '#fff',
-      })
-      .setOrigin(0.5, 0);
+    const panel = this.add.rectangle(mx, my, modalW, modalH, COLORS.panelBg)
+      .setOrigin(0)
+      .setStrokeStyle(3, COLORS.glow);
 
-    const controls = this.add.container(0, 0);
+    const title = this.add.text(mx + modalW / 2, my + 18, this._labelFor(key), {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: '22px',
+      fontStyle: '900',
+      color: '#00d9ff',
+    }).setOrigin(0.5, 0);
 
-    const controlsTop = modalY + 120;
-    let newValue = currentValue;
+    const cur = this._factoryCar[key];
+    let pending = cur;
 
-    const limits = NUM_LIMITS[fieldKey];
+    const valText = this.add.text(mx + modalW / 2, my + 58, this._valueFor(key, cur), {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: '34px',
+      fontStyle: '900',
+      color: '#ffffff',
+    }).setOrigin(0.5, 0);
 
-    if (limits) {
-      const sliderX = modalX + 40;
-      const sliderY = controlsTop + 18;
-      const sliderW = modalW - 80;
+    const contentX = mx + 24;
+    const contentY = my + 120;
+    const contentW = modalW - 48;
 
-      const sliderBg = this.add.rectangle(sliderX, sliderY, sliderW, 10, COLORS.cardStroke).setOrigin(0, 0.5);
-      const sliderFill = this.add.rectangle(sliderX, sliderY, sliderW * 0.5, 10, COLORS.glow).setOrigin(0, 0.5);
+    const controls = [];
+    const setPending = (v) => {
+      pending = v;
+      valText.setText(this._valueFor(key, pending));
+    };
 
-      const sliderHandle = this.add
-        .circle(sliderX + sliderW * 0.5, sliderY, 22, COLORS.accent)
-        .setStrokeStyle(2, 0x000000, 0.25)
+    const lim = NUM_LIMITS[key];
+    if (lim) {
+      const trackY = contentY + 30;
+
+      const track = this.add.rectangle(contentX, trackY, contentW, 10, COLORS.cardStroke, 1)
+        .setOrigin(0, 0.5);
+
+      const fill = this.add.rectangle(contentX, trackY, 10, 10, COLORS.glow, 1)
+        .setOrigin(0, 0.5);
+
+      const handle = this.add.circle(contentX, trackY, 18, COLORS.accent)
         .setInteractive({ draggable: true, useHandCursor: true });
 
-      const updateSlider = (val) => {
-        const clamped = Phaser.Math.Clamp(val, limits.min, limits.max);
-        const ratio = (clamped - limits.min) / (limits.max - limits.min || 1);
-        sliderHandle.x = sliderX + sliderW * ratio;
-        sliderFill.width = sliderW * ratio;
-        valueDisplay.setText(this.fmtNum(clamped));
-        newValue = clamped;
+      const updateFromValue = (v) => {
+        const vv = clamp(Number(v), lim.min, lim.max);
+        const ratio = (vv - lim.min) / (lim.max - lim.min || 1);
+        handle.x = contentX + contentW * ratio;
+        fill.width = Math.max(6, contentW * ratio);
+        setPending(vv);
       };
 
-      sliderHandle.on('drag', (pointer) => {
-        const ratio = Phaser.Math.Clamp((pointer.x - sliderX) / sliderW, 0, 1);
-        const val = limits.min + ratio * (limits.max - limits.min);
-        updateSlider(val);
+      handle.on('drag', (pointer) => {
+        const ratio = clamp((pointer.x - contentX) / contentW, 0, 1);
+        const raw = lim.min + ratio * (lim.max - lim.min);
+        const stepped = Math.round(raw / lim.step) * lim.step;
+        updateFromValue(stepped);
       });
 
-      updateSlider(typeof currentValue === 'number' ? currentValue : limits.min);
+      const step = lim.step || 1;
+      const by = trackY + 34;
+      const bw = 120;
+      const bh = 54;
 
-      const step = Math.max(0.001, (limits.max - limits.min) * 0.02);
-      const minusBtn = this.createButton(modalX + modalW / 2 - 120, sliderY + 52, 110, 52, '–', () => updateSlider(newValue - step), COLORS.buttonBg);
-      const plusBtn = this.createButton(modalX + modalW / 2 + 10, sliderY + 52, 110, 52, '+', () => updateSlider(newValue + step), COLORS.buttonBg);
+      const minus = this._btn(mx + modalW / 2 - bw - 12, by, bw, bh, '–', () => updateFromValue(Number(pending) - step), COLORS.btnBg);
+      const plus  = this._btn(mx + modalW / 2 + 12,      by, bw, bh, '+', () => updateFromValue(Number(pending) + step), COLORS.btnBg);
 
-      controls.add([sliderBg, sliderFill, sliderHandle, minusBtn, plusBtn]);
-    } else if (fieldKey === 'category') {
-      controls.add(this.buildPickerControls(modalX, modalW, controlsTop, CATEGORIES, currentValue, (val) => {
-        newValue = val;
-        valueDisplay.setText(String(val));
-      }));
-    } else if (fieldKey === 'rarity') {
-      controls.add(this.buildPickerControls(modalX, modalW, controlsTop, RARITIES, currentValue, (val) => {
-        newValue = val;
-        valueDisplay.setText(String(val));
-      }));
-    } else if (fieldKey === 'handlingProfile') {
-      const opts = Object.keys(HANDLING_PROFILES);
-      controls.add(this.buildPickerControls(modalX, modalW, controlsTop, opts.length ? opts : ['default'], currentValue, (val) => {
-        newValue = val;
-        valueDisplay.setText(String(val));
-      }));
+      controls.push(...minus, ...plus, track, fill, handle);
+
+      updateFromValue(Number(cur ?? lim.min));
+    } else if (key === 'category') {
+      controls.push(...this._pickerGrid(contentX, contentY, contentW, CATEGORIES, String(cur || CATEGORIES[0]), setPending));
+    } else if (key === 'rarity') {
+      controls.push(...this._pickerGrid(contentX, contentY, contentW, RARITIES, String(cur || RARITIES[0]), setPending));
+    } else if (key === 'handlingProfile') {
+      const opts = Object.keys(HANDLING_PROFILES || { default: true });
+      controls.push(...this._pickerGrid(contentX, contentY, contentW, opts.length ? opts : ['default'], String(cur || 'default'), setPending));
     } else {
-      const editBtn = this.createButton(modalX + modalW / 2 - 120, controlsTop + 12, 240, 56, 'EDIT TEXT', () => {
-        const result = window.prompt(`Enter new value for ${this.formatLabel(fieldKey)}:`, String(currentValue ?? ''));
-        if (result === null) return;
-        if (fieldKey === 'id') newValue = String(result).trim().toLowerCase().replace(/\s+/g, '_');
-        else newValue = String(result);
-        valueDisplay.setText(this.formatValue(fieldKey, newValue));
-      }, COLORS.buttonBg);
-      controls.add(editBtn);
+      const b = this._btn(mx + modalW / 2 - 120, contentY + 10, 240, 56, 'EDITAR TEXTO', () => {
+        const def = cur == null ? '' : String(cur);
+        const next = window.prompt(`Editar ${this._labelFor(key)}`, def);
+        if (next == null) return;
+
+        if (key === 'id') setPending(next.trim().toLowerCase().replace(/\s+/g, '_'));
+        else setPending(next.trim());
+      }, COLORS.btnBg);
+
+      controls.push(...b);
     }
 
-    const btnY = modalY + modalH - 72;
-    const cancelBtn = this.createButton(modalX + 20, btnY, modalW / 2 - 30, 54, 'CANCEL', () => this.closeModal(), COLORS.buttonBg);
-    const applyBtn = this.createButton(modalX + modalW / 2 + 10, btnY, modalW / 2 - 30, 54, 'APPLY', () => {
-      this.applyFieldUpdate(fieldKey, newValue);
-      this.closeModal();
+    const bottomY = my + modalH - 74;
+    const half = Math.floor((modalW - 60) / 2);
+
+    const cancel = this._btn(mx + 20, bottomY, half, 54, 'CANCELAR', () => this._closeModal(), COLORS.btnBg);
+    const apply  = this._btn(mx + 40 + half, bottomY, half, 54, 'APLICAR', () => {
+      this._applyField(key, pending);
+      this._closeModal();
     }, COLORS.accent, '#000');
 
-    root.add([overlay, shadow, modalBg, title, valueDisplay, controls, cancelBtn, applyBtn]);
-    root.setDepth(10000);
+    this._modal = this.add.container(0, 0);
+    this._modal.add([overlay, panel, title, valText, ...controls, ...cancel, ...apply]);
 
-    // simple entrance
-    [shadow, modalBg, title, valueDisplay, controls, cancelBtn, applyBtn].forEach((t) => t.setAlpha(0));
-    modalBg.y = modalY - 30;
-    shadow.y = modalY - 30;
-
-    this.tweens.add({ targets: [shadow, modalBg, title, valueDisplay, controls, cancelBtn, applyBtn], alpha: 1, duration: 160, ease: 'Cubic.easeOut' });
-    this.tweens.add({ targets: [shadow, modalBg], y: modalY, duration: 220, ease: 'Back.easeOut' });
+    this._modal.setAlpha(0);
+    this.tweens.add({ targets: this._modal, alpha: 1, duration: 160, ease: 'Sine.easeOut' });
   }
 
-  buildPickerControls(modalX, modalW, startY, options, currentValue, onChange) {
-    const cont = this.add.container(0, 0);
-
-    const btnW = Math.min(150, (modalW - 60) / 3);
-    const btnH = 54;
-    const gap = 10;
-
-    let x = modalX + 20;
-    let y = startY;
-
-    options.forEach((opt) => {
-      const isActive = String(opt) === String(currentValue);
-
-      const btn = this.createButton(
-        x, y, btnW, btnH,
-        String(opt).toUpperCase(),
-        () => onChange(opt),
-        isActive ? COLORS.glow : COLORS.buttonBg,
-        isActive ? '#000' : '#fff'
-      );
-
-      cont.add(btn);
-
-      x += btnW + gap;
-      if (x + btnW > modalX + modalW - 20) {
-        x = modalX + 20;
-        y += btnH + gap;
-      }
-    });
-
-    return cont;
+  _closeModal() {
+    if (!this._modal) return;
+    this._modal.destroy();
+    this._modal = null;
   }
 
-  closeModal() {
-    if (this._modalContainer) {
-      this._modalContainer.destroy();
-      this._modalContainer = null;
-    }
-  }
-
-  applyFieldUpdate(fieldKey, value) {
+  _applyField(key, value) {
     if (!this._factoryCar) return;
 
-    const limits = NUM_LIMITS[fieldKey];
-    if (limits && typeof value === 'number') value = Phaser.Math.Clamp(value, limits.min, limits.max);
+    if (NUM_LIMITS[key]) {
+      const lim = NUM_LIMITS[key];
+      value = clamp(Number(value), lim.min, lim.max);
+    }
 
-    if (fieldKey === 'id') value = String(value).trim().toLowerCase().replace(/\s+/g, '_');
+    if (key === 'id') {
+      value = String(value).trim().toLowerCase().replace(/\s+/g, '_');
+      if (!value) return;
+    }
 
-    this._factoryCar[fieldKey] = value;
+    this._factoryCar[key] = value;
 
-    if (fieldKey === 'id' && this._selectedCarId !== value) {
+    if (key === 'id' && this._selectedCarId && this._selectedCarId !== value) {
       delete CAR_SPECS[this._selectedCarId];
       CAR_SPECS[value] = this._factoryCar;
       this._selectedCarId = value;
-      this.populateCatalog();
+      this._rebuildCatalogItems();
     } else if (this._selectedCarId) {
       CAR_SPECS[this._selectedCarId] = this._factoryCar;
     }
 
-    this.refreshPreview();
-    this.refreshCards();
+    this._refreshPreview();
+    this._refreshCards();
   }
 
-  // ───────────────────────────────────────────────────────────────────────
-  //  UI HELPERS
-  // ───────────────────────────────────────────────────────────────────────
-
-  drawPanel(x, y, w, h) {
-    const cont = this.add.container(0, 0);
-
-    cont.add(this.add.rectangle(x + 4, y + 4, w, h, COLORS.panelBg, 0.5).setOrigin(0));
-    cont.add(this.add.rectangle(x, y, w, h, COLORS.panelBg).setOrigin(0).setStrokeStyle(2, COLORS.panelStroke));
-    cont.add(this.add.rectangle(x + 2, y + 2, w - 4, h - 4, COLORS.glow, 0.05).setOrigin(0));
-
-    return cont;
+  // ========================= ACTIONS =========================
+  _selectCar(id) {
+    this._selectedCarId = id;
+    this._factoryCar = deepClone(CAR_SPECS[id] || {});
+    this._rebuildCatalogItems();
+    this._refreshPreview();
+    this._rebuildCards();
   }
 
-  // IMPORTANT: returns a CONTAINER (so it can be nested)
-  createButton(x, y, w, h, text, callback, bgColor = COLORS.buttonBg, textColor = '#fff') {
-    const cont = this.add.container(0, 0);
+  _newBase() {
+    const baseId = CAR_SPECS.stock ? 'stock' : Object.keys(CAR_SPECS)[0];
+    if (!baseId) return;
 
+    const ts = Date.now();
+    const newId = `custom_${ts}`;
+    const base = deepClone(CAR_SPECS[baseId]);
+
+    base.id = newId;
+    base.name = `Custom ${ts}`;
+    CAR_SPECS[newId] = base;
+
+    this._selectCar(newId);
+  }
+
+  _clone() {
+    if (!this._selectedCarId || !this._factoryCar) return;
+
+    const ts = Date.now();
+    const newId = `${this._selectedCarId}_mk1_${ts}`;
+    const c = deepClone(this._factoryCar);
+
+    c.id = newId;
+    c.name = `${c.name || newId} MK1`;
+
+    CAR_SPECS[newId] = c;
+    this._selectCar(newId);
+  }
+
+  _exportJSON() {
+    if (!this._factoryCar) return;
+    const json = JSON.stringify(this._factoryCar, null, 2);
+
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(json).then(
+        () => window.alert('✅ JSON copiado al portapapeles'),
+        () => window.alert('⚠️ No se pudo copiar. Mira consola.')
+      );
+    } else {
+      window.alert('⚠️ Clipboard no disponible. Mira consola.');
+    }
+
+    console.log('CAR EXPORT:', json);
+  }
+
+  _testDrive() {
+    if (!this._factoryCar) return;
+
+    CAR_SPECS.__test_drive__ = deepClone(this._factoryCar);
+
+    // OJO: si tu juego usa otro scene key, cambia ESTA línea:
+    // - 'RaceScene'  -> si tu carrera es RaceScene
+    // - 'GameScene'  -> si tu carrera es GameScene
+    this.scene.start('RaceScene', { testCarId: '__test_drive__' });
+  }
+
+  // ========================= UI HELPERS =========================
+  _panel(x, y, w, h) {
+    this.add.rectangle(x + 4, y + 4, w, h, 0x000000, 0.25).setOrigin(0);
+    this.add.rectangle(x, y, w, h, COLORS.panelBg, 1).setOrigin(0).setStrokeStyle(2, COLORS.panelStroke, 1);
+    this.add.rectangle(x + 2, y + 2, w - 4, h - 4, COLORS.glow, 0.03).setOrigin(0);
+  }
+
+  _btn(x, y, w, h, label, onClick, bg = COLORS.btnBg, fg = '#fff') {
     const shadow = this.add.rectangle(x + 3, y + 3, w, h, 0x000000, 0.35).setOrigin(0);
-
-    const bg = this.add
-      .rectangle(x, y, w, h, bgColor)
+    const rect = this.add.rectangle(x, y, w, h, bg, 1)
       .setOrigin(0)
-      .setStrokeStyle(2, COLORS.cardStroke)
+      .setStrokeStyle(2, COLORS.cardStroke, 1)
       .setInteractive({ useHandCursor: true });
 
-    const label = this.add
-      .text(x + w / 2, y + h / 2, text, {
-        fontFamily: 'system-ui',
-        fontSize: Math.min(16, Math.floor(h * 0.42)) + 'px',
-        fontStyle: '900',
-        color: textColor,
-      })
-      .setOrigin(0.5);
+    const text = this.add.text(x + w / 2, y + h / 2, label, {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: `${Math.max(12, Math.floor(h * 0.38))}px`,
+      fontStyle: '900',
+      color: fg,
+    }).setOrigin(0.5);
 
-    bg.on('pointerdown', () => this.tweenPress(bg, callback));
-    bg.on('pointerover', () => bg.setFillStyle(COLORS.buttonHover));
-    bg.on('pointerout', () => bg.setFillStyle(bgColor));
+    rect.on('pointerdown', () => this._press(rect, onClick));
+    rect.on('pointerover', () => rect.setFillStyle(COLORS.btnHover, 1));
+    rect.on('pointerout', () => rect.setFillStyle(bg, 1));
 
-    cont.add([shadow, bg, label]);
-    return cont;
+    return [shadow, rect, text];
   }
 
-  tweenPress(target, callback) {
+  _press(target, cb) {
     this.tweens.add({
       targets: target,
       scaleX: 0.96,
       scaleY: 0.96,
       duration: 80,
       yoyo: true,
-      onComplete: () => callback && callback(),
+      onComplete: () => cb?.(),
     });
   }
+
+  _pickerGrid(x, y, w, options, current, onPick) {
+    const out = [];
+    const cols = 3;
+    const gap = 10;
+    const bw = Math.floor((w - gap * (cols - 1)) / cols);
+    const bh = 52;
+
+    let ox = x;
+    let oy = y;
+
+    options.forEach((opt, i) => {
+      const active = String(opt) === String(current);
+      const bg = active ? COLORS.glow : COLORS.btnBg;
+      const fg = active ? '#000' : '#fff';
+
+      out.push(...this._btn(ox, oy, bw, bh, String(opt).toUpperCase(), () => onPick(String(opt)), bg, fg));
+
+      ox += bw + gap;
+      if ((i + 1) % cols === 0) { ox = x; oy += bh + gap; }
+    });
+
+    return out;
+  }
+
+  _labelFor(key) {
+    return String(key)
+      .replace(/_/g, ' ')
+      .replace(/([A-Z])/g, ' $1')
+      .trim()
+      .toUpperCase();
+  }
+
+  _valueFor(key, v) {
+    if (v == null || v === '') return '—';
+    if (typeof v === 'number') return fmtNum(v);
+    return String(v);
+  }
+
+  _pointInRect(px, py, r) {
+    return px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h;
+  }
 }
+
+export default CarFactoryScene;
