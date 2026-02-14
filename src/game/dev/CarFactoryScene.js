@@ -1,1240 +1,924 @@
 // src/game/dev/CarFactoryScene.js
 import Phaser from 'phaser';
-import { CAR_SPECS } from '../cars/carSpecs.js';
-import { resolveCarParams } from '../cars/resolveCarParams.js';
-import { HANDLING_PROFILES } from '../cars/handlingProfiles.js';
-const CAR_SKIN_BASE = 'assets/skins/'; // mismo base que RaceScene
-export class CarFactoryScene extends Phaser.Scene {
-  constructor() {
-    super('factory');
-  }
-// =========================================
-// Skins: carga dinámica por coche (igual que RaceScene)
-// =========================================
-ensureCarSkinTexture(spec) {
-  const file = spec?.skin;
-  if (!file) return Promise.resolve(null);
-
-  const texKey = `car_${spec.id}`;
-  if (this.textures.exists(texKey)) return Promise.resolve(texKey);
-
-  return new Promise((resolve) => {
-    const url = `${CAR_SKIN_BASE}${file}`;
-
-    const onFileOk = (key) => {
-      if (key !== texKey) return;
-      cleanup();
-      resolve(texKey);
-    };
-
-    const onLoadError = (fileObj) => {
-      if (fileObj?.key !== texKey) return;
-      cleanup();
-      resolve(null);
-    };
-
-    const cleanup = () => {
-      this.load.off(`filecomplete-image-${texKey}`, onFileOk);
-      this.load.off(Phaser.Loader.Events.LOAD_ERROR, onLoadError);
-    };
-
-    this.load.once(`filecomplete-image-${texKey}`, onFileOk);
-    this.load.on(Phaser.Loader.Events.LOAD_ERROR, onLoadError);
-
-    this.load.image(texKey, url);
-    if (!this.load.isLoading()) this.load.start();
-  });
-}
-  create() {
-
-// ===========================
-// FACTORY STATE
-// ===========================
-this._factoryCar = structuredClone(CAR_SPECS.stock);
-this._selectedCarId = null;
-this._visualCarId = 'stock'; // qué skin se usa para preview + test drive
-    const w = this.scale.width;
-    const h = this.scale.height;
-
-    // ===== Fondo “factoría” =====
-    this._bg = this.add.graphics();
-    this._grid = this.add.graphics();
-
-    const drawBg = () => {
-      const w = this.scale.width;
-      const h = this.scale.height;
-
-      this._bg.clear();
-      // Gradient fake: bandas
-      for (let i = 0; i < 12; i++) {
-        const t = i / 11;
-        const col = Phaser.Display.Color.Interpolate.ColorWithColor(
-          new Phaser.Display.Color(11, 16, 32),
-          new Phaser.Display.Color(8, 10, 18),
-          11,
-          i
-        );
-        const c = Phaser.Display.Color.GetColor(col.r, col.g, col.b);
-        this._bg.fillStyle(c, 1);
-        this._bg.fillRect(0, Math.floor(h * t), w, Math.ceil(h / 12));
-      }
-
-      // Glow superior sutil
-      this._bg.fillStyle(0x66a3ff, 0.06);
-      this._bg.fillRect(0, 0, w, 90);
-    };
-
-    this._gridPhase = 0;
-    const drawGrid = () => {
-      const w = this.scale.width;
-      const h = this.scale.height;
-      this._grid.clear();
-
-      // rejilla diagonal animada
-      const step = 28;
-      const phase = this._gridPhase % step;
-
-      this._grid.lineStyle(1, 0xb7c0ff, 0.06);
-      for (let x = -h; x < w + h; x += step) {
-        this._grid.beginPath();
-        this._grid.moveTo(x + phase, 0);
-        this._grid.lineTo(x + phase + h, h);
-        this._grid.strokePath();
-      }
-
-      // línea “conveyor” inferior
-      this._grid.lineStyle(2, 0x2cf6ff, 0.12);
-      this._grid.beginPath();
-      this._grid.moveTo(0, h - 88);
-      this._grid.lineTo(w, h - 88);
-      this._grid.strokePath();
-    };
-
-    // ===== UI Panel =====
-    const panel = this.add.rectangle(16, 16, w - 32, h - 32, 0x0b1324, 0.78)
-      .setOrigin(0)
-      .setStrokeStyle(2, 0xb7c0ff, 0.14);
-
-    const title = this.add.text(32, 28, 'CAR FACTORY', {
-      fontFamily: 'Orbitron, system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '18px',
-      color: '#ffffff',
-      fontStyle: '900'
-    });
-
-    const sub = this.add.text(32, 52, 'Modo desarrollo · Diseña coches como en una factoría (clonar, pegar, exportar, test drive)', {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '12px',
-      color: '#dfe6ff'
-    });
-
-    // “Badge” estado
-    const chip = this.add.rectangle(w - 160, 28, 130, 26, 0x0b1020, 0.70)
-      .setOrigin(0)
-      .setStrokeStyle(1, 0x2cf6ff, 0.25);
-    const chipText = this.add.text(w - 95, 41, 'DEV ADDON', {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '12px',
-      color: '#2cf6ff',
-      fontStyle: '800'
-    }).setOrigin(0.5);
-
-    // Botón BACK
-    const mkBtn = (x, y, label, onClick) => {
-      const r = this.add.rectangle(x, y, 140, 38, 0x0b1020, 0.75)
-        .setOrigin(0)
-        .setStrokeStyle(1, 0xb7c0ff, 0.18)
-        .setInteractive({ useHandCursor: true });
-
-      const t = this.add.text(x + 70, y + 19, label, {
-        fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-        fontSize: '13px',
-        color: '#ffffff',
-        fontStyle: '800'
-      }).setOrigin(0.5);
-
-      r.on('pointerdown', () => onClick?.());
-      return [r, t];
-    };
-
-    const [backR, backT] = mkBtn(32, h - 60, '← MENU', () => {
-      this.scene.start('menu');
-    });
-
-// ===========================
-// LAYOUT (grid limpio)
-// ===========================
-const M = 16;
-const headerH = 76;
-const footerH = 70;
-const gap = 16;
-
-const uiW = this.scale.width;
-const uiH = this.scale.height;
-
-// Responsive: en móvil el catálogo no puede comerse la pantalla
-const leftW = Math.round(Phaser.Math.Clamp(uiW * 0.40, 160, 260));
-
-const topY = 16 + headerH;
-const bottomY = uiH - 16 - footerH;
-const contentH = bottomY - topY;
-
-const leftX = 32;
-const leftY = topY;
-const leftH = contentH;
-
-const midX = leftX + leftW + gap;
-const midY = topY;
-const midW = uiW - 32 - midX;
-const midH = contentH;
-
-// Mover el botón MENU a footer derecha (para que no choque con catálogo)
-backR.setPosition(uiW - 32 - 140, uiH - 60);
-backT.setPosition(uiW - 32 - 140 + 70, uiH - 60 + 19);
-
-// ===========================
-// CATÁLOGO (con scroll y botones en zona fija)
-// ===========================
-const left = this.add.rectangle(leftX, leftY, leftW, leftH, 0x000000, 0.20)
-  .setOrigin(0)
-  .setStrokeStyle(1, 0xb7c0ff, 0.10);
-
-this.add.text(leftX + 12, leftY + 10, 'CATÁLOGO', {
-  fontFamily: 'system-ui',
-  fontSize: '12px',
-  color: '#b7c0ff',
-  fontStyle: '800'
-});
-
-// Área visible del listado (con máscara)
-const listPad = 12;
-const listTop = leftY + 34;
-const actionsH = 96; // espacio fijo para botones abajo
-const listH = leftH - (listTop - leftY) - actionsH;
-
-const maskRect = this.add.rectangle(leftX + listPad, listTop, leftW - listPad * 2, listH, 0x000000, 0)
-  .setOrigin(0);
-
-// Container scrolleable
-const listContainer = this.add.container(leftX + listPad, listTop);
-const mask = maskRect.createGeometryMask();
-listContainer.setMask(mask);
-
-// Crear items
-const carIds = Object.keys(CAR_SPECS);
-this._catalogButtons = [];
-
-let listY = 0;
-const rowH = 22;
-
-const setSelectedVisual = () => {
-  for (const b of this._catalogButtons) {
-    const isSel = b._carId === this._selectedCarId;
-    b.setStyle({
-      backgroundColor: isSel ? 'rgba(44,246,255,0.22)' : 'rgba(255,255,255,0.05)',
-      color: isSel ? '#eaffff' : '#ffffff'
-    });
-  }
-};
-
-for (const id of carIds) {
-  const btn = this.add.text(0, listY, id, {
-    fontFamily: 'monospace',
-    fontSize: '12px',
-    color: '#ffffff',
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    padding: { left: 6, right: 6, top: 3, bottom: 3 }
-  }).setInteractive({ useHandCursor: true });
-
-  btn._carId = id;
-
-  btn.on('pointerdown', () => {
-  this._selectedCarId = id;
-  this._visualCarId = id; // 👈 importante
-  this._factoryCar = structuredClone(CAR_SPECS[id]);
-  setSelectedVisual();
-  this._refreshPreview?.();
-});
-
-  listContainer.add(btn);
-  this._catalogButtons.push(btn);
-  listY += rowH;
-}
-
-// Scroll logic
-let scrollY = 0;
-const maxScroll = Math.max(0, listY - listH);
-
-const applyScroll = () => {
-  scrollY = Phaser.Math.Clamp(scrollY, 0, maxScroll);
-  listContainer.y = listTop - scrollY;
-};
-
-applyScroll();
-
-// Wheel scroll (desktop)
-this.input.on('wheel', (pointer, gameObjects, dx, dy) => {
-  // Solo si el puntero está encima del panel izquierdo
-  const px = pointer.worldX;
-  const py = pointer.worldY;
-  const inside =
-    px >= leftX && px <= leftX + leftW &&
-    py >= listTop && py <= listTop + listH;
-
-  if (!inside) return;
-
-  scrollY += dy * 0.6;
-  applyScroll();
-});
-
-// Drag scroll (móvil)
-let dragging = false;
-let dragStartY = 0;
-let dragStartScroll = 0;
-
-maskRect.setInteractive({ draggable: true });
-maskRect.on('pointerdown', (p) => {
-  dragging = true;
-  dragStartY = p.y;
-  dragStartScroll = scrollY;
-});
-this.input.on('pointerup', () => { dragging = false; });
-this.input.on('pointermove', (p) => {
-  if (!dragging) return;
-  const delta = (p.y - dragStartY);
-  scrollY = dragStartScroll - delta;
-  applyScroll();
-});
-
-// Separador acciones
-const actionsY = leftY + leftH - actionsH + 8;
-
-this.add.rectangle(leftX + 10, actionsY - 10, leftW - 20, 1, 0xb7c0ff, 0.10)
-  .setOrigin(0);
-
-// Botones de acciones (fijos abajo, sin pisar listado)
-const actionBtnW = leftW - 24;
-const mkWideBtn = (x, y, label, onClick) => {
-  const r = this.add.rectangle(x, y, actionBtnW, 36, 0x0b1020, 0.80)
-    .setOrigin(0)
-    .setStrokeStyle(1, 0x2cf6ff, 0.22)
-    .setInteractive({ useHandCursor: true });
-
-  const t = this.add.text(x + actionBtnW / 2, y + 18, label, {
-    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-    fontSize: '12px',
-    color: '#eaffff',
-    fontStyle: '800'
-  }).setOrigin(0.5);
-
-  r.on('pointerdown', () => onClick?.());
-  return [r, t];
-};
-
-const [newR, newT] = mkWideBtn(leftX + 12, leftY + leftH - 80, 'NEW BASE', () => {
-  this._factoryCar = structuredClone(CAR_SPECS.stock);
-  this._factoryCar.id = 'new_car';
-  this._factoryCar.name = 'New Car';
-  this._selectedCarId = null;
-  this._visualCarId = 'stock';
-  setSelectedVisual();
-  this._refreshPreview?.();
-});
-
-const [cloneR, cloneT] = mkWideBtn(leftX + 12, leftY + leftH - 40, 'CLONAR SELECCIONADO', () => {
-  if (!this._selectedCarId) return;
-  this._factoryCar = structuredClone(CAR_SPECS[this._selectedCarId]);
-  this._factoryCar.id += '_mk1';
-  this._factoryCar.name += ' MK1';
-  this._visualCarId = this._selectedCarId;
-  setSelectedVisual();
-  this._refreshPreview?.();
-});
-
-// ===========================
-// PANEL CENTRAL (usa el nuevo layout)
-// ===========================
-const mid = this.add.rectangle(midX, midY, midW, midH, 0x000000, 0.14)
-  .setOrigin(0)
-  .setStrokeStyle(1, 0xb7c0ff, 0.08);
-
-const midT = this.add.text(midX + 12, midY + 10, 'ZONA DE MONTAJE (preview + parámetros)', {
-  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-  fontSize: '12px',
-  color: '#b7c0ff',
-  fontStyle: '800'
-});
-const infoW = 240; // ancho reservado para texto/editor (antes de usarlo)
-    
-// =========================================
-// SPEC EDITOR (panel pro, sin solapes)
-// =========================================
-const inspectorX = midX + 16;
-const inspectorY = midY + 84;
-const inspectorW = infoW - 28;  // encaja con el “infoW” que ya reservaste
-const inspectorH = midH - (inspectorY - midY) - 16;
-
-this.add.text(inspectorX, inspectorY - 22, 'SPEC EDITOR', {
-  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-  fontSize: '12px',
-  color: '#b7c0ff',
-  fontStyle: '900'
-});
-
-this.add.rectangle(inspectorX, inspectorY, inspectorW, inspectorH, 0x000000, 0.10)
-  .setOrigin(0)
-  .setStrokeStyle(1, 0xb7c0ff, 0.08);
-
-// -------------------------------
-// INSPECTOR CLIP (mask + container)
-// -------------------------------
-// Área visible real del inspector (sin mini-stats abajo)
-const INSPECTOR_TOP = inspectorY + 6;
-const INSPECTOR_BOTTOM = inspectorY + inspectorH - 12; // margen mínimo inferior
-const INSPECTOR_VIEW_H = Math.max(120, INSPECTOR_BOTTOM - INSPECTOR_TOP);
-// Container scrolleable (si no existe ya)
-this._inspectorCont = this.add.container(0, 0);
-
-// Máscara geométrica (rectángulo visible)
-this._inspectorMaskGfx = this.add.graphics();
-this._inspectorMaskGfx.fillStyle(0xffffff, 1);
-this._inspectorMaskGfx.fillRect(
-  inspectorX + 4,
-  INSPECTOR_TOP,
-  inspectorW - 8,
-  INSPECTOR_VIEW_H
-);
-this._inspectorMask = this._inspectorMaskGfx.createGeometryMask();
-this._inspectorMaskGfx.setVisible(false);
-this._inspectorCont.setMask(this._inspectorMask);
-
-// Scroll state
-this._inspectorScroll = 0;
-this._inspectorScrollMax = 0;
-    // ================================
-// INSPECTOR SCROLL (solo arrastre)
-// ================================
-const inspectorDragHit = this.add.rectangle(
-  inspectorX + 4,
-  INSPECTOR_TOP,
-  inspectorW - 8,
-  INSPECTOR_VIEW_H,
-  0x000000,
-  0.001
-).setOrigin(0).setInteractive({ draggable: true });
-
-inspectorDragHit.setDepth(9999); // por encima para capturar drag (pero NO click de filas)
-
-let insDragging = false;
-let insStartY = 0;
-let insStartScroll = 0;
-
-const applyInspectorScroll = () => {
-  this._inspectorScroll = Math.max(0, Math.min(this._inspectorScroll, this._inspectorScrollMax));
-  if (this._inspectorCont) this._inspectorCont.y = -this._inspectorScroll;
-};
-
-inspectorDragHit.on('dragstart', (p) => {
-  insDragging = true;
-  insStartY = p.y;
-  insStartScroll = this._inspectorScroll;
-});
-
-inspectorDragHit.on('drag', (p) => {
-  if (!insDragging) return;
-  const delta = (p.y - insStartY);
-  this._inspectorScroll = insStartScroll - delta;
-  applyInspectorScroll();
-});
-
-inspectorDragHit.on('dragend', () => {
-  insDragging = false;
-});
-// ===============================
-// INSPECTOR SCROLL (DRAG SAFE)
-// ===============================
-let inspectorDragging = false;
-let inspectorDragStartY = 0;
-let inspectorStartScroll = 0;
-let inspectorMoved = false;
-
-const isInsideInspector = (p) => {
-  const x = p.worldX;
-  const y = p.worldY;
-  return (
-    x >= inspectorX &&
-    x <= inspectorX + inspectorW &&
-    y >= INSPECTOR_TOP &&
-    y <= INSPECTOR_TOP + INSPECTOR_VIEW_H
-  );
-};
-
-this.input.on('pointerdown', (p) => {
-  if (!isInsideInspector(p)) return;
-  inspectorDragging = true;
-  inspectorMoved = false;
-  inspectorDragStartY = p.y;
-  inspectorStartScroll = this._inspectorScroll;
-});
-
-this.input.on('pointermove', (p) => {
-  if (!inspectorDragging) return;
-
-  const delta = p.y - inspectorDragStartY;
-
-  if (Math.abs(delta) > 8) {
-    inspectorMoved = true;
-  }
-
-  this._inspectorScroll = clamp(
-    inspectorStartScroll - delta,
-    0,
-    this._inspectorScrollMax
-  );
-
-  this._inspectorCont.y = -this._inspectorScroll;
-});
-
-this.input.on('pointerup', () => {
-  inspectorDragging = false;
-});
-// helpers
-const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-const fmtNum = (n) => (Number.isFinite(n) ? (Math.round(n * 1000) / 1000).toString() : '—');
+import { CAR_SPECS } from '../data/carSpecs.js';
+import { HANDLING_PROFILES } from '../data/handlingProfiles.js';
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  CONSTANTS
+// ═══════════════════════════════════════════════════════════════════════════
 
 const CATEGORIES = ['sport', 'rally', 'drift', 'truck', 'classic', 'concept'];
-const RARITIES   = ['common', 'rare', 'epic', 'legendary'];
-const PROFILES   = Object.keys(HANDLING_PROFILES || { default: true });
-
-const isTextField = (k) => ['id','name','brand','country','skin'].includes(k);
-const isPickField = (k) => ['category','rarity','handlingProfile'].includes(k);
+const RARITIES = ['common', 'rare', 'epic', 'legendary'];
 
 const NUM_LIMITS = {
-  maxFwd:      [0, 9999],
-  maxRev:      [0, 9999],
-  accel:       [0, 9999],
-  brakeForce:  [0, 9999],
-  engineBrake: [0, 9999],
-  linearDrag:  [0, 5],
-  turnRate:    [0, 20],
-  turnMin:     [0, 10],
-  gripCoast:   [0, 1],
-  gripDrive:   [0, 1],
-  gripBrake:   [0, 1],
+  maxFwd: { min: 50, max: 500 },
+  maxRev: { min: 10, max: 200 },
+  accel: { min: 10, max: 300 },
+  brakeForce: { min: 50, max: 500 },
+  engineBrake: { min: 0, max: 100 },
+  linearDrag: { min: 0, max: 5 },
+  turnRate: { min: 0.5, max: 10 },
+  turnMin: { min: 0, max: 10 },
+  gripCoast: { min: 0, max: 1 },
+  gripDrive: { min: 0, max: 1 },
+  gripBrake: { min: 0, max: 1 },
 };
 
-const promptText = (title, def) => {
-  const v = window.prompt(title, def ?? '');
-  if (v == null) return null;
-  return String(v);
+const FIELD_GROUPS = {
+  IDENTIDAD: ['id', 'name', 'brand', 'country', 'skin'],
+  META: ['category', 'rarity', 'handlingProfile'],
+  FÍSICAS: [
+    'maxFwd',
+    'maxRev',
+    'accel',
+    'brakeForce',
+    'engineBrake',
+    'linearDrag',
+    'turnRate',
+    'turnMin',
+    'gripCoast',
+    'gripDrive',
+    'gripBrake',
+  ],
 };
 
-const promptNumber = (title, def, min, max) => {
-  const raw = window.prompt(`${title}\n(${min} → ${max})`, String(def ?? ''));
-  if (raw == null) return null;
-  const n = Number(String(raw).replace(',', '.'));
-  if (!Number.isFinite(n)) return null;
-  return clamp(n, min, max);
+const COLORS = {
+  bg: 0x0a0e27,
+  panelBg: 0x1a1f3a,
+  panelStroke: 0x2a3f5f,
+  glow: 0x00d9ff,
+  cardBg: 0x252b48,
+  cardStroke: 0x3a4a6a,
+  textPrimary: 0xffffff,
+  textSecondary: 0xa0b0d0,
+  accent: 0xffcc00,
+  buttonBg: 0x4a5a8a,
+  buttonHover: 0x5a6a9a,
 };
 
-const cyclePick = (arr, current) => {
-  const idx = arr.indexOf(current);
-  const next = idx === -1 ? arr[0] : arr[(idx + 1) % arr.length];
-  return next;
-};
+// ═══════════════════════════════════════════════════════════════════════════
+//  SCENE
+// ═══════════════════════════════════════════════════════════════════════════
 
-// -------------------------------
-// INSPECTOR GESTURE (drag vs tap)
-// -------------------------------
-// En móvil: si el "tap" abre el prompt al tocar, te quedas sin scroll.
-// Solución: editar SOLO en pointerup si NO hubo arrastre.
-let _insGestureActive = false;
-let _insStartY = 0;
-let _insStartScroll = 0;
-let _insDragged = false;
-const INS_DRAG_THRESHOLD = 8; // px
-
-const startInspectorGesture = (p) => {
-  _insGestureActive = true;
-  _insStartY = p.y;
-  _insStartScroll = this._inspectorScroll || 0;
-  _insDragged = false;
-};
-
-const moveInspectorGesture = (p) => {
-  if (!_insGestureActive) return;
-  const dy = p.y - _insStartY;
-  if (!_insDragged && Math.abs(dy) > INS_DRAG_THRESHOLD) _insDragged = true;
-  if (_insDragged) {
-    this._inspectorScroll = _insStartScroll - dy;
-    applyInspectorScroll();
-  }
-};
-
-const endInspectorGesture = () => {
-  _insGestureActive = false;
-};
-
-// fila UI
-const mkRow = (y, label, key) => {
-  const rowH = 26;
-
-  const hit = this.add.rectangle(inspectorX, y, inspectorW, rowH, 0x000000, 0.001)
-    .setOrigin(0)
-    .setInteractive({ useHandCursor: true });
-
-  const l = this.add.text(inspectorX + 8, y + rowH / 2, label, {
-    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-    fontSize: '11px',
-    color: '#dfe6ff',
-    fontStyle: '800'
-  }).setOrigin(0, 0.5);
-const colLabelX = inspectorX + 14;
-const colEditX = inspectorX + inspectorW - 14;
-const colValueX = colEditX - 70;
-const v = this.add.text(colValueX, y + rowH / 2, '', {
-  fontFamily: 'monospace',
-  fontSize: '11px',
-  color: '#eaffff'
-}).setOrigin(1, 0.5);
-const pillW = 54;
-const pillH = 18;
-
-const pillCX = colEditX - pillW / 2;
-const pillCY = y + rowH / 2;
-
-const pill = this.add.rectangle(pillCX, pillCY, pillW, pillH, 0x2cf6ff, 0.10)
-  .setOrigin(0.5)
-  .setStrokeStyle(1, 0x2cf6ff, 0.20);
-
-const pillT = this.add.text(pillCX, pillCY, 'EDIT', {
-  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-  fontSize: '9px',
-  color: '#b7ffff',
-  fontStyle: '900'
-}).setOrigin(0.5);
-
-// Z-order: filas por encima del área de scroll, y el pill por encima del hit
-hit.setDepth(10);
-pill.setDepth(20);
-pillT.setDepth(21);
-
-// ✅ Pill clicable
-pill.setInteractive({ useHandCursor: true });
-pillT.setInteractive({ useHandCursor: true });
-
-// ✅ Iniciar gesto (tap vs drag) desde cualquier parte (fila + pill)
-// PASAMOS "key" para saber qué fila se tocó
-hit.on('pointerdown', (p) => startInspectorGesture(p, key));
-pill.on('pointerdown', (p) => startInspectorGesture(p, key));
-pillT.on('pointerdown', (p) => startInspectorGesture(p, key));
-
-// --- EDITOR: solo se abre tocando el pill (evita abrir editor al intentar hacer scroll)
-const doEdit = () => {
-  // Si el usuario estaba scrolleando, NO abrimos editor
-  if (_insDragged) return;
-
-  const s = this._factoryCar || {};
-  if (!s) return;
-
-  // dropdowns por ciclo (rápido y sin teclado)
-  if (key === 'category') {
-    s.category = cyclePick(CATEGORIES, String(s.category || 'sport'));
-    this._refreshPreview?.();
-    toast('🧩 category actualizado');
-    return;
-  }
-  if (key === 'rarity') {
-    s.rarity = cyclePick(RARITIES, String(s.rarity || 'common'));
-    this._refreshPreview?.();
-    toast('✨ rarity actualizado');
-    return;
-  }
-  if (key === 'handlingProfile') {
-    const base = String(s.handlingProfile || 'default');
-    s.handlingProfile = cyclePick(PROFILES.length ? PROFILES : ['default'], base);
-    this._refreshPreview?.();
-    toast('🧠 handlingProfile actualizado');
-    return;
+export default class CarFactoryScene extends Phaser.Scene {
+  constructor() {
+    super({ key: 'CarFactoryScene' });
   }
 
-  // texto
-  if (isTextField(key)) {
-    const next = promptText(`Editar ${key}`, s[key] ?? '');
-    if (next == null) return;
-
-    // id: limpia mínimo para evitar espacios raros
-    if (key === 'id') {
-      s.id = next.trim().toLowerCase().replace(/\s+/g, '_') || s.id;
-    } else {
-      s[key] = next.trim();
-    }
-
-    this._refreshPreview?.();
-    toast(`✍️ ${key} actualizado`);
-    return;
-  }
-
-  // número
-  const lim = NUM_LIMITS[key];
-  const min = lim ? lim[0] : -999999;
-  const max = lim ? lim[1] :  999999;
-
-  const nextN = promptNumber(`Editar ${key}`, s[key], min, max);
-  if (nextN == null) return;
-
-  s[key] = nextN;
-  this._refreshPreview?.();
-  toast(`🎛 ${key} actualizado`);
-};
-
-// ✅ El pill abre editor; la fila (hit) solo sirve para drag/scroll
-pill.on('pointerup', doEdit);
-pillT.on('pointerup', doEdit);
-
-  this._inspectorCont.add([hit, l, v, pill, pillT]);
-
-  return { key, valueText: v, hit, labelText: l, pill, pillT };
-};
-
-// Layout filas
-this._inspectorRows = {};
-let iy = inspectorY + 10;
-
-// Grupo: identidad
-const mkGroup = (title) => {
-  const t = this.add.text(inspectorX + 8, iy, title, {
-    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-    fontSize: '10px',
-    color: '#b7c0ff',
-    fontStyle: '900'
-  });
-
-  iy += 18;
-
-  const line = this.add.rectangle(inspectorX + 8, iy, inspectorW - 16, 1, 0xb7c0ff, 0.10)
-    .setOrigin(0);
-
-  iy += 8;
-
-  this._inspectorCont.add([t, line]);
-};
-
-
-mkGroup('IDENTIDAD');
-for (const [lbl, key] of [
-  ['id', 'id'],
-  ['name', 'name'],
-  ['brand', 'brand'],
-  ['country', 'country'],
-  ['skin file', 'skin'],
-]) {
-  this._inspectorRows[key] = mkRow(iy, lbl, key);
-  iy += 26;
-}
-
-mkGroup('META');
-for (const [lbl, key] of [
-  ['category (tap ciclo)', 'category'],
-  ['rarity (tap ciclo)', 'rarity'],
-  ['handlingProfile (tap ciclo)', 'handlingProfile'],
-]) {
-  this._inspectorRows[key] = mkRow(iy, lbl, key);
-  iy += 26;
-}
-
-mkGroup('HANDLING');
-for (const [lbl, key] of [
-  ['maxFwd', 'maxFwd'],
-  ['maxRev', 'maxRev'],
-  ['accel', 'accel'],
-  ['brakeForce', 'brakeForce'],
-  ['engineBrake', 'engineBrake'],
-  ['linearDrag', 'linearDrag'],
-  ['turnRate', 'turnRate'],
-  ['turnMin', 'turnMin'],
-  ['gripCoast', 'gripCoast'],
-  ['gripDrive', 'gripDrive'],
-  ['gripBrake', 'gripBrake'],
-]) {
-  this._inspectorRows[key] = mkRow(iy, lbl, key);
-  iy += 26;
-}
-
-
-// -------------------------------
-// INSPECTOR SCROLL (drag + wheel)
-// -------------------------------
-const inspectorContentH = Math.max(0, (iy + 6) - INSPECTOR_TOP);
-this._inspectorScrollMax = Math.max(0, inspectorContentH - INSPECTOR_VIEW_H);
-this._inspectorScroll = Phaser.Math.Clamp(this._inspectorScroll || 0, 0, this._inspectorScrollMax);
-
-
-applyInspectorScroll();
-
-// hit-area invisible para capturar drag/scroll dentro del inspector
-const inspectorScrollHit = this.add.rectangle(
-  inspectorX + 4,
-  INSPECTOR_TOP,
-  inspectorW - 8,
-  INSPECTOR_VIEW_H,
-  0x000000,
-  0.001
-).setOrigin(0).setInteractive();
-
-// Este hit es SOLO para drag-scroll. Debe quedar por debajo de las filas (EDIT).
-inspectorScrollHit.setDepth(-10);
-
-// Iniciar gesto de scroll si pulsas dentro del viewport del inspector
-inspectorScrollHit.on('pointerdown', (p) => startInspectorGesture(p));
-
-// Terminar gesto al soltar en cualquier parte
-this.input.on('pointerup', () => endInspectorGesture());
-
-// 🔥 CLAVE: mover SOLO si el gesto está activo.
-// (No necesitamos isPointerInsideInspector para nada)
-this.input.on('pointermove', (p) => {
-  if (!_insGestureActive) return;
-  moveInspectorGesture(p);
-});
-
-// wheel (desktop)
-this.input.on('wheel', (pointer, _go, _dx, dy) => {
-  const b = inspectorScrollHit.getBounds();
-  if (!b.contains(pointer.x, pointer.y)) return;
-  this._inspectorScroll += dy * 0.6;
-  applyInspectorScroll();
-});
-
-
-// Sync desde _refreshPreview (se define aquí y se llama dentro)
-this._syncInspector = (p) => {
-  if (!this._inspectorRows) return;
-  const get = (k) => (p?.[k] ?? this._factoryCar?.[k] ?? '');
-
-  // texto
-  for (const k of ['id','name','brand','country','skin','category','rarity','handlingProfile']) {
-    const row = this._inspectorRows[k];
-    if (!row) continue;
-    row.valueText.setText(String(get(k) || '—'));
-  }
-
-  // nums
-  for (const k of Object.keys(NUM_LIMITS)) {
-    const row = this._inspectorRows[k];
-    if (!row) continue;
-    row.valueText.setText(fmtNum(Number(get(k))));
-  }
-};
-    // ===========================
-// HTML MODAL INTEGRATION
-// ===========================
-
-this._openHtmlEditor = (key, currentValue) => {
-  const modal = document.getElementById('carFactoryModal');
-  const input = document.getElementById('cf-input');
-  const title = document.getElementById('cf-title');
-  const save = document.getElementById('cf-save');
-  const cancel = document.getElementById('cf-cancel');
-
-  title.innerText = `Editar ${key}`;
-  input.value = currentValue ?? '';
-
-  modal.classList.remove('hidden');
-
-  input.focus();
-  input.select();
-
-  const close = () => {
-    modal.classList.add('hidden');
-    save.onclick = null;
-    cancel.onclick = null;
-  };
-
-  cancel.onclick = () => close();
-
-  save.onclick = () => {
-    const s = this._factoryCar;
-    if (!s) return close();
-
-    let value = input.value;
-
-    // número automático si corresponde
-    if (!isNaN(Number(currentValue))) {
-      value = Number(value);
-      if (!Number.isFinite(value)) return close();
-    }
-
-    s[key] = value;
-    this._refreshPreview?.();
-    close();
-  };
-};
-// ===========================
-// ACTION BAR (panel central)
-// ===========================
-const actionH = 46;
-
-// Bandeja superior derecha (contenedor)
-const actionX = midX + midW - 12;
-const actionY = midY + 34;
-
-// Helper botón compacto (para barra)
-const mkActionBtn = (label, onClick, w = 112) => {
-  const h = 30;
-
-  const r = this.add.rectangle(0, 0, w, h, 0x0b1020, 0.85)
-    .setOrigin(1, 0) // anclado a la derecha
-    .setStrokeStyle(1, 0x2cf6ff, 0.22)
-    .setInteractive({ useHandCursor: true });
-
-  const t = this.add.text(-w / 2, h / 2, label, {
-    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-    fontSize: '11px',
-    color: '#eaffff',
-    fontStyle: '800'
-  }).setOrigin(0.5);
-
-  r.on('pointerdown', () => onClick?.());
-
-  const c = this.add.container(0, 0, [r, t]);
-  return c;
-};
-
-// Toast simple (feedback en pantalla)
-if (!this._toastText) {
-  this._toastText = this.add.text(midX + 14, midY + actionH, '', {
-    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-    fontSize: '12px',
-    color: '#eaffff',
-    backgroundColor: 'rgba(44,246,255,0.10)',
-    padding: { left: 8, right: 8, top: 6, bottom: 6 }
-  }).setOrigin(0, 0).setAlpha(0);
-}
-
-const toast = (msg) => {
-  this._toastText.setText(msg);
-  this._toastText.setAlpha(1);
-  this.tweens.killTweensOf(this._toastText);
-  this.tweens.add({
-    targets: this._toastText,
-    alpha: 0,
-    duration: 900,
-    delay: 700
-  });
-};
-
-// Normaliza el spec para exportarlo a carSpecs (solo campos relevantes)
-const normalizeSpecForCarSpecs = (spec) => {
-  const s = spec || {};
-  return {
-    id: String(s.id || 'new_car'),
-    name: String(s.name || 'New Car'),
-    brand: String(s.brand || ''),
-    country: String(s.country || ''),
-    category: String(s.category || 'sport'),
-    rarity: String(s.rarity || 'common'),
-    handlingProfile: String(s.handlingProfile || 'default'),
-    skin: s.skin ? String(s.skin) : undefined,
-    maxFwd: Number(s.maxFwd ?? 460),
-    maxRev: Number(s.maxRev ?? 220),
-    accel: Number(s.accel ?? 640),
-    brakeForce: Number(s.brakeForce ?? 920),
-    engineBrake: Number(s.engineBrake ?? 520),
-    linearDrag: Number(s.linearDrag ?? 0.70),
-
-    turnRate: Number(s.turnRate ?? 3.4),
-    turnMin: Number(s.turnMin ?? 0.9),
-
-    gripCoast: Number(s.gripCoast ?? 0.055),
-    gripDrive: Number(s.gripDrive ?? 0.060),
-    gripBrake: Number(s.gripBrake ?? 0.050),
-  };
-};
-
-const exportCarSpecText = () => {
-  const clean = normalizeSpecForCarSpecs(this._factoryCar);
-  // Formato listo para pegar en carSpecs.js (objeto)
-  return JSON.stringify(clean, null, 2);
-};
-
-const writeClipboard = async (txt) => {
-  try {
-    if (navigator?.clipboard?.writeText) {
-      await navigator.clipboard.writeText(txt);
-      return true;
-    }
-  } catch {}
-  return false;
-};
-
-const readClipboard = async () => {
-  try {
-    if (navigator?.clipboard?.readText) {
-      return await navigator.clipboard.readText();
-    }
-  } catch {}
-  return null;
-};
-
-// Botonera (derecha a izquierda)
-const actions = this.add.container(actionX, actionY);
-
-const btnTest = mkActionBtn('TEST DRIVE', () => {
-  if (!this._factoryCar) return;
-  // RaceScene ya soporta factorySpec (por el paso anterior)
-const driveSpec = normalizeSpecForCarSpecs(this._factoryCar);
-
-// En pista usamos un ID que exista visualmente (skin/texture)
-// El ID "real" (new_car) lo sigues teniendo en la fábrica para exportar
-const visualId = this._visualCarId || driveSpec.id || 'stock';
-driveSpec.id = visualId;
-
-// Importante: RaceScene solo aplica skin si factorySpec trae 'skin'
-const skinFile = (CAR_SPECS?.[visualId]?.skin) || this._factoryCar?.skin || null;
-if (skinFile) driveSpec.skin = skinFile;
-
-this.scene.start('race', { factorySpec: driveSpec });
-}, 120);
-
-const btnExport = mkActionBtn('EXPORT JSON', async () => {
-  const txt = exportCarSpecText();
-  const ok = await writeClipboard(txt);
-  if (ok) toast('✅ Export copiado al portapapeles');
-  else {
-    // fallback iOS / permisos
-    window.prompt('Copia este JSON:', txt);
-  }
-}, 120);
-
-const btnCopy = mkActionBtn('COPY', async () => {
-  const txt = exportCarSpecText();
-  const ok = await writeClipboard(txt);
-  if (ok) toast('📋 Copiado');
-  else window.prompt('Copia el JSON:', txt);
-}, 88);
-
-const btnPaste = mkActionBtn('PASTE', async () => {
-  let txt = await readClipboard();
-  if (!txt) txt = window.prompt('Pega aquí el JSON:');
-  if (!txt) return;
-
-  try {
-    const obj = JSON.parse(txt);
-    // mezcla suave: solo claves conocidas
-    const clean = normalizeSpecForCarSpecs({ ...this._factoryCar, ...obj });
-    this._factoryCar = clean;
-    this._refreshPreview?.();
-    toast('📥 Pegado OK');
-  } catch {
-    toast('❌ JSON inválido');
-  }
-}, 88);
-
-const btnReset = mkActionBtn('RESET', () => {
-  this._factoryCar = structuredClone(CAR_SPECS.stock);
-  this._factoryCar.id = 'new_car';
-  this._factoryCar.name = 'New Car';
-  this._refreshPreview?.();
-  toast('↩️ Reset');
-}, 88);
-
-// Orden visual: derecha -> izquierda
-actions.add(btnTest);
-btnTest.x = 0;
-
-actions.add(btnExport);
-btnExport.x = -128;
-
-actions.add(btnCopy);
-btnCopy.x = -260;
-
-actions.add(btnPaste);
-btnPaste.x = -356;
-
-actions.add(btnReset);
-btnReset.x = -452;
-
-// Línea divisoria bajo barra acciones
-this.add.rectangle(midX + 10, actionY + actionH + 6, midW - 20, 1, 0xb7c0ff, 0.10)
-  .setOrigin(0);
-
-
-// ===========================
-// PREVIEW LAYER (showroom)
-// ===========================
-const previewTop = actionY + actionH + 16;
-const previewPad = 16;
-
-// Zona preview (derecha del texto)
-const previewX = midX + infoW + previewPad;
-const previewY = previewTop;
-const previewW = midW - infoW - previewPad * 2;
-const previewH = midY + midH - previewTop - previewPad;
-
-// Marco preview
-const prevFrame = this.add.rectangle(previewX, previewY, previewW, previewH, 0x000000, 0.10)
-  .setOrigin(0)
-  .setStrokeStyle(1, 0x2cf6ff, 0.10);
-
-// Glow circular suave (decor)
-const glow = this.add.circle(previewX + previewW * 0.62, previewY + previewH * 0.55, Math.min(previewW, previewH) * 0.38, 0x2cf6ff, 0.05);
-
-// Contenedor preview (sprite/placeholder)
-this._previewContainer = this.add.container(0, 0);
-
-// Placeholder (si no hay textura)
-this._previewPlaceholder = this.add.rectangle(previewX + previewW * 0.65, previewY + previewH * 0.55, 180, 90, 0xffffff, 0.06)
-  .setStrokeStyle(1, 0xffffff, 0.12);
-this._previewPlaceholder.setAngle(-18);
-
-this._previewPlaceholder2 = this.add.rectangle(previewX + previewW * 0.62, previewY + previewH * 0.55, 180, 90, 0x2cf6ff, 0.06)
-  .setStrokeStyle(1, 0x2cf6ff, 0.18);
-this._previewPlaceholder2.setAngle(-18);
-
-this._previewCarSprite = null;
-// Texto informativo del preview (NO usar _previewText aquí)
-this._previewInfoText = this.add.text(previewX + 12, previewY + 30, '', {
-  fontFamily: 'monospace',
-  fontSize: '12px',
-  color: '#ffffff',
-  lineSpacing: 6
-});
-const resolveCarTextureKey = (spec) => {
-  if (!spec) return null;
-
-  const visualId = this._visualCarId || spec.id || 'stock';
-  const texKey = `car_${visualId}`;
-
-  if (this.textures.exists(texKey)) return texKey;
-
-  return null;
-};
-
-// Crear/actualizar preview
-this._refreshPreview = () => {
-  const spec = this._factoryCar || CAR_SPECS.stock;
-
-  const visualId = this._visualCarId || spec.id || 'stock';
-  const skinFile = spec?.skin || CAR_SPECS?.[visualId]?.skin || null;
-
-  const key = resolveCarTextureKey(spec);
-
-  // Debug: qué textura está usando
-  if (!this._texKeyText) {
-    this._texKeyText = this.add.text(previewX + 12, previewY + 10, '', {
-      fontFamily: 'monospace',
-      fontSize: '11px',
-      color: '#b7c0ff'
-    });
-  }
-  this._texKeyText.setText(key ? `TEX: ${key}` : 'TEX: (no encontrada)');
-
-  // Texto de info
-  const p = normalizeSpecForCarSpecs(spec);
-this._syncInspector?.(p);
-
-if (this._previewInfoText) {
-  this._previewInfoText.setText(
-    `ID: ${p.id}\n` +
-    `NAME: ${p.name}\n` +
-    `MAX FWD: ${p.maxFwd}\n` +
-    `ACCEL: ${p.accel}\n` +
-    `TURN: ${p.turnRate}\n` +
-    `GRIP: ${p.gripDrive}`
-  );
-}
-  // Si existe sprite previo, destruir
-  if (this._previewCarSprite) {
-    this._previewCarSprite.destroy();
-    this._previewCarSprite = null;
-  }
-
-  // Si NO hay textura, intentamos cargarla (runtime) y mientras mostramos placeholder
-  if (!key) {
-    this._previewPlaceholder.setVisible(true);
-    this._previewPlaceholder2.setVisible(true);
-
-    if (skinFile) {
-      const texKey = `car_${visualId}`;
-
-      // Evitar spam de carga
-      if (this._loadingSkinKey !== texKey && !this.textures.exists(texKey)) {
-        this._loadingSkinKey = texKey;
-
-        this.ensureCarSkinTexture({ id: visualId, skin: skinFile }).then((loadedKey) => {
-          // Si la escena ya no está activa, no hagas nada
-          if (!this.scene?.isActive?.()) return;
-
-          // Limpiar flag
-          if (this._loadingSkinKey === texKey) this._loadingSkinKey = null;
-
-          // Si cargó OK, refrescar (ahora key existirá)
-          if (loadedKey) this._refreshPreview?.();
-        });
-      }
-    }
-
-    return;
-  }
-
-  // Si hay textura, pintar sprite y ocultar placeholder
-  this._previewPlaceholder.setVisible(false);
-  this._previewPlaceholder2.setVisible(false);
-
-  const centerX = previewX + previewW / 2;
-  const centerY = previewY + previewH / 2;
-
-  const s = this.add.image(centerX, centerY, key);
-  s.setOrigin(0.5);
-  s.setAlpha(0.98);
-
-  const frame = this.textures.getFrame(key);
-  const iw = frame ? frame.width : 256;
-  const ih = frame ? frame.height : 256;
-
-  const margin = 24;
-  const maxW = previewW - margin * 2;
-  const maxH = previewH - margin * 2;
-
-  const scale = Math.min(maxW / iw, maxH / ih);
-  s.setScale(scale);
-  s.setRotation(0);
-
-  this._previewCarSprite = s;
-};
-
-// Refresco inicial
-this._refreshPreview();
-    // “Sello” visual: un foco/halo en el centro como mesa de montaje
-    const halo = this.add.circle(Math.floor(w * 0.62), Math.floor(h * 0.52), 160, 0x2cf6ff, 0.05);
-    const halo2 = this.add.circle(Math.floor(w * 0.62), Math.floor(h * 0.52), 92, 0x66a3ff, 0.06);
-
-    // Resize
-    const onResize = () => {
-      drawBg();
-      drawGrid();
-      // reiniciar scene para simplificar (v1)
-      this.scene.restart();
+  create() {
+    const { width, height } = this.scale;
+
+    // Background
+    this.add.rectangle(0, 0, width, height, COLORS.bg).setOrigin(0);
+
+    // State
+    this._factoryCar = null;
+    this._selectedCarId = null;
+    this._currentTab = 'IDENTIDAD';
+
+    // refs / containers
+    this._catalogItems = [];
+    this._cardRefs = [];
+    this._modalContainer = null;
+
+    this._topBarCont = null;
+    this._catalogCont = null;
+    this._previewCont = null;
+    this._editorCont = null;
+
+    // Layout
+    const isMobile = width < 768;
+    const catalogWidth = isMobile ? Math.max(180, width * 0.32) : 240;
+    const previewWidth = isMobile ? Math.max(220, width * 0.33) : 280;
+    const editorWidth = Math.max(260, width - catalogWidth - previewWidth - 60);
+
+    this._layout = {
+      catalogX: 10,
+      catalogY: 60,
+      catalogW: catalogWidth,
+      catalogH: height - 70,
+      previewX: catalogWidth + 20,
+      previewY: 60,
+      previewW: previewWidth,
+      previewH: height - 70,
+      editorX: catalogWidth + previewWidth + 30,
+      editorY: 60,
+      editorW: editorWidth,
+      editorH: height - 70,
     };
-    this.scale.on('resize', onResize);
 
-    // Animación grid
-    drawBg();
-    drawGrid();
+    // Build UI
+    this.buildTopBar();
+    this.buildCatalog();
+    this.buildPreviewPanel();
+    this.buildEditorPanel();
 
-    this.time.addEvent({
-      delay: 60,
-      loop: true,
-      callback: () => {
-        this._gridPhase += 1.4;
-        drawGrid();
+    // Select first car
+    const firstKey = Object.keys(CAR_SPECS)[0];
+    if (firstKey) this.selectCarFromCatalog(firstKey);
+  }
+
+  // ───────────────────────────────────────────────────────────────────────
+  //  TOP BAR
+  // ───────────────────────────────────────────────────────────────────────
+
+  buildTopBar() {
+    if (this._topBarCont) this._topBarCont.destroy();
+
+    const { width } = this.scale;
+    const cont = this.add.container(0, 0);
+    this._topBarCont = cont;
+
+    const title = this.add
+      .text(width / 2, 25, 'CAR FACTORY', {
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        fontSize: '28px',
+        fontStyle: '900',
+        color: '#fff',
+      })
+      .setOrigin(0.5);
+
+    const menuBtn = this.createButton(10, 10, 110, 40, 'MENU', () => {
+      this.scene.start('MenuScene');
+    });
+
+    let devBtn = null;
+    if (this.scene.get('DevAddonScene')) {
+      devBtn = this.createButton(width - 120, 10, 110, 40, 'DEV', () => {
+        this.scene.launch('DevAddonScene');
+      });
+    }
+
+    cont.add([title, menuBtn]);
+    if (devBtn) cont.add(devBtn);
+  }
+
+  // ───────────────────────────────────────────────────────────────────────
+  //  CATALOG (Left Panel)
+  // ───────────────────────────────────────────────────────────────────────
+
+  buildCatalog() {
+    if (this._catalogCont) this._catalogCont.destroy();
+
+    const { catalogX, catalogY, catalogW, catalogH } = this._layout;
+    const cont = this.add.container(0, 0);
+    this._catalogCont = cont;
+
+    cont.add(this.drawPanel(catalogX, catalogY, catalogW, catalogH));
+
+    cont.add(
+      this.add
+        .text(catalogX + catalogW / 2, catalogY + 15, 'CATALOG', {
+          fontFamily: 'system-ui',
+          fontSize: '16px',
+          fontStyle: '800',
+          color: '#00d9ff',
+        })
+        .setOrigin(0.5, 0)
+    );
+
+    const btnY = catalogY + 45;
+    const btnH = 40;
+    const btnGap = 8;
+
+    cont.add(
+      this.createButton(
+        catalogX + 5,
+        btnY,
+        catalogW - 10,
+        btnH,
+        'NEW BASE',
+        () => this.newBaseCar(),
+        COLORS.accent,
+        '#000'
+      )
+    );
+
+    cont.add(
+      this.createButton(
+        catalogX + 5,
+        btnY + (btnH + btnGap) * 1,
+        catalogW - 10,
+        btnH,
+        'CLONE',
+        () => this.cloneSelected(),
+        COLORS.buttonBg
+      )
+    );
+
+    cont.add(
+      this.createButton(
+        catalogX + 5,
+        btnY + (btnH + btnGap) * 2,
+        catalogW - 10,
+        btnH,
+        'EXPORT',
+        () => this.exportJSON(),
+        COLORS.buttonBg
+      )
+    );
+
+    cont.add(
+      this.createButton(
+        catalogX + 5,
+        btnY + (btnH + btnGap) * 3,
+        catalogW - 10,
+        btnH,
+        'TEST DRIVE',
+        () => this.testDrive(),
+        COLORS.buttonBg
+      )
+    );
+
+    const listY = btnY + (btnH + btnGap) * 4 + 12;
+    const listH = catalogH - (listY - catalogY) - 10;
+
+    this._catalogListY = listY;
+    this._catalogListH = listH;
+
+    this._catalogContainer = this.add.container(catalogX + 5, listY);
+    cont.add(this._catalogContainer);
+
+    this._catalogMask = this.add.graphics();
+    this._catalogMask.fillStyle(0xffffff, 1);
+    this._catalogMask.fillRect(catalogX + 5, listY, catalogW - 10, listH);
+    const mask = this._catalogMask.createGeometryMask();
+    this._catalogMask.setVisible(false);
+    this._catalogContainer.setMask(mask);
+    cont.add(this._catalogMask);
+
+    this.populateCatalog();
+
+    this._catalogScrollY = 0;
+
+    const applyCatalogScroll = () => {
+      const bounds = this._catalogContainer.getBounds();
+      const contentH = bounds.height || 0;
+      const minY = Math.min(0, listH - contentH);
+      this._catalogScrollY = Phaser.Math.Clamp(this._catalogScrollY, minY, 0);
+      this._catalogContainer.y = listY + this._catalogScrollY;
+    };
+
+    // Wheel (desktop)
+    this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY) => {
+      const inside =
+        pointer.x >= catalogX &&
+        pointer.x <= catalogX + catalogW &&
+        pointer.y >= listY &&
+        pointer.y <= listY + listH;
+
+      if (!inside) return;
+      this._catalogScrollY -= deltaY * 0.5;
+      applyCatalogScroll();
+    });
+
+    // Drag (mobile)
+    const dragZone = this.add
+      .rectangle(catalogX + 5, listY, catalogW - 10, listH, 0x000000, 0.001)
+      .setOrigin(0)
+      .setInteractive();
+
+    cont.add(dragZone);
+
+    let dragging = false;
+    let startY = 0;
+    let startScroll = 0;
+
+    dragZone.on('pointerdown', (p) => {
+      dragging = true;
+      startY = p.y;
+      startScroll = this._catalogScrollY;
+    });
+
+    this.input.on('pointerup', () => (dragging = false));
+    this.input.on('pointermove', (p) => {
+      if (!dragging) return;
+      const dy = p.y - startY;
+      this._catalogScrollY = startScroll + dy;
+      applyCatalogScroll();
+    });
+  }
+
+  populateCatalog() {
+    this._catalogItems.forEach((item) => item.destroy());
+    this._catalogItems = [];
+
+    let offsetY = 0;
+    const itemHeight = 54;
+    const itemWidth = this._layout.catalogW - 20;
+
+    Object.keys(CAR_SPECS).forEach((carId) => {
+      const spec = CAR_SPECS[carId];
+      const isSelected = carId === this._selectedCarId;
+
+      const bg = this.add
+        .rectangle(0, offsetY, itemWidth, itemHeight - 6, COLORS.cardBg)
+        .setOrigin(0)
+        .setStrokeStyle(2, isSelected ? COLORS.glow : COLORS.cardStroke)
+        .setInteractive({ useHandCursor: true });
+
+      const nameText = this.add
+        .text(10, offsetY + 10, spec.name || carId, {
+          fontFamily: 'system-ui',
+          fontSize: '14px',
+          fontStyle: '800',
+          color: isSelected ? '#00d9ff' : '#fff',
+        })
+        .setOrigin(0);
+
+      const categoryText = this.add
+        .text(10, offsetY + 32, spec.category || 'unknown', {
+          fontFamily: 'system-ui',
+          fontSize: '11px',
+          color: '#a0b0d0',
+        })
+        .setOrigin(0);
+
+      bg.on('pointerdown', () => this.selectCarFromCatalog(carId));
+
+      this._catalogContainer.add([bg, nameText, categoryText]);
+      this._catalogItems.push(bg, nameText, categoryText);
+
+      offsetY += itemHeight;
+    });
+  }
+
+  selectCarFromCatalog(carId) {
+    this._selectedCarId = carId;
+    this._factoryCar = JSON.parse(JSON.stringify(CAR_SPECS[carId]));
+    this.populateCatalog();
+    this.refreshPreview();
+    this.refreshCards();
+  }
+
+  newBaseCar() {
+    const baseId = 'stock_roadster';
+    if (!CAR_SPECS[baseId]) {
+      alert('Base car not found!');
+      return;
+    }
+
+    const timestamp = Date.now();
+    const newId = `custom_${timestamp}`;
+    const newCar = JSON.parse(JSON.stringify(CAR_SPECS[baseId]));
+    newCar.id = newId;
+    newCar.name = `Custom ${timestamp}`;
+
+    CAR_SPECS[newId] = newCar;
+    this.selectCarFromCatalog(newId);
+  }
+
+  cloneSelected() {
+    if (!this._selectedCarId) {
+      alert('No car selected!');
+      return;
+    }
+
+    const timestamp = Date.now();
+    const newId = `${this._selectedCarId}_clone_${timestamp}`;
+    const newCar = JSON.parse(JSON.stringify(this._factoryCar));
+    newCar.id = newId;
+    newCar.name = `${newCar.name || newId} (Clone)`;
+
+    CAR_SPECS[newId] = newCar;
+    this.selectCarFromCatalog(newId);
+  }
+
+  exportJSON() {
+    if (!this._factoryCar) {
+      alert('No car to export!');
+      return;
+    }
+
+    const json = JSON.stringify(this._factoryCar, null, 2);
+    console.log('EXPORTED CAR:\n', json);
+
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(json).then(() => alert('Car JSON copied to clipboard!'));
+    } else {
+      alert('Car JSON logged to console!');
+    }
+  }
+
+  testDrive() {
+    if (!this._factoryCar) {
+      alert('No car to test!');
+      return;
+    }
+
+    CAR_SPECS.__test_drive__ = JSON.parse(JSON.stringify(this._factoryCar));
+    this.scene.start('GameScene', { testCarId: '__test_drive__' });
+  }
+
+  // ───────────────────────────────────────────────────────────────────────
+  //  PREVIEW PANEL
+  // ───────────────────────────────────────────────────────────────────────
+
+  buildPreviewPanel() {
+    if (this._previewCont) this._previewCont.destroy();
+
+    const { previewX, previewY, previewW, previewH } = this._layout;
+    const cont = this.add.container(0, 0);
+    this._previewCont = cont;
+
+    cont.add(this.drawPanel(previewX, previewY, previewW, previewH));
+
+    cont.add(
+      this.add
+        .text(previewX + previewW / 2, previewY + 15, 'PREVIEW', {
+          fontFamily: 'system-ui',
+          fontSize: '16px',
+          fontStyle: '800',
+          color: '#00d9ff',
+        })
+        .setOrigin(0.5, 0)
+    );
+
+    this._previewSprite = this.add
+      .rectangle(previewX + previewW / 2, previewY + previewH / 2 - 50, 100, 50, 0x4a5a8a)
+      .setOrigin(0.5);
+
+    cont.add(this._previewSprite);
+
+    this._previewText = this.add
+      .text(previewX + previewW / 2, previewY + previewH / 2 + 40, '', {
+        fontFamily: 'system-ui',
+        fontSize: '13px',
+        color: '#a0b0d0',
+        align: 'center',
+        wordWrap: { width: previewW - 20 },
+      })
+      .setOrigin(0.5, 0);
+
+    cont.add(this._previewText);
+
+    this.refreshPreview();
+  }
+
+  refreshPreview() {
+    if (!this._previewText || !this._previewSprite) return;
+
+    if (!this._factoryCar) {
+      this._previewText.setText('No car selected');
+      return;
+    }
+
+    const car = this._factoryCar;
+    this._previewText.setText(
+      [
+        `ID: ${car.id || '—'}`,
+        `Name: ${car.name || '—'}`,
+        `Brand: ${car.brand || '—'}`,
+        `Category: ${car.category || '—'}`,
+        `Rarity: ${car.rarity || '—'}`,
+      ].join('\n')
+    );
+
+    const categoryColors = {
+      sport: 0xff4444,
+      rally: 0xffaa44,
+      drift: 0xaa44ff,
+      truck: 0x44ff44,
+      classic: 0x4444ff,
+      concept: 0xff44ff,
+    };
+    this._previewSprite.setFillStyle(categoryColors[car.category] || 0x4a5a8a);
+  }
+
+  // ───────────────────────────────────────────────────────────────────────
+  //  EDITOR PANEL (CARDS + MODAL)
+  // ───────────────────────────────────────────────────────────────────────
+
+  buildEditorPanel() {
+    if (this._editorCont) this._editorCont.destroy();
+
+    const { editorX, editorY, editorW, editorH } = this._layout;
+    const cont = this.add.container(0, 0);
+    this._editorCont = cont;
+
+    cont.add(this.drawPanel(editorX, editorY, editorW, editorH));
+
+    cont.add(
+      this.add
+        .text(editorX + editorW / 2, editorY + 15, 'EDITOR', {
+          fontFamily: 'system-ui',
+          fontSize: '16px',
+          fontStyle: '800',
+          color: '#00d9ff',
+        })
+        .setOrigin(0.5, 0)
+    );
+
+    const tabY = editorY + 45;
+    const tabH = 42;
+    const tabW = editorW / 3 - 4;
+
+    this._tabButtons = [];
+
+    ['IDENTIDAD', 'META', 'FÍSICAS'].forEach((tab, i) => {
+      const isActive = this._currentTab === tab;
+      const btn = this.createButton(
+        editorX + 2 + i * (tabW + 2),
+        tabY,
+        tabW,
+        tabH,
+        tab,
+        () => this.switchTab(tab),
+        isActive ? COLORS.glow : COLORS.buttonBg,
+        isActive ? '#000' : '#fff'
+      );
+      this._tabButtons.push({ tab, btn });
+      cont.add(btn);
+    });
+
+    this._cardGridY = tabY + tabH + 10;
+    this._cardGridH = editorH - (this._cardGridY - editorY) - 10;
+
+    this.buildCardGrid();
+  }
+
+  switchTab(tab) {
+    if (this._currentTab === tab) return;
+    this._currentTab = tab;
+    this.buildEditorPanel();
+    this.refreshCards();
+  }
+
+  buildCardGrid() {
+    this._cardRefs.forEach((ref) => {
+      ref.shadow.destroy();
+      ref.bg.destroy();
+      ref.label.destroy();
+      ref.value.destroy();
+      if (ref.subtitle) ref.subtitle.destroy();
+    });
+    this._cardRefs = [];
+
+    const { editorX, editorW } = this._layout;
+    const fields = FIELD_GROUPS[this._currentTab] || [];
+
+    const isMobile = this.scale.width < 768;
+    const cols = isMobile ? 1 : 2;
+    const cardW = editorW / cols - 10;
+    const cardH = 92;
+    const gap = 10;
+
+    let row = 0;
+    let col = 0;
+
+    fields.forEach((fieldKey) => {
+      const x = editorX + 5 + col * (cardW + gap);
+      const y = this._cardGridY + row * (cardH + gap);
+
+      this.createCard(x, y, cardW, cardH, fieldKey);
+
+      col++;
+      if (col >= cols) {
+        col = 0;
+        row++;
+      }
+    });
+  }
+
+  createCard(x, y, w, h, fieldKey) {
+    if (!this._factoryCar) return;
+
+    const value = this._factoryCar[fieldKey];
+    const displayValue = this.formatValue(fieldKey, value);
+
+    const shadow = this.add.rectangle(x + 3, y + 3, w, h, 0x000000, 0.35).setOrigin(0);
+
+    const bg = this.add
+      .rectangle(x, y, w, h, COLORS.cardBg)
+      .setOrigin(0)
+      .setStrokeStyle(2, COLORS.cardStroke)
+      .setInteractive({ useHandCursor: true });
+
+    const label = this.add
+      .text(x + 12, y + 10, this.formatLabel(fieldKey), {
+        fontFamily: 'system-ui',
+        fontSize: '12px',
+        fontStyle: '800',
+        color: '#a0b0d0',
+      })
+      .setOrigin(0);
+
+    const valueText = this.add
+      .text(x + w / 2, y + h / 2 + 6, displayValue, {
+        fontFamily: 'system-ui',
+        fontSize: '22px',
+        fontStyle: '900',
+        color: '#fff',
+      })
+      .setOrigin(0.5);
+
+    let subtitle = null;
+    const subtitleStr = this.getSubtitle(fieldKey);
+    if (subtitleStr) {
+      subtitle = this.add
+        .text(x + w / 2, y + h - 12, subtitleStr, {
+          fontFamily: 'system-ui',
+          fontSize: '10px',
+          color: '#6a7a9a',
+        })
+        .setOrigin(0.5);
+    }
+
+    bg.on('pointerdown', () => this.tweenPress(bg, () => this.openEditModal(fieldKey)));
+
+    this._editorCont.add([shadow, bg, label, valueText]);
+    if (subtitle) this._editorCont.add(subtitle);
+
+    this._cardRefs.push({ fieldKey, shadow, bg, label, value: valueText, subtitle });
+  }
+
+  refreshCards() {
+    if (!this._factoryCar) return;
+    this._cardRefs.forEach((ref) => ref.value.setText(this.formatValue(ref.fieldKey, this._factoryCar[ref.fieldKey])));
+  }
+
+  formatLabel(key) {
+    return key.replace(/([A-Z])/g, ' $1').toUpperCase().trim();
+  }
+
+  formatValue(key, value) {
+    if (value === null || value === undefined) return '—';
+    if (typeof value === 'number') return this.fmtNum(value);
+    return String(value);
+  }
+
+  fmtNum(n) {
+    return Number(n).toFixed(3).replace(/\.?0+$/, '');
+  }
+
+  getSubtitle(key) {
+    const limits = NUM_LIMITS[key];
+    if (limits) return `${limits.min} – ${limits.max}`;
+    if (key === 'category') return CATEGORIES.join(' · ');
+    if (key === 'rarity') return RARITIES.join(' · ');
+    if (key === 'handlingProfile') return Object.keys(HANDLING_PROFILES).join(' · ');
+    if (key === 'id') return 'text (lowercase + _ )';
+    if (['name', 'brand', 'country', 'skin'].includes(key)) return 'text';
+    return null;
+  }
+
+  // ───────────────────────────────────────────────────────────────────────
+  //  MODAL (BIG + RELIABLE)
+  // ───────────────────────────────────────────────────────────────────────
+
+  openEditModal(fieldKey) {
+    if (!this._factoryCar) return;
+
+    if (this._modalContainer) {
+      this._modalContainer.destroy();
+      this._modalContainer = null;
+    }
+
+    const { width, height } = this.scale;
+    const car = this._factoryCar;
+    const currentValue = car[fieldKey];
+
+    const root = this.add.container(0, 0);
+    this._modalContainer = root;
+
+    const overlay = this.add.rectangle(0, 0, width, height, 0x000000, 0.65).setOrigin(0).setInteractive();
+
+    const modalW = Math.min(560, width - 40);
+    const modalH = Math.min(520, height - 120);
+    const modalX = width / 2 - modalW / 2;
+    const modalY = height / 2 - modalH / 2;
+
+    const shadow = this.add.rectangle(modalX + 6, modalY + 6, modalW, modalH, 0x000000, 0.35).setOrigin(0);
+
+    const modalBg = this.add
+      .rectangle(modalX, modalY, modalW, modalH, COLORS.panelBg)
+      .setOrigin(0)
+      .setStrokeStyle(3, COLORS.glow)
+      .setInteractive(); // swallow taps so overlay doesn't close immediately
+
+    overlay.on('pointerdown', () => this.closeModal());
+    modalBg.on('pointerdown', () => {}); // swallow
+
+    const title = this.add
+      .text(modalX + modalW / 2, modalY + 18, this.formatLabel(fieldKey), {
+        fontFamily: 'system-ui',
+        fontSize: '22px',
+        fontStyle: '900',
+        color: '#00d9ff',
+      })
+      .setOrigin(0.5, 0);
+
+    const valueDisplay = this.add
+      .text(modalX + modalW / 2, modalY + 56, this.formatValue(fieldKey, currentValue), {
+        fontFamily: 'system-ui',
+        fontSize: '34px',
+        fontStyle: '900',
+        color: '#fff',
+      })
+      .setOrigin(0.5, 0);
+
+    const controls = this.add.container(0, 0);
+
+    const controlsTop = modalY + 120;
+    let newValue = currentValue;
+
+    const limits = NUM_LIMITS[fieldKey];
+
+    if (limits) {
+      const sliderX = modalX + 40;
+      const sliderY = controlsTop + 18;
+      const sliderW = modalW - 80;
+
+      const sliderBg = this.add.rectangle(sliderX, sliderY, sliderW, 10, COLORS.cardStroke).setOrigin(0, 0.5);
+      const sliderFill = this.add.rectangle(sliderX, sliderY, sliderW * 0.5, 10, COLORS.glow).setOrigin(0, 0.5);
+
+      const sliderHandle = this.add
+        .circle(sliderX + sliderW * 0.5, sliderY, 22, COLORS.accent)
+        .setStrokeStyle(2, 0x000000, 0.25)
+        .setInteractive({ draggable: true, useHandCursor: true });
+
+      const updateSlider = (val) => {
+        const clamped = Phaser.Math.Clamp(val, limits.min, limits.max);
+        const ratio = (clamped - limits.min) / (limits.max - limits.min || 1);
+        sliderHandle.x = sliderX + sliderW * ratio;
+        sliderFill.width = sliderW * ratio;
+        valueDisplay.setText(this.fmtNum(clamped));
+        newValue = clamped;
+      };
+
+      sliderHandle.on('drag', (pointer) => {
+        const ratio = Phaser.Math.Clamp((pointer.x - sliderX) / sliderW, 0, 1);
+        const val = limits.min + ratio * (limits.max - limits.min);
+        updateSlider(val);
+      });
+
+      updateSlider(typeof currentValue === 'number' ? currentValue : limits.min);
+
+      const step = Math.max(0.001, (limits.max - limits.min) * 0.02);
+      const minusBtn = this.createButton(modalX + modalW / 2 - 120, sliderY + 52, 110, 52, '–', () => updateSlider(newValue - step), COLORS.buttonBg);
+      const plusBtn = this.createButton(modalX + modalW / 2 + 10, sliderY + 52, 110, 52, '+', () => updateSlider(newValue + step), COLORS.buttonBg);
+
+      controls.add([sliderBg, sliderFill, sliderHandle, minusBtn, plusBtn]);
+    } else if (fieldKey === 'category') {
+      controls.add(this.buildPickerControls(modalX, modalW, controlsTop, CATEGORIES, currentValue, (val) => {
+        newValue = val;
+        valueDisplay.setText(String(val));
+      }));
+    } else if (fieldKey === 'rarity') {
+      controls.add(this.buildPickerControls(modalX, modalW, controlsTop, RARITIES, currentValue, (val) => {
+        newValue = val;
+        valueDisplay.setText(String(val));
+      }));
+    } else if (fieldKey === 'handlingProfile') {
+      const opts = Object.keys(HANDLING_PROFILES);
+      controls.add(this.buildPickerControls(modalX, modalW, controlsTop, opts.length ? opts : ['default'], currentValue, (val) => {
+        newValue = val;
+        valueDisplay.setText(String(val));
+      }));
+    } else {
+      const editBtn = this.createButton(modalX + modalW / 2 - 120, controlsTop + 12, 240, 56, 'EDIT TEXT', () => {
+        const result = window.prompt(`Enter new value for ${this.formatLabel(fieldKey)}:`, String(currentValue ?? ''));
+        if (result === null) return;
+        if (fieldKey === 'id') newValue = String(result).trim().toLowerCase().replace(/\s+/g, '_');
+        else newValue = String(result);
+        valueDisplay.setText(this.formatValue(fieldKey, newValue));
+      }, COLORS.buttonBg);
+      controls.add(editBtn);
+    }
+
+    const btnY = modalY + modalH - 72;
+    const cancelBtn = this.createButton(modalX + 20, btnY, modalW / 2 - 30, 54, 'CANCEL', () => this.closeModal(), COLORS.buttonBg);
+    const applyBtn = this.createButton(modalX + modalW / 2 + 10, btnY, modalW / 2 - 30, 54, 'APPLY', () => {
+      this.applyFieldUpdate(fieldKey, newValue);
+      this.closeModal();
+    }, COLORS.accent, '#000');
+
+    root.add([overlay, shadow, modalBg, title, valueDisplay, controls, cancelBtn, applyBtn]);
+    root.setDepth(10000);
+
+    // simple entrance
+    [shadow, modalBg, title, valueDisplay, controls, cancelBtn, applyBtn].forEach((t) => t.setAlpha(0));
+    modalBg.y = modalY - 30;
+    shadow.y = modalY - 30;
+
+    this.tweens.add({ targets: [shadow, modalBg, title, valueDisplay, controls, cancelBtn, applyBtn], alpha: 1, duration: 160, ease: 'Cubic.easeOut' });
+    this.tweens.add({ targets: [shadow, modalBg], y: modalY, duration: 220, ease: 'Back.easeOut' });
+  }
+
+  buildPickerControls(modalX, modalW, startY, options, currentValue, onChange) {
+    const cont = this.add.container(0, 0);
+
+    const btnW = Math.min(150, (modalW - 60) / 3);
+    const btnH = 54;
+    const gap = 10;
+
+    let x = modalX + 20;
+    let y = startY;
+
+    options.forEach((opt) => {
+      const isActive = String(opt) === String(currentValue);
+
+      const btn = this.createButton(
+        x, y, btnW, btnH,
+        String(opt).toUpperCase(),
+        () => onChange(opt),
+        isActive ? COLORS.glow : COLORS.buttonBg,
+        isActive ? '#000' : '#fff'
+      );
+
+      cont.add(btn);
+
+      x += btnW + gap;
+      if (x + btnW > modalX + modalW - 20) {
+        x = modalX + 20;
+        y += btnH + gap;
       }
     });
 
-    // Limpieza
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.scale.off('resize', onResize);
+    return cont;
+  }
+
+  closeModal() {
+    if (this._modalContainer) {
+      this._modalContainer.destroy();
+      this._modalContainer = null;
+    }
+  }
+
+  applyFieldUpdate(fieldKey, value) {
+    if (!this._factoryCar) return;
+
+    const limits = NUM_LIMITS[fieldKey];
+    if (limits && typeof value === 'number') value = Phaser.Math.Clamp(value, limits.min, limits.max);
+
+    if (fieldKey === 'id') value = String(value).trim().toLowerCase().replace(/\s+/g, '_');
+
+    this._factoryCar[fieldKey] = value;
+
+    if (fieldKey === 'id' && this._selectedCarId !== value) {
+      delete CAR_SPECS[this._selectedCarId];
+      CAR_SPECS[value] = this._factoryCar;
+      this._selectedCarId = value;
+      this.populateCatalog();
+    } else if (this._selectedCarId) {
+      CAR_SPECS[this._selectedCarId] = this._factoryCar;
+    }
+
+    this.refreshPreview();
+    this.refreshCards();
+  }
+
+  // ───────────────────────────────────────────────────────────────────────
+  //  UI HELPERS
+  // ───────────────────────────────────────────────────────────────────────
+
+  drawPanel(x, y, w, h) {
+    const cont = this.add.container(0, 0);
+
+    cont.add(this.add.rectangle(x + 4, y + 4, w, h, COLORS.panelBg, 0.5).setOrigin(0));
+    cont.add(this.add.rectangle(x, y, w, h, COLORS.panelBg).setOrigin(0).setStrokeStyle(2, COLORS.panelStroke));
+    cont.add(this.add.rectangle(x + 2, y + 2, w - 4, h - 4, COLORS.glow, 0.05).setOrigin(0));
+
+    return cont;
+  }
+
+  // IMPORTANT: returns a CONTAINER (so it can be nested)
+  createButton(x, y, w, h, text, callback, bgColor = COLORS.buttonBg, textColor = '#fff') {
+    const cont = this.add.container(0, 0);
+
+    const shadow = this.add.rectangle(x + 3, y + 3, w, h, 0x000000, 0.35).setOrigin(0);
+
+    const bg = this.add
+      .rectangle(x, y, w, h, bgColor)
+      .setOrigin(0)
+      .setStrokeStyle(2, COLORS.cardStroke)
+      .setInteractive({ useHandCursor: true });
+
+    const label = this.add
+      .text(x + w / 2, y + h / 2, text, {
+        fontFamily: 'system-ui',
+        fontSize: Math.min(16, Math.floor(h * 0.42)) + 'px',
+        fontStyle: '900',
+        color: textColor,
+      })
+      .setOrigin(0.5);
+
+    bg.on('pointerdown', () => this.tweenPress(bg, callback));
+    bg.on('pointerover', () => bg.setFillStyle(COLORS.buttonHover));
+    bg.on('pointerout', () => bg.setFillStyle(bgColor));
+
+    cont.add([shadow, bg, label]);
+    return cont;
+  }
+
+  tweenPress(target, callback) {
+    this.tweens.add({
+      targets: target,
+      scaleX: 0.96,
+      scaleY: 0.96,
+      duration: 80,
+      yoyo: true,
+      onComplete: () => callback && callback(),
     });
   }
 }
