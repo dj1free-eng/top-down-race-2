@@ -373,7 +373,6 @@ const infoW = 240; // ancho reservado para texto/editor (antes de usarlo)
 // =========================================
 const inspectorX = midX + 16;
 const inspectorY = midY + 84;
-const infoW = 240; // ancho reservado para texto/editor
 const inspectorW = infoW - 28;  // encaja con el “infoW”
 const inspectorH = midH - (inspectorY - midY) - 16;
 
