@@ -4,7 +4,7 @@ import { CAR_SPECS } from '../cars/carSpecs.js';
 import { resolveCarParams } from '../cars/resolveCarParams.js';
 import { HANDLING_PROFILES } from '../cars/handlingProfiles.js';
 const CAR_SKIN_BASE = 'assets/skins/'; // mismo base que RaceScene
-export class CarFactoryScene extends Phaser.Scene {
+export default class CarFactoryScene extends Phaser.Scene {
   constructor() {
     super('CarFactoryScene');
   }
