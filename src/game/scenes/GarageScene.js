@@ -160,14 +160,21 @@ const inner = this.add.rectangle(8, 8, w - 16, h - 16, 0xffffff, 0.15)
 
     // Sub (rarity/category)
     const sub = `${(spec.rarity || '—').toUpperCase()} · ${(spec.category || '—').toUpperCase()}`;
-    const subtitle = this.add.text(w / 2, h - 22, sub, {
-      fontFamily: 'system-ui',
-      fontSize: '12px',
-      fontStyle: '800',
-      color: '#ffffff',
-      stroke: '#0a2a6a',
-      strokeThickness: 5
-    }).setOrigin(0.5, 0.5);
+    const rarityColors = {
+  'COMÚN': '#2bff88',
+  'POCO COMÚN': '#00d4ff',
+  'RARO': '#ff7a00',
+  'ÉLITE': '#ff2bd6',
+  'LEGENDARIO': '#ffd200'
+};
+
+const rarity = (spec.rarity || '—').toUpperCase();
+
+const subtitle = this.add.text(w / 2, h - 22, rarity, {
+  fontSize: '12px',
+  fontStyle: 'bold',
+  color: rarityColors[rarity] || '#ffffff'
+}).setOrigin(0.5);
 
     // Interacción
     bg.setInteractive({ useHandCursor: true });
