@@ -2,7 +2,9 @@ import Phaser from 'phaser';
 import { BootScene } from './scenes/BootScene.js';
 import { MenuScene } from './scenes/MenuScene.js';
 import { RaceScene } from './scenes/RaceScene.js';
-import CarFactoryScene from './dev/CarFactoryScene.js';
+
+import { GarageScene } from './scenes/GarageScene.js';
+import { GarageDetailScene } from './scenes/GarageDetailScene.js';
 
 export function createGame(parentId = 'app') {
   return new Phaser.Game({
@@ -11,7 +13,7 @@ export function createGame(parentId = 'app') {
     backgroundColor: '#0b1020',
     // IMPORTANT: si una Scene no está aquí, Vite la tree-shakea y en runtime verás
     // "ReferenceError: Can't find variable: ..." al abrirla.
-    scene: [BootScene, MenuScene, RaceScene, CarFactoryScene],
+scene: [BootScene, MenuScene, GarageScene, GarageDetailScene, RaceScene],
     dom: {
   createContainer: true
 },
