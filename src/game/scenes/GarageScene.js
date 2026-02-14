@@ -11,8 +11,18 @@ export class GarageScene extends Phaser.Scene {
   create() {
     const { width, height } = this.scale;
 
-    // Fondo vivo (no oscuro)
-    this.cameras.main.setBackgroundColor('#1e78ff');
+// Fondo con degradado animado
+const bg = this.add.rectangle(0, 0, width, height, 0x1e78ff)
+  .setOrigin(0);
+
+this.tweens.add({
+  targets: bg,
+  alpha: { from: 0.95, to: 1 },
+  duration: 1800,
+  yoyo: true,
+  repeat: -1,
+  ease: 'Sine.easeInOut'
+});
 
     // Header
     this.add.text(width / 2, 18, 'GARAJE', {
@@ -103,10 +113,15 @@ export class GarageScene extends Phaser.Scene {
     // Sombra
     const shadow = this.add.rectangle(6, 8, w, h, 0x000000, 0.25).setOrigin(0);
 
-    // Panel
-    const bg = this.add.rectangle(0, 0, w, h, 0xffffff, 0.22)
-      .setOrigin(0)
-      .setStrokeStyle(4, 0xffffff, 0.35);
+// Marco principal
+const bg = this.add.rectangle(0, 0, w, h, 0x2b7bff, 0.95)
+  .setOrigin(0)
+  .setStrokeStyle(6, 0xffffff, 0.9);
+
+// Brillo interior
+const inner = this.add.rectangle(8, 8, w - 16, h - 16, 0xffffff, 0.15)
+  .setOrigin(0)
+  .setStrokeStyle(2, 0xffffff, 0.3);
 
     // Imagen card (si existe)
     const cardFile = spec.card || spec.cardFile || null; // por si ya lo tienes en spec
