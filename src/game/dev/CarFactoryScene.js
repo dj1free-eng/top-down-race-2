@@ -1,7 +1,7 @@
 // src/game/dev/CarFactoryScene.js
 import Phaser from 'phaser';
-import { CAR_SPECS } from '../data/carSpecs.js';
-import { HANDLING_PROFILES } from '../data/handlingProfiles.js';
+import { CAR_SPECS } from '../cars/carSpecs.js';
+import { HANDLING_PROFILES } from '../cars/handlingProfiles.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  CONSTANTS
