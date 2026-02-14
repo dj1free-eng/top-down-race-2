@@ -3,6 +3,12 @@ import Phaser from 'phaser';
 import { CAR_SPECS } from '../cars/carSpecs.js';
 import { resolveCarParams } from '../cars/resolveCarParams.js';
 import { HANDLING_PROFILES } from '../cars/handlingProfiles.js';
+
+// Fallback para navegadores sin structuredClone (evita pantalla negra)
+const safeClone = (obj) => {
+  const sc = globalThis.structuredClone;
+  return sc ? sc(obj) : JSON.parse(JSON.stringify(obj));
+};
 const CAR_SKIN_BASE = 'assets/skins/'; // mismo base que RaceScene
 export default class CarFactoryScene extends Phaser.Scene {
   constructor() {
@@ -46,6 +52,7 @@ ensureCarSkinTexture(spec) {
   });
 }
   create() {
+  this.cameras.main.setBackgroundColor(0x0a0e27);
 
     // ---- DEBUG overlay (m00F3vil): muestra errores en pantalla ----
     if (!this._errOverlay) {
@@ -80,7 +87,7 @@ ensureCarSkinTexture(spec) {
 // ===========================
 // FACTORY STATE
 // ===========================
-this._factoryCar = structuredClone(CAR_SPECS.stock);
+this._factoryCar = safeClone(CAR_SPECS.stock);
 this._selectedCarId = null;
 this._visualCarId = 'stock'; // qué skin se usa para preview + test drive
     const w = this.scale.width;
@@ -280,7 +287,7 @@ for (const id of carIds) {
   btn.on('pointerdown', () => {
   this._selectedCarId = id;
   this._visualCarId = id; // 👈 importante
-  this._factoryCar = structuredClone(CAR_SPECS[id]);
+  this._factoryCar = safeClone(CAR_SPECS[id]);
   setSelectedVisual();
   this._refreshPreview?.();
 });
@@ -361,7 +368,7 @@ const mkWideBtn = (x, y, label, onClick) => {
 };
 
 const [newR, newT] = mkWideBtn(leftX + 12, leftY + leftH - 80, 'NEW BASE', () => {
-  this._factoryCar = structuredClone(CAR_SPECS.stock);
+  this._factoryCar = safeClone(CAR_SPECS.stock);
   this._factoryCar.id = 'new_car';
   this._factoryCar.name = 'New Car';
   this._selectedCarId = null;
@@ -372,7 +379,7 @@ const [newR, newT] = mkWideBtn(leftX + 12, leftY + leftH - 80, 'NEW BASE', () =>
 
 const [cloneR, cloneT] = mkWideBtn(leftX + 12, leftY + leftH - 40, 'CLONAR SELECCIONADO', () => {
   if (!this._selectedCarId) return;
-  this._factoryCar = structuredClone(CAR_SPECS[this._selectedCarId]);
+  this._factoryCar = safeClone(CAR_SPECS[this._selectedCarId]);
   this._factoryCar.id += '_mk1';
   this._factoryCar.name += ' MK1';
   this._visualCarId = this._selectedCarId;
@@ -562,7 +569,7 @@ const btnPaste = mkActionBtn('PASTE', async () => {
 }, 88);
 
 const btnReset = mkActionBtn('RESET', () => {
-  this._factoryCar = structuredClone(CAR_SPECS.stock);
+  this._factoryCar = safeClone(CAR_SPECS.stock);
   this._factoryCar.id = 'new_car';
   this._factoryCar.name = 'New Car';
   this._refreshPreview?.();
