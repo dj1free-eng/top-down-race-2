@@ -67,7 +67,19 @@ export default class CarFactoryScene extends Phaser.Scene {
 
   create() {
     const { width, height } = this.scale;
+// DEBUG overlay ultra simple (se verá SIEMPRE)
+const dbg = this.add.text(10, 10, 'CarFactoryScene: create() OK', {
+  fontFamily: 'monospace',
+  fontSize: '14px',
+  color: '#00ff88',
+}).setDepth(999999);
 
+// Captura errores en pantalla (móvil-friendly)
+window.onerror = (msg, src, line, col, err) => {
+  dbg.setText(
+    `ERROR:\n${msg}\n${src}\nL${line}:${col}\n${err?.stack || ''}`.slice(0, 800)
+  );
+};
     // Background
     this.add.rectangle(0, 0, width, height, COLORS.bg).setOrigin(0);
 
