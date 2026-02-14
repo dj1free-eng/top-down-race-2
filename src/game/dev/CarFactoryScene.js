@@ -367,13 +367,11 @@ const midT = this.add.text(midX + 12, midY + 10, 'ZONA DE MONTAJE (preview + par
 const infoW = 240; // ancho reservado para texto/editor (antes de usarlo)
     
 // =========================================
-// SPEC EDITOR (simple, estable, sin drag/scroll)
-// - 3 pestañas: IDENTIDAD / META / HANDLING
-// - Tap en la fila o en EDIT -> prompt / ciclo
+// SPEC EDITOR (panel pro, sin solapes)
 // =========================================
 const inspectorX = midX + 16;
 const inspectorY = midY + 84;
-const inspectorW = infoW - 28;  // encaja con el “infoW”
+const inspectorW = infoW - 28;  // encaja con el “infoW” que ya reservaste
 const inspectorH = midH - (inspectorY - midY) - 16;
 
 this.add.text(inspectorX, inspectorY - 22, 'SPEC EDITOR', {
@@ -388,8 +386,119 @@ this.add.rectangle(inspectorX, inspectorY, inspectorW, inspectorH, 0x000000, 0.1
   .setStrokeStyle(1, 0xb7c0ff, 0.08);
 
 // -------------------------------
-// Datos / helpers (edición)
+// INSPECTOR CLIP (mask + container)
 // -------------------------------
+// Área visible real del inspector (sin mini-stats abajo)
+const INSPECTOR_TOP = inspectorY + 6;
+const INSPECTOR_BOTTOM = inspectorY + inspectorH - 12; // margen mínimo inferior
+const INSPECTOR_VIEW_H = Math.max(120, INSPECTOR_BOTTOM - INSPECTOR_TOP);
+// Container scrolleable (si no existe ya)
+this._inspectorCont = this.add.container(0, 0);
+
+// Máscara geométrica (rectángulo visible)
+this._inspectorMaskGfx = this.add.graphics();
+this._inspectorMaskGfx.fillStyle(0xffffff, 1);
+this._inspectorMaskGfx.fillRect(
+  inspectorX + 4,
+  INSPECTOR_TOP,
+  inspectorW - 8,
+  INSPECTOR_VIEW_H
+);
+this._inspectorMask = this._inspectorMaskGfx.createGeometryMask();
+this._inspectorMaskGfx.setVisible(false);
+this._inspectorCont.setMask(this._inspectorMask);
+
+// Scroll state
+this._inspectorScroll = 0;
+this._inspectorScrollMax = 0;
+    // ================================
+// INSPECTOR SCROLL (solo arrastre)
+// ================================
+const inspectorDragHit = this.add.rectangle(
+  inspectorX + 4,
+  INSPECTOR_TOP,
+  inspectorW - 8,
+  INSPECTOR_VIEW_H,
+  0x000000,
+  0.001
+).setOrigin(0).setInteractive({ draggable: true });
+
+inspectorDragHit.setDepth(9999); // por encima para capturar drag (pero NO click de filas)
+
+let insDragging = false;
+let insStartY = 0;
+let insStartScroll = 0;
+
+const applyInspectorScroll = () => {
+  this._inspectorScroll = Math.max(0, Math.min(this._inspectorScroll, this._inspectorScrollMax));
+  if (this._inspectorCont) this._inspectorCont.y = -this._inspectorScroll;
+};
+
+inspectorDragHit.on('dragstart', (p) => {
+  insDragging = true;
+  insStartY = p.y;
+  insStartScroll = this._inspectorScroll;
+});
+
+inspectorDragHit.on('drag', (p) => {
+  if (!insDragging) return;
+  const delta = (p.y - insStartY);
+  this._inspectorScroll = insStartScroll - delta;
+  applyInspectorScroll();
+});
+
+inspectorDragHit.on('dragend', () => {
+  insDragging = false;
+});
+// ===============================
+// INSPECTOR SCROLL (DRAG SAFE)
+// ===============================
+let inspectorDragging = false;
+let inspectorDragStartY = 0;
+let inspectorStartScroll = 0;
+let inspectorMoved = false;
+
+const isInsideInspector = (p) => {
+  const x = p.worldX;
+  const y = p.worldY;
+  return (
+    x >= inspectorX &&
+    x <= inspectorX + inspectorW &&
+    y >= INSPECTOR_TOP &&
+    y <= INSPECTOR_TOP + INSPECTOR_VIEW_H
+  );
+};
+
+this.input.on('pointerdown', (p) => {
+  if (!isInsideInspector(p)) return;
+  inspectorDragging = true;
+  inspectorMoved = false;
+  inspectorDragStartY = p.y;
+  inspectorStartScroll = this._inspectorScroll;
+});
+
+this.input.on('pointermove', (p) => {
+  if (!inspectorDragging) return;
+
+  const delta = p.y - inspectorDragStartY;
+
+  if (Math.abs(delta) > 8) {
+    inspectorMoved = true;
+  }
+
+  this._inspectorScroll = clamp(
+    inspectorStartScroll - delta,
+    0,
+    this._inspectorScrollMax
+  );
+
+  this._inspectorCont.y = -this._inspectorScroll;
+});
+
+this.input.on('pointerup', () => {
+  inspectorDragging = false;
+});
+// helpers
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const fmtNum = (n) => (Number.isFinite(n) ? (Math.round(n * 1000) / 1000).toString() : '—');
 
@@ -398,6 +507,7 @@ const RARITIES   = ['common', 'rare', 'epic', 'legendary'];
 const PROFILES   = Object.keys(HANDLING_PROFILES || { default: true });
 
 const isTextField = (k) => ['id','name','brand','country','skin'].includes(k);
+const isPickField = (k) => ['category','rarity','handlingProfile'].includes(k);
 
 const NUM_LIMITS = {
   maxFwd:      [0, 9999],
@@ -434,235 +544,292 @@ const cyclePick = (arr, current) => {
 };
 
 // -------------------------------
-// UI state del inspector
+// INSPECTOR GESTURE (drag vs tap)
 // -------------------------------
-this._inspectorUI = this._inspectorUI || { section: 'IDENTIDAD', objs: [], rows: {} };
+// En móvil: si el "tap" abre el prompt al tocar, te quedas sin scroll.
+// Solución: editar SOLO en pointerup si NO hubo arrastre.
+let _insGestureActive = false;
+let _insStartY = 0;
+let _insStartScroll = 0;
+let _insDragged = false;
+const INS_DRAG_THRESHOLD = 8; // px
 
-// Limpia objetos del inspector (sin cargarte el fondo)
-const clearInspector = () => {
-  for (const o of (this._inspectorUI.objs || [])) {
-    try { o.destroy(); } catch (_) {}
+const startInspectorGesture = (p) => {
+  _insGestureActive = true;
+  _insStartY = p.y;
+  _insStartScroll = this._inspectorScroll || 0;
+  _insDragged = false;
+};
+
+const moveInspectorGesture = (p) => {
+  if (!_insGestureActive) return;
+  const dy = p.y - _insStartY;
+  if (!_insDragged && Math.abs(dy) > INS_DRAG_THRESHOLD) _insDragged = true;
+  if (_insDragged) {
+    this._inspectorScroll = _insStartScroll - dy;
+    applyInspectorScroll();
   }
-  this._inspectorUI.objs = [];
-  this._inspectorUI.rows = {};
 };
 
-// Botón pequeño
-const mkTab = (x, y, w, label, onClick) => {
-  const r = this.add.rectangle(x, y, w, 22, 0x0b1020, 0.85)
-    .setOrigin(0)
-    .setStrokeStyle(1, 0x2cf6ff, 0.18)
-    .setInteractive({ useHandCursor: true });
-  const t = this.add.text(x + w/2, y + 11, label, {
-    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-    fontSize: '10px',
-    color: '#eaffff',
-    fontStyle: '800'
-  }).setOrigin(0.5);
-  r.on('pointerdown', () => onClick?.());
-  return [r, t];
+const endInspectorGesture = () => {
+  _insGestureActive = false;
 };
 
-const tabsY = inspectorY + 8;
-const tabW = Math.floor((inspectorW - 16) / 3);
-const tabX0 = inspectorX + 8;
-
-const [tabIdR, tabIdT] = mkTab(tabX0, tabsY, tabW, 'IDENTIDAD', () => { this._inspectorUI.section = 'IDENTIDAD'; renderInspector(); });
-const [tabMetaR, tabMetaT] = mkTab(tabX0 + tabW, tabsY, tabW, 'META', () => { this._inspectorUI.section = 'META'; renderInspector(); });
-const [tabHandR, tabHandT] = mkTab(tabX0 + tabW*2, tabsY, tabW, 'HANDLING', () => { this._inspectorUI.section = 'HANDLING'; renderInspector(); });
-
-this._inspectorUI.objs.push(tabIdR, tabIdT, tabMetaR, tabMetaT, tabHandR, tabHandT);
-
-// Estilo activo/inactivo
-const paintTabs = () => {
-  const sec = this._inspectorUI.section;
-  const set = (r, t, active) => {
-    r.setFillStyle(0x0b1020, active ? 0.95 : 0.65);
-    r.setStrokeStyle(1, 0x2cf6ff, active ? 0.35 : 0.14);
-    t.setAlpha(active ? 1 : 0.75);
-  };
-  set(tabIdR, tabIdT, sec === 'IDENTIDAD');
-  set(tabMetaR, tabMetaT, sec === 'META');
-  set(tabHandR, tabHandT, sec === 'HANDLING');
-};
-
-// Crea una fila
+// fila UI
 const mkRow = (y, label, key) => {
-  const rowH = 22;
+  const rowH = 26;
 
-  const hit = this.add.rectangle(inspectorX + 6, y, inspectorW - 12, rowH, 0x000000, 0.001)
+  const hit = this.add.rectangle(inspectorX, y, inspectorW, rowH, 0x000000, 0.001)
     .setOrigin(0)
     .setInteractive({ useHandCursor: true });
 
-  const l = this.add.text(inspectorX + 10, y + rowH/2, label, {
+  const l = this.add.text(inspectorX + 8, y + rowH / 2, label, {
     fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
     fontSize: '11px',
     color: '#dfe6ff',
     fontStyle: '800'
   }).setOrigin(0, 0.5);
+const colLabelX = inspectorX + 14;
+const colEditX = inspectorX + inspectorW - 14;
+const colValueX = colEditX - 70;
+const v = this.add.text(colValueX, y + rowH / 2, '', {
+  fontFamily: 'monospace',
+  fontSize: '11px',
+  color: '#eaffff'
+}).setOrigin(1, 0.5);
+const pillW = 54;
+const pillH = 18;
 
-  const colEditX  = inspectorX + inspectorW - 14;
-  const colValueX = colEditX - 74;
+const pillCX = colEditX - pillW / 2;
+const pillCY = y + rowH / 2;
 
-  const v = this.add.text(colValueX, y + rowH/2, '', {
-    fontFamily: 'monospace',
-    fontSize: '11px',
-    color: '#eaffff'
-  }).setOrigin(1, 0.5);
+const pill = this.add.rectangle(pillCX, pillCY, pillW, pillH, 0x2cf6ff, 0.10)
+  .setOrigin(0.5)
+  .setStrokeStyle(1, 0x2cf6ff, 0.20);
 
-  const pillW = 54;
-  const pillH = 18;
-  const pillCX = colEditX - pillW/2;
-  const pillCY = y + rowH/2;
+const pillT = this.add.text(pillCX, pillCY, 'EDIT', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '9px',
+  color: '#b7ffff',
+  fontStyle: '900'
+}).setOrigin(0.5);
 
-  const pill = this.add.rectangle(pillCX, pillCY, pillW, pillH, 0x2cf6ff, 0.10)
-    .setOrigin(0.5)
-    .setStrokeStyle(1, 0x2cf6ff, 0.20)
-    .setInteractive({ useHandCursor: true });
+// Z-order: filas por encima del área de scroll, y el pill por encima del hit
+hit.setDepth(10);
+pill.setDepth(20);
+pillT.setDepth(21);
 
-  const pillT = this.add.text(pillCX, pillCY, 'EDIT', {
-    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-    fontSize: '9px',
-    color: '#b7ffff',
-    fontStyle: '900'
-  }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+// ✅ Pill clicable
+pill.setInteractive({ useHandCursor: true });
+pillT.setInteractive({ useHandCursor: true });
 
-  // handler común
-  const doEdit = () => {
-    const s = this._factoryCar || {};
-    if (!s) return;
+// ✅ Iniciar gesto (tap vs drag) desde cualquier parte (fila + pill)
+// PASAMOS "key" para saber qué fila se tocó
+hit.on('pointerdown', (p) => startInspectorGesture(p, key));
+pill.on('pointerdown', (p) => startInspectorGesture(p, key));
+pillT.on('pointerdown', (p) => startInspectorGesture(p, key));
 
-    // ciclos (sin teclado)
-    if (key === 'category') {
-      s.category = cyclePick(CATEGORIES, String(s.category || 'sport'));
-      this._refreshPreview?.();
-      toast?.('🧩 category actualizado');
-      return;
-    }
-    if (key === 'rarity') {
-      s.rarity = cyclePick(RARITIES, String(s.rarity || 'common'));
-      this._refreshPreview?.();
-      toast?.('✨ rarity actualizado');
-      return;
-    }
-    if (key === 'handlingProfile') {
-      const base = String(s.handlingProfile || 'default');
-      s.handlingProfile = cyclePick(PROFILES.length ? PROFILES : ['default'], base);
-      this._refreshPreview?.();
-      toast?.('🧠 handlingProfile actualizado');
-      return;
-    }
+// --- EDITOR: solo se abre tocando el pill (evita abrir editor al intentar hacer scroll)
+const doEdit = () => {
+  // Si el usuario estaba scrolleando, NO abrimos editor
+  if (_insDragged) return;
 
-    // texto
-    if (isTextField(key)) {
-      const next = promptText(`Editar ${key}`, s[key] ?? '');
-      if (next == null) return;
+  const s = this._factoryCar || {};
+  if (!s) return;
 
-      if (key === 'id') s.id = next.trim().toLowerCase().replace(/\s+/g, '_') || s.id;
-      else s[key] = next.trim();
-
-      this._refreshPreview?.();
-      toast?.(`✍️ ${key} actualizado`);
-      return;
-    }
-
-    // número
-    const lim = NUM_LIMITS[key];
-    const min = lim ? lim[0] : -999999;
-    const max = lim ? lim[1] :  999999;
-
-    const nextN = promptNumber(`Editar ${key}`, s[key], min, max);
-    if (nextN == null) return;
-
-    s[key] = nextN;
+  // dropdowns por ciclo (rápido y sin teclado)
+  if (key === 'category') {
+    s.category = cyclePick(CATEGORIES, String(s.category || 'sport'));
     this._refreshPreview?.();
-    toast?.(`🎛 ${key} actualizado`);
-  };
+    toast('🧩 category actualizado');
+    return;
+  }
+  if (key === 'rarity') {
+    s.rarity = cyclePick(RARITIES, String(s.rarity || 'common'));
+    this._refreshPreview?.();
+    toast('✨ rarity actualizado');
+    return;
+  }
+  if (key === 'handlingProfile') {
+    const base = String(s.handlingProfile || 'default');
+    s.handlingProfile = cyclePick(PROFILES.length ? PROFILES : ['default'], base);
+    this._refreshPreview?.();
+    toast('🧠 handlingProfile actualizado');
+    return;
+  }
 
-  hit.on('pointerdown', doEdit);
-  pill.on('pointerdown', doEdit);
-  pillT.on('pointerdown', doEdit);
+  // texto
+  if (isTextField(key)) {
+    const next = promptText(`Editar ${key}`, s[key] ?? '');
+    if (next == null) return;
 
-  // guardar refs
-  this._inspectorUI.rows[key] = { valueText: v };
+    // id: limpia mínimo para evitar espacios raros
+    if (key === 'id') {
+      s.id = next.trim().toLowerCase().replace(/\s+/g, '_') || s.id;
+    } else {
+      s[key] = next.trim();
+    }
 
-  // registrar objetos para cleanup
-  this._inspectorUI.objs.push(hit, l, v, pill, pillT);
+    this._refreshPreview?.();
+    toast(`✍️ ${key} actualizado`);
+    return;
+  }
+
+  // número
+  const lim = NUM_LIMITS[key];
+  const min = lim ? lim[0] : -999999;
+  const max = lim ? lim[1] :  999999;
+
+  const nextN = promptNumber(`Editar ${key}`, s[key], min, max);
+  if (nextN == null) return;
+
+  s[key] = nextN;
+  this._refreshPreview?.();
+  toast(`🎛 ${key} actualizado`);
 };
 
-// Render principal (sin scroll)
-const renderInspector = () => {
-  paintTabs();
-  clearInspector();
+// ✅ El pill abre editor; la fila (hit) solo sirve para drag/scroll
+pill.on('pointerup', doEdit);
+pillT.on('pointerup', doEdit);
 
-  const sec = this._inspectorUI.section;
-  let y = inspectorY + 36;
+  this._inspectorCont.add([hit, l, v, pill, pillT]);
 
-  // Título sección
-  const secT = this.add.text(inspectorX + 10, inspectorY + 34, sec, {
+  return { key, valueText: v, hit, labelText: l, pill, pillT };
+};
+
+// Layout filas
+this._inspectorRows = {};
+let iy = inspectorY + 10;
+
+// Grupo: identidad
+const mkGroup = (title) => {
+  const t = this.add.text(inspectorX + 8, iy, title, {
     fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
     fontSize: '10px',
     color: '#b7c0ff',
     fontStyle: '900'
-  }).setOrigin(0, 1);
-  this._inspectorUI.objs.push(secT);
+  });
 
-  if (sec === 'IDENTIDAD') {
-    for (const [lbl, key] of [
-      ['id', 'id'],
-      ['name', 'name'],
-      ['brand', 'brand'],
-      ['country', 'country'],
-      ['skin file', 'skin'],
-    ]) { mkRow(y, lbl, key); y += 22; }
-  } else if (sec === 'META') {
-    for (const [lbl, key] of [
-      ['category (tap ciclo)', 'category'],
-      ['rarity (tap ciclo)', 'rarity'],
-      ['handlingProfile (tap ciclo)', 'handlingProfile'],
-    ]) { mkRow(y, lbl, key); y += 22; }
-  } else {
-    for (const [lbl, key] of [
-      ['maxFwd', 'maxFwd'],
-      ['maxRev', 'maxRev'],
-      ['accel', 'accel'],
-      ['brakeForce', 'brakeForce'],
-      ['engineBrake', 'engineBrake'],
-      ['linearDrag', 'linearDrag'],
-      ['turnRate', 'turnRate'],
-      ['turnMin', 'turnMin'],
-      ['gripCoast', 'gripCoast'],
-      ['gripDrive', 'gripDrive'],
-      ['gripBrake', 'gripBrake'],
-    ]) { mkRow(y, lbl, key); y += 22; }
-  }
+  iy += 18;
 
-  // pinta valores actuales
-  this._syncInspector?.(this._factoryCar);
+  const line = this.add.rectangle(inspectorX + 8, iy, inspectorW - 16, 1, 0xb7c0ff, 0.10)
+    .setOrigin(0);
+
+  iy += 8;
+
+  this._inspectorCont.add([t, line]);
 };
 
-// Sync para refrescar valores (lo llama _refreshPreview)
-this._syncInspector = (p) => {
-  const s = p || this._factoryCar || {};
-  const setVal = (k, val) => {
-    const row = this._inspectorUI?.rows?.[k];
-    if (!row) return;
-    row.valueText.setText(String(val ?? '—'));
-  };
 
-  // texto / picks
+mkGroup('IDENTIDAD');
+for (const [lbl, key] of [
+  ['id', 'id'],
+  ['name', 'name'],
+  ['brand', 'brand'],
+  ['country', 'country'],
+  ['skin file', 'skin'],
+]) {
+  this._inspectorRows[key] = mkRow(iy, lbl, key);
+  iy += 26;
+}
+
+mkGroup('META');
+for (const [lbl, key] of [
+  ['category (tap ciclo)', 'category'],
+  ['rarity (tap ciclo)', 'rarity'],
+  ['handlingProfile (tap ciclo)', 'handlingProfile'],
+]) {
+  this._inspectorRows[key] = mkRow(iy, lbl, key);
+  iy += 26;
+}
+
+mkGroup('HANDLING');
+for (const [lbl, key] of [
+  ['maxFwd', 'maxFwd'],
+  ['maxRev', 'maxRev'],
+  ['accel', 'accel'],
+  ['brakeForce', 'brakeForce'],
+  ['engineBrake', 'engineBrake'],
+  ['linearDrag', 'linearDrag'],
+  ['turnRate', 'turnRate'],
+  ['turnMin', 'turnMin'],
+  ['gripCoast', 'gripCoast'],
+  ['gripDrive', 'gripDrive'],
+  ['gripBrake', 'gripBrake'],
+]) {
+  this._inspectorRows[key] = mkRow(iy, lbl, key);
+  iy += 26;
+}
+
+
+// -------------------------------
+// INSPECTOR SCROLL (drag + wheel)
+// -------------------------------
+const inspectorContentH = Math.max(0, (iy + 6) - INSPECTOR_TOP);
+this._inspectorScrollMax = Math.max(0, inspectorContentH - INSPECTOR_VIEW_H);
+this._inspectorScroll = Phaser.Math.Clamp(this._inspectorScroll || 0, 0, this._inspectorScrollMax);
+
+const applyInspectorScroll = () => {
+  this._inspectorScroll = Phaser.Math.Clamp(this._inspectorScroll, 0, this._inspectorScrollMax);
+  this._inspectorCont.y = -this._inspectorScroll;
+};
+applyInspectorScroll();
+
+// hit-area invisible para capturar drag/scroll dentro del inspector
+const inspectorScrollHit = this.add.rectangle(
+  inspectorX + 4,
+  INSPECTOR_TOP,
+  inspectorW - 8,
+  INSPECTOR_VIEW_H,
+  0x000000,
+  0.001
+).setOrigin(0).setInteractive();
+
+// Este hit es SOLO para drag-scroll. Debe quedar por debajo de las filas (EDIT).
+inspectorScrollHit.setDepth(-10);
+
+// Iniciar gesto de scroll si pulsas dentro del viewport del inspector
+inspectorScrollHit.on('pointerdown', (p) => startInspectorGesture(p));
+
+// Terminar gesto al soltar en cualquier parte
+this.input.on('pointerup', () => endInspectorGesture());
+
+// 🔥 CLAVE: mover SOLO si el gesto está activo.
+// (No necesitamos isPointerInsideInspector para nada)
+this.input.on('pointermove', (p) => {
+  if (!_insGestureActive) return;
+  moveInspectorGesture(p);
+});
+
+// wheel (desktop)
+this.input.on('wheel', (pointer, _go, _dx, dy) => {
+  const b = inspectorScrollHit.getBounds();
+  if (!b.contains(pointer.x, pointer.y)) return;
+  this._inspectorScroll += dy * 0.6;
+  applyInspectorScroll();
+});
+
+
+// Sync desde _refreshPreview (se define aquí y se llama dentro)
+this._syncInspector = (p) => {
+  if (!this._inspectorRows) return;
+  const get = (k) => (p?.[k] ?? this._factoryCar?.[k] ?? '');
+
+  // texto
   for (const k of ['id','name','brand','country','skin','category','rarity','handlingProfile']) {
-    setVal(k, s[k] ?? '—');
+    const row = this._inspectorRows[k];
+    if (!row) continue;
+    row.valueText.setText(String(get(k) || '—'));
   }
 
   // nums
   for (const k of Object.keys(NUM_LIMITS)) {
-    setVal(k, fmtNum(Number(s[k])));
+    const row = this._inspectorRows[k];
+    if (!row) continue;
+    row.valueText.setText(fmtNum(Number(get(k))));
   }
 };
-
-// primer render
-renderInspector();    // ===========================
+    // ===========================
 // HTML MODAL INTEGRATION
 // ===========================
 
