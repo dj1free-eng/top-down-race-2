@@ -326,7 +326,7 @@ const modeSub = this.add.text(eventPad + bandW + 14, 32, 'Recompensa: (próximam
 event.add(modeSub);
 
 // Botón “i”
-const einfoW = 38;
+const infoW = 38;
 const infoX = width - eventPad - infoW;
 const infoBtn = this._makeButton(infoX, 10, infoW, eventH - 20, 'i', () => {
   this._toast('Eventos: más adelante meteremos recompensas y misiones diarias 😉');
