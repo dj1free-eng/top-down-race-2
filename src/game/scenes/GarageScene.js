@@ -138,7 +138,7 @@ const inner = this.add.rectangle(8, 8, w - 16, h - 16, 0xffffff, 0.15)
       this.load.start();
     } else {
 // === Card real runtime ===
-const raritySlug = spec.rarity
+const raritySlug = (spec.rarity || 'comun')
   .toLowerCase()
   .replace(' ', '_')
   .normalize('NFD')
