@@ -171,8 +171,11 @@ export class GarageDetailScene extends Phaser.Scene {
     });
 
 const test = this._bigButton(width / 2 + 10, btnY, 150, 70, 'PROBAR', () => {
-  // RaceScene usa super('race') (confirmado por ti), así que la key es 'race'
-  this.scene.start('race', { selectedCarId: this._carId });
+  // Guardamos la selección para coherencia con RaceScene (que ya lee localStorage)
+  localStorage.setItem('tdr2:carId', this._carId);
+
+  // RaceScene tiene super('race') y en init() lee data.carId
+  this.scene.start('race', { carId: this._carId });
 });
 
     // Evitar que queden “tapados” por otros objetos
