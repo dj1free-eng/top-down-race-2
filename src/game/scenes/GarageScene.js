@@ -62,7 +62,9 @@ this.tweens.add({
     const cardH = Math.floor(cardW * 1.15);
 
     // Items
-    const carIds = Object.keys(CAR_SPECS);
+const carIds = Object.keys(CAR_SPECS).filter(id =>
+  !['stock', 'touring', 'power'].includes(id)
+);
     let y = 0;
 
     carIds.forEach((carId, i) => {
@@ -105,110 +107,50 @@ this.tweens.add({
     this._list.y = 70 + this._scrollY;
   }
 
-  _createCard(x, y, w, h, carId, spec) {
-    const card = this.add.container(x, y);
+_createCard(x, y, w, h, carId, spec) {
 
-    // Sombra
-    const shadow = this.add.rectangle(6, 8, w, h, 0x000000, 0.25).setOrigin(0);
+  const card = this.add.container(x, y);
 
-// Marco principal
-const bg = this.add.rectangle(0, 0, w, h, 0x2b7bff, 0.95)
-  .setOrigin(0)
-  .setStrokeStyle(6, 0xffffff, 0.9);
+  const raritySlug = (spec.rarity || 'comun')
+    .toLowerCase()
+    .replace(' ', '_')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
 
-// Brillo interior
-const inner = this.add.rectangle(8, 8, w - 16, h - 16, 0xffffff, 0.15)
-  .setOrigin(0)
-  .setStrokeStyle(2, 0xffffff, 0.3);
+  const fileName =
+    `card_${carId}_${raritySlug}_${String(spec.collectionNo || 0).padStart(3, '0')}.webp`;
 
-    // Imagen card (si existe)
-    const cardFile = spec.card || spec.cardFile || null; // por si ya lo tienes en spec
-    const texKey = `card_${carId}`;
-    if (cardFile) {
-      const url = `${CARD_BASE}${cardFile}`;
-      this.load.image(texKey, url);
-      this.load.once(Phaser.Loader.Events.COMPLETE, () => {
-        if (!this.textures.exists(texKey)) return;
+  const url = `assets/cars/runtime/${fileName}`;
+  const texKey = `card_${carId}`;
 
-        const img = this.add.image(w / 2, h * 0.46, texKey);
-const maxW = w * 0.92;
-const maxH = h * 0.62;
+  this.load.image(texKey, url);
 
-const scale = Math.min(
-  maxW / img.width,
-  maxH / img.height
-);
+  this.load.once(Phaser.Loader.Events.COMPLETE, () => {
 
-img.setScale(scale);
-        img.setDepth(2);
-        card.add(img);
-      });
-      this.load.start();
-    } else {
-// === Card real runtime ===
-const raritySlug = (spec.rarity || 'comun')
-  .toLowerCase()
-  .replace(' ', '_')
-  .normalize('NFD')
-  .replace(/[\u0300-\u036f]/g, '');
+    if (!this.textures.exists(texKey)) return;
 
-const fileName = `card_${carId}_${raritySlug}_${String(spec.collectionNo).padStart(3, '0')}.webp`;
-const url = `assets/cars/runtime/${fileName}`;
+    const img = this.add.image(w / 2, h / 2, texKey);
 
+    // Escalado proporcional (SIN deformar)
+    const scale = Math.min(
+      w / img.width,
+      h / img.height
+    );
 
-this.load.image(texKey, url);
+    img.setScale(scale);
 
-this.load.once(Phaser.Loader.Events.COMPLETE, () => {
-  if (!this.textures.exists(texKey)) return;
-
-  const img = this.add.image(w / 2, h * 0.46, texKey);
-  img.setDisplaySize(w * 0.92, h * 0.62);
-  img.setDepth(10);
-  card.add(img);
-});
-
-this.load.start();
-    }
-
-    // Nombre
-    const name = spec.name || carId;
-    const label = this.add.text(w / 2, h - 50, name.toUpperCase(), {
-      fontFamily: 'Orbitron, system-ui',
-      fontSize: '14px',
-      fontStyle: '900',
-      color: '#ffffff',
-      stroke: '#0a2a6a',
-      strokeThickness: 6,
-      align: 'center',
-      wordWrap: { width: w - 18 }
-    }).setOrigin(0.5, 0);
-
-    // Sub (rarity/category)
-    const sub = `${(spec.rarity || '—').toUpperCase()} · ${(spec.category || '—').toUpperCase()}`;
-const rarityColors = {
-  'COMÚN': '#2b7bff',       // azul
-  'POCO COMÚN': '#2bff88',  // verde
-  'RARO': '#ffd200',        // amarillo
-  'ÉLITE': '#8a2bff',       // morado
-  'LEGENDARIO': '#ff7a00'   // naranja
-};
-
-const rarity = (spec.rarity || '—').toUpperCase();
-
-const subtitle = this.add.text(w / 2, h - 22, rarity, {
-  fontSize: '12px',
-  fontStyle: 'bold',
-  color: rarityColors[rarity] || '#ffffff'
-}).setOrigin(0.5);
+    card.add(img);
 
     // Interacción
-    bg.setInteractive({ useHandCursor: true });
-    bg.on('pointerdown', () => {
+    img.setInteractive({ useHandCursor: true });
+    img.on('pointerdown', () => {
       this.cameras.main.flash(80, 255, 255, 255);
       this.scene.start('GarageDetailScene', { carId });
     });
 
-card.add([shadow, bg, inner, label, subtitle]);
-    this._list.add(card);
-  }
+  });
+
+  this.load.start();
+
+  this._list.add(card);
 }
