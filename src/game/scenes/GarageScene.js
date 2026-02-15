@@ -10,22 +10,18 @@ export class GarageScene extends Phaser.Scene {
 
   create() {
     const { width, height } = this.scale;
+// Fondo base (Brawl-ish)
+const bg = this.add.rectangle(0, 0, width, height, 0x2b7bff, 1).setOrigin(0);
 
-// Fondo con degradado animado
-const cardImage = this.add.image(cardWidth / 2, cardHeight / 2 - 10, `card_${car.id}`);
-cardImage.setDisplaySize(cardWidth - 20, cardHeight - 40);
-cardContainer.add(cardImage);
-
-
+// Animación sutil (respira)
 this.tweens.add({
   targets: bg,
-  alpha: { from: 0.95, to: 1 },
+  alpha: { from: 0.92, to: 1 },
   duration: 1800,
   yoyo: true,
   repeat: -1,
   ease: 'Sine.easeInOut'
 });
-
     // Header
     this.add.text(width / 2, 18, 'GARAJE', {
       fontFamily: 'Orbitron, system-ui, -apple-system, sans-serif',
@@ -158,9 +154,9 @@ this.load.once(Phaser.Loader.Events.COMPLETE, () => {
   if (!this.textures.exists(texKey)) return;
 
   const img = this.add.image(w / 2, h * 0.46, texKey);
-  img.setDisplaySize(w * 0.92, h * 0.62);
-  card.add(img);
-});
+img.setDisplaySize(w * 0.92, h * 0.62);
+img.setDepth(10); // encima del marco
+card.add(img);
 
 this.load.start();
     }
@@ -180,12 +176,12 @@ this.load.start();
 
     // Sub (rarity/category)
     const sub = `${(spec.rarity || '—').toUpperCase()} · ${(spec.category || '—').toUpperCase()}`;
-    const rarityColors = {
-  'COMÚN': '#2bff88',
-  'POCO COMÚN': '#00d4ff',
-  'RARO': '#ff7a00',
-  'ÉLITE': '#ff2bd6',
-  'LEGENDARIO': '#ffd200'
+const rarityColors = {
+  'COMÚN': '#2b7bff',       // azul
+  'POCO COMÚN': '#2bff88',  // verde
+  'RARO': '#ffd200',        // amarillo
+  'ÉLITE': '#8a2bff',       // morado
+  'LEGENDARIO': '#ff7a00'   // naranja
 };
 
 const rarity = (spec.rarity || '—').toUpperCase();
@@ -203,7 +199,7 @@ const subtitle = this.add.text(w / 2, h - 22, rarity, {
       this.scene.start('GarageDetailScene', { carId });
     });
 
-    card.add([shadow, bg, label, subtitle]);
+card.add([shadow, bg, inner, label, subtitle]);
     this._list.add(card);
   }
 }
