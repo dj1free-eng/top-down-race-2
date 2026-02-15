@@ -154,3 +154,4 @@ _createCard(x, y, w, h, carId, spec) {
 
   this._list.add(card);
 }
+}
