@@ -131,7 +131,15 @@ const inner = this.add.rectangle(8, 8, w - 16, h - 16, 0xffffff, 0.15)
         if (!this.textures.exists(texKey)) return;
 
         const img = this.add.image(w / 2, h * 0.46, texKey);
-        img.setDisplaySize(w * 0.92, h * 0.62);
+const maxW = w * 0.92;
+const maxH = h * 0.62;
+
+const scale = Math.min(
+  maxW / img.width,
+  maxH / img.height
+);
+
+img.setScale(scale);
         img.setDepth(2);
         card.add(img);
       });
