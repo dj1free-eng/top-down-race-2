@@ -154,9 +154,10 @@ this.load.once(Phaser.Loader.Events.COMPLETE, () => {
   if (!this.textures.exists(texKey)) return;
 
   const img = this.add.image(w / 2, h * 0.46, texKey);
-img.setDisplaySize(w * 0.92, h * 0.62);
-img.setDepth(10); // encima del marco
-card.add(img);
+  img.setDisplaySize(w * 0.92, h * 0.62);
+  img.setDepth(10);
+  card.add(img);
+});
 
 this.load.start();
     }
