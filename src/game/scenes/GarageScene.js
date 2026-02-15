@@ -141,10 +141,28 @@ const inner = this.add.rectangle(8, 8, w - 16, h - 16, 0xffffff, 0.15)
       });
       this.load.start();
     } else {
-      // Placeholder colorido
-      const ph = this.add.rectangle(w / 2, h * 0.46, w * 0.92, h * 0.62, 0xffd200, 0.8);
-      ph.setStrokeStyle(4, 0xffffff, 0.8);
-      card.add(ph);
+// === Card real runtime ===
+const raritySlug = spec.rarity
+  .toLowerCase()
+  .replace(' ', '_')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '');
+
+const fileName = `card_${carId}_${raritySlug}_${String(spec.collectionNo).padStart(3, '0')}.webp`;
+const url = `assets/cars/runtime/${fileName}`;
+const texKey = `card_${carId}`;
+
+this.load.image(texKey, url);
+
+this.load.once(Phaser.Loader.Events.COMPLETE, () => {
+  if (!this.textures.exists(texKey)) return;
+
+  const img = this.add.image(w / 2, h * 0.46, texKey);
+  img.setDisplaySize(w * 0.92, h * 0.62);
+  card.add(img);
+});
+
+this.load.start();
     }
 
     // Nombre
