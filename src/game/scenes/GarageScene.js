@@ -12,7 +12,9 @@ export class GarageScene extends Phaser.Scene {
     const { width, height } = this.scale;
 
 // Fondo con degradado animado
-const bg = this.add.rectangle(0, 0, width, height, 0x1e78ff)
+const cardImage = this.add.image(cardWidth / 2, cardHeight / 2 - 10, `card_${car.id}`);
+cardImage.setDisplaySize(cardWidth - 20, cardHeight - 40);
+cardContainer.add(cardImage);
   .setOrigin(0);
 
 this.tweens.add({
