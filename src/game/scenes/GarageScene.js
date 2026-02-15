@@ -146,7 +146,7 @@ const raritySlug = spec.rarity
 
 const fileName = `card_${carId}_${raritySlug}_${String(spec.collectionNo).padStart(3, '0')}.webp`;
 const url = `assets/cars/runtime/${fileName}`;
-const texKey = `card_${carId}`;
+
 
 this.load.image(texKey, url);
 
