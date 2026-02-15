@@ -40,6 +40,30 @@ this.load.image('start_l6', 'assets/startlights/start_l6.png');
     this.load.on('complete', () => {
       outline.destroy();
     });
+    // ===== Cargar card oficiales =====
+this.load.setPath('assets/cars/runtime');
+
+this.load.image('card_avenir_apex', 'card_avenir_apex_raro_008.webp');
+this.load.image('card_avenir_gripline', 'card_avenir_gripline_poco_comun_007.webp');
+this.load.image('card_avenir_torque', 'card_avenir_torque_elite_009.webp');
+
+this.load.image('card_crown_axis', 'card_crown_axis_poco_comun_004.webp');
+this.load.image('card_crown_equinox', 'card_crown_equinox_raro_006.webp');
+this.load.image('card_crown_vector', 'card_crown_vector_raro_005.webp');
+
+this.load.image('card_forge_anvil', 'card_forge_anvil_elite_014.webp');
+this.load.image('card_forge_colossus', 'card_forge_colossus_legendario_015.webp');
+this.load.image('card_forge_hammer', 'card_forge_hammer_raro_013.webp');
+
+this.load.image('card_helix_comet', 'card_helix_comet_poco_comun_002.webp');
+this.load.image('card_helix_pulse', 'card_helix_pulse_poco_comun_003.webp');
+this.load.image('card_helix_spark', 'card_helix_spark_comun_001.webp');
+
+this.load.image('card_veloce_flash', 'card_veloce_flash_poco_comun_010.webp');
+this.load.image('card_veloce_photon', 'card_veloce_photon_elite_012.webp');
+this.load.image('card_veloce_surge', 'card_veloce_surge_raro_011.webp');
+
+this.load.setPath('');
   }
 
   create() {
