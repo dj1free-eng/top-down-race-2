@@ -15,7 +15,7 @@ export class GarageScene extends Phaser.Scene {
 const cardImage = this.add.image(cardWidth / 2, cardHeight / 2 - 10, `card_${car.id}`);
 cardImage.setDisplaySize(cardWidth - 20, cardHeight - 40);
 cardContainer.add(cardImage);
-  .setOrigin(0);
+
 
 this.tweens.add({
   targets: bg,
