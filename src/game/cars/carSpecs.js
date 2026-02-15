@@ -3,72 +3,104 @@
 
 export const CAR_SPECS = {
   stock: {
-    id: 'stock',
-    name: 'Stock Kart',
+  id: 'stock',
+  name: 'Stock Kart',
 
-    // Velocidades máximas (px/s)
-    maxFwd: 460,
-    maxRev: 260,
+  // Meta UI
+  brand: 'Base',
+  country: '—',
+  category: 'Starter',
+  role: 'Clásico',
 
-    // Dinámica longitudinal
-    accel: 640,
-    brakeForce: 980,
-    engineBrake: 260,
-    linearDrag: 0.030,
+  collectionNo: 0,
+  rarity: 'Común',
+  visualScale: 1.0,
 
-    // Dirección
-    turnRate: 3.4,
-    turnMin: 0.28,
+  // Velocidades máximas (px/s)
+  maxFwd: 460,
+  maxRev: 260,
 
-    // Agarres laterales
-    gripCoast: 0.22,
-    gripDrive: 0.06,
-    gripBrake: 0.14
-  },
+  // Dinámica longitudinal
+  accel: 640,
+  brakeForce: 980,
+  engineBrake: 260,
+  linearDrag: 0.030,
 
-  touring: {
-    id: 'touring',
-    name: 'Touring (suave y estable)',
+  // Dirección
+  turnRate: 3.4,
+  turnMin: 0.28,
 
-    // Un pelín más de punta y suavidad
-    maxFwd: 520,
-    maxRev: 260,
+  // Agarres laterales
+  gripCoast: 0.22,
+  gripDrive: 0.06,
+  gripBrake: 0.14
+},
 
-    accel: 580,
-    brakeForce: 920,
-    engineBrake: 220,
-    linearDrag: 0.034,
+touring: {
+  id: 'touring',
+  name: 'Touring (suave y estable)',
 
-    turnRate: 3.1,
-    turnMin: 0.26,
+  // Meta UI
+  brand: 'Base',
+  country: '—',
+  category: 'Starter',
+  role: 'Estable',
 
-    // Más agarre acelerando = menos derrape bajo carga
-    gripCoast: 0.24,
-    gripDrive: 0.10,
-    gripBrake: 0.16
-  },
+  collectionNo: 0,
+  rarity: 'Común',
+  visualScale: 1.0,
 
-  power: {
-    id: 'power',
-    name: 'Power (más nervioso)',
-steeringProfile: 'DIRECT',
-    // Más punta y más empuje
-    maxFwd: 600,
-    maxRev: 260,
+  // Un pelín más de punta y suavidad
+  maxFwd: 520,
+  maxRev: 260,
 
-    accel: 760,
-    brakeForce: 1050,
-    engineBrake: 260,
-    linearDrag: 0.028,
+  accel: 580,
+  brakeForce: 920,
+  engineBrake: 220,
+  linearDrag: 0.034,
 
-    turnRate: 3.6,
-    turnMin: 0.30,
+  turnRate: 3.1,
+  turnMin: 0.26,
 
-    // Menos grip al acelerar = derrape más “picante”
-    gripCoast: 0.22,
-    gripDrive: 0.05,
-    gripBrake: 0.14
-  },
+  // Más agarre acelerando = menos derrape bajo carga
+  gripCoast: 0.24,
+  gripDrive: 0.10,
+  gripBrake: 0.16
+},
+
+power: {
+  id: 'power',
+  name: 'Power (más nervioso)',
+
+  // Meta UI
+  brand: 'Base',
+  country: '—',
+  category: 'Starter',
+  role: 'Agresivo',
+
+  collectionNo: 0,
+  rarity: 'Común',
+  visualScale: 1.0,
+
+  steeringProfile: 'DIRECT',
+
+  // Más punta y más empuje
+  maxFwd: 600,
+  maxRev: 260,
+
+  accel: 760,
+  brakeForce: 1050,
+  engineBrake: 260,
+  linearDrag: 0.028,
+
+  turnRate: 3.6,
+  turnMin: 0.30,
+
+  // Menos grip al acelerar = derrape más “picante”
+  gripCoast: 0.22,
+  gripDrive: 0.05,
+  gripBrake: 0.14
+},
 
   // =========================================================
   // VEHÍCULOS OFICIALES (15) — listos para skins + UI
