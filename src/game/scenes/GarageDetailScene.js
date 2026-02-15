@@ -171,11 +171,17 @@ export class GarageDetailScene extends Phaser.Scene {
     });
 
     const test = this._bigButton(width / 2 + 10, btnY, 150, 70, 'PROBAR', () => {
-      // Si RaceScene no está registrada, avisamos (evita “pantalla negra” por Scene inexistente)
-      if (!this.scene.get('RaceScene')) {
-        this._toast('RaceScene no existe o no está en el game.js');
-        return;
-      }
+
+  if (!this.scene.get('race')) {
+    this._toast('RaceScene no está registrada');
+    return;
+  }
+
+  this.scene.start('race', {
+    selectedCarId: this._carId
+  });
+
+});
 
       // Esto depende de tu RaceScene real.
       // Mantengo tu payload, pero probablemente haya que ajustarlo.
