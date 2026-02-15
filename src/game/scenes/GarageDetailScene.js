@@ -10,6 +10,9 @@ export class GarageDetailScene extends Phaser.Scene {
 
   init(data) {
     this._carId = data?.carId || null;
+    this._skinImg = null;
+    this._toastText = null;
+    this._toastTimer = null;
   }
 
   create() {
@@ -36,6 +39,7 @@ export class GarageDetailScene extends Phaser.Scene {
       stroke: '#0a2a6a',
       strokeThickness: 6
     }).setOrigin(0, 0).setInteractive({ useHandCursor: true });
+
     back.on('pointerdown', () => this.scene.start('GarageScene'));
 
     if (!spec) {
@@ -49,8 +53,8 @@ export class GarageDetailScene extends Phaser.Scene {
       return;
     }
 
-    // Nombre grande (WOW)
-    this.add.text(width / 2, 62, (spec.name || this._carId).toUpperCase(), {
+    // Nombre grande
+    const nameText = this.add.text(width / 2, 62, (spec.name || this._carId).toUpperCase(), {
       fontFamily: 'Orbitron, system-ui',
       fontSize: '22px',
       fontStyle: '900',
@@ -61,29 +65,63 @@ export class GarageDetailScene extends Phaser.Scene {
       wordWrap: { width: width - 30 }
     }).setOrigin(0.5, 0);
 
-    // Skin (si existe)
+    // --- Layout dinámico ---
+    // Reservamos un área abajo para botones y un margen entre bloques
+    const bottomSafe = 120;     // reserva para botones
+    const gap = 18;             // separación entre bloques
+    const topSafe = nameText.y + nameText.height + 18;
+
+    // Panel stats: se posiciona en función del alto disponible
+    const panelH = 210;
+    const panelW = Math.min(420, width - 30);
+    const panelX = Math.floor(width / 2 - panelW / 2);
+
+    // Botones
+    const btnY = height - 110;
+
+    // PanelY: lo ponemos por encima de los botones con margen
+    // Si hay poco alto, lo subimos pero sin pasar por encima del título/skin.
+    let panelY = Math.floor(btnY - 20 - panelH);
+
+    // Área máxima para la skin: desde topSafe hasta (panelY - gap)
+    const skinAreaTop = topSafe;
+    const skinAreaBottom = panelY - gap;
+    const skinAreaH = Math.max(140, skinAreaBottom - skinAreaTop); // mínimo decente
+    const skinCenterY = Math.floor(skinAreaTop + skinAreaH / 2);
+
+    // --- Skin (proporcional, sin deformar) ---
     const skinFile = spec.skin || null;
+
     if (skinFile) {
       const key = `skin_${this._carId}`;
-      this.load.image(key, `${SKIN_BASE}${skinFile}`);
-      this.load.once(Phaser.Loader.Events.COMPLETE, () => {
-        if (!this.textures.exists(key)) return;
-        const img = this.add.image(width / 2, 210, key);
-        img.setDisplaySize(Math.min(280, width * 0.75), Math.min(280, width * 0.75));
-      });
-      this.load.start();
+
+      // Si ya existe en texturas, no recargamos
+      if (this.textures.exists(key)) {
+        this._createSkinImage(width / 2, skinCenterY, key, width, skinAreaH);
+      } else {
+        this.load.image(key, `${SKIN_BASE}${skinFile}`);
+        this.load.once(Phaser.Loader.Events.COMPLETE, () => {
+          if (!this.textures.exists(key)) {
+            this._toast(`No encuentro la skin: ${skinFile}`);
+            return;
+          }
+          this._createSkinImage(width / 2, skinCenterY, key, width, skinAreaH);
+        });
+        this.load.start();
+      }
     } else {
-      const ph = this.add.rectangle(width / 2, 210, Math.min(280, width * 0.75), Math.min(280, width * 0.75), 0xffd200, 0.8);
+      // Placeholder si no hay skin
+      const phW = Math.min(280, width * 0.75);
+      const phH = Math.min(280, skinAreaH);
+      const ph = this.add.rectangle(width / 2, skinCenterY, phW, phH, 0xffd200, 0.8);
       ph.setStrokeStyle(6, 0xffffff, 0.85);
     }
 
-    // Stats tipo tarjeta (simple y visible)
-    const panelY = 360;
-    const panelW = Math.min(420, width - 30);
-    const panelX = width / 2 - panelW / 2;
-
-    const pShadow = this.add.rectangle(panelX + 8, panelY + 10, panelW, 210, 0x000000, 0.22).setOrigin(0);
-    const panel = this.add.rectangle(panelX, panelY, panelW, 210, 0xffffff, 0.22).setOrigin(0).setStrokeStyle(6, 0xffffff, 0.35);
+    // --- Panel stats ---
+    const pShadow = this.add.rectangle(panelX + 8, panelY + 10, panelW, panelH, 0x000000, 0.22).setOrigin(0);
+    const panel = this.add.rectangle(panelX, panelY, panelW, panelH, 0xffffff, 0.22)
+      .setOrigin(0)
+      .setStrokeStyle(6, 0xffffff, 0.35);
 
     const rows = [
       ['MAX FWD', spec.maxFwd],
@@ -95,6 +133,7 @@ export class GarageDetailScene extends Phaser.Scene {
 
     rows.forEach((r, i) => {
       const y = panelY + 20 + i * 36;
+
       this.add.text(panelX + 18, y, r[0], {
         fontFamily: 'system-ui',
         fontSize: '14px',
@@ -114,17 +153,64 @@ export class GarageDetailScene extends Phaser.Scene {
       }).setOrigin(1, 0);
     });
 
-    // Botones grandes (móvil)
-    const btnY = height - 110;
-    this._bigButton(width / 2 - 160, btnY, 150, 70, 'EDITAR', () => {
-      // En el siguiente paso lo conectamos a editor simple (modal o sliders)
-      this.cameras.main.shake(120, 0.004);
+    // --- Botones grandes (móvil) ---
+    const edit = this._bigButton(width / 2 - 160, btnY, 150, 70, 'EDITAR', () => {
+      // Nada de vibración rara: feedback claro
+      this._toast('Editor: próximamente 😉');
+
+      // Micro “pulse” elegante en la skin (si existe), sin deformar
+      if (this._skinImg) {
+        this.tweens.add({
+          targets: this._skinImg,
+          scale: this._skinImg.scale * 1.03,
+          duration: 120,
+          yoyo: true,
+          ease: 'Sine.easeInOut'
+        });
+      }
     });
 
-    this._bigButton(width / 2 + 10, btnY, 150, 70, 'PROBAR', () => {
-      // Lanzamos RaceScene con el coche seleccionado
+    const test = this._bigButton(width / 2 + 10, btnY, 150, 70, 'PROBAR', () => {
+      // Si RaceScene no está registrada, avisamos (evita “pantalla negra” por Scene inexistente)
+      if (!this.scene.get('RaceScene')) {
+        this._toast('RaceScene no existe o no está en el game.js');
+        return;
+      }
+
+      // Esto depende de tu RaceScene real.
+      // Mantengo tu payload, pero probablemente haya que ajustarlo.
       this.scene.start('RaceScene', { selectedCarId: this._carId });
     });
+
+    // Evitar que queden “tapados” por otros objetos
+    edit.bg.setDepth(50);
+    edit.tx.setDepth(51);
+    edit.shadow.setDepth(49);
+
+    test.bg.setDepth(50);
+    test.tx.setDepth(51);
+    test.shadow.setDepth(49);
+
+    // Toast encima de todo
+    this._ensureToast();
+  }
+
+  _createSkinImage(cx, cy, key, width, maxHeight) {
+    const img = this.add.image(cx, cy, key);
+
+    // Escalado proporcional SIN deformar
+    const maxW = Math.min(320, width * 0.80);
+    const maxH = Math.min(320, maxHeight);
+
+    const scale = Math.min(
+      maxW / img.width,
+      maxH / img.height
+    );
+
+    img.setScale(scale);
+    img.setDepth(10);
+
+    this._skinImg = img;
   }
 
   _bigButton(x, y, w, h, label, onClick) {
@@ -141,5 +227,36 @@ export class GarageDetailScene extends Phaser.Scene {
     bg.on('pointerdown', () => onClick());
 
     return { shadow, bg, tx };
+  }
+
+  _ensureToast() {
+    if (this._toastText) return;
+    this._toastText = this.add.text(this.scale.width / 2, this.scale.height - 18, '', {
+      fontFamily: 'system-ui',
+      fontSize: '14px',
+      fontStyle: '900',
+      color: '#ffffff',
+      stroke: '#0a2a6a',
+      strokeThickness: 6
+    }).setOrigin(0.5, 1);
+    this._toastText.setAlpha(0);
+    this._toastText.setDepth(9999);
+  }
+
+  _toast(msg) {
+    this._ensureToast();
+    this._toastText.setText(String(msg));
+    this._toastText.setAlpha(1);
+
+    if (this._toastTimer) this._toastTimer.remove(false);
+    this._toastTimer = this.time.delayedCall(1400, () => {
+      if (!this._toastText) return;
+      this.tweens.add({
+        targets: this._toastText,
+        alpha: 0,
+        duration: 250,
+        ease: 'Sine.easeOut'
+      });
+    });
   }
 }
