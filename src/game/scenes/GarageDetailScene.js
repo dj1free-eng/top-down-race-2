@@ -170,23 +170,10 @@ export class GarageDetailScene extends Phaser.Scene {
       }
     });
 
-    const test = this._bigButton(width / 2 + 10, btnY, 150, 70, 'PROBAR', () => {
-
-  if (!this.scene.get('race')) {
-    this._toast('RaceScene no está registrada');
-    return;
-  }
-
-  this.scene.start('race', {
-    selectedCarId: this._carId
-  });
-
+const test = this._bigButton(width / 2 + 10, btnY, 150, 70, 'PROBAR', () => {
+  // RaceScene usa super('race') (confirmado por ti), así que la key es 'race'
+  this.scene.start('race', { selectedCarId: this._carId });
 });
-
-      // Esto depende de tu RaceScene real.
-      // Mantengo tu payload, pero probablemente haya que ajustarlo.
-      this.scene.start('RaceScene', { selectedCarId: this._carId });
-    });
 
     // Evitar que queden “tapados” por otros objetos
     edit.bg.setDepth(50);
