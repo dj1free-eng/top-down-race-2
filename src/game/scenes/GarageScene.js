@@ -6,6 +6,11 @@ const CARD_BASE = 'assets/cars/runtime/'; // donde están tus card_*.webp
 export class GarageScene extends Phaser.Scene {
   constructor() {
     super({ key: 'GarageScene' });
+    this._mode = 'player';
+  }
+
+  init(data) {
+    this._mode = data?.mode || 'player';
   }
 
   create() {
@@ -31,7 +36,14 @@ this.tweens.add({
       stroke: '#0a2a6a',
       strokeThickness: 6
     }).setOrigin(0.5, 0);
-
+// DEBUG visible: modo actual
+this.add.text(width - 16, 22, this._mode === 'admin' ? 'ADMIN' : 'PLAYER', {
+  fontFamily: 'system-ui',
+  fontSize: '14px',
+  color: '#ffffff',
+  stroke: '#0a2a6a',
+  strokeThickness: 4
+}).setOrigin(1, 0);
     // Botón atrás
     const back = this.add.text(16, 18, '⬅', {
       fontFamily: 'system-ui',
