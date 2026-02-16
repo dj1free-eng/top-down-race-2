@@ -248,13 +248,10 @@ _setScroll(y) {
 _createDomPanel() {
   const { width, height } = this.scale;
 
-// Más espacio real para el header y evitar que el panel se “coma” el título
-const topY = 96;
-
-// Reservamos más abajo para botones + barra iOS
-const bottomSafe = 140;
-
-const panelH = height - topY - bottomSafe;
+const topY = 72;                 // debajo del header
+const bottomSafe = 120;          // espacio para botones + iOS
+const panelW = Math.min(560, width - 24);
+const panelH = Math.max(220, height - topY - bottomSafe);
   const keys = this._collectEditableNumberKeys();
 
   // HTML rows
