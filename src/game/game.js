@@ -13,7 +13,7 @@ export function createGame(parentId = 'app') {
     backgroundColor: '#0b1020',
     // IMPORTANT: si una Scene no está aquí, Vite la tree-shakea y en runtime verás
     // "ReferenceError: Can't find variable: ..." al abrirla.
-scene: [BootScene, MenuScene, GarageScene, GarageDetailScene, RaceScene],
+scene: [BootScene, MenuScene, GarageScene, GarageDetailScene, RaceScene, AdminHubScene],
     dom: {
   createContainer: true
 },
