@@ -17,128 +17,93 @@ export class CarEditorScene extends Phaser.Scene {
 
   create() {
   const { width, height } = this.scale;
-  this.cameras.main.setBackgroundColor('#0b1020');
+
+  // -------- Fondo estilo lobby (como Menu) --------
+  const bg = this.add.graphics();
+  bg.fillStyle(0x071027, 1);
+  bg.fillRect(0, 0, width, height);
+
+  bg.fillStyle(0x7c4dff, 0.14);
+  bg.fillEllipse(width * 0.20, height * 0.22, width * 0.75, height * 0.65);
+
+  bg.fillStyle(0x00d4ff, 0.10);
+  bg.fillEllipse(width * 0.70, height * 0.30, width * 0.90, height * 0.70);
+
+  bg.fillStyle(0xffc400, 0.07);
+  bg.fillEllipse(width * 0.55, height * 0.12, width * 0.70, height * 0.45);
+
+  bg.fillStyle(0x2bff88, 0.08);
+  bg.fillEllipse(width * 0.55, height * 0.70, width * 0.85, height * 0.70);
+
+  bg.fillStyle(0x141b33, 0.18);
+  bg.fillRect(0, 0, width, height);
+
+  // rejilla ligera
+  bg.lineStyle(1, 0xffffff, 0.02);
+  const step = 56;
+  for (let x = 0; x <= width; x += step) bg.lineBetween(x, 0, x, height);
+  for (let y = 0; y <= height; y += step) bg.lineBetween(0, y, width, y);
 
   this._base = CAR_SPECS[this._carId] || CAR_SPECS.stock;
   this._override = this._readOverride(this._carId);
 
-  // ===== Fondo tipo lobby =====
-  const bg = this.add.graphics();
-  bg.fillStyle(0x071027, 1);
-  bg.fillRect(0, 0, width, height);
-  bg.fillStyle(0x2bff88, 0.05);
-  bg.fillEllipse(width * 0.6, height * 0.3, width * 0.9, height * 0.7);
-
-  // ===== Header =====
-  this.add.text(width / 2, 18, `EDITOR · ${this._base.name}`, {
-    fontFamily: 'system-ui',
-    fontSize: '20px',
-    color: '#2bff88',
-    fontStyle: 'bold'
+  // -------- Header --------
+  this.add.text(width / 2, 18, `EDITOR · ${this._base.name || this._carId}`, {
+    fontFamily: 'Orbitron, system-ui',
+    fontSize: '22px',
+    fontStyle: '900',
+    color: '#ffffff',
+    stroke: '#0a2a6a',
+    strokeThickness: 7
   }).setOrigin(0.5, 0);
 
   this.add.text(width - 16, 22, 'ADMIN', {
     fontFamily: 'system-ui',
     fontSize: '14px',
-    color: '#ffffff'
+    color: '#ffffff',
+    stroke: '#0a2a6a',
+    strokeThickness: 4
   }).setOrigin(1, 0);
 
+  // Back
   const back = this.add.text(16, 18, '⬅', {
     fontFamily: 'system-ui',
     fontSize: '26px',
-    color: '#fff'
+    color: '#fff',
+    stroke: '#0a2a6a',
+    strokeThickness: 6
   }).setOrigin(0, 0).setInteractive({ useHandCursor: true });
 
   back.on('pointerdown', () => {
+    this._destroyDomPanel();
     this.scene.start('GarageScene', { mode: 'admin' });
   });
 
-  // ===== Scroll container =====
-  const topY = 70;
-  const bottomMargin = 120;
-  const viewportH = height - topY - bottomMargin;
+  // -------- DOM panel (scroll nativo + inputs) --------
+  this._createDomPanel();
 
-  const maskGfx = this.make.graphics({ x: 0, y: 0, add: false });
-  maskGfx.fillStyle(0xffffff);
-  maskGfx.fillRect(0, topY, width, viewportH);
-  const mask = maskGfx.createGeometryMask();
+  // -------- Botones (Phaser) --------
+  const btnY = height - 92;
 
-  this._list = this.add.container(0, topY);
-  this._list.setMask(mask);
-
-  // ===== Generar sliders automáticamente =====
-  const editableKeys = Object.keys(this._base).filter(k => {
-    const v = this._base[k];
-    if (typeof v !== 'number') return false;
-
-    // excluir meta UI
-    return ![
-      'collectionNo',
-      'visualScale'
-    ].includes(k);
-  });
-
-  let y = 0;
-  const rowH = 82;
-
-  editableKeys.forEach((key) => {
-
-    const baseVal = this._base[key];
-    const curVal = (this._override?.[key] ?? baseVal);
-
-    // rango automático ±50%
-    const min = baseVal * 0.5;
-    const max = baseVal * 1.5;
-    const step = baseVal < 1 ? 0.01 : 1;
-
-    this._makeSliderRow(
-      20,
-      y,
-      width - 40,
-      {
-        key,
-        label: key,
-        min,
-        max,
-        step
-      }
-    );
-
-    y += rowH;
-  });
-
-  this._contentHeight = y;
-
-  // Scroll móvil
-  this._scrollY = 0;
-  this._minScroll = Math.min(0, viewportH - this._contentHeight);
-
-  this.input.on('pointerdown', (p) => {
-    this._dragStartY = p.y;
-    this._dragStartScroll = this._scrollY;
-  });
-
-  this.input.on('pointermove', (p) => {
-    if (!p.isDown) return;
-    const delta = p.y - this._dragStartY;
-    this._setScroll(this._dragStartScroll + delta);
-  });
-
-  // ===== Botones =====
-  const btnY = height - 90;
-
-  const saveBtn = this._button(width / 2 - 170, btnY, 150, 60, 'GUARDAR', () => {
+  const saveBtn = this._button(width / 2 - 160, btnY, 140, 54, 'GUARDAR', () => {
     this._writeOverride(this._carId, this._override);
     this._toast('Guardado ✓');
+    // refresca deltas/valores en DOM
+    this._refreshDomValues();
   });
 
-  const testBtn = this._button(width / 2 + 20, btnY, 150, 60, 'TEST', () => {
+  const testBtn = this._button(width / 2 + 20, btnY, 140, 54, 'TEST', () => {
     this._writeOverride(this._carId, this._override);
+    this._destroyDomPanel();
     this.scene.start('race', { carId: this._carId, testMode: true });
   });
 
   this.add.existing(saveBtn);
   this.add.existing(testBtn);
+
+  // Limpieza al salir (si no, el DOM se queda pegado encima del juego)
+  this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this._destroyDomPanel());
+  this.events.once(Phaser.Scenes.Events.DESTROY, () => this._destroyDomPanel());
 }
 
   _makeSliderRow(x, y, w, f) {
@@ -267,4 +232,269 @@ _setScroll(y) {
       localStorage.setItem(this._lsKey(carId), JSON.stringify(obj || {}));
     } catch {}
   }
+  _collectEditableNumberKeys() {
+  const base = this._base || {};
+  const keys = Object.keys(base).filter(k => typeof base[k] === 'number');
+
+  // Excluir cosas que NO son físicas aunque sean números (si las tuvieras)
+  const blacklist = new Set([
+    'collectionNo',
+    'visualScale'
+  ]);
+
+  return keys.filter(k => !blacklist.has(k));
+}
+
+_createDomPanel() {
+  const { width, height } = this.scale;
+
+  const topY = 70;
+  const bottomSafe = 120;
+  const panelH = height - topY - bottomSafe;
+
+  const keys = this._collectEditableNumberKeys();
+
+  // HTML rows
+  const rows = keys.map(k => {
+    const baseVal = this._base[k];
+    const curVal = (this._override?.[k] ?? baseVal);
+    const delta = curVal - baseVal;
+    const deltaTxt = (Math.abs(delta) < 1e-9) ? '0' : (delta > 0 ? `+${delta}` : `${delta}`);
+
+    // step: heurística simple
+    const step = (Math.abs(baseVal) < 1) ? 0.01 : 1;
+
+    return `
+      <div class="row" data-key="${k}">
+        <div class="left">
+          <div class="k">${k}</div>
+          <div class="meta">
+            <span class="b">base: <b>${baseVal}</b></span>
+            <span class="d">Δ: <b>${deltaTxt}</b></span>
+          </div>
+        </div>
+
+        <div class="right">
+          <button class="btn" data-act="dec" aria-label="decrement">−</button>
+          <input class="inp" inputmode="decimal" value="${curVal}" data-step="${step}" />
+          <button class="btn" data-act="inc" aria-label="increment">+</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  const html = `
+    <div class="panel">
+      <div class="bar">
+        <input class="search" placeholder="Buscar parámetro…" />
+        <button class="mini" data-act="resetAll">RESET</button>
+        <button class="mini" data-act="clear">CLEAR</button>
+      </div>
+
+      <div class="list">
+        ${rows}
+      </div>
+    </div>
+  `;
+
+  // Crear DOM element Phaser
+  this._dom = this.add.dom(width / 2, topY + panelH / 2).createFromHTML(html);
+  this._dom.setDepth(999999);
+
+  // Estilos (inline dentro del DOM container)
+  const style = document.createElement('style');
+  style.textContent = `
+    .panel{
+      width:${Math.min(520, width - 28)}px;
+      height:${panelH}px;
+      background:rgba(20,27,51,0.78);
+      border:1px solid rgba(183,192,255,0.18);
+      border-radius:14px;
+      box-shadow:0 10px 40px rgba(0,0,0,0.35);
+      overflow:hidden;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      color:#fff;
+    }
+    .bar{
+      display:flex;
+      gap:10px;
+      padding:10px;
+      background:rgba(11,16,32,0.55);
+      border-bottom:1px solid rgba(183,192,255,0.14);
+      align-items:center;
+    }
+    .search{
+      flex:1;
+      height:34px;
+      border-radius:10px;
+      border:1px solid rgba(183,192,255,0.18);
+      background:rgba(7,16,39,0.65);
+      color:#fff;
+      padding:0 10px;
+      outline:none;
+    }
+    .mini{
+      height:34px;
+      border-radius:10px;
+      border:1px solid rgba(43,255,136,0.35);
+      background:rgba(20,27,51,0.85);
+      color:#fff;
+      font-weight:700;
+      padding:0 10px;
+    }
+    .list{
+      height:calc(100% - 56px);
+      overflow:auto;
+      padding:10px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .row{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      padding:10px;
+      border-radius:12px;
+      border:1px solid rgba(183,192,255,0.10);
+      background:rgba(7,16,39,0.35);
+      margin-bottom:10px;
+      align-items:center;
+    }
+    .k{ font-weight:900; font-size:14px; }
+    .meta{ display:flex; gap:10px; font-size:12px; opacity:0.9; }
+    .right{ display:flex; gap:8px; align-items:center; }
+    .btn{
+      width:34px;
+      height:34px;
+      border-radius:10px;
+      border:1px solid rgba(43,255,136,0.35);
+      background:rgba(20,27,51,0.85);
+      color:#fff;
+      font-weight:900;
+      font-size:18px;
+      line-height:0;
+    }
+    .inp{
+      width:92px;
+      height:34px;
+      border-radius:10px;
+      border:1px solid rgba(183,192,255,0.18);
+      background:rgba(7,16,39,0.65);
+      color:#fff;
+      padding:0 10px;
+      outline:none;
+      text-align:right;
+      font-weight:800;
+    }
+  `;
+
+  // Inyectar el style en el root del DOM element
+  const node = this._dom.node;
+  node.prepend(style);
+
+  // Eventos
+  node.addEventListener('click', (e) => {
+    const t = e.target;
+    const act = t?.dataset?.act;
+    if (!act) return;
+
+    if (act === 'resetAll') {
+      this._override = {};
+      this._refreshDomValues(true);
+      return;
+    }
+
+    if (act === 'clear') {
+      // Borra overrides guardados del coche (solo memoria, NO guarda hasta GUARDAR)
+      this._override = {};
+      this._refreshDomValues(true);
+      return;
+    }
+
+    // +/- por fila
+    const row = t.closest?.('.row');
+    if (!row) return;
+    const key = row.getAttribute('data-key');
+    const inp = row.querySelector('.inp');
+    const step = parseFloat(inp.getAttribute('data-step') || '1') || 1;
+
+    const baseVal = this._base[key];
+    let v = parseFloat(inp.value);
+    if (Number.isNaN(v)) v = (this._override?.[key] ?? baseVal);
+
+    if (act === 'inc') v += step;
+    if (act === 'dec') v -= step;
+
+    // redondeo bonito
+    v = (step < 1) ? Math.round(v * 100) / 100 : Math.round(v);
+
+    inp.value = String(v);
+    this._override[key] = v;
+    this._refreshRow(row, key);
+  });
+
+  node.addEventListener('input', (e) => {
+    const inp = e.target;
+    if (!inp.classList?.contains('inp')) return;
+    const row = inp.closest('.row');
+    const key = row.getAttribute('data-key');
+
+    const v = parseFloat(inp.value);
+    if (Number.isNaN(v)) return;
+
+    this._override[key] = v;
+    this._refreshRow(row, key);
+  });
+
+  // Search filter
+  const search = node.querySelector('.search');
+  search.addEventListener('input', () => {
+    const q = (search.value || '').trim().toLowerCase();
+    const items = node.querySelectorAll('.row');
+    items.forEach(r => {
+      const k = (r.getAttribute('data-key') || '').toLowerCase();
+      r.style.display = (!q || k.includes(q)) ? '' : 'none';
+    });
+  });
+}
+
+_refreshRow(row, key) {
+  const baseVal = this._base[key];
+  const curVal = (this._override?.[key] ?? baseVal);
+  const delta = curVal - baseVal;
+  const deltaTxt = (Math.abs(delta) < 1e-9) ? '0' : (delta > 0 ? `+${delta}` : `${delta}`);
+
+  const b = row.querySelector('.b b');
+  const d = row.querySelector('.d b');
+  if (b) b.textContent = String(baseVal);
+  if (d) d.textContent = String(deltaTxt);
+}
+
+_refreshDomValues(force = false) {
+  if (!this._dom?.node) return;
+  const node = this._dom.node;
+
+  node.querySelectorAll('.row').forEach(row => {
+    const key = row.getAttribute('data-key');
+    const baseVal = this._base[key];
+    const curVal = (this._override?.[key] ?? baseVal);
+
+    const inp = row.querySelector('.inp');
+    if (inp && (force || document.activeElement !== inp)) {
+      inp.value = String(curVal);
+    }
+    this._refreshRow(row, key);
+  });
+}
+
+_destroyDomPanel() {
+  try {
+    if (this._dom?.node) {
+      this._dom.node.remove();
+    }
+  } catch {}
+  try {
+    if (this._dom?.destroy) this._dom.destroy();
+  } catch {}
+  this._dom = null;
+}
 }
