@@ -106,18 +106,19 @@ let pressTimer = null;
 
 logo.on('pointerdown', () => {
   pressTimer = this.time.delayedCall(2000, () => {
-    localStorage.setItem('tdr2:admin', '1');
-    this._toast('ADMIN ACTIVADO');
-    this.scene.start('admin-hub');
-  });
+  localStorage.setItem('tdr2:admin', '1');
+  this._toast('ADMIN ACTIVADO');
+  this.scene.start('admin-hub');
+  pressTimer = null;
+});
 });
 
 logo.on('pointerup', () => {
-  if (pressTimer) pressTimer.remove(false);
+  if (pressTimer) { pressTimer.remove(false); pressTimer = null; }
 });
 
 logo.on('pointerout', () => {
-  if (pressTimer) pressTimer.remove(false);
+  if (pressTimer) { pressTimer.remove(false); pressTimer = null; }
 });
     // Título
     const title = this.add.text(pad + 56, Math.floor(topH / 2), 'Top-Down Race 2', {
