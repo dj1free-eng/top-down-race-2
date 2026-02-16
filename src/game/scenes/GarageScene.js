@@ -40,7 +40,7 @@ this.tweens.add({
       stroke: '#0a2a6a',
       strokeThickness: 6
     }).setOrigin(0, 0).setInteractive({ useHandCursor: true });
-    back.on('pointerdown', () => this.scene.start('MenuScene'));
+back.on('pointerdown', () => this.scene.start('menu'));
 
     // Scroll container
     const topY = 70;
