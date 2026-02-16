@@ -298,8 +298,19 @@ const panelH = Math.max(220, height - topY - bottomSafe);
   `;
 
   // Crear DOM element Phaser
-  this._dom = this.add.dom(width / 2, topY + panelH / 2).createFromHTML(html);
+this._dom = this.add.dom(12, topY).createFromHTML(html);
 this._dom.setDepth(999999);
+
+// ✅ anclaje top-left (evita “medio panel fuera”)
+this._dom.setOrigin(0, 0);
+
+// ✅ posición y tamaño deterministas
+this._dom.x = 12;
+this._dom.y = topY;
+
+const node = this._dom.node;
+node.style.width = `${panelW}px`;
+node.style.height = `${panelH}px`;
 
 // Asegura que el DOM queda centrado y no se escala raro
 if (this._dom.setOrigin) this._dom.setOrigin(0.5);
