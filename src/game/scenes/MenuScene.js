@@ -19,7 +19,12 @@ export class MenuScene extends Phaser.Scene {
     // Cache para no reintentar skins que no existen
     this._skinFail = new Set();
   }
-
+init(data) {
+  // Si venimos desde "Salir ADMIN", limpiamos sí o sí
+  if (data?.forcePlayer) {
+    try { localStorage.removeItem('tdr2:admin'); } catch {}
+  }
+}
   create() {
     this.cameras.main.setBackgroundColor('#0b1020');
 
