@@ -706,6 +706,8 @@ this._onShutdownRaceScene = () => {
   if (this._onResizeSpeedHud) this.scale.off('resize', this._onResizeSpeedHud);
   if (this._reflowStartModal) this.scale.off('resize', this._reflowStartModal);
   if (this._onResizeUiCam) this.scale.off('resize', this._onResizeUiCam);
+  if (this._onResizeDevModal) this.scale.off('resize', this._onResizeDevModal);
+  if (this._onResizeTTPanel) this.scale.off('resize', this._onResizeTTPanel);
   // 1b) Touch UI container (si existe) — evita que queden objetos colgando
   try { if (this.touchUI?.scene) this.touchUI.destroy(true); } catch (e) {}
   this.touchUI = null;
@@ -1923,11 +1925,13 @@ this.devTuneBtn.on('pointerdown', (p, lx, ly, e) => {
 // Registrar para toggle ON/OFF
 this._devRegister(this.devTuneBtn);
 
-// Responder a resize (rotación)
-this.scale.on('resize', (gameSize) => {
-  if (!this._devModal) return;
+// Responder a resize (rotación) — con handler desmontable
+this.scale.off('resize', this._onResizeDevModal);
+this._onResizeDevModal = (gameSize) => {
+  if (!this._devModalBg || !this._devModalBg.scene) return;
   this._devModalBg.setSize(gameSize.width, gameSize.height);
-});
+};
+this.scale.on('resize', this._onResizeDevModal);
   
   // Estado inicial: oculto (lo mostrará el gesto 2 dedos)
   this._setDevVisible(false);
@@ -2048,11 +2052,12 @@ this._hideTTPanel = () => {
   });
 };
 
-// Auto-layout en resize
-this.scale.on('resize', () => {
-  if (this.uiCam) this.uiCam.setSize(this.scale.width, this.scale.height);
+// Auto-layout en resize — con handler desmontable
+this.scale.off('resize', this._onResizeTTPanel);
+this._onResizeTTPanel = () => {
   this._layoutTTPanel?.();
-});
+};
+this.scale.on('resize', this._onResizeTTPanel);
 
 // Estado inicial: oculto
 this.ttPanel.c.setVisible(false);
