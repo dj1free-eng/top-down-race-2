@@ -144,9 +144,14 @@ _createCard(x, y, w, h, carId, spec) {
     // Interacción
     img.setInteractive({ useHandCursor: true });
     img.on('pointerdown', () => {
-      this.cameras.main.flash(80, 255, 255, 255);
-      this.scene.start('GarageDetailScene', { carId });
-    });
+  this.cameras.main.flash(80, 255, 255, 255);
+
+  if (this._mode === 'admin') {
+    this.scene.start('car-editor', { carId });
+  } else {
+    this.scene.start('GarageDetailScene', { carId });
+  }
+});
 
   });
 
