@@ -429,7 +429,18 @@ const garageBtn = this._makeButton(
     try { admin = localStorage.getItem('tdr2:admin') || '0'; } catch {}
     const mode = (admin === '1') ? 'admin' : 'player';
 
-    this.scene.start('GarageScene', { mode });
+const garageBtn = this._makeButton(
+  pad,
+  Math.floor((bottomH - btnH) / 2),
+  smallW,
+  btnH,
+  'GARAGE',
+  () => {
+    // ✅ Menú jugador: SIEMPRE modo player
+    this.scene.start('GarageScene', { mode: 'player' });
+  },
+  { accent: 0x00d4ff }
+);
   },
   { accent: 0x00d4ff }
 );
