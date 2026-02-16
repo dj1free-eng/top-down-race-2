@@ -303,7 +303,9 @@ this._dom.setDepth(999999);
 
 // ✅ anclaje top-left (evita “medio panel fuera”)
 this._dom.setOrigin(0, 0);
-
+const node = this._dom.node;
+node.style.width = `${panelW}px`;
+node.style.height = `${panelH}px`;
 // ✅ posición y tamaño deterministas
 this._dom.x = 12;
 this._dom.y = topY;
@@ -320,8 +322,8 @@ this._dom.y = topY + panelH / 2;
   const style = document.createElement('style');
   style.textContent = `
     .panel{
-      width:${Math.min(520, width - 28)}px;
-      height:${panelH}px;
+      width: 100%;
+      height: 100%;
       box-sizing: border-box;
       padding-top: 6px;
       background:rgba(20,27,51,0.78);
