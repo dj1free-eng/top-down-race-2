@@ -424,23 +424,8 @@ const garageBtn = this._makeButton(
   btnH,
   'GARAGE',
   () => {
-    // ✅ Siempre pasamos modo explícito (evita arrastre de estado)
-    let admin = '0';
-    try { admin = localStorage.getItem('tdr2:admin') || '0'; } catch {}
-    const mode = (admin === '1') ? 'admin' : 'player';
-
-const garageBtn = this._makeButton(
-  pad,
-  Math.floor((bottomH - btnH) / 2),
-  smallW,
-  btnH,
-  'GARAGE',
-  () => {
-    // ✅ Menú jugador: SIEMPRE modo player
+    // ✅ Menú jugador: SIEMPRE modo player (sin contaminar admin)
     this.scene.start('GarageScene', { mode: 'player' });
-  },
-  { accent: 0x00d4ff }
-);
   },
   { accent: 0x00d4ff }
 );
