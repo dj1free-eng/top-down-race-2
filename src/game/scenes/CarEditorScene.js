@@ -16,64 +16,130 @@ export class CarEditorScene extends Phaser.Scene {
   }
 
   create() {
-    const { width, height } = this.scale;
-    this.cameras.main.setBackgroundColor('#0b1020');
+  const { width, height } = this.scale;
+  this.cameras.main.setBackgroundColor('#0b1020');
 
-    this._base = CAR_SPECS[this._carId] || CAR_SPECS.stock;
+  this._base = CAR_SPECS[this._carId] || CAR_SPECS.stock;
+  this._override = this._readOverride(this._carId);
 
-    // cargar override actual
-    this._override = this._readOverride(this._carId);
+  // ===== Fondo tipo lobby =====
+  const bg = this.add.graphics();
+  bg.fillStyle(0x071027, 1);
+  bg.fillRect(0, 0, width, height);
+  bg.fillStyle(0x2bff88, 0.05);
+  bg.fillEllipse(width * 0.6, height * 0.3, width * 0.9, height * 0.7);
 
-    // Header
-    this.add.text(width / 2, 18, `EDITOR · ${this._carId}`, {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '18px',
-      color: '#2bff88',
-      fontStyle: 'bold'
-    }).setOrigin(0.5, 0);
+  // ===== Header =====
+  this.add.text(width / 2, 18, `EDITOR · ${this._base.name}`, {
+    fontFamily: 'system-ui',
+    fontSize: '20px',
+    color: '#2bff88',
+    fontStyle: 'bold'
+  }).setOrigin(0.5, 0);
 
-    // Back
-    const back = this.add.text(16, 18, '⬅', {
-      fontFamily: 'system-ui',
-      fontSize: '26px',
-      color: '#fff'
-    }).setOrigin(0, 0).setInteractive({ useHandCursor: true });
-    back.on('pointerdown', () => this.scene.start('GarageScene', { mode: 'admin' }));
+  this.add.text(width - 16, 22, 'ADMIN', {
+    fontFamily: 'system-ui',
+    fontSize: '14px',
+    color: '#ffffff'
+  }).setOrigin(1, 0);
 
-    // Controles (3 sliders de prueba)
-    const startY = 80;
-    const rowH = 78;
+  const back = this.add.text(16, 18, '⬅', {
+    fontFamily: 'system-ui',
+    fontSize: '26px',
+    color: '#fff'
+  }).setOrigin(0, 0).setInteractive({ useHandCursor: true });
 
-    const fields = [
-      { key: 'maxFwd', label: 'Velocidad (maxFwd)', min: 200, max: 1200, step: 10 },
-      { key: 'accel',  label: 'Aceleración (accel)', min: 200, max: 2000, step: 10 },
-      { key: 'turnRate', label: 'Giro (turnRate)', min: 1.0, max: 8.0, step: 0.1 }
-    ];
+  back.on('pointerdown', () => {
+    this.scene.start('GarageScene', { mode: 'admin' });
+  });
 
-    this._ui = [];
+  // ===== Scroll container =====
+  const topY = 70;
+  const bottomMargin = 120;
+  const viewportH = height - topY - bottomMargin;
 
-    fields.forEach((f, i) => {
-      const y = startY + i * rowH;
-      this._ui.push(this._makeSliderRow(20, y, width - 40, f));
-    });
+  const maskGfx = this.make.graphics({ x: 0, y: 0, add: false });
+  maskGfx.fillStyle(0xffffff);
+  maskGfx.fillRect(0, topY, width, viewportH);
+  const mask = maskGfx.createGeometryMask();
 
-    // Botones
-    const btnY = height - 92;
+  this._list = this.add.container(0, topY);
+  this._list.setMask(mask);
 
-    const saveBtn = this._button(width / 2 - 160, btnY, 140, 54, 'GUARDAR', () => {
-      this._writeOverride(this._carId, this._override);
-      this._toast('Guardado ✓');
-    });
+  // ===== Generar sliders automáticamente =====
+  const editableKeys = Object.keys(this._base).filter(k => {
+    const v = this._base[k];
+    if (typeof v !== 'number') return false;
 
-    const testBtn = this._button(width / 2 + 20, btnY, 140, 54, 'TEST', () => {
-      // Guardamos antes de testear para que RaceScene lo lea luego
-      this._writeOverride(this._carId, this._override);
-      this.scene.start('race', { carId: this._carId, testMode: true });
-    });
+    // excluir meta UI
+    return ![
+      'collectionNo',
+      'visualScale'
+    ].includes(k);
+  });
 
-    this.add.existing(saveBtn);
-    this.add.existing(testBtn);
-  }
+  let y = 0;
+  const rowH = 82;
+
+  editableKeys.forEach((key) => {
+
+    const baseVal = this._base[key];
+    const curVal = (this._override?.[key] ?? baseVal);
+
+    // rango automático ±50%
+    const min = baseVal * 0.5;
+    const max = baseVal * 1.5;
+    const step = baseVal < 1 ? 0.01 : 1;
+
+    this._makeSliderRow(
+      20,
+      y,
+      width - 40,
+      {
+        key,
+        label: key,
+        min,
+        max,
+        step
+      }
+    );
+
+    y += rowH;
+  });
+
+  this._contentHeight = y;
+
+  // Scroll móvil
+  this._scrollY = 0;
+  this._minScroll = Math.min(0, viewportH - this._contentHeight);
+
+  this.input.on('pointerdown', (p) => {
+    this._dragStartY = p.y;
+    this._dragStartScroll = this._scrollY;
+  });
+
+  this.input.on('pointermove', (p) => {
+    if (!p.isDown) return;
+    const delta = p.y - this._dragStartY;
+    this._setScroll(this._dragStartScroll + delta);
+  });
+
+  // ===== Botones =====
+  const btnY = height - 90;
+
+  const saveBtn = this._button(width / 2 - 170, btnY, 150, 60, 'GUARDAR', () => {
+    this._writeOverride(this._carId, this._override);
+    this._toast('Guardado ✓');
+  });
+
+  const testBtn = this._button(width / 2 + 20, btnY, 150, 60, 'TEST', () => {
+    this._writeOverride(this._carId, this._override);
+    this.scene.start('race', { carId: this._carId, testMode: true });
+  });
+
+  this.add.existing(saveBtn);
+  this.add.existing(testBtn);
+}
 
   _makeSliderRow(x, y, w, f) {
     const label = this.add.text(x, y, f.label, {
@@ -131,7 +197,10 @@ export class CarEditorScene extends Phaser.Scene {
 
     return { label, valueText, track, knob, hit };
   }
-
+_setScroll(y) {
+  this._scrollY = Phaser.Math.Clamp(y, this._minScroll, 0);
+  this._list.y = 70 + this._scrollY;
+}
   _button(x, y, w, h, label, onClick) {
     const c = this.add.container(x, y);
 
