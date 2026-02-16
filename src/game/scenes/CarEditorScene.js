@@ -318,6 +318,8 @@ _createDomPanel() {
       overflow:hidden;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
       color:#fff;
+      -webkit-user-select: none;
+      user-select: none;
     }
     .bar{
       display:flex;
@@ -388,6 +390,20 @@ _createDomPanel() {
       outline:none;
       text-align:right;
       font-weight:800;
+      -webkit-user-select: text;
+      user-select: text;
+    }
+        /* iOS: evitar zoom por doble-tap dentro del panel */
+    .panel, .panel *{
+      touch-action: manipulation;
+      -webkit-text-size-adjust: 100%;
+    }
+    .btn, .mini{
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .inp{
+      font-size: 16px; /* iOS: evita auto-zoom al enfocar inputs */
     }
   `;
 
