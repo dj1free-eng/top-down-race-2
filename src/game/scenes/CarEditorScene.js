@@ -248,20 +248,18 @@ _setScroll(y) {
 _createDomPanel() {
   const { width, height } = this.scale;
 
-const topY = 72;                 // debajo del header
-const bottomSafe = 120;          // espacio para botones + iOS
-const panelW = Math.min(560, width - 24);
-const panelH = Math.max(220, height - topY - bottomSafe);
+  const topY = 72;                 // debajo del header
+  const bottomSafe = 120;          // espacio para botones + iOS
+  const panelW = Math.min(560, width - 24);
+  const panelH = Math.max(220, height - topY - bottomSafe);
+
   const keys = this._collectEditableNumberKeys();
 
-  // HTML rows
   const rows = keys.map(k => {
     const baseVal = this._base[k];
     const curVal = (this._override?.[k] ?? baseVal);
     const delta = curVal - baseVal;
     const deltaTxt = (Math.abs(delta) < 1e-9) ? '0' : (delta > 0 ? `+${delta}` : `${delta}`);
-
-    // step: heurística simple
     const step = (Math.abs(baseVal) < 1) ? 0.01 : 1;
 
     return `
@@ -273,7 +271,6 @@ const panelH = Math.max(220, height - topY - bottomSafe);
             <span class="d">Δ: <b>${deltaTxt}</b></span>
           </div>
         </div>
-
         <div class="right">
           <button class="btn" data-act="dec" aria-label="decrement">−</button>
           <input class="inp" inputmode="decimal" value="${curVal}" data-step="${step}" />
@@ -290,25 +287,23 @@ const panelH = Math.max(220, height - topY - bottomSafe);
         <button class="mini" data-act="resetAll">RESET</button>
         <button class="mini" data-act="clear">CLEAR</button>
       </div>
-
       <div class="list">
         ${rows}
       </div>
     </div>
   `;
 
-// Crear DOM element Phaser (anclado TOP-LEFT, sin centrar)
-this._dom = this.add.dom(12, topY).createFromHTML(html);
-this._dom.setDepth(999999);
-this._dom.setOrigin(0, 0);
+  // Crear DOM element Phaser (anclado TOP-LEFT, sin centrar)
+  this._dom = this.add.dom(12, topY).createFromHTML(html);
+  this._dom.setDepth(999999);
+  this._dom.setOrigin(0, 0);
+  this._dom.x = 12;
+  this._dom.y = topY;
 
-this._dom.x = 12;
-this._dom.y = topY;
+  const node = this._dom.node;
+  node.style.width = `${panelW}px`;
+  node.style.height = `${panelH}px`;
 
-const node = this._dom.node;
-node.style.width = `${panelW}px`;
-node.style.height = `${panelH}px`;
-  // Estilos (inline dentro del DOM container)
   const style = document.createElement('style');
   style.textContent = `
     .panel{
@@ -396,8 +391,7 @@ node.style.height = `${panelH}px`;
     }
   `;
 
-  // Inyectar el style en el root del DOM element
-  const node = this._dom.node;
+  // Inyectar el style en el root del DOM element (sin redeclarar node)
   node.prepend(style);
 
   // Eventos
@@ -406,22 +400,15 @@ node.style.height = `${panelH}px`;
     const act = t?.dataset?.act;
     if (!act) return;
 
-    if (act === 'resetAll') {
+    if (act === 'resetAll' || act === 'clear') {
       this._override = {};
       this._refreshDomValues(true);
       return;
     }
 
-    if (act === 'clear') {
-      // Borra overrides guardados del coche (solo memoria, NO guarda hasta GUARDAR)
-      this._override = {};
-      this._refreshDomValues(true);
-      return;
-    }
-
-    // +/- por fila
     const row = t.closest?.('.row');
     if (!row) return;
+
     const key = row.getAttribute('data-key');
     const inp = row.querySelector('.inp');
     const step = parseFloat(inp.getAttribute('data-step') || '1') || 1;
@@ -433,7 +420,6 @@ node.style.height = `${panelH}px`;
     if (act === 'inc') v += step;
     if (act === 'dec') v -= step;
 
-    // redondeo bonito
     v = (step < 1) ? Math.round(v * 100) / 100 : Math.round(v);
 
     inp.value = String(v);
@@ -444,6 +430,7 @@ node.style.height = `${panelH}px`;
   node.addEventListener('input', (e) => {
     const inp = e.target;
     if (!inp.classList?.contains('inp')) return;
+
     const row = inp.closest('.row');
     const key = row.getAttribute('data-key');
 
@@ -454,7 +441,6 @@ node.style.height = `${panelH}px`;
     this._refreshRow(row, key);
   });
 
-  // Search filter
   const search = node.querySelector('.search');
   search.addEventListener('input', () => {
     const q = (search.value || '').trim().toLowerCase();
