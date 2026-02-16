@@ -20,9 +20,9 @@ export class MenuScene extends Phaser.Scene {
     this._skinFail = new Set();
   }
 init(data) {
-  // Si venimos desde "Salir ADMIN", limpiamos sí o sí
+  // Si venimos desde "Salir ADMIN", forzamos estado jugador (determinista)
   if (data?.forcePlayer) {
-    try { localStorage.removeItem('tdr2:admin'); } catch {}
+    try { localStorage.setItem('tdr2:admin', '0'); } catch {}
   }
 }
   create() {
