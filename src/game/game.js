@@ -5,7 +5,7 @@ import { RaceScene } from './scenes/RaceScene.js';
 
 import { GarageScene } from './scenes/GarageScene.js';
 import { GarageDetailScene } from './scenes/GarageDetailScene.js';
-
+import { AdminHubScene } from './scenes/AdminHubScene.js';
 export function createGame(parentId = 'app') {
   return new Phaser.Game({
     type: Phaser.AUTO,
