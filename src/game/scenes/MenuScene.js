@@ -424,8 +424,12 @@ const garageBtn = this._makeButton(
   btnH,
   'GARAGE',
   () => {
-    // 🔥 Ir a la escena de Garaje (rejilla estilo Brawl)
-    this.scene.start('GarageScene');
+    // ✅ Siempre pasamos modo explícito (evita arrastre de estado)
+    let admin = '0';
+    try { admin = localStorage.getItem('tdr2:admin') || '0'; } catch {}
+    const mode = (admin === '1') ? 'admin' : 'player';
+
+    this.scene.start('GarageScene', { mode });
   },
   { accent: 0x00d4ff }
 );
