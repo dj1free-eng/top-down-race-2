@@ -38,7 +38,7 @@ export class AdminHubScene extends Phaser.Scene {
     };
 
     makeBtn(140, 'Editar coches', () => {
-this.scene.start('GarageScene', { mode: 'admin' });
+      this.scene.start('GarageScene', { mode: 'admin' });
     });
 
     makeBtn(220, 'Pista de pruebas', () => {
