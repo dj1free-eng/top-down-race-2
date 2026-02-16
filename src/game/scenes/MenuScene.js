@@ -94,7 +94,26 @@ bg.fillRect(0, 0, width, height);
     // Logo
     const logo = this.add.image(pad + 22, Math.floor(topH / 2), 'logo').setScale(0.25).setOrigin(0.5);
     topBar.add(logo);
+// 🔐 ADMIN unlock por long-press (2s)
+logo.setInteractive({ useHandCursor: true });
 
+let pressTimer = null;
+
+logo.on('pointerdown', () => {
+  pressTimer = this.time.delayedCall(2000, () => {
+    localStorage.setItem('tdr2:admin', '1');
+    this._toast('ADMIN ACTIVADO');
+    this.scene.start('admin-hub');
+  });
+});
+
+logo.on('pointerup', () => {
+  if (pressTimer) pressTimer.remove(false);
+});
+
+logo.on('pointerout', () => {
+  if (pressTimer) pressTimer.remove(false);
+});
     // Título
     const title = this.add.text(pad + 56, Math.floor(topH / 2), 'Top-Down Race 2', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
