@@ -400,6 +400,19 @@ else this._ttProg.idx = startIdx;
     };
   }
 init(data) {
+    // Si venimos del editor, testMode = true
+  this._testMode = !!data?.testMode;
+
+  // Por defecto, si es test, volver al editor del coche actual
+  if (this._testMode) {
+    const carId = data?.carId || this.carId || 'stock';
+    this._returnSceneKey = 'car-editor';
+    this._returnSceneData = { carId };
+  } else {
+    this._returnSceneKey = null;
+    this._returnSceneData = null;
+  }
+}
   // ========================================
   // FACTORY TEST DRIVE (opcional)
   // ========================================
@@ -2431,10 +2444,16 @@ this.time.delayedCall(150, () => {
     });
   });
 }); 
-    // 12) Volver al menú
-  if (this.keys?.back) {
-    this.keys.back.on('down', () => this.scene.start('menu'));
-  }
+// 12) Volver (si testMode => editor, si no => menú)
+if (this.keys?.back) {
+  this.keys.back.on('down', () => {
+    if (this._testMode && this._returnSceneKey) {
+      this.scene.start(this._returnSceneKey, this._returnSceneData || {});
+    } else {
+      this.scene.start('menu');
+    }
+  });
+}
 // 12b) Botón táctil MENU (volver al menú)
 const menuBtnX = 12;
 const menuBtnY = 72; // debajo del HUD superior izquierdo (no molesta cronos/progreso)
@@ -2457,7 +2476,12 @@ this.uiMenuBtn.on('pointerdown', (p, lx, ly, e) => {
   // Si el dev modal estuviera abierto, lo cerramos limpio
   if (this._devModalOpen) this._setDevModal(false);
 
-  this.scene.start('menu');
+  // Si estamos en testMode, volver al editor del coche
+  if (this._testMode && this._returnSceneKey) {
+    this.scene.start(this._returnSceneKey, this._returnSceneData || {});
+  } else {
+    this.scene.start('menu');
+  }
 });
   // =================================================
   // 👇 AQUÍ VA EL PUNTO B (ESTO ES LO QUE AÑADES)
