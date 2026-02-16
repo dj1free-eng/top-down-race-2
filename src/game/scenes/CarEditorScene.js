@@ -248,10 +248,13 @@ _setScroll(y) {
 _createDomPanel() {
   const { width, height } = this.scale;
 
-  const topY = 70;
-  const bottomSafe = 120;
-  const panelH = height - topY - bottomSafe;
+// Más espacio real para el header y evitar que el panel se “coma” el título
+const topY = 96;
 
+// Reservamos más abajo para botones + barra iOS
+const bottomSafe = 140;
+
+const panelH = height - topY - bottomSafe;
   const keys = this._collectEditableNumberKeys();
 
   // HTML rows
@@ -299,14 +302,20 @@ _createDomPanel() {
 
   // Crear DOM element Phaser
   this._dom = this.add.dom(width / 2, topY + panelH / 2).createFromHTML(html);
-  this._dom.setDepth(999999);
+this._dom.setDepth(999999);
 
+// Asegura que el DOM queda centrado y no se escala raro
+if (this._dom.setOrigin) this._dom.setOrigin(0.5);
+this._dom.x = width / 2;
+this._dom.y = topY + panelH / 2;
   // Estilos (inline dentro del DOM container)
   const style = document.createElement('style');
   style.textContent = `
     .panel{
       width:${Math.min(520, width - 28)}px;
       height:${panelH}px;
+      box-sizing: border-box;
+      padding-top: 6px;
       background:rgba(20,27,51,0.78);
       border:1px solid rgba(183,192,255,0.18);
       border-radius:14px;
