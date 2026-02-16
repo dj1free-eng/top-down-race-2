@@ -46,8 +46,9 @@ export class AdminHubScene extends Phaser.Scene {
     });
 
     makeBtn(300, 'Salir ADMIN', () => {
-      localStorage.removeItem('tdr2:admin');
-      this.scene.start('menu');
-    });
+  try { localStorage.removeItem('tdr2:admin'); } catch {}
+  // Forzamos menú en modo jugador (anti-pegote)
+  this.scene.start('menu', { forcePlayer: true });
+});
   }
 }
