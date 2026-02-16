@@ -52,7 +52,13 @@ this.add.text(width - 16, 22, this._mode === 'admin' ? 'ADMIN' : 'PLAYER', {
       stroke: '#0a2a6a',
       strokeThickness: 6
     }).setOrigin(0, 0).setInteractive({ useHandCursor: true });
-back.on('pointerdown', () => this.scene.start('menu'));
+back.on('pointerdown', () => {
+  if (this._mode === 'admin') {
+    this.scene.start('admin-hub');
+  } else {
+    this.scene.start('menu');
+  }
+});
 
     // Scroll container
     const topY = 70;
