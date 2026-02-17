@@ -1170,8 +1170,7 @@ const btnY = height - 92;
       `dragMult: ${fmt(liveSpec.dragMult, 2)}`
     ];
 
-    this._techOverlayText.setText(lines.join('
-'));
+    this._techOverlayText.setText(lines.join('\n'));
   }
 
   _destroyDomPanel() {
