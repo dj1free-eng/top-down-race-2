@@ -478,7 +478,19 @@ init(data) {
   this.baseSpec = this._useFactorySpec
     ? this.factorySpec
     : (CAR_SPECS[this.carId] || CAR_SPECS.stock);
+// === CAR EDITOR OVERRIDES (localStorage) ===
+// Nota: solo si NO es factorySpec (factory manda)
+if (!this._useFactorySpec) {
+  try {
+    const raw = localStorage.getItem(`tdr2:carSpecs:${this.carId}`);
+    const ov = raw ? JSON.parse(raw) : null;
 
+    if (ov && typeof ov === 'object') {
+      // Merge suave: override pisa solo claves presentes
+      this.baseSpec = { ...this.baseSpec, ...ov };
+    }
+  } catch {}
+}
   // === UPGRADES: cargar niveles por coche (solo si NO es factorySpec) ===
   const defaultUpgrades = { engine: 0, brakes: 0, tires: 0 };
   const upgradesKey = `tdr2:upgrades:${this.carId}`;
@@ -797,8 +809,9 @@ this.timing = {
 const body = this.physics.add.sprite(t01.start.x, t01.start.y, '__BODY__');
 body.setVisible(false);
 
-// Escala del coche según spec (prep en carSpecs.js)
-const vScale = (spec?.visualScale ?? 1.0);
+// Escala del coche según spec FINAL (baseSpec ya incluye overrides del editor)
+const specFinal = this.baseSpec || spec || CAR_SPECS.stock;
+const vScale = Number(specFinal?.visualScale ?? 1.0);
 
 // Colisión: si quieres que el camión “ocupe pista”, esto es CLAVE
 const baseRadius = 14;
@@ -855,7 +868,7 @@ this.carRig = rig;
 this.car = body; // compat con tu update()
 
 // Skin runtime: si existe, sustituye la textura del sprite sin romper nada
-this.ensureCarSkinTexture(spec).then((texKey) => {
+this.ensureCarSkinTexture(specFinal).then((texKey) => {
   if (!texKey) return;
 
 carSprite.setTexture(texKey);
