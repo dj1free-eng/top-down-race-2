@@ -133,7 +133,7 @@ export class GarageDetailScene extends Phaser.Scene {
 
   init(data) {
   this._carId = data?.carId || null;
-  this._mode = data?.mode || 'player'; // 👈 IMPORTANTÍSIMO
+  this._mode = (data && data.mode === 'admin') ? 'admin' : 'player';
   this._skinImg = null;
   this._toastText = null;
   this._toastTimer = null;
