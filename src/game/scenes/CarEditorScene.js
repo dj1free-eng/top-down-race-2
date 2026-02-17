@@ -229,23 +229,72 @@ _setScroll(y) {
   _lsKey(carId) {
     return `tdr2:carSpecs:${carId}`;
   }
+_sanitizeOverride(obj) {
+  const base = this._base || {};
+  const out = {};
 
-  _readOverride(carId) {
-    try {
-      const raw = localStorage.getItem(this._lsKey(carId));
-      if (!raw) return {};
-      const obj = JSON.parse(raw);
-      return (obj && typeof obj === 'object') ? obj : {};
-    } catch {
-      return {};
+  // Solo permitimos overrides de claves NUMÉRICAS que existan en el spec base
+  for (const k of Object.keys(base)) {
+    if (typeof base[k] !== 'number') continue;
+
+    const raw = obj?.[k];
+    const v = Number(raw);
+
+    if (!Number.isFinite(v)) continue;
+
+    // Reglas específicas (anti “valores rarísimos”)
+    if (k === 'visualScale') {
+      // tamaño razonable + step 0.1
+      const clamped = Math.max(0.5, Math.min(2.5, v));
+      out[k] = Math.round(clamped * 10) / 10;
+      continue;
     }
+
+    if (k === 'linearDrag') {
+      // drag típico: evita negativos o locuras
+      const clamped = Math.max(0, Math.min(1, v));
+      out[k] = Math.round(clamped * 1000) / 1000;
+      continue;
+    }
+
+    if (k.startsWith('grip')) {
+      // grip: evita negativos y valores absurdos
+      const clamped = Math.max(0, Math.min(2, v));
+      out[k] = Math.round(clamped * 100) / 100;
+      continue;
+    }
+
+    if (k === 'dragMult') {
+      // multiplicador: evita 0 o infinito
+      const clamped = Math.max(0.1, Math.min(5, v));
+      out[k] = Math.round(clamped * 100) / 100;
+      continue;
+    }
+
+    // Default: redondeo suave para evitar floats feos
+    out[k] = (Math.abs(v) < 1) ? Math.round(v * 1000) / 1000 : Math.round(v * 100) / 100;
   }
 
-  _writeOverride(carId, obj) {
-    try {
-      localStorage.setItem(this._lsKey(carId), JSON.stringify(obj || {}));
-    } catch {}
+  return out;
+}
+_readOverride(carId) {
+  try {
+    const raw = localStorage.getItem(this._lsKey(carId));
+    if (!raw) return {};
+    const obj = JSON.parse(raw);
+    if (!obj || typeof obj !== 'object') return {};
+    return this._sanitizeOverride(obj);
+  } catch {
+    return {};
   }
+}
+
+_writeOverride(carId, obj) {
+  try {
+    const clean = this._sanitizeOverride(obj || {});
+    localStorage.setItem(this._lsKey(carId), JSON.stringify(clean));
+  } catch {}
+}
   _collectEditableNumberKeys() {
   const base = this._base || {};
   const keys = Object.keys(base).filter(k => typeof base[k] === 'number');
