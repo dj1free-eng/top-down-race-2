@@ -242,7 +242,20 @@ _setScroll(y) {
     'visualScale'
   ]);
 
-  return keys.filter(k => !blacklist.has(k));
+const out = keys.filter(k => !blacklist.has(k));
+
+// Orden preferente (arriba del todo)
+const pin = ['size', 'scale', 'visualScale', 'dragMult', 'linearDrag', 'accel', 'brakeForce', 'turnRate', 'maxFwd', 'maxRev'];
+out.sort((a, b) => {
+  const ia = pin.indexOf(a);
+  const ib = pin.indexOf(b);
+  if (ia === -1 && ib === -1) return a.localeCompare(b);
+  if (ia === -1) return 1;
+  if (ib === -1) return -1;
+  return ia - ib;
+});
+
+return out;
 }
 
 _createDomPanel() {
