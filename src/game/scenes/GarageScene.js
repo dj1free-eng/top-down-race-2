@@ -167,7 +167,8 @@ _createCard(x, y, w, h, carId, spec) {
   if (this._mode === 'admin') {
     this.scene.start('car-editor', { carId });
   } else {
-    this.scene.start('GarageDetailScene', { carId });
+this.scene.start('GarageDetailScene', { carId, mode: 'player' });
+this.scene.start('GarageDetailScene', { carId, mode: 'admin' });
   }
 });
 
