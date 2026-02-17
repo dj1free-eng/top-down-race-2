@@ -41,11 +41,7 @@ export class AdminHubScene extends Phaser.Scene {
       this.scene.start('GarageScene', { mode: 'admin' });
     });
 
-    makeBtn(220, 'Pista de pruebas', () => {
-      this.scene.start('race', { carId: localStorage.getItem('tdr2:carId') || 'stock' });
-    });
-
-    makeBtn(300, 'Salir ADMIN', () => {
+    makeBtn(220, 'Salir ADMIN', () => {
   try { localStorage.setItem('tdr2:admin', '0'); } catch {}
   this.scene.start('menu', { forcePlayer: true });
 });
