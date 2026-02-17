@@ -785,6 +785,31 @@ _createTechOverlay() {
   // Hook para refrescarlo cuando cambias valores
   this._techOverlayText = text;
 }
+    // ✅ PEGA AQUÍ ESTE MÉTODO
+  _refreshTechOverlay() {
+    if (!this._techOverlayText) return;
+
+    const KMH_PER_PXPS = 0.10;
+    const liveSpec = { ...(this._base || {}), ...(this._override || {}) };
+    const fmt = (v, d = 2) => (Number.isFinite(v) ? Number(v).toFixed(d) : '—');
+
+    const lines = [
+      'DATOS TÉCNICOS',
+      `maxFwd: ${fmt(liveSpec.maxFwd, 1)} px/s  ·  ${fmt(liveSpec.maxFwd * KMH_PER_PXPS, 0)} km/h`,
+      `accel: ${fmt(liveSpec.accel, 1)}`,
+      `brake: ${fmt(liveSpec.brakeForce, 1)}`,
+      `turnRate: ${fmt(liveSpec.turnRate, 2)}`,
+      `turnMin: ${fmt(liveSpec.turnMin, 2)}`,
+      `gripDrive: ${fmt(liveSpec.gripDrive, 2)}`,
+      `gripCoast: ${fmt(liveSpec.gripCoast, 2)}`,
+      `gripBrake: ${fmt(liveSpec.gripBrake, 2)}`,
+      `linearDrag: ${fmt(liveSpec.linearDrag, 3)}`,
+      `dragMult: ${fmt(liveSpec.dragMult, 2)}`
+    ];
+
+    this._techOverlayText.setText(lines.join('\n'));
+  }
+}
   _destroyDomPanel() {
     try {
       if (this._dom?.node) this._dom.node.remove();
