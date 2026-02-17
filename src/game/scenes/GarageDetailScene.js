@@ -92,6 +92,7 @@ function computeDesignStatsFromPhysics(spec) {
 
   return { VEL, ACC, FRN, GIR, EST };
 }
+
 // ===== Spec efectivo (fábrica + guardado) =====
 function lsKey(carId) {
   return `tdr2:carSpecs:${carId}`;
@@ -113,6 +114,7 @@ function getEffectiveCarSpec(carId) {
   const saved = readSavedSpec(carId);
   return { ...factory, ...saved };
 }
+
 // ===== Telemetría (medida en pista) =====
 function readTopSpeedPxps(carId) {
   try {
@@ -123,22 +125,24 @@ function readTopSpeedPxps(carId) {
     return null;
   }
 }
+
 export class GarageDetailScene extends Phaser.Scene {
   constructor() {
     super({ key: 'GarageDetailScene' });
   }
 
-init(data) {
-  this._carId = data?.carId || null;
-  this._mode = data?.mode || 'player'; // 👈 NUEVO
-  this._skinImg = null;
-  this._toastText = null;
-  this._toastTimer = null;
-}
+  init(data) {
+    this._carId = data?.carId || null;
+    this._mode = data?.mode || 'player'; // 'player' | 'admin'
+    this._skinImg = null;
+    this._toastText = null;
+    this._toastTimer = null;
+  }
 
   create() {
-    const isAdmin = this._mode === 'admin';
     const { width, height } = this.scale;
+    const isAdmin = this._mode === 'admin';
+
     this.cameras.main.setBackgroundColor('#2aa8ff');
 
     // ✅ spec EFECTIVO (incluye edits guardados)
@@ -163,7 +167,7 @@ init(data) {
       strokeThickness: 6
     }).setOrigin(0, 0).setInteractive({ useHandCursor: true });
 
-    back.on('pointerdown', () => this.scene.start('GarageScene'));
+    back.on('pointerdown', () => this.scene.start('GarageScene', { mode: this._mode }));
 
     if (!spec) {
       this.add.text(width / 2, height / 2, 'Coche no encontrado', {
@@ -189,7 +193,6 @@ init(data) {
     }).setOrigin(0.5, 0);
 
     // --- Layout dinámico ---
-    const bottomSafe = 120;
     const gap = 18;
     const topSafe = nameText.y + nameText.height + 18;
 
@@ -198,8 +201,7 @@ init(data) {
     const panelX = Math.floor(width / 2 - panelW / 2);
 
     const btnY = height - 110;
-
-    let panelY = Math.floor(btnY - 20 - panelH);
+    const panelY = Math.floor(btnY - 20 - panelH);
 
     const skinAreaTop = topSafe;
     const skinAreaBottom = panelY - gap;
@@ -233,65 +235,80 @@ init(data) {
     }
 
     // --- Panel stats ---
-    const pShadow = this.add.rectangle(panelX + 8, panelY + 10, panelW, panelH, 0x000000, 0.22).setOrigin(0);
-    const panel = this.add.rectangle(panelX, panelY, panelW, panelH, 0xffffff, 0.22)
+    this.add.rectangle(panelX + 8, panelY + 10, panelW, panelH, 0x000000, 0.22).setOrigin(0);
+    this.add.rectangle(panelX, panelY, panelW, panelH, 0xffffff, 0.22)
       .setOrigin(0)
       .setStrokeStyle(6, 0xffffff, 0.35);
 
-// ===============================
-// STATS (C): calculadas desde físicas reales del spec efectivo
-// ===============================
-const ds = computeDesignStatsFromPhysics(spec);
+    // ===============================
+    // STATS jugador (coherentes y “reales”)
+    // ===============================
+    const ds = computeDesignStatsFromPhysics(spec);
 
-// ===== vMax REAL (medida en pista) para que coincida con el velocímetro =====
-const topPxps = readTopSpeedPxps(this._carId);
-const topKmh  = (topPxps == null) ? null : (topPxps * KMH_PER_PXPS);
+    // Velocidad máxima REAL: telemetría si existe, si no, techo teórico.
+    const topPxps = readTopSpeedPxps(this._carId);
+    const topKmh = (topPxps == null) ? null : (topPxps * KMH_PER_PXPS);
+    const fallbackKmh = spec.maxFwd * KMH_PER_PXPS;
+    const vMaxKmh = (topKmh != null) ? topKmh : fallbackKmh;
 
-// Fallback: si aún no hay telemetría, usamos el techo teórico
-const fallbackKmh = spec.maxFwd * KMH_PER_PXPS;
-const vMaxKmh = (topKmh != null) ? topKmh : fallbackKmh;
+    const playerRows = [
+      { label: 'VEL. MÁX.', value: Math.round(vMaxKmh), unit: 'km/h' },
+      { label: 'ACELERACIÓN', value: ds.ACC },
+      { label: 'FRENADA', value: ds.FRN },
+      { label: 'GIRO', value: ds.GIR },
+      { label: 'ESTABILIDAD', value: ds.EST }
+    ];
 
-// ===============================
-// STATS JUGADOR (siempre visibles)
-// ===============================
-const playerRows = [
-  { label: 'VEL. MÁX.',      value: Math.round(vMaxKmh), unit: 'km/h' },
-  { label: 'ACELERACIÓN',    value: ds.ACC },
-  { label: 'FRENADA',        value: ds.FRN },
-  { label: 'GIRO',           value: ds.GIR },
-  { label: 'ESTABILIDAD',    value: ds.EST },
-];
+    // --- Render: Player (grande) ---
+    playerRows.forEach((r, i) => {
+      const y = panelY + 18 + i * 30;
 
-// Render: filas jugador
-playerRows.forEach((r, i) => {
-  const y = panelY + 18 + i * 30;
+      const v = Number.isFinite(r.value) ? Math.round(r.value) : null;
+      const vTxt = (v === null) ? '—' : String(v);
+      const suffix = r.unit ? ` ${r.unit}` : '';
 
-  const valueTxt = (r.unit)
-    ? `${r.value} ${r.unit}`
-    : String(Math.round(r.value ?? 0));
+      this.add.text(panelX + 18, y, r.label, {
+        fontFamily: 'system-ui',
+        fontSize: '14px',
+        fontStyle: '900',
+        color: '#fff',
+        stroke: '#0a2a6a',
+        strokeThickness: 6
+      }).setOrigin(0, 0);
 
-  this.add.text(panelX + 18, y, r.label, {
-    fontFamily: 'system-ui',
-    fontSize: '14px',
-    fontStyle: '900',
-    color: '#fff',
-    stroke: '#0a2a6a',
-    strokeThickness: 6
-  }).setOrigin(0, 0);
+      this.add.text(panelX + panelW - 18, y, `${vTxt}${suffix}`, {
+        fontFamily: 'Orbitron, system-ui',
+        fontSize: '16px',
+        fontStyle: '900',
+        color: '#fff',
+        stroke: '#0a2a6a',
+        strokeThickness: 6
+      }).setOrigin(1, 0);
+    });
 
-  this.add.text(panelX + panelW - 18, y, valueTxt, {
-    fontFamily: 'Orbitron, system-ui',
-    fontSize: '16px',
-    fontStyle: '900',
-    color: '#fff',
-    stroke: '#0a2a6a',
-    strokeThickness: 6
-  }).setOrigin(1, 0);
-});
+    // --- Técnicas (solo ADMIN) ---
+    if (isAdmin) {
+      const fmt = (v, d = 2) => (Number.isFinite(v) ? Number(v).toFixed(d) : '—');
+      const techLines = [
+        `maxFwd: ${fmt(spec.maxFwd, 1)} px/s · ${fmt(spec.maxFwd * KMH_PER_PXPS, 0)} km/h`,
+        `accel: ${fmt(spec.accel, 2)}  brakeForce: ${fmt(spec.brakeForce, 2)}`,
+        `turnRate: ${fmt(spec.turnRate, 2)}  turnMin: ${fmt(spec.turnMin, 2)}`,
+        `grip D/C/B: ${fmt(spec.gripDrive, 2)} / ${fmt(spec.gripCoast, 2)} / ${fmt(spec.gripBrake, 2)}`
+      ];
 
-// ===============================
+      this.add.text(panelX + 18, panelY + panelH - 44, techLines.join('\n'), {
+        fontFamily: 'system-ui',
+        fontSize: '10px',
+        fontStyle: '800',
+        color: '#ffffff',
+        stroke: '#0a2a6a',
+        strokeThickness: 4,
+        alpha: 0.85,
+        lineSpacing: 2
+      }).setOrigin(0, 0);
+    }
+
     // --- Botones grandes (móvil) ---
-    // ✅ EDITAR -> TUNEAR (futuro: tienda de upgrades)
     const tune = this._bigButton(width / 2 - 160, btnY, 150, 70, 'TUNEAR', () => {
       this._toast('Tienda de upgrades: próximamente 😈');
 
