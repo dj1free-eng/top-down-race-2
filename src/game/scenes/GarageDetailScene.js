@@ -290,61 +290,6 @@ playerRows.forEach((r, i) => {
 });
 
 // ===============================
-// TÉCNICO (SOLO ADMIN)
-// ===============================
-if (isAdmin) {
-  const fmt = (v, d = 2) => (Number.isFinite(v) ? Number(v).toFixed(d) : '—');
-
-  const techRows = [
-    { label: 'maxFwd',     value: `${fmt(spec.maxFwd, 1)} px/s · ${fmt(spec.maxFwd * KMH_PER_PXPS, 0)} km/h` },
-    { label: 'accel',      value: fmt(spec.accel, 1) },
-    { label: 'brakeForce', value: fmt(spec.brakeForce, 1) },
-    { label: 'turnRate',   value: fmt(spec.turnRate, 2) },
-    { label: 'turnMin',    value: fmt(spec.turnMin, 2) },
-    { label: 'gripDrive',  value: fmt(spec.gripDrive, 2) },
-    { label: 'gripCoast',  value: fmt(spec.gripCoast, 2) },
-    { label: 'gripBrake',  value: fmt(spec.gripBrake, 2) },
-    { label: 'linearDrag', value: fmt(spec.linearDrag, 3) },
-    { label: 'dragMult',   value: fmt(spec.dragMult, 2) },
-  ];
-
-  const techStartY = panelY + panelH - 52;
-  const techLineH = 12;
-
-  this.add.text(panelX + 18, techStartY - 12, 'TÉCNICO', {
-    fontFamily: 'system-ui',
-    fontSize: '11px',
-    fontStyle: '900',
-    color: '#ffffff',
-    stroke: '#0a2a6a',
-    strokeThickness: 5,
-    alpha: 0.85
-  }).setOrigin(0, 0);
-
-  techRows.forEach((r, i) => {
-    const yy = techStartY + i * techLineH;
-
-    this.add.text(panelX + 18, yy, `${r.label}:`, {
-      fontFamily: 'system-ui',
-      fontSize: '11px',
-      fontStyle: '800',
-      color: '#ffffff',
-      stroke: '#0a2a6a',
-      strokeThickness: 5,
-      alpha: 0.75
-    }).setOrigin(0, 0);
-
-    this.add.text(panelX + panelW - 18, yy, String(r.value), {
-      fontFamily: 'Orbitron, system-ui',
-      fontSize: '11px',
-      fontStyle: '900',
-      color: '#ffffff',
-      stroke: '#0a2a6a',
-      strokeThickness: 5,
-      alpha: 0.75
-    }).setOrigin(1, 0);
-  });
-}
     // --- Botones grandes (móvil) ---
     // ✅ EDITAR -> TUNEAR (futuro: tienda de upgrades)
     const tune = this._bigButton(width / 2 - 160, btnY, 150, 70, 'TUNEAR', () => {
