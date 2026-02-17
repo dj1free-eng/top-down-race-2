@@ -710,7 +710,7 @@ const btnY = height - 92;
     c.add([bg, txt, hit]);
     return c;
   }
-    const html = `
+    const html = '
       <div class="panel">
         <div class="bar">
           <input class="search" placeholder="Buscar parámetro…" />
