@@ -140,11 +140,15 @@ export class CarEditorScene extends Phaser.Scene {
       const tt = clamp((px - x) / w, 0, 1);
       let v = f.min + tt * (f.max - f.min);
 
-      // step
-      v = Math.round(v / f.step) * f.step;
+// step (cuantiza)
+v = Math.round(v / f.step) * f.step;
 
-      // decimales limpios si step es 0.1
-      if (f.step < 1) v = Math.round(v * 10) / 10;
+// redondeo según decimales del step (0.1 => 1 decimal, 0.01 => 2, etc.)
+if (f.step < 1) {
+  const decimals = (String(f.step).split('.')[1] || '').length || 1;
+  const factor = Math.pow(10, decimals);
+  v = Math.round(v * factor) / factor;
+}
 
       this._override[f.key] = v;
 
@@ -543,25 +547,40 @@ if (act === 'help') {
       return;
     }
 
-    const row = t.closest?.('.row');
-    if (!row) return;
+const row = t.closest?.('.row');
+if (!row) return;
 
-    const key = row.getAttribute('data-key');
-    const inp = row.querySelector('.inp');
-    const step = parseFloat(inp.getAttribute('data-step') || '1') || 1;
+const key = row.getAttribute('data-key');
+const inp = row.querySelector('.inp');
+if (!inp) return;
 
-    const baseVal = this._base[key];
-    let v = parseFloat(inp.value);
-    if (Number.isNaN(v)) v = (this._override?.[key] ?? baseVal);
+// step (viene del HTML: data-step="0.1" para visualScale, etc.)
+const step = Number(inp.getAttribute('data-step') || '1') || 1;
 
-    if (act === 'inc') v += step;
-    if (act === 'dec') v -= step;
+const baseVal = this._base[key];
 
-    v = (step < 1) ? Math.round(v * 100) / 100 : Math.round(v);
+// iOS/ES: si el usuario escribió "1,1" lo convertimos a "1.1"
+let raw = String(inp.value ?? '').trim();
+raw = raw.replace(',', '.');
 
-    inp.value = String(v);
-    this._override[key] = v;
-    this._refreshRow(row, key);
+let v = Number(raw);
+if (!Number.isFinite(v)) v = (this._override?.[key] ?? baseVal);
+
+if (act === 'inc') v += step;
+if (act === 'dec') v -= step;
+
+// Redondeo EXACTO según step (0.1 => 1 decimal, 0.01 => 2, 0.001 => 3...)
+if (step < 1) {
+  const decimals = (String(step).split('.')[1] || '').length || 1;
+  const factor = Math.pow(10, decimals);
+  v = Math.round(v * factor) / factor;
+} else {
+  v = Math.round(v);
+}
+
+inp.value = String(v);
+this._override[key] = v;
+this._refreshRow(row, key);
   });
 
   node.addEventListener('input', (e) => {
