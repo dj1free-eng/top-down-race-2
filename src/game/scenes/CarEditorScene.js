@@ -1086,75 +1086,75 @@ const btnY = height - 92;
     });
   }
 
-_createTechOverlay() {
-  const { width } = this.scale;
+  _createTechOverlay() {
+    const { width } = this.scale;
 
-  const KMH_PER_PXPS = 0.10;
+    const KMH_PER_PXPS = 0.10;
 
-  const liveSpec = { ...(this._base || {}), ...(this._override || {}) };
-  const fmt = (v, d = 2) => (Number.isFinite(v) ? Number(v).toFixed(d) : '—');
+    const liveSpec = { ...(this._base || {}), ...(this._override || {}) };
+    const fmt = (v, d = 2) => (Number.isFinite(v) ? Number(v).toFixed(d) : '—');
 
-  const lines = [
-    'DATOS TÉCNICOS',
-    `maxFwd: ${fmt(liveSpec.maxFwd, 1)} px/s  ·  ${fmt(liveSpec.maxFwd * KMH_PER_PXPS, 0)} km/h`,
-    `accel: ${fmt(liveSpec.accel, 2)}`,
-    `brakeForce: ${fmt(liveSpec.brakeForce, 2)}`,
-    `turnRate: ${fmt(liveSpec.turnRate, 2)}`,
-    `turnMin: ${fmt(liveSpec.turnMin, 2)}`,
-    `gripDrive: ${fmt(liveSpec.gripDrive, 2)}`,
-    `gripCoast: ${fmt(liveSpec.gripCoast, 2)}`,
-    `gripBrake: ${fmt(liveSpec.gripBrake, 2)}`,
-    `linearDrag: ${fmt(liveSpec.linearDrag, 3)}`,
-    `dragMult: ${fmt(liveSpec.dragMult, 2)}`
-  ];
+    const lines = [
+      'DATOS TÉCNICOS',
+      `maxFwd: ${fmt(liveSpec.maxFwd, 1)} px/s  ·  ${fmt(liveSpec.maxFwd * KMH_PER_PXPS, 0)} km/h`,
+      `accel: ${fmt(liveSpec.accel, 2)}`,
+      `brakeForce: ${fmt(liveSpec.brakeForce, 2)}`,
+      `turnRate: ${fmt(liveSpec.turnRate, 2)}`,
+      `turnMin: ${fmt(liveSpec.turnMin, 2)}`,
+      `gripDrive: ${fmt(liveSpec.gripDrive, 2)}`,
+      `gripCoast: ${fmt(liveSpec.gripCoast, 2)}`,
+      `gripBrake: ${fmt(liveSpec.gripBrake, 2)}`,
+      `linearDrag: ${fmt(liveSpec.linearDrag, 3)}`,
+      `dragMult: ${fmt(liveSpec.dragMult, 2)}`
+    ];
 
-  const x = width - 16;
-  const y = 52;
+    const x = width - 16;
+    const y = 52;
 
-  if (this._techOverlayText) {
-    try { this._techOverlayText.destroy(); } catch {}
+    if (this._techOverlayText) {
+      try { this._techOverlayText.destroy(); } catch {}
+    }
+
+    this._techOverlayText = this.add.text(
+      x,
+      y,
+      lines.join('\n'),
+      {
+        fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+        fontSize: '12px',
+        color: '#ffffff',
+        backgroundColor: 'rgba(11,16,32,0.70)',
+        padding: { left: 10, right: 10, top: 8, bottom: 8 },
+        lineSpacing: 2
+      }
+    )
+    .setOrigin(1, 0)
+    .setDepth(99999);
   }
 
-  this._techOverlayText = this.add.text(
-    x,
-    y,
-    lines.join('\n'),
-    {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '12px',
-      color: '#ffffff',
-      backgroundColor: 'rgba(11,16,32,0.70)',
-      padding: { left: 10, right: 10, top: 8, bottom: 8 },
-      lineSpacing: 2
-    }
-  )
-  .setOrigin(1, 0)
-  .setDepth(99999);
-}
+  _refreshTechOverlay() {
+    if (!this._techOverlayText) return;
 
-_refreshTechOverlay() {
-  if (!this._techOverlayText) return;
+    const KMH_PER_PXPS = 0.10;
+    const liveSpec = { ...(this._base || {}), ...(this._override || {}) };
+    const fmt = (v, d = 2) => (Number.isFinite(v) ? Number(v).toFixed(d) : '—');
 
-  const KMH_PER_PXPS = 0.10;
-  const liveSpec = { ...(this._base || {}), ...(this._override || {}) };
-  const fmt = (v, d = 2) => (Number.isFinite(v) ? Number(v).toFixed(d) : '—');
+    const lines = [
+      'DATOS TÉCNICOS',
+      `maxFwd: ${fmt(liveSpec.maxFwd, 1)} px/s  ·  ${fmt(liveSpec.maxFwd * KMH_PER_PXPS, 0)} km/h`,
+      `accel: ${fmt(liveSpec.accel, 2)}`,
+      `brakeForce: ${fmt(liveSpec.brakeForce, 2)}`,
+      `turnRate: ${fmt(liveSpec.turnRate, 2)}`,
+      `turnMin: ${fmt(liveSpec.turnMin, 2)}`,
+      `gripDrive: ${fmt(liveSpec.gripDrive, 2)}`,
+      `gripCoast: ${fmt(liveSpec.gripCoast, 2)}`,
+      `gripBrake: ${fmt(liveSpec.gripBrake, 2)}`,
+      `linearDrag: ${fmt(liveSpec.linearDrag, 3)}`,
+      `dragMult: ${fmt(liveSpec.dragMult, 2)}`
+    ];
 
-  const lines = [
-    'DATOS TÉCNICOS',
-    `maxFwd: ${fmt(liveSpec.maxFwd, 1)} px/s  ·  ${fmt(liveSpec.maxFwd * KMH_PER_PXPS, 0)} km/h`,
-    `accel: ${fmt(liveSpec.accel, 2)}`,
-    `brakeForce: ${fmt(liveSpec.brakeForce, 2)}`,
-    `turnRate: ${fmt(liveSpec.turnRate, 2)}`,
-    `turnMin: ${fmt(liveSpec.turnMin, 2)}`,
-    `gripDrive: ${fmt(liveSpec.gripDrive, 2)}`,
-    `gripCoast: ${fmt(liveSpec.gripCoast, 2)}`,
-    `gripBrake: ${fmt(liveSpec.gripBrake, 2)}`,
-    `linearDrag: ${fmt(liveSpec.linearDrag, 3)}`,
-    `dragMult: ${fmt(liveSpec.dragMult, 2)}`
-  ];
-
-  this._techOverlayText.setText(lines.join('\n'));
-}
+    this._techOverlayText.setText(lines.join('\n'));
+  }
 
   _destroyDomPanel() {
     try {
