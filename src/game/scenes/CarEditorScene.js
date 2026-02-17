@@ -93,10 +93,20 @@ export class CarEditorScene extends Phaser.Scene {
   });
 
   const testBtn = this._button(width / 2 + 20, btnY, 140, 54, 'TEST', () => {
-    this._writeOverride(this._carId, this._override);
-    this._destroyDomPanel();
-    this.scene.start('race', { carId: this._carId, testMode: true });
+  // ❌ NO guardar overrides aquí
+  // ✅ crear spec temporal para test (base + cambios actuales)
+  const tempSpec = { ...(this._base || {}), ...(this._override || {}) };
+
+  this._destroyDomPanel();
+
+  // Usamos factorySpec para que RaceScene lo trate como "test no persistente"
+  this.scene.start('race', {
+    carId: this._carId,
+    testMode: true,
+    factorySpec: tempSpec,
+    useFactorySpec: true
   });
+});
 
   this.add.existing(saveBtn);
   this.add.existing(testBtn);
