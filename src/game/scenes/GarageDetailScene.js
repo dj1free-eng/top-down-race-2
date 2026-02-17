@@ -113,7 +113,16 @@ function getEffectiveCarSpec(carId) {
   const saved = readSavedSpec(carId);
   return { ...factory, ...saved };
 }
-
+// ===== Telemetría (medida en pista) =====
+function readTopSpeedPxps(carId) {
+  try {
+    const raw = localStorage.getItem(`tdr2:telemetry:topSpeedPxps:${carId}`);
+    const v = Number(raw);
+    return Number.isFinite(v) ? v : null;
+  } catch {
+    return null;
+  }
+}
 export class GarageDetailScene extends Phaser.Scene {
   constructor() {
     super({ key: 'GarageDetailScene' });
@@ -231,9 +240,17 @@ export class GarageDetailScene extends Phaser.Scene {
 // STATS (C): calculadas desde físicas reales del spec efectivo
 // ===============================
 const ds = computeDesignStatsFromPhysics(spec);
+// ===== vMax REAL (medida) para que coincida con el velocímetro =====
+const topPxps = readTopSpeedPxps(this._carId);
+const topKmh  = (topPxps == null) ? null : (topPxps * KMH_PER_PXPS);
 
+// Fallback: si aún no hay telemetría (nunca lo has probado en pista),
+// usamos el techo teórico, pero SOLO hasta que haya dato real.
+const fallbackKmh = spec.maxFwd * KMH_PER_PXPS;
+const vMaxKmh = (topKmh != null) ? topKmh : fallbackKmh;
 const playerRows = [
-  { label: 'VELOCIDAD',    key: 'VEL', value: ds.VEL },
+// Velocidad: en km/h reales (medidos en pista si existen)
+{ label: 'VEL. MÁX.', key: 'VEL', value: Math.round(vMaxKmh), unit: 'km/h' },
   { label: 'ACELERACIÓN',  key: 'ACC', value: ds.ACC },
   { label: 'FRENADA',      key: 'FRN', value: ds.FRN },
   { label: 'GIRO',         key: 'GIR', value: ds.GIR },
@@ -244,7 +261,8 @@ const playerRows = [
 const fmt = (v, d = 1) => (Number.isFinite(v) ? Number(v).toFixed(d) : '—');
 
 const techRows = [
-{ label: 'maxFwd', value: `${fmt(spec.maxFwd, 1)} px/s · ${fmt(spec.maxFwd * KMH_PER_PXPS, 0)} km/h` },
+{ label: 'vMax REAL', value: (topPxps == null) ? '—' : `${fmt(topPxps, 0)} px/s · ${fmt(topKmh, 0)} km/h` },
+{ label: 'maxFwd techo', value: `${fmt(spec.maxFwd, 1)} px/s · ${fmt(spec.maxFwd * KMH_PER_PXPS, 0)} km/h` },
   { label: 'accel', value: fmt(spec.accel, 1) },
   { label: 'brake', value: fmt(spec.brakeForce, 1) },
   { label: 'turn', value: fmt(spec.turnRate, 2) },
@@ -256,7 +274,7 @@ playerRows.forEach((r, i) => {
   const y = panelY + 18 + i * 30;
 
   const v = Number.isFinite(r.value) ? Math.round(r.value) : null;
-  const vTxt = (v === null) ? '—' : String(v);
+const vTxt = (v === null) ? '—' : (r.unit ? `${v} ${r.unit}` : String(v));
 
   // Label izquierda
   this.add.text(panelX + 18, y, r.label, {
