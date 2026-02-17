@@ -139,35 +139,94 @@ export class GarageDetailScene extends Phaser.Scene {
       .setStrokeStyle(6, 0xffffff, 0.35);
 
     // ✅ estos números ya son los del spec efectivo (guardado)
-    const rows = [
-      ['MAX FWD', spec.maxFwd],
-      ['ACCEL', spec.accel],
-      ['BRAKE', spec.brakeForce],
-      ['TURN', spec.turnRate],
-      ['GRIP', spec.gripDrive],
-    ];
+    // ===============================
+// STATS (C): Jugador + Técnicas
+// ===============================
+const ds = spec.designStats || {};
+const playerRows = [
+  { label: 'VELOCIDAD', key: 'VEL', value: ds.VEL },
+  { label: 'ACELERACIÓN', key: 'ACC', value: ds.ACC },
+  { label: 'FRENADA', key: 'FRN', value: ds.FRN },
+  { label: 'GIRO', key: 'GIR', value: ds.GIR },
+  { label: 'ESTABILIDAD', key: 'EST', value: ds.EST },
+];
 
-    rows.forEach((r, i) => {
-      const y = panelY + 20 + i * 36;
+// Técnicas (para ti): formateo corto
+const fmt = (v, d = 1) => (Number.isFinite(v) ? Number(v).toFixed(d) : '—');
 
-      this.add.text(panelX + 18, y, r[0], {
-        fontFamily: 'system-ui',
-        fontSize: '14px',
-        fontStyle: '900',
-        color: '#fff',
-        stroke: '#0a2a6a',
-        strokeThickness: 6
-      }).setOrigin(0, 0);
+const techRows = [
+  { label: 'maxFwd', value: fmt(spec.maxFwd, 1) },
+  { label: 'accel', value: fmt(spec.accel, 1) },
+  { label: 'brake', value: fmt(spec.brakeForce, 1) },
+  { label: 'turn', value: fmt(spec.turnRate, 2) },
+  { label: 'grip', value: fmt(spec.gripDrive, 2) },
+];
 
-      this.add.text(panelX + panelW - 18, y, String(r[1] ?? '—'), {
-        fontFamily: 'Orbitron, system-ui',
-        fontSize: '14px',
-        fontStyle: '900',
-        color: '#fff',
-        stroke: '#0a2a6a',
-        strokeThickness: 6
-      }).setOrigin(1, 0);
-    });
+// --- Render: Player (grande) ---
+playerRows.forEach((r, i) => {
+  const y = panelY + 18 + i * 30;
+
+  const v = Number.isFinite(r.value) ? Math.round(r.value) : null;
+  const vTxt = (v === null) ? '—' : String(v);
+
+  // Label izquierda
+  this.add.text(panelX + 18, y, r.label, {
+    fontFamily: 'system-ui',
+    fontSize: '14px',
+    fontStyle: '900',
+    color: '#fff',
+    stroke: '#0a2a6a',
+    strokeThickness: 6
+  }).setOrigin(0, 0);
+
+  // Número derecha (0–99)
+  this.add.text(panelX + panelW - 18, y, vTxt, {
+    fontFamily: 'Orbitron, system-ui',
+    fontSize: '16px',
+    fontStyle: '900',
+    color: '#fff',
+    stroke: '#0a2a6a',
+    strokeThickness: 6
+  }).setOrigin(1, 0);
+});
+
+// --- Render: Técnicas (pequeñito abajo) ---
+const techStartY = panelY + panelH - 52;
+const techLineH = 12;
+
+this.add.text(panelX + 18, techStartY - 12, 'TÉCNICO', {
+  fontFamily: 'system-ui',
+  fontSize: '11px',
+  fontStyle: '900',
+  color: '#ffffff',
+  stroke: '#0a2a6a',
+  strokeThickness: 5,
+  alpha: 0.85
+}).setOrigin(0, 0);
+
+techRows.forEach((r, i) => {
+  const y = techStartY + i * techLineH;
+
+  this.add.text(panelX + 18, y, `${r.label}:`, {
+    fontFamily: 'system-ui',
+    fontSize: '11px',
+    fontStyle: '800',
+    color: '#ffffff',
+    stroke: '#0a2a6a',
+    strokeThickness: 5,
+    alpha: 0.75
+  }).setOrigin(0, 0);
+
+  this.add.text(panelX + panelW - 18, y, String(r.value), {
+    fontFamily: 'Orbitron, system-ui',
+    fontSize: '11px',
+    fontStyle: '900',
+    color: '#ffffff',
+    stroke: '#0a2a6a',
+    strokeThickness: 5,
+    alpha: 0.75
+  }).setOrigin(1, 0);
+});
 
     // --- Botones grandes (móvil) ---
     // ✅ EDITAR -> TUNEAR (futuro: tienda de upgrades)
