@@ -266,7 +266,21 @@ _createDomPanel() {
   const panelH = Math.max(220, height - topY - bottomSafe);
 
   const keys = this._collectEditableNumberKeys();
-
+const specHelp = {
+  visualScale: 'Tamaño general del coche en pista.',
+  maxFwd: 'Velocidad máxima hacia delante.',
+  maxRev: 'Velocidad máxima marcha atrás.',
+  accel: 'Qué rápido acelera.',
+  brakeForce: 'Fuerza de frenado al pulsar freno.',
+  engineBrake: 'Retención al soltar acelerador.',
+  linearDrag: 'Resistencia general al movimiento.',
+  dragMult: 'Multiplicador extra de resistencia.',
+  turnRate: 'Velocidad de giro del volante.',
+  turnMin: 'Giro mínimo permitido a alta velocidad.',
+  gripDrive: 'Agarre lateral acelerando.',
+  gripCoast: 'Agarre lateral sin acelerar.',
+  gripBrake: 'Agarre lateral frenando.'
+};
   const rows = keys.map(k => {
     const baseVal = this._base[k];
     const curVal = (this._override?.[k] ?? baseVal);
@@ -277,7 +291,10 @@ _createDomPanel() {
     return `
       <div class="row" data-key="${k}">
         <div class="left">
-          <div class="k">${k}</div>
+<div class="k">
+  ${k}
+  <span class="info" title="${specHelp[k] || ''}">ⓘ</span>
+</div>
           <div class="meta">
             <span class="b">base: <b>${baseVal}</b></span>
             <span class="d">Δ: <b>${deltaTxt}</b></span>
@@ -417,6 +434,15 @@ _createDomPanel() {
     .inp{
       font-size: 16px; /* iOS: evita auto-zoom al enfocar inputs */
     }
+    .info{
+  margin-left:6px;
+  font-size:12px;
+  opacity:0.6;
+  cursor:pointer;
+}
+.info:hover{
+  opacity:1;
+}
   `;
 
   // Inyectar el style en el root del DOM element (sin redeclarar node)
