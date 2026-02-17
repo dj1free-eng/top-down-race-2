@@ -1133,12 +1133,17 @@ const btnY = height - 92;
     const bg = this.add.rectangle(x - w, y, w, h, 0x0b1020, 0.65).setOrigin(0, 0);
     bg.setStrokeStyle(1, 0x2bff88, 0.25);
 
-    const text = this.add.text(x - w + pad, y + pad, lines.join(''), {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '12px',
-      color: '#ffffff',
-      lineSpacing: 2
-    }).setOrigin(0, 0);
+    const text = this.add.text(
+  x - w + pad,
+  y + pad,
+  lines.join('\n'),
+  {
+    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: '12px',
+    color: '#ffffff',
+    lineSpacing: 2
+  }
+).setOrigin(0, 0);
 
     this._techOverlay.add([bg, text]);
     this._techOverlayText = text;
