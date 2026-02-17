@@ -238,9 +238,8 @@ _setScroll(y) {
 
   // Excluir cosas que NO son físicas aunque sean números (si las tuvieras)
   const blacklist = new Set([
-    'collectionNo',
-    'visualScale'
-  ]);
+  'collectionNo'
+]);
 
 const out = keys.filter(k => !blacklist.has(k));
 
