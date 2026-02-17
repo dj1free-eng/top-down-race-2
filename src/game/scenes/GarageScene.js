@@ -10,8 +10,9 @@ export class GarageScene extends Phaser.Scene {
   }
 
   init(data) {
-    this._mode = data?.mode || 'player';
-  }
+  // 🔒 Solo admin si viene EXPLÍCITO como 'admin'
+  this._mode = (data && data.mode === 'admin') ? 'admin' : 'player';
+}
 
   create() {
     const { width, height } = this.scale;
@@ -168,7 +169,6 @@ _createCard(x, y, w, h, carId, spec) {
     this.scene.start('car-editor', { carId });
   } else {
 this.scene.start('GarageDetailScene', { carId, mode: 'player' });
-this.scene.start('GarageDetailScene', { carId, mode: 'admin' });
   }
 });
 
