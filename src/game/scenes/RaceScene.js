@@ -2830,7 +2830,21 @@ const right = !freezeStart && (
     const vx = body.velocity?.x || 0;
     const vy = body.velocity?.y || 0;
     const speed = Math.sqrt(vx * vx + vy * vy);
+// ===============================
+// Telemetría: top speed REAL por coche (px/s)
+// ===============================
+const carId = this.carId || this._carId || localStorage.getItem('tdr2:carId') || 'stock';
 
+this._topSpeedPxps = Math.max(this._topSpeedPxps || 0, speed);
+
+// guarda cada ~0.5s para no spamear localStorage
+this._topSpeedSaveT = (this._topSpeedSaveT || 0) + (this.game.loop.delta || 0);
+if (this._topSpeedSaveT >= 500) {
+  this._topSpeedSaveT = 0;
+  try {
+    localStorage.setItem(`tdr2:telemetry:topSpeedPxps:${carId}`, String(this._topSpeedPxps));
+  } catch {}
+}
 // =========================
 // SURFACE DETECTION (3 estados)
 // TRACK: dentro de ribbon principal
