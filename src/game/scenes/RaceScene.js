@@ -3115,15 +3115,16 @@ if (this._cullEnabled === false) {
       if (!want.has(k)) {
         const cell = this.track.gfxByCell.get(k);
         if (cell) {
-          cell.tile?.clearMask?.(true);
-cell.overlay?.clearMask?.(true);
-cell.overlay?.destroy?.();
-          cell.mask?.destroy?.();
-          cell.maskG?.destroy?.();
-          cell.tile?.destroy?.();
-          cell.stroke?.destroy?.();
-          this.track.gfxByCell.delete(k);
-        }
+  // ✅ NO destruir (evita GC + stutter). Solo ocultar.
+  cell.tile?.setVisible?.(false);
+  cell.stroke?.setVisible?.(false);
+  cell.overlay?.setVisible?.(false);
+
+  // Si usas active para ahorrar updates:
+  cell.tile && (cell.tile.active = false);
+  cell.stroke && (cell.stroke.active = false);
+  cell.overlay && (cell.overlay.active = false);
+}
       }
     }
 
@@ -3133,7 +3134,16 @@ cell.overlay?.destroy?.();
       if (!cellData || !cellData.polys || cellData.polys.length === 0) continue;
 
       let cell = this.track.gfxByCell.get(k);
+      // Si ya existe (venía oculta), la reactivamos
+if (cell) {
+  cell.tile?.setVisible?.(true);
+  cell.stroke?.setVisible?.(true);
+  cell.overlay?.setVisible?.(true);
 
+  cell.tile && (cell.tile.active = true);
+  cell.stroke && (cell.stroke.active = true);
+  cell.overlay && (cell.overlay.active = true);
+}
       if (!cell) {
         const [ix, iy] = k.split(',').map(Number);
         const x = ix * cellSize;
