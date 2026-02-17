@@ -97,11 +97,14 @@ export class CarEditorScene extends Phaser.Scene {
       this.scene.start('GarageScene', { mode: 'admin' });
     });
 
-    // -------- DOM panel (scroll nativo + inputs) --------
-    this._createDomPanel();
+// -------- DOM panel (scroll nativo + inputs) --------
+this._createDomPanel();
 
-    // -------- Botones (Phaser) --------
-    const btnY = height - 92;
+// ✅ Overlay técnico (ADMIN)
+this._createTechOverlay();
+
+// -------- Botones (Phaser) --------
+const btnY = height - 92;
 
     const saveBtn = this._button(width / 2 - 160, btnY, 140, 54, 'GUARDAR', () => {
       // Guardar = convertir BASE+DRAFT en SAVED (differences vs FACTORY)
@@ -535,6 +538,7 @@ export class CarEditorScene extends Phaser.Scene {
         this._override = {};
         this._writeDraft(this._carId, this._override);
         this._refreshDomValues(true);
+        this._refreshTechOverlay();   
         this._toast('Draft reseteado');
         return;
       }
@@ -718,7 +722,69 @@ export class CarEditorScene extends Phaser.Scene {
       onComplete: () => t.destroy()
     });
   }
+_createTechOverlay() {
+  const { width, height } = this.scale;
 
+  // Conversión consistente con HUD / garage
+  // Ajusta este valor UNA vez para todo el juego
+  const KMH_PER_PXPS = 0.10;
+
+  // Spec que estás probando AHORA MISMO:
+  // base (guardado) + override (draft actual)
+  const liveSpec = { ...(this._base || {}), ...(this._override || {}) };
+
+  const fmt = (v, d = 2) => (Number.isFinite(v) ? Number(v).toFixed(d) : '—');
+
+  // Panel (arriba derecha, debajo de ADMIN)
+  const x = width - 16;
+  const y = 52;
+
+  const lines = [
+    'DATOS TÉCNICOS',
+    `maxFwd: ${fmt(liveSpec.maxFwd, 1)} px/s  ·  ${fmt(liveSpec.maxFwd * KMH_PER_PXPS, 0)} km/h`,
+    `accel: ${fmt(liveSpec.accel, 1)}`,
+    `brake: ${fmt(liveSpec.brakeForce, 1)}`,
+    `turnRate: ${fmt(liveSpec.turnRate, 2)}`,
+    `turnMin: ${fmt(liveSpec.turnMin, 2)}`,
+    `gripDrive: ${fmt(liveSpec.gripDrive, 2)}`,
+    `gripCoast: ${fmt(liveSpec.gripCoast, 2)}`,
+    `gripBrake: ${fmt(liveSpec.gripBrake, 2)}`,
+    `linearDrag: ${fmt(liveSpec.linearDrag, 3)}`,
+    `dragMult: ${fmt(liveSpec.dragMult, 2)}`
+  ];
+
+  // Fondo semitransparente
+  const pad = 10;
+  const lineH = 14;
+  const w = 320;
+  const h = pad * 2 + lines.length * lineH;
+
+  // Guarda refs para poder refrescarlo mientras editas
+  this._techOverlay?.destroy?.();
+  this._techOverlay = this.add.container(0, 0).setDepth(999998);
+
+  const bg = this.add.rectangle(x - w, y, w, h, 0x0b1020, 0.65)
+    .setOrigin(0, 0);
+  bg.setStrokeStyle(1, 0x2bff88, 0.25);
+
+  const text = this.add.text(x - w + pad, y + pad, lines.join('\n'), {
+    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: '12px',
+    color: '#ffffff',
+    lineSpacing: 2
+  }).setOrigin(0, 0);
+
+  // Título con más punch
+  text.setText([
+    lines[0],
+    ...lines.slice(1)
+  ].join('\n'));
+
+  this._techOverlay.add([bg, text]);
+
+  // Hook para refrescarlo cuando cambias valores
+  this._techOverlayText = text;
+}
   _destroyDomPanel() {
     try {
       if (this._dom?.node) this._dom.node.remove();
