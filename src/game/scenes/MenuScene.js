@@ -249,11 +249,6 @@ const eventY = height - bottomH - eventH - 10;
     }).setOrigin(0.5, 0);
     hero.add(carSub);
 
-// “Ventana” coche: sprite real (fallback procedural) en vez de emoji
-// Preview coche: skin real si existe, si no fallback a 'car'
-this._ensureCarTexture();
-this._tryEnsureSkinTexture(carId);
-
 // Preview coche: skin real si existe, si no fallback a 'car'
 this._ensureCarTexture();
 this._tryEnsureSkinTexture(carId);
