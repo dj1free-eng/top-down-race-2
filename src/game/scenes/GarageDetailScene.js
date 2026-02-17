@@ -3,6 +3,28 @@ import { CAR_SPECS } from '../cars/carSpecs.js';
 
 const SKIN_BASE = 'assets/skins/';
 
+// ===== Spec efectivo (fábrica + guardado) =====
+function lsKey(carId) {
+  return `tdr2:carSpecs:${carId}`;
+}
+
+function readSavedSpec(carId) {
+  try {
+    const raw = localStorage.getItem(lsKey(carId));
+    if (!raw) return {};
+    const obj = JSON.parse(raw);
+    return (obj && typeof obj === 'object') ? obj : {};
+  } catch {
+    return {};
+  }
+}
+
+function getEffectiveCarSpec(carId) {
+  const factory = CAR_SPECS[carId] || CAR_SPECS.stock;
+  const saved = readSavedSpec(carId);
+  return { ...factory, ...saved };
+}
+
 export class GarageDetailScene extends Phaser.Scene {
   constructor() {
     super({ key: 'GarageDetailScene' });
@@ -19,7 +41,8 @@ export class GarageDetailScene extends Phaser.Scene {
     const { width, height } = this.scale;
     this.cameras.main.setBackgroundColor('#2aa8ff');
 
-    const spec = this._carId ? CAR_SPECS[this._carId] : null;
+    // ✅ spec EFECTIVO (incluye edits guardados)
+    const spec = this._carId ? getEffectiveCarSpec(this._carId) : null;
 
     // Header
     this.add.text(width / 2, 18, 'FICHA', {
@@ -66,36 +89,29 @@ export class GarageDetailScene extends Phaser.Scene {
     }).setOrigin(0.5, 0);
 
     // --- Layout dinámico ---
-    // Reservamos un área abajo para botones y un margen entre bloques
-    const bottomSafe = 120;     // reserva para botones
-    const gap = 18;             // separación entre bloques
+    const bottomSafe = 120;
+    const gap = 18;
     const topSafe = nameText.y + nameText.height + 18;
 
-    // Panel stats: se posiciona en función del alto disponible
     const panelH = 210;
     const panelW = Math.min(420, width - 30);
     const panelX = Math.floor(width / 2 - panelW / 2);
 
-    // Botones
     const btnY = height - 110;
 
-    // PanelY: lo ponemos por encima de los botones con margen
-    // Si hay poco alto, lo subimos pero sin pasar por encima del título/skin.
     let panelY = Math.floor(btnY - 20 - panelH);
 
-    // Área máxima para la skin: desde topSafe hasta (panelY - gap)
     const skinAreaTop = topSafe;
     const skinAreaBottom = panelY - gap;
-    const skinAreaH = Math.max(140, skinAreaBottom - skinAreaTop); // mínimo decente
+    const skinAreaH = Math.max(140, skinAreaBottom - skinAreaTop);
     const skinCenterY = Math.floor(skinAreaTop + skinAreaH / 2);
 
-    // --- Skin (proporcional, sin deformar) ---
+    // --- Skin ---
     const skinFile = spec.skin || null;
 
     if (skinFile) {
       const key = `skin_${this._carId}`;
 
-      // Si ya existe en texturas, no recargamos
       if (this.textures.exists(key)) {
         this._createSkinImage(width / 2, skinCenterY, key, width, skinAreaH);
       } else {
@@ -110,7 +126,6 @@ export class GarageDetailScene extends Phaser.Scene {
         this.load.start();
       }
     } else {
-      // Placeholder si no hay skin
       const phW = Math.min(280, width * 0.75);
       const phH = Math.min(280, skinAreaH);
       const ph = this.add.rectangle(width / 2, skinCenterY, phW, phH, 0xffd200, 0.8);
@@ -123,6 +138,7 @@ export class GarageDetailScene extends Phaser.Scene {
       .setOrigin(0)
       .setStrokeStyle(6, 0xffffff, 0.35);
 
+    // ✅ estos números ya son los del spec efectivo (guardado)
     const rows = [
       ['MAX FWD', spec.maxFwd],
       ['ACCEL', spec.accel],
@@ -154,11 +170,10 @@ export class GarageDetailScene extends Phaser.Scene {
     });
 
     // --- Botones grandes (móvil) ---
-    const edit = this._bigButton(width / 2 - 160, btnY, 150, 70, 'EDITAR', () => {
-      // Nada de vibración rara: feedback claro
-      this._toast('Editor: próximamente 😉');
+    // ✅ EDITAR -> TUNEAR (futuro: tienda de upgrades)
+    const tune = this._bigButton(width / 2 - 160, btnY, 150, 70, 'TUNEAR', () => {
+      this._toast('Tienda de upgrades: próximamente 😈');
 
-      // Micro “pulse” elegante en la skin (si existe), sin deformar
       if (this._skinImg) {
         this.tweens.add({
           targets: this._skinImg,
@@ -170,31 +185,25 @@ export class GarageDetailScene extends Phaser.Scene {
       }
     });
 
-const test = this._bigButton(width / 2 + 10, btnY, 150, 70, 'PROBAR', () => {
-  // Guardamos la selección para coherencia con RaceScene (que ya lee localStorage)
-  localStorage.setItem('tdr2:carId', this._carId);
+    const test = this._bigButton(width / 2 + 10, btnY, 150, 70, 'PROBAR', () => {
+      localStorage.setItem('tdr2:carId', this._carId);
+      this.scene.start('race', { carId: this._carId });
+    });
 
-  // RaceScene tiene super('race') y en init() lee data.carId
-  this.scene.start('race', { carId: this._carId });
-});
-
-    // Evitar que queden “tapados” por otros objetos
-    edit.bg.setDepth(50);
-    edit.tx.setDepth(51);
-    edit.shadow.setDepth(49);
+    tune.bg.setDepth(50);
+    tune.tx.setDepth(51);
+    tune.shadow.setDepth(49);
 
     test.bg.setDepth(50);
     test.tx.setDepth(51);
     test.shadow.setDepth(49);
 
-    // Toast encima de todo
     this._ensureToast();
   }
 
   _createSkinImage(cx, cy, key, width, maxHeight) {
     const img = this.add.image(cx, cy, key);
 
-    // Escalado proporcional SIN deformar
     const maxW = Math.min(320, width * 0.80);
     const maxH = Math.min(320, maxHeight);
 
