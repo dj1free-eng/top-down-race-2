@@ -286,7 +286,22 @@ const specHelp = {
     const curVal = (this._override?.[k] ?? baseVal);
     const delta = curVal - baseVal;
     const deltaTxt = (Math.abs(delta) < 1e-9) ? '0' : (delta > 0 ? `+${delta}` : `${delta}`);
-    const step = (Math.abs(baseVal) < 1) ? 0.01 : 1;
+// step por parámetro (UX pro)
+let step;
+
+if (k === 'visualScale') {
+  step = 0.1;
+} else if (k === 'linearDrag') {
+  step = 0.001;
+} else if (k === 'dragMult') {
+  step = 0.05;
+} else if (k.startsWith('grip')) {
+  step = 0.01;
+} else if (Math.abs(baseVal) < 1) {
+  step = 0.01;
+} else {
+  step = 1;
+}
 
     return `
       <div class="row" data-key="${k}">
