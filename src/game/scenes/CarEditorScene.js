@@ -292,8 +292,8 @@ const specHelp = {
       <div class="row" data-key="${k}">
         <div class="left">
 <div class="k">
-  ${k}
-  <span class="info" title="${specHelp[k] || ''}">ⓘ</span>
+  <span class="kname">${k}</span>
+  <button class="infoBtn" type="button" data-act="help" data-key="${k}" aria-label="ayuda">?</button>
 </div>
           <div class="meta">
             <span class="b">base: <b>${baseVal}</b></span>
@@ -319,6 +319,7 @@ const specHelp = {
       <div class="list">
         ${rows}
       </div>
+<div class="tip" style="display:none;"></div>   
     </div>
   `;
 
@@ -349,6 +350,7 @@ const specHelp = {
       color:#fff;
       -webkit-user-select: none;
       user-select: none;
+      position: relative;
     }
     .bar{
       display:flex;
@@ -443,6 +445,54 @@ const specHelp = {
 .info:hover{
   opacity:1;
 }
+.k{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.kname{
+  font-weight:900;
+  font-size:14px;
+}
+
+.infoBtn{
+  width:28px;
+  height:28px;
+  border-radius:10px;
+  border:1px solid rgba(183,192,255,0.25);
+  background:rgba(7,16,39,0.55);
+  color:#fff;
+  font-weight:900;
+  font-size:14px;
+  line-height:28px;
+  padding:0;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.infoBtn:active{
+  transform: scale(0.96);
+}
+
+.tip{
+  position:absolute;
+  left:12px;
+  right:12px;
+  bottom:12px;
+  padding:10px 12px;
+  border-radius:12px;
+  background:rgba(11,16,32,0.92);
+  border:1px solid rgba(43,255,136,0.30);
+  box-shadow:0 10px 30px rgba(0,0,0,0.45);
+  color:#fff;
+  font-size:13px;
+  font-weight:700;
+  z-index:9999;
+}
   `;
 
   // Inyectar el style en el root del DOM element (sin redeclarar node)
@@ -450,10 +500,28 @@ const specHelp = {
 
   // Eventos
   node.addEventListener('click', (e) => {
+  const tip = node.querySelector('.tip');
+
+const showTip = (text) => {
+  if (!tip) return;
+  tip.textContent = text || '';
+  tip.style.display = text ? 'block' : 'none';
+  // auto-hide
+  clearTimeout(this._tipTimer);
+  this._tipTimer = setTimeout(() => {
+    try { tip.style.display = 'none'; } catch {}
+  }, 1400);
+};
     const t = e.target;
     const act = t?.dataset?.act;
     if (!act) return;
-
+    
+if (act === 'help') {
+  const key = t.dataset.key;
+  const msg = (specHelp && key && specHelp[key]) ? specHelp[key] : 'Sin descripción.';
+  showTip(msg);
+  return;
+}
     if (act === 'resetAll' || act === 'clear') {
       this._override = {};
       this._refreshDomValues(true);
