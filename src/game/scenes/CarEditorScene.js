@@ -710,29 +710,6 @@ const btnY = height - 92;
     c.add([bg, txt, hit]);
     return c;
   }
-
-  _toast(msg) {
-    const { width, height } = this.scale;
-    const t = this.add.text(width / 2, height - 40, msg, {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '14px',
-      color: '#2bff88',
-      fontStyle: 'bold',
-      backgroundColor: 'rgba(11,16,32,0.85)',
-      padding: { left: 12, right: 12, top: 6, bottom: 6 }
-    }).setOrigin(0.5).setAlpha(0).setDepth(999999);
-
-    this.tweens.add({
-      targets: t,
-      alpha: 1,
-      duration: 120,
-      yoyo: true,
-      hold: 900,
-      onComplete: () => t.destroy()
-    });
-  
-    }).join('');
-
     const html = `
       <div class="panel">
         <div class="bar">
@@ -1108,82 +1085,29 @@ const btnY = height - 92;
       onComplete: () => t.destroy()
     });
   }
-_createTechOverlay() {
-  const { width, height } = this.scale;
 
-  // Conversión consistente con HUD / garage
-  // Ajusta este valor UNA vez para todo el juego
-  const KMH_PER_PXPS = 0.10;
+  _createTechOverlay() {
+    const { width } = this.scale;
 
-  // Spec que estás probando AHORA MISMO:
-  // base (guardado) + override (draft actual)
-  const liveSpec = { ...(this._base || {}), ...(this._override || {}) };
-
-  const fmt = (v, d = 2) => (Number.isFinite(v) ? Number(v).toFixed(d) : '—');
-
-  // Panel (arriba derecha, debajo de ADMIN)
-  const x = width - 16;
-  const y = 52;
-
-  const lines = [
-    'DATOS TÉCNICOS',
-    `maxFwd: ${fmt(liveSpec.maxFwd, 1)} px/s  ·  ${fmt(liveSpec.maxFwd * KMH_PER_PXPS, 0)} km/h`,
-    `accel: ${fmt(liveSpec.accel, 1)}`,
-    `brake: ${fmt(liveSpec.brakeForce, 1)}`,
-    `turnRate: ${fmt(liveSpec.turnRate, 2)}`,
-    `turnMin: ${fmt(liveSpec.turnMin, 2)}`,
-    `gripDrive: ${fmt(liveSpec.gripDrive, 2)}`,
-    `gripCoast: ${fmt(liveSpec.gripCoast, 2)}`,
-    `gripBrake: ${fmt(liveSpec.gripBrake, 2)}`,
-    `linearDrag: ${fmt(liveSpec.linearDrag, 3)}`,
-    `dragMult: ${fmt(liveSpec.dragMult, 2)}`
-  ];
-
-  // Fondo semitransparente
-  const pad = 10;
-  const lineH = 14;
-  const w = 320;
-  const h = pad * 2 + lines.length * lineH;
-
-  // Guarda refs para poder refrescarlo mientras editas
-  this._techOverlay?.destroy?.();
-  this._techOverlay = this.add.container(0, 0).setDepth(999998);
-
-  const bg = this.add.rectangle(x - w, y, w, h, 0x0b1020, 0.65)
-    .setOrigin(0, 0);
-  bg.setStrokeStyle(1, 0x2bff88, 0.25);
-
-  const text = this.add.text(x - w + pad, y + pad, lines.join('\n'), {
-    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-    fontSize: '12px',
-    color: '#ffffff',
-    lineSpacing: 2
-  }).setOrigin(0, 0);
-
-  // Título con más punch
-  text.setText([
-    lines[0],
-    ...lines.slice(1)
-  ].join('\n'));
-
-  this._techOverlay.add([bg, text]);
-
-  // Hook para refrescarlo cuando cambias valores
-  this._techOverlayText = text;
-}
-    // ✅ PEGA AQUÍ ESTE MÉTODO
-  _refreshTechOverlay() {
-    if (!this._techOverlayText) return;
-
+    // Conversión consistente con HUD / garage
+    // Ajusta este valor UNA vez para todo el juego
     const KMH_PER_PXPS = 0.10;
+
+    // Spec que estás probando AHORA MISMO:
+    // base (guardado) + override (draft actual)
     const liveSpec = { ...(this._base || {}), ...(this._override || {}) };
+
     const fmt = (v, d = 2) => (Number.isFinite(v) ? Number(v).toFixed(d) : '—');
+
+    // Panel (arriba derecha, debajo de ADMIN)
+    const x = width - 16;
+    const y = 52;
 
     const lines = [
       'DATOS TÉCNICOS',
       `maxFwd: ${fmt(liveSpec.maxFwd, 1)} px/s  ·  ${fmt(liveSpec.maxFwd * KMH_PER_PXPS, 0)} km/h`,
       `accel: ${fmt(liveSpec.accel, 1)}`,
-      `brake: ${fmt(liveSpec.brakeForce, 1)}`,
+      `brakeForce: ${fmt(liveSpec.brakeForce, 1)}`,
       `turnRate: ${fmt(liveSpec.turnRate, 2)}`,
       `turnMin: ${fmt(liveSpec.turnMin, 2)}`,
       `gripDrive: ${fmt(liveSpec.gripDrive, 2)}`,
@@ -1193,42 +1117,38 @@ _createTechOverlay() {
       `dragMult: ${fmt(liveSpec.dragMult, 2)}`
     ];
 
-  // -----------------------------
-  // Overlay técnico (ADMIN)
-  // -----------------------------
-  _createTechOverlay() {
-    const { width } = this.scale;
+    // Fondo semitransparente
+    const pad = 10;
+    const lineH = 14;
+    const w = 320;
+    const h = pad * 2 + lines.length * lineH;
 
-    // Anclado arriba-derecha (debajo de 'ADMIN')
-    const x = width - 16;
-    const y = 52;
+    // Si existía, lo destruimos antes
+    if (this._techOverlay) {
+      try { this._techOverlay.destroy(); } catch {}
+    }
 
-    // Si existía, lo destruimos para recrear limpio
-    try { this._techOverlay?.destroy?.(); } catch {}
     this._techOverlay = this.add.container(0, 0).setDepth(999998);
 
-    // Fondo + texto (el tamaño real lo ajustamos en _refreshTechOverlay)
-    const bg = this.add.rectangle(0, 0, 10, 10, 0x0b1020, 0.65).setOrigin(1, 0);
+    const bg = this.add.rectangle(x - w, y, w, h, 0x0b1020, 0.65).setOrigin(0, 0);
     bg.setStrokeStyle(1, 0x2bff88, 0.25);
 
-    const text = this.add.text(0, 0, '', {
+    const text = this.add.text(x - w + pad, y + pad, lines.join('
+'), {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
       fontSize: '12px',
       color: '#ffffff',
       lineSpacing: 2
-    }).setOrigin(1, 0);
+    }).setOrigin(0, 0);
 
     this._techOverlay.add([bg, text]);
-    this._techOverlay.setPosition(x, y);
-
-    this._techOverlayBg = bg;
     this._techOverlayText = text;
   }
 
   _refreshTechOverlay() {
-    if (!this._techOverlayText || !this._techOverlayBg) return;
+    if (!this._techOverlayText) return;
 
-    const KMH_PER_PXPS = 0.10; // mismo factor que HUD/garage
+    const KMH_PER_PXPS = 0.10;
     const liveSpec = { ...(this._base || {}), ...(this._override || {}) };
     const fmt = (v, d = 2) => (Number.isFinite(v) ? Number(v).toFixed(d) : '—');
 
@@ -1246,22 +1166,10 @@ _createTechOverlay() {
       `dragMult: ${fmt(liveSpec.dragMult, 2)}`
     ];
 
-    this._techOverlayText.setText(lines.join('\n'));
-
-    // Ajustar tamaño del fondo al texto
-    const pad = 10;
-    const w = Math.ceil(this._techOverlayText.width + pad * 2);
-    const h = Math.ceil(this._techOverlayText.height + pad * 2);
-
-    this._techOverlayBg.setSize(w, h);
-    this._techOverlayBg.setDisplaySize(w, h);
-
-    this._techOverlayText.setPosition(-pad, pad); // origin(1,0) => x negativo
-    this._techOverlayBg.setPosition(0, 0);
+    this._techOverlayText.setText(lines.join('
+'));
   }
 
-    this._techOverlayText.setText(lines.join('\n'));
-  }
   _destroyDomPanel() {
     try {
       if (this._dom?.node) this._dom.node.remove();
