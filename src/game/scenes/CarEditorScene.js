@@ -1186,4 +1186,3 @@ const btnY = height - 92;
     this._techOverlayBg = null;
     this._dom = null;
   }
-}
