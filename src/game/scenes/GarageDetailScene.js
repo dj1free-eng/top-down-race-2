@@ -132,12 +132,12 @@ export class GarageDetailScene extends Phaser.Scene {
   }
 
   init(data) {
-    this._carId = data?.carId || null;
-    this._mode = data?.mode || 'player'; // 'player' | 'admin'
-    this._skinImg = null;
-    this._toastText = null;
-    this._toastTimer = null;
-  }
+  this._carId = data?.carId || null;
+  this._mode = data?.mode || 'player'; // 👈 IMPORTANTÍSIMO
+  this._skinImg = null;
+  this._toastText = null;
+  this._toastTimer = null;
+}
 
   create() {
     const { width, height } = this.scale;
@@ -167,7 +167,7 @@ export class GarageDetailScene extends Phaser.Scene {
       strokeThickness: 6
     }).setOrigin(0, 0).setInteractive({ useHandCursor: true });
 
-    back.on('pointerdown', () => this.scene.start('GarageScene', { mode: this._mode }));
+back.on('pointerdown', () => this.scene.start('GarageScene', { mode: this._mode }));
 
     if (!spec) {
       this.add.text(width / 2, height / 2, 'Coche no encontrado', {
