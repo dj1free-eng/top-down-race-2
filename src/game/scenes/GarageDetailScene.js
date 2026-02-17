@@ -2,7 +2,96 @@ import Phaser from 'phaser';
 import { CAR_SPECS } from '../cars/carSpecs.js';
 
 const SKIN_BASE = 'assets/skins/';
+// ===============================
+// STATS DERIVADAS (Arcade pero reales)
+// - Se calculan desde físicas del spec efectivo
+// - Rangos = min/max reales sacados de CAR_SPECS (fábrica)
+// ===============================
 
+const KMH_PER_PXPS = 0.10; // 1000 px/s -> ~100 km/h (tu objetivo)
+
+const clamp01 = (t) => Math.max(0, Math.min(1, t));
+
+function norm01(v, min, max) {
+  if (!Number.isFinite(v) || !Number.isFinite(min) || !Number.isFinite(max) || max === min) return 0;
+  return clamp01((v - min) / (max - min));
+}
+
+function to99(t01) {
+  // 1..99 (evita 0, queda más “juego”)
+  return Math.round(1 + clamp01(t01) * 98);
+}
+
+function computeFactoryRanges() {
+  const fields = [
+    'maxFwd',
+    'accel',
+    'brakeForce',
+    'turnRate',
+    'turnMin',
+    'gripDrive',
+    'gripCoast',
+    'gripBrake'
+  ];
+
+  const ranges = {};
+  for (const f of fields) ranges[f] = { min: Infinity, max: -Infinity };
+
+  for (const spec of Object.values(CAR_SPECS || {})) {
+    if (!spec || typeof spec !== 'object') continue;
+
+    for (const f of fields) {
+      const v = spec[f];
+      if (!Number.isFinite(v)) continue;
+      ranges[f].min = Math.min(ranges[f].min, v);
+      ranges[f].max = Math.max(ranges[f].max, v);
+    }
+  }
+
+  // sane defaults (por si un día falta algún campo en fábrica)
+  for (const f of fields) {
+    if (!Number.isFinite(ranges[f].min) || !Number.isFinite(ranges[f].max) || ranges[f].min === Infinity) {
+      ranges[f] = { min: 0, max: 1 };
+    }
+  }
+
+  return ranges;
+}
+
+// calculamos una vez por módulo (barato)
+const FACTORY_R = computeFactoryRanges();
+
+function computeDesignStatsFromPhysics(spec) {
+  // Normalizados (0..1) usando rangos reales de fábrica
+  const nMaxFwd = norm01(spec.maxFwd, FACTORY_R.maxFwd.min, FACTORY_R.maxFwd.max);
+  const nAccel  = norm01(spec.accel,  FACTORY_R.accel.min,  FACTORY_R.accel.max);
+  const nBrake  = norm01(spec.brakeForce, FACTORY_R.brakeForce.min, FACTORY_R.brakeForce.max);
+
+  const nTurnRate = norm01(spec.turnRate, FACTORY_R.turnRate.min, FACTORY_R.turnRate.max);
+  const nTurnMin  = norm01(spec.turnMin,  FACTORY_R.turnMin.min,  FACTORY_R.turnMin.max);
+
+  const nGripD = norm01(spec.gripDrive, FACTORY_R.gripDrive.min, FACTORY_R.gripDrive.max);
+  const nGripC = norm01(spec.gripCoast, FACTORY_R.gripCoast.min, FACTORY_R.gripCoast.max);
+  const nGripB = norm01(spec.gripBrake, FACTORY_R.gripBrake.min, FACTORY_R.gripBrake.max);
+
+  // 5 stats jugador:
+  // - VELOCIDAD: maxFwd (directo)
+  // - ACELERACIÓN: accel (directo)
+  // - FRENADA: brakeForce (directo)
+  // - GIRO: turnRate alto + turnMin bajo (más giro a alta velocidad)
+  // - ESTABILIDAD: grips (principalmente gripCoast, luego brake/drive)
+  const VEL = to99(nMaxFwd);
+  const ACC = to99(nAccel);
+  const FRN = to99(nBrake);
+
+  const giro01 = clamp01(nTurnRate * 0.70 + (1 - nTurnMin) * 0.30);
+  const GIR = to99(giro01);
+
+  const est01 = clamp01(nGripC * 0.60 + nGripB * 0.20 + nGripD * 0.20);
+  const EST = to99(est01);
+
+  return { VEL, ACC, FRN, GIR, EST };
+}
 // ===== Spec efectivo (fábrica + guardado) =====
 function lsKey(carId) {
   return `tdr2:carSpecs:${carId}`;
@@ -138,24 +227,24 @@ export class GarageDetailScene extends Phaser.Scene {
       .setOrigin(0)
       .setStrokeStyle(6, 0xffffff, 0.35);
 
-    // ✅ estos números ya son los del spec efectivo (guardado)
-    // ===============================
-// STATS (C): Jugador + Técnicas
 // ===============================
-const ds = spec.designStats || {};
+// STATS (C): calculadas desde físicas reales del spec efectivo
+// ===============================
+const ds = computeDesignStatsFromPhysics(spec);
+
 const playerRows = [
-  { label: 'VELOCIDAD', key: 'VEL', value: ds.VEL },
-  { label: 'ACELERACIÓN', key: 'ACC', value: ds.ACC },
-  { label: 'FRENADA', key: 'FRN', value: ds.FRN },
-  { label: 'GIRO', key: 'GIR', value: ds.GIR },
-  { label: 'ESTABILIDAD', key: 'EST', value: ds.EST },
+  { label: 'VELOCIDAD',    key: 'VEL', value: ds.VEL },
+  { label: 'ACELERACIÓN',  key: 'ACC', value: ds.ACC },
+  { label: 'FRENADA',      key: 'FRN', value: ds.FRN },
+  { label: 'GIRO',         key: 'GIR', value: ds.GIR },
+  { label: 'ESTABILIDAD',  key: 'EST', value: ds.EST },
 ];
 
 // Técnicas (para ti): formateo corto
 const fmt = (v, d = 1) => (Number.isFinite(v) ? Number(v).toFixed(d) : '—');
 
 const techRows = [
-  { label: 'maxFwd', value: fmt(spec.maxFwd, 1) },
+{ label: 'maxFwd', value: `${fmt(spec.maxFwd, 1)} px/s · ${fmt(spec.maxFwd * KMH_PER_PXPS, 0)} km/h` },
   { label: 'accel', value: fmt(spec.accel, 1) },
   { label: 'brake', value: fmt(spec.brakeForce, 1) },
   { label: 'turn', value: fmt(spec.turnRate, 2) },
