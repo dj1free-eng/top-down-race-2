@@ -809,7 +809,6 @@ _createTechOverlay() {
 
     this._techOverlayText.setText(lines.join('\n'));
   }
-}
   _destroyDomPanel() {
     try {
       if (this._dom?.node) this._dom.node.remove();
