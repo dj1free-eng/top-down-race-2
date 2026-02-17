@@ -242,23 +242,109 @@ init(data) {
 // STATS (C): calculadas desde físicas reales del spec efectivo
 // ===============================
 const ds = computeDesignStatsFromPhysics(spec);
-// ===== vMax REAL (medida) para que coincida con el velocímetro =====
+
+// ===== vMax REAL (medida en pista) para que coincida con el velocímetro =====
 const topPxps = readTopSpeedPxps(this._carId);
 const topKmh  = (topPxps == null) ? null : (topPxps * KMH_PER_PXPS);
 
-// Fallback: si aún no hay telemetría (nunca lo has probado en pista),
-// usamos el techo teórico, pero SOLO hasta que haya dato real.
+// Fallback: si aún no hay telemetría, usamos el techo teórico
 const fallbackKmh = spec.maxFwd * KMH_PER_PXPS;
 const vMaxKmh = (topKmh != null) ? topKmh : fallbackKmh;
+
+// ===============================
+// STATS JUGADOR (siempre visibles)
+// ===============================
 const playerRows = [
-// Velocidad: en km/h reales (medidos en pista si existen)
-{ label: 'VEL. MÁX.', key: 'VEL', value: Math.round(vMaxKmh), unit: 'km/h' },
-  { label: 'ACELERACIÓN',  key: 'ACC', value: ds.ACC },
-  { label: 'FRENADA',      key: 'FRN', value: ds.FRN },
-  { label: 'GIRO',         key: 'GIR', value: ds.GIR },
-  { label: 'ESTABILIDAD',  key: 'EST', value: ds.EST },
+  { label: 'VEL. MÁX.',      value: Math.round(vMaxKmh), unit: 'km/h' },
+  { label: 'ACELERACIÓN',    value: ds.ACC },
+  { label: 'FRENADA',        value: ds.FRN },
+  { label: 'GIRO',           value: ds.GIR },
+  { label: 'ESTABILIDAD',    value: ds.EST },
 ];
 
+// Render: filas jugador
+playerRows.forEach((r, i) => {
+  const y = panelY + 18 + i * 30;
+
+  const valueTxt = (r.unit)
+    ? `${r.value} ${r.unit}`
+    : String(Math.round(r.value ?? 0));
+
+  this.add.text(panelX + 18, y, r.label, {
+    fontFamily: 'system-ui',
+    fontSize: '14px',
+    fontStyle: '900',
+    color: '#fff',
+    stroke: '#0a2a6a',
+    strokeThickness: 6
+  }).setOrigin(0, 0);
+
+  this.add.text(panelX + panelW - 18, y, valueTxt, {
+    fontFamily: 'Orbitron, system-ui',
+    fontSize: '16px',
+    fontStyle: '900',
+    color: '#fff',
+    stroke: '#0a2a6a',
+    strokeThickness: 6
+  }).setOrigin(1, 0);
+});
+
+// ===============================
+// TÉCNICO (SOLO ADMIN)
+// ===============================
+if (isAdmin) {
+  const fmt = (v, d = 2) => (Number.isFinite(v) ? Number(v).toFixed(d) : '—');
+
+  const techRows = [
+    { label: 'maxFwd',     value: `${fmt(spec.maxFwd, 1)} px/s · ${fmt(spec.maxFwd * KMH_PER_PXPS, 0)} km/h` },
+    { label: 'accel',      value: fmt(spec.accel, 1) },
+    { label: 'brakeForce', value: fmt(spec.brakeForce, 1) },
+    { label: 'turnRate',   value: fmt(spec.turnRate, 2) },
+    { label: 'turnMin',    value: fmt(spec.turnMin, 2) },
+    { label: 'gripDrive',  value: fmt(spec.gripDrive, 2) },
+    { label: 'gripCoast',  value: fmt(spec.gripCoast, 2) },
+    { label: 'gripBrake',  value: fmt(spec.gripBrake, 2) },
+    { label: 'linearDrag', value: fmt(spec.linearDrag, 3) },
+    { label: 'dragMult',   value: fmt(spec.dragMult, 2) },
+  ];
+
+  const techStartY = panelY + panelH - 52;
+  const techLineH = 12;
+
+  this.add.text(panelX + 18, techStartY - 12, 'TÉCNICO', {
+    fontFamily: 'system-ui',
+    fontSize: '11px',
+    fontStyle: '900',
+    color: '#ffffff',
+    stroke: '#0a2a6a',
+    strokeThickness: 5,
+    alpha: 0.85
+  }).setOrigin(0, 0);
+
+  techRows.forEach((r, i) => {
+    const yy = techStartY + i * techLineH;
+
+    this.add.text(panelX + 18, yy, `${r.label}:`, {
+      fontFamily: 'system-ui',
+      fontSize: '11px',
+      fontStyle: '800',
+      color: '#ffffff',
+      stroke: '#0a2a6a',
+      strokeThickness: 5,
+      alpha: 0.75
+    }).setOrigin(0, 0);
+
+    this.add.text(panelX + panelW - 18, yy, String(r.value), {
+      fontFamily: 'Orbitron, system-ui',
+      fontSize: '11px',
+      fontStyle: '900',
+      color: '#ffffff',
+      stroke: '#0a2a6a',
+      strokeThickness: 5,
+      alpha: 0.75
+    }).setOrigin(1, 0);
+  });
+}
     // --- Botones grandes (móvil) ---
     // ✅ EDITAR -> TUNEAR (futuro: tienda de upgrades)
     const tune = this._bigButton(width / 2 - 160, btnY, 150, 70, 'TUNEAR', () => {
