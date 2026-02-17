@@ -128,14 +128,16 @@ export class GarageDetailScene extends Phaser.Scene {
     super({ key: 'GarageDetailScene' });
   }
 
-  init(data) {
-    this._carId = data?.carId || null;
-    this._skinImg = null;
-    this._toastText = null;
-    this._toastTimer = null;
-  }
+init(data) {
+  this._carId = data?.carId || null;
+  this._mode = data?.mode || 'player'; // 👈 NUEVO
+  this._skinImg = null;
+  this._toastText = null;
+  this._toastTimer = null;
+}
 
   create() {
+    const isAdmin = this._mode === 'admin';
     const { width, height } = this.scale;
     this.cameras.main.setBackgroundColor('#2aa8ff');
 
@@ -296,7 +298,7 @@ const vTxt = (v === null) ? '—' : (r.unit ? `${v} ${r.unit}` : String(v));
     strokeThickness: 6
   }).setOrigin(1, 0);
 });
-
+if (isAdmin) {
 // --- Render: Técnicas (pequeñito abajo) ---
 const techStartY = panelY + panelH - 52;
 const techLineH = 12;
@@ -334,7 +336,7 @@ techRows.forEach((r, i) => {
     alpha: 0.75
   }).setOrigin(1, 0);
 });
-
+}
     // --- Botones grandes (móvil) ---
     // ✅ EDITAR -> TUNEAR (futuro: tienda de upgrades)
     const tune = this._bigButton(width / 2 - 160, btnY, 150, 70, 'TUNEAR', () => {
