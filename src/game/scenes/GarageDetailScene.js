@@ -258,7 +258,7 @@ const playerRows = [
   { label: 'GIRO',         key: 'GIR', value: ds.GIR },
   { label: 'ESTABILIDAD',  key: 'EST', value: ds.EST },
 ];
-}
+
     // --- Botones grandes (móvil) ---
     // ✅ EDITAR -> TUNEAR (futuro: tienda de upgrades)
     const tune = this._bigButton(width / 2 - 160, btnY, 150, 70, 'TUNEAR', () => {
