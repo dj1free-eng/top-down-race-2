@@ -730,7 +730,7 @@ const btnY = height - 92;
       hold: 900,
       onComplete: () => t.destroy()
     });
-  }
+  
     }).join('');
 
     const html = `
