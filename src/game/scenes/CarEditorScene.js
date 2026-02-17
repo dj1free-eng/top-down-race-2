@@ -1086,89 +1086,75 @@ const btnY = height - 92;
     });
   }
 
-  _createTechOverlay() {
-    const { width } = this.scale;
+_createTechOverlay() {
+  const { width } = this.scale;
 
-    // Conversión consistente con HUD / garage
-    // Ajusta este valor UNA vez para todo el juego
-    const KMH_PER_PXPS = 0.10;
+  const KMH_PER_PXPS = 0.10;
 
-    // Spec que estás probando AHORA MISMO:
-    // base (guardado) + override (draft actual)
-    const liveSpec = { ...(this._base || {}), ...(this._override || {}) };
+  const liveSpec = { ...(this._base || {}), ...(this._override || {}) };
+  const fmt = (v, d = 2) => (Number.isFinite(v) ? Number(v).toFixed(d) : '—');
 
-    const fmt = (v, d = 2) => (Number.isFinite(v) ? Number(v).toFixed(d) : '—');
+  const lines = [
+    'DATOS TÉCNICOS',
+    `maxFwd: ${fmt(liveSpec.maxFwd, 1)} px/s  ·  ${fmt(liveSpec.maxFwd * KMH_PER_PXPS, 0)} km/h`,
+    `accel: ${fmt(liveSpec.accel, 2)}`,
+    `brakeForce: ${fmt(liveSpec.brakeForce, 2)}`,
+    `turnRate: ${fmt(liveSpec.turnRate, 2)}`,
+    `turnMin: ${fmt(liveSpec.turnMin, 2)}`,
+    `gripDrive: ${fmt(liveSpec.gripDrive, 2)}`,
+    `gripCoast: ${fmt(liveSpec.gripCoast, 2)}`,
+    `gripBrake: ${fmt(liveSpec.gripBrake, 2)}`,
+    `linearDrag: ${fmt(liveSpec.linearDrag, 3)}`,
+    `dragMult: ${fmt(liveSpec.dragMult, 2)}`
+  ];
 
-    // Panel (arriba derecha, debajo de ADMIN)
-    const x = width - 16;
-    const y = 52;
+  const x = width - 16;
+  const y = 52;
 
-    const lines = [
-      'DATOS TÉCNICOS',
-      `maxFwd: ${fmt(liveSpec.maxFwd, 1)} px/s  ·  ${fmt(liveSpec.maxFwd * KMH_PER_PXPS, 0)} km/h`,
-      `accel: ${fmt(liveSpec.accel, 1)}`,
-      `brakeForce: ${fmt(liveSpec.brakeForce, 1)}`,
-      `turnRate: ${fmt(liveSpec.turnRate, 2)}`,
-      `turnMin: ${fmt(liveSpec.turnMin, 2)}`,
-      `gripDrive: ${fmt(liveSpec.gripDrive, 2)}`,
-      `gripCoast: ${fmt(liveSpec.gripCoast, 2)}`,
-      `gripBrake: ${fmt(liveSpec.gripBrake, 2)}`,
-      `linearDrag: ${fmt(liveSpec.linearDrag, 3)}`,
-      `dragMult: ${fmt(liveSpec.dragMult, 2)}`
-    ];
+  if (this._techOverlayText) {
+    try { this._techOverlayText.destroy(); } catch {}
+  }
 
-    // Fondo semitransparente
-    const pad = 10;
-    const lineH = 14;
-    const w = 320;
-    const h = pad * 2 + lines.length * lineH;
-
-    // Si existía, lo destruimos antes
-    if (this._techOverlay) {
-      try { this._techOverlay.destroy(); } catch {}
-    }
-
-    this._techOverlay = this.add.container(0, 0).setDepth(999998);
-
-    const bg = this.add.rectangle(x - w, y, w, h, 0x0b1020, 0.65).setOrigin(0, 0);
-    bg.setStrokeStyle(1, 0x2bff88, 0.25);
-
-    const text = this.add.text(x - w + pad, y + pad, lines.join('
-'), {
+  this._techOverlayText = this.add.text(
+    x,
+    y,
+    lines.join('\n'),
+    {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
       fontSize: '12px',
       color: '#ffffff',
+      backgroundColor: 'rgba(11,16,32,0.70)',
+      padding: { left: 10, right: 10, top: 8, bottom: 8 },
       lineSpacing: 2
-    }).setOrigin(0, 0);
+    }
+  )
+  .setOrigin(1, 0)
+  .setDepth(99999);
+}
 
-    this._techOverlay.add([bg, text]);
-    this._techOverlayText = text;
-  }
+_refreshTechOverlay() {
+  if (!this._techOverlayText) return;
 
-  _refreshTechOverlay() {
-    if (!this._techOverlayText) return;
+  const KMH_PER_PXPS = 0.10;
+  const liveSpec = { ...(this._base || {}), ...(this._override || {}) };
+  const fmt = (v, d = 2) => (Number.isFinite(v) ? Number(v).toFixed(d) : '—');
 
-    const KMH_PER_PXPS = 0.10;
-    const liveSpec = { ...(this._base || {}), ...(this._override || {}) };
-    const fmt = (v, d = 2) => (Number.isFinite(v) ? Number(v).toFixed(d) : '—');
+  const lines = [
+    'DATOS TÉCNICOS',
+    `maxFwd: ${fmt(liveSpec.maxFwd, 1)} px/s  ·  ${fmt(liveSpec.maxFwd * KMH_PER_PXPS, 0)} km/h`,
+    `accel: ${fmt(liveSpec.accel, 2)}`,
+    `brakeForce: ${fmt(liveSpec.brakeForce, 2)}`,
+    `turnRate: ${fmt(liveSpec.turnRate, 2)}`,
+    `turnMin: ${fmt(liveSpec.turnMin, 2)}`,
+    `gripDrive: ${fmt(liveSpec.gripDrive, 2)}`,
+    `gripCoast: ${fmt(liveSpec.gripCoast, 2)}`,
+    `gripBrake: ${fmt(liveSpec.gripBrake, 2)}`,
+    `linearDrag: ${fmt(liveSpec.linearDrag, 3)}`,
+    `dragMult: ${fmt(liveSpec.dragMult, 2)}`
+  ];
 
-    const lines = [
-      'DATOS TÉCNICOS',
-      `maxFwd: ${fmt(liveSpec.maxFwd, 1)} px/s  ·  ${fmt(liveSpec.maxFwd * KMH_PER_PXPS, 0)} km/h`,
-      `accel: ${fmt(liveSpec.accel, 1)}`,
-      `brakeForce: ${fmt(liveSpec.brakeForce, 1)}`,
-      `turnRate: ${fmt(liveSpec.turnRate, 2)}`,
-      `turnMin: ${fmt(liveSpec.turnMin, 2)}`,
-      `gripDrive: ${fmt(liveSpec.gripDrive, 2)}`,
-      `gripCoast: ${fmt(liveSpec.gripCoast, 2)}`,
-      `gripBrake: ${fmt(liveSpec.gripBrake, 2)}`,
-      `linearDrag: ${fmt(liveSpec.linearDrag, 3)}`,
-      `dragMult: ${fmt(liveSpec.dragMult, 2)}`
-    ];
-
-    this._techOverlayText.setText(lines.join('
-'));
-  }
+  this._techOverlayText.setText(lines.join('\n'));
+}
 
   _destroyDomPanel() {
     try {
