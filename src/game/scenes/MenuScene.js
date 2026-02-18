@@ -233,33 +233,42 @@ export class MenuScene extends Phaser.Scene {
     hero.add(trackLabel);
 
 // =========================
-// Panel evento (SOLO imagen) — abajo-izquierda (como objetivo)
+// Panel evento (SOLO imagen) -> IZQUIERDA como referencia
 // =========================
+{
+  const isLandscape = width >= height * 1.05;
 
-// Tamaño objetivo del panel (no debe tapar la botonera)
-const eventTargetW = clamp(Math.floor(width * 0.44), 300, 520);
-const eventTargetH = clamp(Math.floor(centerH * 0.34), 140, 220);
+  // Ancho objetivo del panel (landscape: más pequeño; portrait: casi full)
+  const panelTargetW = isLandscape
+    ? clamp(Math.floor(width * 0.34), 260, 520)
+    : clamp(Math.floor(width * 0.82), 320, 620);
 
-// Posición: abajo-izquierda dentro del “hero area”
-const eventPanelX = pad + Math.floor(eventTargetW * 0.52);
-const eventPanelY = Math.floor(centerY0 + centerH - eventTargetH * 0.55);
+  // Container del panel (para poder posicionar fácil)
+  const eventPanel = this.add.container(0, 0).setDepth(10);
+  this._ui.add(eventPanel);
 
-const eventPanelImg = this.add.image(eventPanelX, eventPanelY, 'panel_event')
-  .setOrigin(0.5)
-  .setDepth(10); // 👈 por debajo de la botonera (que va a 9999)
+  // Imagen del panel
+  const panelImg = this.add.image(0, 0, 'panel_event').setOrigin(0.5);
+  const panelScale = panelTargetW / (panelImg.width || 1);
+  panelImg.setScale(panelScale);
+  eventPanel.add(panelImg);
 
-// Escala “contain” (encaja sin deformar)
-const sX = eventTargetW / (eventPanelImg.width || 1);
-const sY = eventTargetH / (eventPanelImg.height || 1);
-eventPanelImg.setScale(Math.min(sX, sY));
+  // Medidas ya escaladas
+  const pw = (panelImg.width || 1) * panelScale;
+  const ph = (panelImg.height || 1) * panelScale;
 
-this._ui.add(eventPanelImg);
+  // Posición: izquierda y justo encima de la botonera
+  const panelX = pad + Math.floor(pw / 2);
+  const panelY = bottomY - pad - Math.floor(ph / 2);
 
+  eventPanel.setPosition(panelX, panelY);
+}
     // =========================
     // Botonera (foto 2) SIN bottom bar
     // =========================
     const bottom = this.add.container(0, bottomY);
-    this._ui.add(bottom);
+bottom.setDepth(30); // ✅ por encima del panel
+this._ui.add(bottom);
 
     const btnY = bottomY + Math.floor(bottomH / 2);
     const bw = clamp(Math.floor(width * 0.24), 120, 190);
