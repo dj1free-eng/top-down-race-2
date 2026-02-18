@@ -232,19 +232,97 @@ export class MenuScene extends Phaser.Scene {
     ).setOrigin(0.5);
     hero.add(trackLabel);
 
-    // =========================
-    // Panel evento (imagen estilo foto 2)
-    // =========================
-    const eventPanelY = Math.floor(height * 0.58);
+// =========================
+// Panel evento (imagen + overlays) estilo foto 2
+// =========================
+const eventPanelY = Math.floor(height * 0.58);
 
-    const eventPanel = this.add.image(width / 2, eventPanelY, 'panel_event')
-      .setOrigin(0.5)
-      .setDepth(5);
+// Container del panel (todo vive aquí)
+const eventPanel = this.add.container(width / 2, eventPanelY).setDepth(5);
+this._ui.add(eventPanel);
 
-    const maxW = clamp(Math.floor(width * 0.82), 320, 620);
-    eventPanel.setScale(maxW / (eventPanel.width || 1));
+// Imagen base
+const panelImg = this.add.image(0, 0, 'panel_event').setOrigin(0.5);
 
-    this._ui.add(eventPanel);
+// Escalado “ancho objetivo”
+const panelMaxW = clamp(Math.floor(width * 0.82), 320, 620);
+const panelScale = panelMaxW / (panelImg.width || 1);
+panelImg.setScale(panelScale);
+
+eventPanel.add(panelImg);
+
+// Medidas ya escaladas para colocar overlays en “coordenadas de panel”
+const pw = (panelImg.width || 1) * panelScale;
+const ph = (panelImg.height || 1) * panelScale;
+
+// Helpers: posiciones relativas (0..1) dentro del panel
+const px = (t) => (-pw / 2) + pw * t;
+const py = (t) => (-ph / 2) + ph * t;
+
+// ---------- TEXTOS ----------
+const title = this.add.text(px(0.50), py(0.20), 'EVENTO ACTIVO', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: `${Math.floor(28 * panelScale)}px`,
+  color: '#6CFF8F',
+  fontStyle: 'bold'
+}).setOrigin(0.5);
+eventPanel.add(title);
+
+const objLabel = this.add.text(px(0.18), py(0.52), 'Objetivo:', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: `${Math.floor(22 * panelScale)}px`,
+  color: '#a8b0c8'
+}).setOrigin(0, 0.5);
+eventPanel.add(objLabel);
+
+// Puedes meter aquí un objetivo dinámico real si quieres
+const objText = this.add.text(px(0.42), py(0.52), '—', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: `${Math.floor(22 * panelScale)}px`,
+  color: '#dfe6ff'
+}).setOrigin(0, 0.5);
+eventPanel.add(objText);
+
+const progLabel = this.add.text(px(0.18), py(0.72), 'Progreso:', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: `${Math.floor(22 * panelScale)}px`,
+  color: '#a8b0c8'
+}).setOrigin(0, 0.5);
+eventPanel.add(progLabel);
+
+// ---------- BARRA PROGRESO ----------
+const progress = 0.35; // <-- cámbialo por tu progreso real (0..1)
+
+// zona barra (ajustada al look de la imagen)
+const barX0 = px(0.48);
+const barY0 = py(0.72);
+const barW = pw * 0.30;
+const barH = Math.max(10, Math.floor(18 * panelScale));
+
+// Fondo
+const barBg = this.add.rectangle(barX0, barY0, barW, barH, 0x0b1326, 0.85)
+  .setOrigin(0, 0.5);
+barBg.setStrokeStyle(1, 0x5aa8ff, 0.25);
+eventPanel.add(barBg);
+
+// Fill
+const fillW = Math.max(2, Math.floor(barW * clamp(progress, 0, 1)));
+const barFill = this.add.rectangle(barX0 + 2, barY0, Math.max(2, fillW - 4), barH - 4, 0x59e7ff, 1)
+  .setOrigin(0, 0.5);
+eventPanel.add(barFill);
+
+// “ticks” (segmentos como en la referencia)
+const ticks = 6;
+for (let i = 1; i < ticks; i++) {
+  const tx = barX0 + (barW * i) / ticks;
+  const tick = this.add.rectangle(tx, barY0, 2, barH - 4, 0xffffff, 0.18).setOrigin(0.5);
+  eventPanel.add(tick);
+}
+
+// ---------- MONEDITA ----------
+const coin = this.add.circle(px(0.82), py(0.72), Math.max(10, Math.floor(14 * panelScale)), 0xcfd6e6, 0.85);
+coin.setStrokeStyle(2, 0x6b738a, 0.55);
+eventPanel.add(coin);
 
     // =========================
     // Botonera (foto 2) SIN bottom bar
