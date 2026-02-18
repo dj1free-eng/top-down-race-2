@@ -325,7 +325,7 @@ makeImgBtn(xTracks, 'btn_tracks', sideW, () => {
 // PLAY grande (ARRANCAR MOTOR) — SIN colisión de variables
 // =========================
 {
-  const bigPlayY = bottomY - clamp(Math.floor(height * 0.10), 70, 110);
+const bigPlayY = Math.floor(height - bottomH - (centerH * 0.18));
   const bigPlayW = clamp(Math.floor(width * 0.46), 260, 420);
 
   const bigPlayBtn = this.add.image(Math.floor(width / 2), bigPlayY, 'btn_play')
