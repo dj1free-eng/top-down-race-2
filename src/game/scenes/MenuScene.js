@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { CAR_SPECS } from '../cars/carSpecs.js';
 import { resolveCarParams } from '../cars/resolveCarParams.js';
 import { DEV_FACTORY } from '../dev/devFlags.js';
+
 function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
 
 export class MenuScene extends Phaser.Scene {
@@ -16,15 +17,18 @@ export class MenuScene extends Phaser.Scene {
     // Overlays
     this._overlay = null;
     this._overlayType = null; // 'garage' | 'tracks'
+
     // Cache para no reintentar skins que no existen
     this._skinFail = new Set();
   }
-init(data) {
-  // Si venimos desde "Salir ADMIN", forzamos estado jugador (determinista)
-  if (data?.forcePlayer) {
-    try { localStorage.setItem('tdr2:admin', '0'); } catch {}
+
+  init(data) {
+    // Si venimos desde "Salir ADMIN", forzamos estado jugador (determinista)
+    if (data?.forcePlayer) {
+      try { localStorage.setItem('tdr2:admin', '0'); } catch {}
+    }
   }
-}
+
   create() {
     this.cameras.main.setBackgroundColor('#0b1020');
 
@@ -45,136 +49,58 @@ init(data) {
   // =========================
   renderUI() {
     const { width, height } = this.scale;
-// ===== Layout base (SIEMPRE antes de usar pad/topH/bottomH) =====
-const topH = clamp(Math.floor(height * 0.14), 64, 88);
-const pad = clamp(Math.floor(width * 0.03), 14, 24);
 
-const bottomH = clamp(Math.floor(height * 0.18), 78, 110);
-const bottomY = height - bottomH;
-
-const centerY0 = topH + 10;
-const centerH = height - centerY0 - bottomH - 10;
-
-// Evento entre “hero” y botones
-const eventH = clamp(Math.floor(height * 0.13), 54, 76);
-const eventY = height - bottomH - eventH - 10;
-    const topBar = this.add.container(0, 0);
-    this._ui.add(topBar);
-    // Limpieza
+    // 1) Limpieza (siempre lo primero)
     if (this._ui) {
       this._ui.destroy(true);
       this._ui = null;
     }
     this._ui = this.add.container(0, 0);
 
-// ===== Fondo (imagen exacta estilo foto 2) =====
-const bg = this.add.image(width / 2, height / 2, 'menu_bg')
-  .setOrigin(0.5)
-  .setDepth(0);
-
-const fitCover = (img) => {
-  const sw = this.scale.width;
-  const sh = this.scale.height;
-  const sx = sw / img.width;
-  const sy = sh / img.height;
-  const s = Math.max(sx, sy); // cover
-  img.setScale(s);
-  img.setPosition(sw / 2, sh / 2);
-};
-fitCover(bg);
-
-this._ui.add(bg);
-/*    // ===== Top bar =====
+    // 2) Layout base (SIEMPRE antes de usar pad/topH/bottomH)
     const topH = clamp(Math.floor(height * 0.14), 64, 88);
     const pad = clamp(Math.floor(width * 0.03), 14, 24);
 
+    const bottomH = clamp(Math.floor(height * 0.18), 78, 110);
+    const bottomY = height - bottomH;
+
+    const centerY0 = topH + 10;
+    const centerH = height - centerY0 - bottomH - 10;
+
+    // 3) Fondo (imagen estilo foto 2)
+    const bg = this.add.image(width / 2, height / 2, 'menu_bg')
+      .setOrigin(0.5)
+      .setDepth(0);
+
+    const fitCover = (img) => {
+      const sw = this.scale.width;
+      const sh = this.scale.height;
+      const sx = sw / (img.width || 1);
+      const sy = sh / (img.height || 1);
+      const s = Math.max(sx, sy); // cover
+      img.setScale(s);
+      img.setPosition(sw / 2, sh / 2);
+    };
+    fitCover(bg);
+    this._ui.add(bg);
+
+    // =========================
+    // Top bar (minimal: solo engranaje)
+    // =========================
     const topBar = this.add.container(0, 0);
     this._ui.add(topBar);
 
-    const topBg = this.add.rectangle(0, 0, width, topH, 0x0b1020, 0.35).setOrigin(0);
-    topBg.setStrokeStyle(1, 0xb7c0ff, 0.10);
-    topBar.add(topBg);
-
-    // Logo
-    const logo = this.add.image(pad + 22, Math.floor(topH / 2), 'logo').setScale(0.25).setOrigin(0.5);
-    topBar.add(logo);
-// 🔐 ADMIN unlock por long-press (2s)
-logo.setInteractive({ useHandCursor: true });
-
-let pressTimer = null;
-
-logo.on('pointerdown', () => {
-  pressTimer = this.time.delayedCall(2000, () => {
-    try {
-      localStorage.setItem('tdr2:admin', '1');
-    } catch {}
-
-    this._toast('ADMIN ACTIVADO');
-    this.scene.start('admin-hub');
-
-    // 🔒 Limpieza absoluta del timer
-    pressTimer = null;
-  });
-});
-
-logo.on('pointerup', () => {
-  if (pressTimer) {
-    pressTimer.remove(false);
-    pressTimer = null;
-  }
-});
-
-logo.on('pointerout', () => {
-  if (pressTimer) {
-    pressTimer.remove(false);
-    pressTimer = null;
-  }
-});
-    // Título
-    const title = this.add.text(pad + 56, Math.floor(topH / 2), 'Top-Down Race 2', {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '18px',
-      color: '#ffffff',
-      fontStyle: 'bold'
-    }).setOrigin(0, 0.5);
-    topBar.add(title);
-
-    // “Moneda” fake (placeholder)
-    const chipW = 110;
-    const chipH = 34;
-    const chipX = width - pad - chipW - 54;
-
-    const chip = this.add.rectangle(chipX, Math.floor((topH - chipH) / 2), chipW, chipH, 0x0b1020, 0.45)
-      .setOrigin(0)
-      .setStrokeStyle(1, 0xb7c0ff, 0.18);
-    const chipText = this.add.text(chipX + chipW / 2, Math.floor(topH / 2), '0 🪙', {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '14px',
-      color: '#b7c0ff',
-      fontStyle: 'bold'
-    }).setOrigin(0.5);
-    topBar.add([chip, chipText]);
-
-// DEV: botón Car Factory (solo si DEV_FACTORY)
-if (DEV_FACTORY) {
-  const factoryW = 104;
-  const factoryH = 36;
-  const factoryGap = 10;
-
-  // 👇 Colócalo SIEMPRE a la izquierda del chip de monedas
-  const factoryX = chipX - factoryGap - factoryW;
-  const factoryY = Math.floor((topH - factoryH) / 2);
-
-  const factoryBtn = this._makeButton(factoryX, factoryY, factoryW, factoryH, '🏭 FACTORY', () => {
-    this.scene.start('factory');
-  }, { accent: 0x2cf6ff });
-  
-  topBar.add(factoryBtn);
-} */
     // Settings button
     const gearW = 44;
     const gearX = width - pad - gearW;
-    const gear = this.add.rectangle(gearX, Math.floor((topH - 36) / 2), gearW, 36, 0x0b1020, 0.45)
+    const gear = this.add.rectangle(
+      gearX,
+      Math.floor((topH - 36) / 2),
+      gearW,
+      36,
+      0x0b1020,
+      0.45
+    )
       .setOrigin(0)
       .setStrokeStyle(1, 0xb7c0ff, 0.18)
       .setInteractive({ useHandCursor: true });
@@ -186,16 +112,14 @@ if (DEV_FACTORY) {
     }).setOrigin(0.5);
 
     gear.on('pointerdown', () => {
-      // Placeholder: más adelante abrimos panel settings
       this._toast('Settings (pronto)');
     });
 
     topBar.add([gear, gearText]);
 
-// ===== Centro: “hero car” =====
-// (centerY0, bottomH y centerH ya están declarados arriba)
-// Evento (tipo Brawl): tarjeta informativa encima del bottom bar
-// (eventH y eventY ya están declarados arriba)
+    // =========================
+    // Centro: “hero car”
+    // =========================
     const hero = this.add.container(0, centerY0);
     this._ui.add(hero);
 
@@ -203,18 +127,18 @@ if (DEV_FACTORY) {
     const heroW = width - heroPad * 2;
     const heroH = centerH;
 
-    const heroBg = this.add.rectangle(heroPad, 0, heroW, heroH, 0x0b1020, 0.18)
-      .setOrigin(0)
-      .setStrokeStyle(1, 0xb7c0ff, 0.10);
+    // (Opcional) rect ligero para debug visual, si molesta quítalo
+    const heroBg = this.add.rectangle(heroPad, 0, heroW, heroH, 0x0b1020, 0.08)
+      .setOrigin(0);
     hero.add(heroBg);
 
-    // Car card (placeholder visual)
+    // Car card
     const cardW = clamp(Math.floor(heroW * 0.52), 320, 520);
     const cardH = clamp(Math.floor(heroH * 0.72), 200, 360);
     const cardX = heroPad + Math.floor((heroW - cardW) / 2);
     const cardY = Math.floor((heroH - cardH) / 2) - 6;
 
-    const carCard = this.add.rectangle(cardX, cardY, cardW, cardH, 0x141b33, 0.45)
+    const carCard = this.add.rectangle(cardX, cardY, cardW, cardH, 0x141b33, 0.35)
       .setOrigin(0)
       .setStrokeStyle(1, 0xb7c0ff, 0.18);
     hero.add(carCard);
@@ -245,157 +169,133 @@ if (DEV_FACTORY) {
     }).setOrigin(0.5, 0);
     hero.add(carSub);
 
-// Preview coche: skin real si existe, si no fallback a 'car'
-this._ensureCarTexture();
-this._tryEnsureSkinTexture(carId);
+    // Preview coche: skin real si existe, si no fallback a 'car'
+    this._ensureCarTexture();
+    this._tryEnsureSkinTexture(carId);
 
-// ✅ Textura segura: si no existe, usa 'car' (y además evita keys raras)
-let texKey = this._previewTextureKey(carId);
-if (!this.textures.exists(texKey)) texKey = 'car';
+    let texKey = this._previewTextureKey(carId);
+    if (!this.textures.exists(texKey)) texKey = 'car';
 
-const carPreview = this.add.sprite(
-  cardX + cardW / 2,
-  cardY + cardH / 2 + 14,
-  texKey
-).setOrigin(0.5);
+    const carPreview = this.add.sprite(
+      cardX + cardW / 2,
+      cardY + cardH / 2 + 14,
+      texKey
+    ).setOrigin(0.5);
 
-carPreview.setDepth(50); // ✅ por encima de la card, siempre
+    const refitPreview = () => {
+      const maxW = cardW * 0.42;
+      const maxH = cardH * 0.28;
 
-// ✅ Refit robusto (evita width/height = 0 justo al crearlo)
-const refitPreview = () => {
-  const maxW = cardW * 0.42;
-  const maxH = cardH * 0.28;
+      const sw = carPreview.width || 1;
+      const sh = carPreview.height || 1;
 
-  const sw = carPreview.width || 1;
-  const sh = carPreview.height || 1;
+      let s = Math.min(maxW / sw, maxH / sh);
+      s = clamp(s, 0.15, 3.0);
+      carPreview.setScale(s);
+    };
 
-  let s = Math.min(maxW / sw, maxH / sh);
-  s = clamp(s, 0.15, 3.0);
-  carPreview.setScale(s);
-};
+    refitPreview();
+    this.time.delayedCall(0, () => {
+      if (!carPreview || !carPreview.active) return;
+      refitPreview();
+    });
 
-// 1) ajuste inmediato
-refitPreview();
+    hero.add(carPreview);
 
-// 2) ajuste en el siguiente tick (cuando Phaser ya “midió” el sprite)
-this.time.delayedCall(0, () => {
-  if (!carPreview || !carPreview.active) return;
-  refitPreview();
-});
+    this.tweens.add({
+      targets: carPreview,
+      y: carPreview.y - 10,
+      duration: 900,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
 
-hero.add(carPreview);
+    this.tweens.add({
+      targets: carPreview,
+      angle: 3,
+      duration: 1200,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
 
-// Animación “viva” tipo lobby
-this.tweens.add({
-  targets: carPreview,
-  y: carPreview.y - 10,
-  duration: 900,
-  yoyo: true,
-  repeat: -1,
-  ease: 'Sine.easeInOut'
-});
-this.tweens.add({
-  targets: carPreview,
-  angle: 3,
-  duration: 1200,
-  yoyo: true,
-  repeat: -1,
-  ease: 'Sine.easeInOut'
-});
-
-    // Track label (real)
-    const trackLabel = this.add.text(cardX + cardW / 2, cardY + cardH - 44, `Circuito: ${this._trackTitle(this.selectedTrackKey)}`, {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '13px',
-      color: '#b7c0ff'
-    }).setOrigin(0.5);
+    const trackLabel = this.add.text(
+      cardX + cardW / 2,
+      cardY + cardH - 44,
+      `Circuito: ${this._trackTitle(this.selectedTrackKey)}`,
+      {
+        fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+        fontSize: '13px',
+        color: '#b7c0ff'
+      }
+    ).setOrigin(0.5);
     hero.add(trackLabel);
-// ===== Panel evento (imagen exacta estilo foto 2) =====
-const eventPanelY = Math.floor(height * 0.58);
 
-const eventPanel = this.add.image(width / 2, eventPanelY, 'panel_event')
-  .setOrigin(0.5)
-  .setDepth(5);
+    // =========================
+    // Panel evento (imagen estilo foto 2)
+    // =========================
+    const eventPanelY = Math.floor(height * 0.58);
 
-{
-const maxW = clamp(Math.floor(width * 0.82), 320, 620);
-eventPanel.setScale(maxW / eventPanel.width);
+    const eventPanel = this.add.image(width / 2, eventPanelY, 'panel_event')
+      .setOrigin(0.5)
+      .setDepth(5);
 
-}
+    const maxW = clamp(Math.floor(width * 0.82), 320, 620);
+    eventPanel.setScale(maxW / (eventPanel.width || 1));
 
-this._ui.add(eventPanel);
-// ===== Botonera (foto 2) SIN bottom bar =====
-//const bottomY = height - bottomH;
-const bottom = this.add.container(0, bottomY);
-this._ui.add(bottom);
+    this._ui.add(eventPanel);
 
-// Layout
-const btnY = bottomY + Math.floor(bottomH / 2);
-const gap = 14;
+    // =========================
+    // Botonera (foto 2) SIN bottom bar
+    // =========================
+    const bottom = this.add.container(0, bottomY);
+    this._ui.add(bottom);
 
-// Tamaño objetivo por botón (ajusta si quieres más grandes)
-const bw = clamp(Math.floor(width * 0.24), 120, 190);
+    const btnY = bottomY + Math.floor(bottomH / 2);
+    const bw = clamp(Math.floor(width * 0.24), 120, 190);
 
-// Posiciones: izquierda / centro / derecha
-const xGarage = pad + Math.floor(bw / 2);
-const xTracks = width - pad - Math.floor(bw / 2);
-const xPlay   = Math.floor(width / 2);
+    const xGarage = pad + Math.floor(bw / 2);
+    const xTracks = width - pad - Math.floor(bw / 2);
+    const xPlay = Math.floor(width / 2);
 
-// Helper: botón imagen con “press”
-const makeImgBtn = (x, key, onClick) => {
-  const img = this.add.image(x, btnY, key)
-    .setOrigin(0.5)
-    .setDepth(9999)
-    .setInteractive({ useHandCursor: true });
+    const makeImgBtn = (x, key, onClick) => {
+      const img = this.add.image(x, btnY, key)
+        .setOrigin(0.5)
+        .setDepth(9999)
+        .setInteractive({ useHandCursor: true });
 
-  // Escala para ancho fijo (bw)
-  const baseScale = bw / img.width;
-  img.setScale(baseScale);
+      const baseScale = bw / (img.width || 1);
+      img.setScale(baseScale);
 
-  img.on('pointerdown', () => {
-    img.setScale(baseScale * 0.96);
-  });
+      img.on('pointerdown', () => img.setScale(baseScale * 0.96));
+      img.on('pointerup', () => { img.setScale(baseScale); onClick && onClick(); });
+      img.on('pointerout', () => img.setScale(baseScale));
 
-  img.on('pointerup', () => {
-    img.setScale(baseScale);
-    onClick && onClick();
-  });
+      bottom.add(img);
+      return img;
+    };
 
-  img.on('pointerout', () => {
-    img.setScale(baseScale);
-  });
+    // GARAGE (modo player SIEMPRE)
+    makeImgBtn(xGarage, 'btn_garage', () => {
+      this.scene.start('GarageScene', { mode: 'player' });
+    });
 
-  bottom.add(img);
-  return img;
-};
+    // PLAY
+    makeImgBtn(xPlay, 'btn_play', () => {
+      try {
+        localStorage.setItem('tdr2:carId', this.selectedCarId);
+        localStorage.setItem('tdr2:trackKey', this.selectedTrackKey);
+      } catch {}
+      this.scene.start('race', { carId: this.selectedCarId, trackKey: this.selectedTrackKey });
+    });
 
-// GARAGE (modo player SIEMPRE)
-makeImgBtn(xGarage, 'btn_garage', () => {
-  this.scene.start('GarageScene', { mode: 'player' });
-});
+    // TRACKS
+    makeImgBtn(xTracks, 'btn_tracks', () => {
+      this._openOverlay('tracks');
+    });
 
-// PLAY
-makeImgBtn(xPlay, 'btn_play', () => {
-  try {
-    localStorage.setItem('tdr2:carId', this.selectedCarId);
-    localStorage.setItem('tdr2:trackKey', this.selectedTrackKey);
-  } catch {}
-  this.scene.start('race', { carId: this.selectedCarId, trackKey: this.selectedTrackKey });
-});
-
-// TRACKS
-makeImgBtn(xTracks, 'btn_tracks', () => {
-  this._openOverlay('tracks');
-});
-
-// Si había overlay abierto, lo reabrimos para no romper resize
-if (this._overlayType) {
-  const t = this._overlayType;
-  this._overlayType = null;
-  this._openOverlay(t);
-}
-
-    // Si había overlay abierto, lo reabrimos para no romper resize
+    // Reabrir overlay si estaba abierto (solo UNA vez)
     if (this._overlayType) {
       const t = this._overlayType;
       this._overlayType = null;
@@ -407,7 +307,6 @@ if (this._overlayType) {
   // Overlays
   // =========================
   _openOverlay(type) {
-    // Cerrar si existe
     if (this._overlay) {
       this._overlay.destroy(true);
       this._overlay = null;
@@ -416,14 +315,13 @@ if (this._overlayType) {
 
     this._overlayType = type;
     const { width, height } = this.scale;
-    const pad = clamp(Math.floor(width * 0.03), 14, 24);
 
     const ov = this.add.container(0, 0);
     this._overlay = ov;
     this._ui.add(ov);
 
     const dim = this.add.rectangle(0, 0, width, height, 0x000000, 0.55).setOrigin(0);
-    dim.setInteractive(); // captura clicks
+    dim.setInteractive();
     dim.on('pointerdown', () => this._closeOverlay());
     ov.add(dim);
 
@@ -482,7 +380,6 @@ if (this._overlayType) {
     });
     ov.add(info);
 
-    // Pills (scroll simple con wrap)
     const row = this.add.container(0, 0);
     ov.add(row);
 
@@ -501,7 +398,6 @@ if (this._overlayType) {
     const pills = [];
     let cursorX = x + pad;
     let cursorY = listY + 28;
-
     const maxX = x + w - pad;
 
     cars.forEach((c) => {
@@ -531,8 +427,8 @@ if (this._overlayType) {
         try { localStorage.setItem('tdr2:carId', c.id); } catch {}
         pills.forEach(p => drawPill(this, p.g, p.w, p.id === this.selectedCarId));
         this._toast(`Coche: ${label}`);
-        this._tryEnsureSkinTexture(this.selectedCarId); 
-        this.renderUI(); // refresca lobby
+        this._tryEnsureSkinTexture(this.selectedCarId);
+        this.renderUI();
       });
 
       pills.push({ id: c.id, g: gg, w: pw });
@@ -541,7 +437,6 @@ if (this._overlayType) {
       cursorX += pw + pillGap;
     });
 
-    // Panel tip
     const tip = this.add.text(x + pad, y + h - 26, 'Tip: el coche elegido se guarda automáticamente.', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
       fontSize: '12px',
@@ -574,7 +469,7 @@ if (this._overlayType) {
         title: 'Track 03 — Drift Test',
         desc: 'Pista ancha y enlazada.\nHecha para derrapar y encadenar.',
         tag: 'DRIFT'
-    }
+      }
     ];
 
     const info = this.add.text(x + pad, y + pad, 'Elige circuito:', {
@@ -585,7 +480,7 @@ if (this._overlayType) {
     ov.add(info);
 
     const cardW = clamp(Math.floor((w - pad * 3) / 2), 220, 360);
-const cardH = clamp(Math.floor(h * 0.62), 150, 240);
+    const cardH = clamp(Math.floor(h * 0.62), 150, 240);
     const topY = y + 44;
 
     const makeCard = (cx, cy, t) => {
@@ -634,8 +529,8 @@ const cardH = clamp(Math.floor(h * 0.62), 150, 240);
         this.selectedTrackKey = t.key;
         try { localStorage.setItem('tdr2:trackKey', t.key); } catch {}
         this._toast(`Circuito: ${t.title}`);
-        this.renderUI();      // refresca lobby
-        this._openOverlay('tracks'); // reabre overlay actualizado
+        this.renderUI();
+        this._openOverlay('tracks');
       });
 
       c.add([bg, header, title, tag, desc, cta]);
@@ -648,7 +543,7 @@ const cardH = clamp(Math.floor(h * 0.62), 150, 240);
     ov.add(makeCard(leftX, topY, tracks[0]));
     ov.add(makeCard(rightX, topY, tracks[1]));
     ov.add(makeCard(leftX, topY + cardH + 14, tracks[2]));
-    
+
     const tip = this.add.text(x + pad, y + h - 26, 'Tip: el circuito elegido se usa al pulsar PLAY.', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
       fontSize: '12px',
@@ -660,190 +555,147 @@ const cardH = clamp(Math.floor(h * 0.62), 150, 240);
   // =========================
   // UI helpers
   // =========================
-_makeButton(x, y, w, h, label, onClick, opts = {}) {
-  const c = this.add.container(x, y);
+  _makeButton(x, y, w, h, label, onClick, opts = {}) {
+    const c = this.add.container(x, y);
 
-const primary = !!opts.primary;
-const accent = opts.accent ?? null;
-const bgCol = primary ? 0x2bff88 : (accent ?? 0x141b33);
-  const bgAlpha = primary ? 0.92 : 0.55;
+    const primary = !!opts.primary;
+    const accent = opts.accent ?? null;
+    const bgCol = primary ? 0x2bff88 : (accent ?? 0x141b33);
+    const bgAlpha = primary ? 0.92 : 0.55;
 
-  // Sombra/relieve
-  const shadow = this.add.rectangle(4, 4, w, h, 0x000000, primary ? 0.25 : 0.18).setOrigin(0);
-const topHi = this.add.rectangle(2, 2, w - 4, Math.max(6, Math.floor(h * 0.28)), 0xffffff, primary ? 0.18 : 0.10)
-  .setOrigin(0);
-  const bg = this.add.rectangle(0, 0, w, h, bgCol, bgAlpha).setOrigin(0);
-  bg.setStrokeStyle(1, primary ? 0xffffff : 0xb7c0ff, primary ? 0.22 : 0.18);
+    const shadow = this.add.rectangle(4, 4, w, h, 0x000000, primary ? 0.25 : 0.18).setOrigin(0);
+    const topHi = this.add.rectangle(2, 2, w - 4, Math.max(6, Math.floor(h * 0.28)), 0xffffff, primary ? 0.18 : 0.10).setOrigin(0);
+    const bg = this.add.rectangle(0, 0, w, h, bgCol, bgAlpha).setOrigin(0);
+    bg.setStrokeStyle(1, primary ? 0xffffff : 0xb7c0ff, primary ? 0.22 : 0.18);
 
-  const txt = this.add.text(w / 2, h / 2, label, {
-    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-    fontSize: primary ? '16px' : '14px',
-    color: primary ? '#0b1020' : '#ffffff',
-    fontStyle: 'bold'
-  }).setOrigin(0.5);
+    const txt = this.add.text(w / 2, h / 2, label, {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: primary ? '16px' : '14px',
+      color: primary ? '#0b1020' : '#ffffff',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
 
-  const hit = this.add.rectangle(0, 0, w, h, 0x000000, 0.001)
-    .setOrigin(0)
-    .setInteractive({ useHandCursor: true });
+    const hit = this.add.rectangle(0, 0, w, h, 0x000000, 0.001)
+      .setOrigin(0)
+      .setInteractive({ useHandCursor: true });
 
-  const setHover = (on) => {
-    bg.setAlpha(on ? (primary ? 0.98 : 0.70) : bgAlpha);
-    bg.setStrokeStyle(1, on ? 0x2bff88 : (primary ? 0xffffff : 0xb7c0ff), on ? 0.35 : (primary ? 0.22 : 0.18));
-  };
+    const press = () => { c.setScale(0.97); c.y += 2; shadow.setAlpha(primary ? 0.12 : 0.08); };
+    const release = () => { c.setScale(1.0); c.y -= 2; shadow.setAlpha(primary ? 0.25 : 0.18); };
 
-  const press = () => {
-  c.setScale(0.97);
-  c.y += 2;
-  shadow.setAlpha(primary ? 0.12 : 0.08);
-};
+    hit.on('pointerdown', () => press());
+    hit.on('pointerup', () => { release(); onClick && onClick(); });
+    hit.on('pointerout', () => release());
 
-const release = () => {
-  c.setScale(1.0);
-  c.y -= 2;
-  shadow.setAlpha(primary ? 0.25 : 0.18);
-};
+    let glow = null;
+    if (primary) {
+      glow = this.add.rectangle(-6, -6, w + 12, h + 12, 0x2bff88, 0.10).setOrigin(0);
+    }
 
-  hit.on('pointerdown', () => { press(); });
-  hit.on('pointerup', () => { release(); onClick && onClick(); });
-  hit.on('pointerout', () => { release(); setHover(false); });
-  hit.on('pointerover', () => { setHover(true); });
+    c.add([glow, shadow, bg, topHi, txt, hit].filter(Boolean));
+    return c;
+  }
 
-// Glow suave para el primario
-let glow = null;
-if (primary) {
-  glow = this.add.rectangle(-6, -6, w + 12, h + 12, 0x2bff88, 0.10).setOrigin(0);
-}
+  _toast(msg) {
+    const { width, height } = this.scale;
+    const y = Math.floor(height - (height * 0.18) - 24);
 
-c.add([glow, shadow, bg, topHi, txt, hit].filter(Boolean));
-  return c;
-}
-_toast(msg) {
-  const { width, height } = this.scale;
+    const t = this.add.text(width / 2, y, msg, {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: '14px',
+      color: '#2bff88',
+      fontStyle: 'bold',
+      backgroundColor: 'rgba(11,16,32,0.85)',
+      padding: { left: 12, right: 12, top: 6, bottom: 6 }
+    }).setOrigin(0.5).setAlpha(0).setDepth(999999);
 
-  // Colocarlo por encima del bottom bar
-  const y = Math.floor(height - (height * 0.18) - 24);
+    this.tweens.add({
+      targets: t,
+      alpha: 1,
+      duration: 120,
+      yoyo: true,
+      hold: 900,
+      onComplete: () => t.destroy()
+    });
+  }
 
-  const t = this.add.text(width / 2, y, msg, {
-    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-    fontSize: '14px',
-    color: '#2bff88',
-    fontStyle: 'bold',
-    backgroundColor: 'rgba(11,16,32,0.85)',
-    padding: { left: 12, right: 12, top: 6, bottom: 6 }
-  })
-    .setOrigin(0.5)
-    .setAlpha(0)
-    .setDepth(999999); // 🔑 siempre encima
+  _ensureCarTexture() {
+    if (this.textures.exists('car')) return;
 
-  this.tweens.add({
-    targets: t,
-    alpha: 1,
-    duration: 120,
-    yoyo: true,
-    hold: 900,
-    onComplete: () => t.destroy()
-  });
-}
-_ensureCarTexture() {
-  // Igual idea que en RaceScene: si ya existe, no hacemos nada
-  if (this.textures.exists('car')) return;
+    const w = 42;
+    const h = 22;
 
-  const w = 42;
-  const h = 22;
+    const g = this.add.graphics();
 
-  const g = this.add.graphics();
+    g.fillStyle(0x000000, 0.25);
+    g.fillEllipse(w * 0.52, h * 0.78, w * 0.85, h * 0.45);
 
-  // Sombra
-  g.fillStyle(0x000000, 0.25);
-  g.fillEllipse(w * 0.52, h * 0.78, w * 0.85, h * 0.45);
+    g.fillStyle(0xff3b30, 1);
+    g.fillRoundedRect(6, 10, w - 12, 10, 6);
 
-  // Carrocería
-  g.fillStyle(0xff3b30, 1);
-  g.fillRoundedRect(6, 10, w - 12, 10, 6);
+    g.fillStyle(0xff6b63, 1);
+    g.fillRoundedRect(14, 6, 16, 8, 5);
 
-  // Cabina
-  g.fillStyle(0xff6b63, 1);
-  g.fillRoundedRect(14, 6, 16, 8, 5);
+    g.fillStyle(0x9fe7ff, 0.9);
+    g.fillRoundedRect(16, 7, 12, 6, 4);
 
-  // Cristal
-  g.fillStyle(0x9fe7ff, 0.9);
-  g.fillRoundedRect(16, 7, 12, 6, 4);
+    g.fillStyle(0x222222, 1);
+    g.fillCircle(14, 21, 4);
+    g.fillCircle(w - 14, 21, 4);
 
-  // Ruedas
-  g.fillStyle(0x222222, 1);
-  g.fillCircle(14, 21, 4);
-  g.fillCircle(w - 14, 21, 4);
+    g.fillStyle(0xaaaaaa, 1);
+    g.fillCircle(14, 21, 2);
+    g.fillCircle(w - 14, 21, 2);
 
-  // Llantas
-  g.fillStyle(0xaaaaaa, 1);
-  g.fillCircle(14, 21, 2);
-  g.fillCircle(w - 14, 21, 2);
+    g.generateTexture('car', w + 4, h + 6);
+    g.destroy();
+  }
 
-  g.generateTexture('car', w + 4, h + 6);
-  g.destroy();
-}
   _skinKey(carId) {
-  return `skin:${carId}`;
-}
+    return `skin:${carId}`;
+  }
 
-_tryEnsureSkinTexture(carId) {
-  if (!carId) return;
+  _tryEnsureSkinTexture(carId) {
+    if (!carId) return;
 
-  const key = this._skinKey(carId);
+    const key = this._skinKey(carId);
 
-  // Ya está cargada
-  if (this.textures.exists(key)) return;
+    if (this.textures.exists(key)) return;
+    if (this._skinFail?.has(carId)) return;
 
-  // Ya falló antes, no insistimos
-  if (this._skinFail?.has(carId)) return;
+    const url = `assets/skins/skin_${carId}.webp`;
 
-  const url = `assets/skins/skin_${carId}.webp`;
+    this.load.image(key, url);
 
-  // Cargamos on-demand (BootScene NO las precarga)
-  this.load.image(key, url);
+    const onFileComplete = (k) => {
+      if (k !== key) return;
+      cleanup();
+      this.renderUI();
+    };
 
-  const onFileComplete = (k) => {
-    if (k !== key) return;
-    cleanup();
+    const onLoadError = (file) => {
+      if (!file || file.key !== key) return;
+      cleanup();
+      this._skinFail.add(carId);
+      this.renderUI();
+    };
 
-    // ✅ DEBUG visible (no depende de consola)
-    this._toast(`Skin OK: ${carId}`);
+    const cleanup = () => {
+      this.load.off('filecomplete-image-' + key, onFileComplete);
+      this.load.off('loaderror', onLoadError);
+    };
 
-    // Re-render para que el preview cambie al momento
-    this.renderUI();
-  };
+    this.load.once('filecomplete-image-' + key, onFileComplete);
+    this.load.on('loaderror', onLoadError);
 
-  const onLoadError = (file) => {
-    if (!file || file.key !== key) return;
-    cleanup();
+    if (!this.load.isLoading()) this.load.start();
+  }
 
-    this._skinFail.add(carId);
+  _previewTextureKey(carId) {
+    const key = this._skinKey(carId);
+    if (this.textures.exists(key)) return key;
+    return 'car';
+  }
 
-    // ✅ DEBUG visible (url exacta)
-    this._toast(`Skin FAIL: ${carId} · ${url}`);
-
-    // Re-render (seguirá fallback a 'car')
-    this.renderUI();
-  };
-
-  const cleanup = () => {
-    this.load.off('filecomplete-image-' + key, onFileComplete);
-    this.load.off('loaderror', onLoadError);
-  };
-
-  // Listeners one-shot para ESTE archivo
-  this.load.once('filecomplete-image-' + key, onFileComplete);
-  this.load.on('loaderror', onLoadError);
-
-  // Arranca carga
-  if (!this.load.isLoading()) this.load.start();
-}
-
-_previewTextureKey(carId) {
-  const key = this._skinKey(carId);
-  if (this.textures.exists(key)) return key;
-  return 'car';
-}
   _trackTitle(key) {
     if (key === 'track01') return 'Óvalo';
     if (key === 'track02') return 'Técnico';
