@@ -88,7 +88,8 @@ export class MenuScene extends Phaser.Scene {
     // Top bar (minimal: solo engranaje)
     // =========================
     const topBar = this.add.container(0, 0);
-    this._ui.add(topBar);
+topBar.setDepth(40);
+this._ui.add(topBar);
 
     // Settings button
     const gearW = 44;
@@ -121,7 +122,8 @@ export class MenuScene extends Phaser.Scene {
     // Centro: “hero car”
     // =========================
     const hero = this.add.container(0, centerY0);
-    this._ui.add(hero);
+hero.setDepth(10);
+this._ui.add(hero);
 
     const heroPad = pad;
     const heroW = width - heroPad * 2;
