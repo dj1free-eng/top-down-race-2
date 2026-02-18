@@ -247,6 +247,7 @@ this._ui.add(hero);
 
   // Container del panel (para poder posicionar fácil)
   const eventPanel = this.add.container(0, 0).setDepth(10);
+ eventPanel.setDepth(20);
   this._ui.add(eventPanel);
 
   // Imagen del panel
@@ -269,7 +270,7 @@ this._ui.add(hero);
     // Botonera (foto 2) SIN bottom bar
     // =========================
     const bottom = this.add.container(0, bottomY);
-bottom.setDepth(31); // ✅ por encima del panel
+bottom.setDepth(60); // ✅ por encima de TODO lo demás
 this._ui.add(bottom);
 
     const btnY = bottomY + Math.floor(bottomH / 2);
