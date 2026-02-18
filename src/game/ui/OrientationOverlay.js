@@ -1,56 +1,84 @@
+// src/game/ui/OrientationOverlay.js
 import Phaser from 'phaser';
 
-function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
+function isPortraitLike(scene) {
+  const { width, height } = scene.scale;
+  // “portrait” o casi-portrait (evita falsos positivos en tablets)
+  return width < height * 1.02;
+}
 
 export class OrientationOverlay {
-  constructor(scene, textureKey = 'ui_orientation_portrait') {
+  /**
+   * @param {Phaser.Scene} scene
+   * @param {object} opts
+   * @param {string} opts.imageKey - textura ya cargada
+   */
+  constructor(scene, opts = {}) {
     this.scene = scene;
-    this.textureKey = textureKey;
+    this.imageKey = opts.imageKey || 'ui_rotate_landscape';
 
     this._root = scene.add.container(0, 0).setDepth(999999);
-    this._root.setVisible(false);
+    this._dim = scene.add.rectangle(0, 0, 1, 1, 0x000000, 0.72).setOrigin(0);
+    this._dim.setInteractive(); // bloquea input por detrás
 
-    this._dim = scene.add.rectangle(0, 0, 10, 10, 0x000000, 0.72).setOrigin(0);
-    this._img = scene.add.image(0, 0, textureKey).setOrigin(0.5);
+    this._img = scene.add.image(0, 0, this.imageKey).setOrigin(0.5);
 
     this._root.add([this._dim, this._img]);
 
-    this._onResize = () => this._layoutAndToggle();
+    this._blocked = false;
+
+    this._onResize = () => this._layout();
     scene.scale.on('resize', this._onResize);
 
-    // Primera evaluación
-    this._layoutAndToggle();
+    this._layout();
   }
 
-  destroy() {
-    if (!this.scene) return;
-    this.scene.scale.off('resize', this._onResize);
-    this._root?.destroy(true);
-    this.scene = null;
-  }
+  _layout() {
+    const scene = this.scene;
+    const { width, height } = scene.scale;
 
-  _layoutAndToggle() {
-    const { width, height } = this.scene.scale;
-    const isPortrait = height > width;
-
-    // Toggle
-    this._root.setVisible(isPortrait);
-    if (!isPortrait) return;
-
-    // Layout
+    // Fullscreen hitbox
     this._dim.setSize(width, height);
+    this._dim.setPosition(0, 0);
 
-    // Ajuste imagen tipo "contain" (sin recortar)
-    const pad = clamp(Math.floor(Math.min(width, height) * 0.06), 16, 36);
-    const maxW = width - pad * 2;
-    const maxH = height - pad * 2;
+    // Imagen centrada + “cover” suave
+    this._img.setPosition(Math.floor(width / 2), Math.floor(height / 2));
 
+    // Escalado para que se lea bien en móviles
     const iw = this._img.width || 1;
     const ih = this._img.height || 1;
 
-    const s = Math.min(maxW / iw, maxH / ih);
+    // Queremos que ocupe aprox 80% del ancho o 80% del alto (lo que limite)
+    const targetW = width * 0.86;
+    const targetH = height * 0.86;
+    const s = Math.min(targetW / iw, targetH / ih);
 
     this._img.setScale(s);
-    this._img.setPosition(Math.floor(width / 2), Math.floor(height / 2));
+
+    // Activación/desactivación
+    const shouldBlock = isPortraitLike(scene);
+    if (shouldBlock !== this._blocked) {
+      this._blocked = shouldBlock;
+      this._root.setVisible(shouldBlock);
+
+      // Bloqueo “duro”: sin input (y pausa arcade si existe)
+      if (scene.input) scene.input.enabled = !shouldBlock;
+      if (scene.physics && scene.physics.world) scene.physics.world.isPaused = shouldBlock;
+    } else {
+      this._root.setVisible(this._blocked);
+    }
+  }
+
+  destroy() {
+    const scene = this.scene;
+    if (!scene) return;
+
+    scene.scale.off('resize', this._onResize);
+
+    this._root?.destroy(true);
+    this._root = null;
+    this._dim = null;
+    this._img = null;
+    this.scene = null;
   }
 }
