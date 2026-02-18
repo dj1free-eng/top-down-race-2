@@ -268,26 +268,31 @@ this._ui.add(hero);
 }
     
 // =========================
-// Botonera (foto 2)
+// Botonera (foto 2) — GARAGE / FACTORY / TRACKS
 // =========================
 const bottom = this.add.container(0, bottomY);
-bottom.setDepth(50); // siempre por encima
+bottom.setDepth(50);
 this._ui.add(bottom);
 
 // Y relativo al container bottom
 const btnY = Math.floor(bottomH / 2);
-const bw = clamp(Math.floor(width * 0.24), 120, 190);
 
-const xGarage = pad + Math.floor(bw / 2);
-const xTracks = width - pad - Math.floor(bw / 2);
-const xPlay   = Math.floor(width / 2);
+// Tamaños objetivos por tipo de botón
+const sideW   = clamp(Math.floor(width * 0.24), 120, 190); // Garage/Tracks
+const midW    = clamp(Math.floor(width * 0.30), 150, 240); // Factory (un poco más grande)
+const playW   = clamp(Math.floor(width * 0.42), 220, 360); // Arrancar motor (barra ancha)
 
-const makeImgBtn = (x, key, onClick) => {
+// Posiciones X
+const xGarage  = pad + Math.floor(sideW / 2);
+const xTracks  = width - pad - Math.floor(sideW / 2);
+const xFactory = Math.floor(width / 2);
+
+const makeImgBtn = (x, key, targetW, onClick) => {
   const img = this.add.image(x, btnY, key)
     .setOrigin(0.5)
     .setInteractive({ useHandCursor: true });
 
-  const baseScale = bw / (img.width || 1);
+  const baseScale = targetW / (img.width || 1);
   img.setScale(baseScale);
 
   img.on('pointerdown', () => img.setScale(baseScale * 0.96));
@@ -299,21 +304,21 @@ const makeImgBtn = (x, key, onClick) => {
 };
 
 // GARAGE
-makeImgBtn(xGarage, 'btn_garage', () => {
+makeImgBtn(xGarage, 'btn_garage', sideW, () => {
   this.scene.start('GarageScene', { mode: 'player' });
 });
 
-// PLAY
-makeImgBtn(xPlay, 'btn_play', () => {
-  try {
-    localStorage.setItem('tdr2:carId', this.selectedCarId);
-    localStorage.setItem('tdr2:trackKey', this.selectedTrackKey);
-  } catch {}
-  this.scene.start('race', { carId: this.selectedCarId, trackKey: this.selectedTrackKey });
+// FACTORY (si tienes Scene DEV / tuning / lo que sea)
+makeImgBtn(xFactory, 'btn_factory', midW, () => {
+  // Ajusta el destino real según tu proyecto:
+  // - si tienes CarFactoryScene: this.scene.start('CarFactoryScene');
+  // - si es otra: cámbialo aquí
+  if (DEV_FACTORY) this.scene.start('CarFactoryScene');
+  else this._toast('Factory (pronto)');
 });
 
 // TRACKS
-makeImgBtn(xTracks, 'btn_tracks', () => {
+makeImgBtn(xTracks, 'btn_tracks', sideW, () => {
   this._openOverlay('tracks');
 });
 
