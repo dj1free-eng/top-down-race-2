@@ -317,7 +317,7 @@ this._ui.add(eventPanel);
 const bottomY = height - bottomH;
 const bottom = this.add.container(0, bottomY);
 this._ui.add(bottom);
-
+const pad = clamp(Math.floor(width * 0.04), 16, 28);
 // Layout
 const btnY = bottomY + Math.floor(bottomH / 2);
 const gap = 14;
