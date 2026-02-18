@@ -45,8 +45,19 @@ init(data) {
   // =========================
   renderUI() {
     const { width, height } = this.scale;
-const pad = clamp(Math.floor(width * 0.04), 16, 28);
-    const topH = clamp(Math.floor(height * 0.14), 64, 88);  
+// ===== Layout base (SIEMPRE antes de usar pad/topH/bottomH) =====
+const topH = clamp(Math.floor(height * 0.14), 64, 88);
+const pad = clamp(Math.floor(width * 0.03), 14, 24);
+
+const bottomH = clamp(Math.floor(height * 0.18), 78, 110);
+const bottomY = height - bottomH;
+
+const centerY0 = topH + 10;
+const centerH = height - centerY0 - bottomH - 10;
+
+// Evento entre “hero” y botones
+const eventH = clamp(Math.floor(height * 0.13), 54, 76);
+const eventY = height - bottomH - eventH - 10;
     // Limpieza
     if (this._ui) {
       this._ui.destroy(true);
