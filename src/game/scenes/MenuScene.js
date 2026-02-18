@@ -189,45 +189,73 @@ const carCenterY = Math.floor(heroH * 0.48);
     ease: 'Sine.easeInOut'
   });
 
-// --- FICHA ARRIBA (nombre + 3 stats) ---
-const infoY = Math.floor(heroH * 0.20);
+// =========================
+// FICHA estilo referencia real
+// =========================
 
-  // “pill” base
-  const pillW = clamp(Math.floor(heroW * 0.72), 360, 760);
-  const pillH = clamp(Math.floor(heroH * 0.18), 74, 96);
-  const pillX = carCenterX - Math.floor(pillW / 2);
-  const pillY = infoY - Math.floor(pillH / 2);
+const headerY = Math.floor(heroH * 0.18);
 
-  const pill = this.add.rectangle(pillX, pillY, pillW, pillH, 0x0b1020, 0.35)
-    .setOrigin(0)
-    .setStrokeStyle(1, 0xb7c0ff, 0.22);
-  hero.add(pill);
+// ---- NOMBRE (FUERA de la pill) ----
+const nameText = this.add.text(carCenterX, headerY, (p.name || carId).toUpperCase(), {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '30px',
+  color: '#ffffff',
+  fontStyle: 'bold'
+}).setOrigin(0.5);
 
-  const nameText = this.add.text(carCenterX, pillY + 10, (p.name || carId).toUpperCase(), {
-    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-    fontSize: '22px',
-    color: '#ffffff',
-    fontStyle: 'bold'
-  }).setOrigin(0.5, 0);
-  hero.add(nameText);
+hero.add(nameText);
 
-  // Línea stats (3 columnas)
-  const statY = pillY + pillH - 18;
-  const col1X = carCenterX - Math.floor(pillW * 0.28);
-  const col2X = carCenterX;
-  const col3X = carCenterX + Math.floor(pillW * 0.28);
+// ---- línea fina debajo del nombre ----
+const lineW = heroW * 0.55;
+const line = this.add.rectangle(
+  carCenterX - lineW / 2,
+  headerY + 26,
+  lineW,
+  2,
+  0xffffff,
+  0.18
+).setOrigin(0);
 
-  const statStyle = {
-    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-    fontSize: '16px',
-    color: '#b7c0ff',
-    fontStyle: 'bold'
-  };
+hero.add(line);
 
-  hero.add(this.add.text(col1X, statY, `${topKmh} km/h`, statStyle).setOrigin(0.5, 1));
-  hero.add(this.add.text(col2X, statY, this._trackTitle(this.selectedTrackKey), statStyle).setOrigin(0.5, 1));
-  hero.add(this.add.text(col3X, statY, 'Grip medio', statStyle).setOrigin(0.5, 1));
-}
+// ---- PILL SOLO PARA STATS ----
+const pillW = clamp(Math.floor(heroW * 0.72), 360, 760);
+const pillH = 70;
+const pillX = carCenterX - pillW / 2;
+const pillY = headerY + 40;
+
+const pill = this.add.rectangle(pillX, pillY, pillW, pillH, 0x0b1020, 0.35)
+  .setOrigin(0)
+  .setStrokeStyle(1, 0xb7c0ff, 0.22);
+
+hero.add(pill);
+
+// ---- STATS centradas en 3 columnas ----
+const statY = pillY + pillH / 2;
+
+const colOffset = pillW * 0.28;
+
+const statStyle = {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '18px',
+  color: '#b7c0ff',
+  fontStyle: 'bold'
+};
+
+hero.add(
+  this.add.text(carCenterX - colOffset, statY, `${topKmh} km/h`, statStyle)
+    .setOrigin(0.5)
+);
+
+hero.add(
+  this.add.text(carCenterX, statY, this._trackTitle(this.selectedTrackKey), statStyle)
+    .setOrigin(0.5)
+);
+
+hero.add(
+  this.add.text(carCenterX + colOffset, statY, 'Grip medio', statStyle)
+    .setOrigin(0.5)
+);
 
 // =========================
 // Panel evento (SOLO imagen) -> IZQUIERDA (más pequeño + más arriba)
