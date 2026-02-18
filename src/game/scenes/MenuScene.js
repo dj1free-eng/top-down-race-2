@@ -266,9 +266,6 @@ this._ui.add(hero);
 
   eventPanel.setPosition(panelX, panelY);
 }
-    // =========================
-    // Botonera (foto 2) SIN bottom bar
-    // =========================
     
     // =========================
 // Botonera (foto 2)
