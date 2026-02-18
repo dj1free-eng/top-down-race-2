@@ -193,8 +193,7 @@ if (DEV_FACTORY) {
 // ===== Centro: “hero car” =====
 // (centerY0, bottomH y centerH ya están declarados arriba)
 // Evento (tipo Brawl): tarjeta informativa encima del bottom bar
-const eventH = clamp(Math.floor(height * 0.13), 54, 76);
-const eventY = height - bottomH - eventH - 10;
+// (eventH y eventY ya están declarados arriba)
     const hero = this.add.container(0, centerY0);
     this._ui.add(hero);
 
