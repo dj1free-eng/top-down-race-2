@@ -338,13 +338,12 @@ makeImgBtn(xFactory, 'btn_factory', midW, () => {
 makeImgBtn(xTracks, 'btn_tracks', sideW, () => {
   this._openOverlay('tracks');
 });
-      // ✅ FIN renderUI()
-  }
+
 // =========================
-// PLAY grande (ARRANCAR MOTOR) — SIN colisión de variables
+// PLAY grande (ARRANCAR MOTOR) — DENTRO de renderUI()
 // =========================
 {
-const bigPlayY = Math.floor(height - bottomH - (centerH * 0.18));
+  const bigPlayY = Math.floor(height - bottomH - (centerH * 0.18));
   const bigPlayW = clamp(Math.floor(width * 0.46), 260, 420);
 
   const bigPlayBtn = this.add.image(Math.floor(width / 2), bigPlayY, 'btn_play')
@@ -371,7 +370,8 @@ const bigPlayY = Math.floor(height - bottomH - (centerH * 0.18));
 
   this._ui.add(bigPlayBtn);
 }
-// ✅ CIERRE DE renderUI() (esto te faltaba)
+
+// ✅ FIN renderUI() — SOLO UNA VEZ
 }
   // =========================
   // Overlays
