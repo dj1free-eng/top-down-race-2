@@ -118,121 +118,116 @@ this._ui.add(topBar);
 
     topBar.add([gear, gearText]);
 
-    // =========================
-    // Centro: “hero car”
-    // =========================
-    const hero = this.add.container(0, centerY0);
-hero.setDepth(10);
-this._ui.add(hero);
+// =========================
+// Centro: HERO (coche grande + ficha debajo) estilo referencia
+// =========================
+{
+  const hero = this.add.container(0, centerY0);
+  hero.setDepth(10);
+  this._ui.add(hero);
 
-    const heroPad = pad;
-    const heroW = width - heroPad * 2;
-    const heroH = centerH;
+  const heroPad = pad;
+  const heroW = width - heroPad * 2;
+  const heroH = centerH;
 
-    // (Opcional) rect ligero para debug visual, si molesta quítalo
-    const heroBg = this.add.rectangle(heroPad, 0, heroW, heroH, 0x0b1020, 0.08)
-      .setOrigin(0);
-    hero.add(heroBg);
+  // (debug opcional)
+  // const heroBg = this.add.rectangle(heroPad, 0, heroW, heroH, 0x0b1020, 0.06).setOrigin(0);
+  // hero.add(heroBg);
 
-    // Car card
-    const cardW = clamp(Math.floor(heroW * 0.52), 320, 520);
-    const cardH = clamp(Math.floor(heroH * 0.72), 200, 360);
-    const cardX = heroPad + Math.floor((heroW - cardW) / 2);
-    const cardY = Math.floor((heroH - cardH) / 2) - 6;
+  const carId = this.selectedCarId || 'stock';
+  const baseSpec = CAR_SPECS[carId] || CAR_SPECS.stock;
 
-    const carCard = this.add.rectangle(cardX, cardY, cardW, cardH, 0x141b33, 0.35)
-      .setOrigin(0)
-      .setStrokeStyle(1, 0xb7c0ff, 0.18);
-    hero.add(carCard);
+  // Stats rápidos (reales)
+  const neutralTuning = {
+    accelMult: 1.0, brakeMult: 1.0, dragMult: 1.0, turnRateMult: 1.0,
+    maxFwdAdd: 0, maxRevAdd: 0, turnMinAdd: 0
+  };
+  const p = resolveCarParams(baseSpec, neutralTuning);
+  const topKmh = (p.maxFwd * 0.12).toFixed(0);
 
-    const carId = this.selectedCarId || 'stock';
-    const baseSpec = CAR_SPECS[carId] || CAR_SPECS.stock;
+  // Preview coche: skin real si existe, si no fallback a 'car'
+  this._ensureCarTexture();
+  this._tryEnsureSkinTexture(carId);
 
-    // Stats rápidos (reales)
-    const neutralTuning = {
-      accelMult: 1.0, brakeMult: 1.0, dragMult: 1.0, turnRateMult: 1.0,
-      maxFwdAdd: 0, maxRevAdd: 0, turnMinAdd: 0
-    };
-    const p = resolveCarParams(baseSpec, neutralTuning);
-    const topKmh = (p.maxFwd * 0.12).toFixed(0);
+  let texKey = this._previewTextureKey(carId);
+  if (!this.textures.exists(texKey)) texKey = 'car';
 
-    const carName = this.add.text(cardX + cardW / 2, cardY + 18, (p.name || carId).toUpperCase(), {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '18px',
-      color: '#ffffff',
-      fontStyle: 'bold'
-    }).setOrigin(0.5, 0);
-    hero.add(carName);
+  // --- COCHE GRANDE ---
+  const carCenterX = heroPad + Math.floor(heroW / 2);
+  const carCenterY = Math.floor(heroH * 0.42);
 
-    const carSub = this.add.text(cardX + cardW / 2, cardY + 44, `Punta aprox: ${topKmh} km/h`, {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '13px',
-      color: '#b7c0ff'
-    }).setOrigin(0.5, 0);
-    hero.add(carSub);
+  const carPreview = this.add.sprite(carCenterX, carCenterY, texKey).setOrigin(0.5);
 
-    // Preview coche: skin real si existe, si no fallback a 'car'
-    this._ensureCarTexture();
-    this._tryEnsureSkinTexture(carId);
+  const refitBigCar = () => {
+    // 👇 aquí está la magia: más grande tipo referencia
+    const maxW = heroW * 0.48;      // antes era muy chico
+    const maxH = heroH * 0.58;      // ocupa más alto
 
-    let texKey = this._previewTextureKey(carId);
-    if (!this.textures.exists(texKey)) texKey = 'car';
+    const sw = carPreview.width || 1;
+    const sh = carPreview.height || 1;
 
-    const carPreview = this.add.sprite(
-      cardX + cardW / 2,
-      cardY + cardH / 2 + 14,
-      texKey
-    ).setOrigin(0.5);
+    let s = Math.min(maxW / sw, maxH / sh);
+    s = clamp(s, 0.25, 5.0);
+    carPreview.setScale(s);
+  };
 
-    const refitPreview = () => {
-      const maxW = cardW * 0.42;
-      const maxH = cardH * 0.28;
+  refitBigCar();
+  this.time.delayedCall(0, () => {
+    if (!carPreview || !carPreview.active) return;
+    refitBigCar();
+  });
 
-      const sw = carPreview.width || 1;
-      const sh = carPreview.height || 1;
+  hero.add(carPreview);
 
-      let s = Math.min(maxW / sw, maxH / sh);
-      s = clamp(s, 0.15, 3.0);
-      carPreview.setScale(s);
-    };
+  // Flotación sutil (como en tu versión, pero menos “mareo”)
+  this.tweens.add({
+    targets: carPreview,
+    y: carPreview.y - 8,
+    duration: 950,
+    yoyo: true,
+    repeat: -1,
+    ease: 'Sine.easeInOut'
+  });
 
-    refitPreview();
-    this.time.delayedCall(0, () => {
-      if (!carPreview || !carPreview.active) return;
-      refitPreview();
-    });
+  // --- FICHA DEBAJO (nombre + 3 stats) ---
+  const infoY = Math.floor(heroH * 0.78);
 
-    hero.add(carPreview);
+  // “pill” base
+  const pillW = clamp(Math.floor(heroW * 0.72), 360, 760);
+  const pillH = clamp(Math.floor(heroH * 0.18), 74, 96);
+  const pillX = carCenterX - Math.floor(pillW / 2);
+  const pillY = infoY - Math.floor(pillH / 2);
 
-    this.tweens.add({
-      targets: carPreview,
-      y: carPreview.y - 10,
-      duration: 900,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut'
-    });
+  const pill = this.add.rectangle(pillX, pillY, pillW, pillH, 0x0b1020, 0.35)
+    .setOrigin(0)
+    .setStrokeStyle(1, 0xb7c0ff, 0.22);
+  hero.add(pill);
 
-    this.tweens.add({
-      targets: carPreview,
-      angle: 3,
-      duration: 1200,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut'
-    });
+  const nameText = this.add.text(carCenterX, pillY + 10, (p.name || carId).toUpperCase(), {
+    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: '22px',
+    color: '#ffffff',
+    fontStyle: 'bold'
+  }).setOrigin(0.5, 0);
+  hero.add(nameText);
 
-    const trackLabel = this.add.text(
-      cardX + cardW / 2,
-      cardY + cardH - 44,
-      `Circuito: ${this._trackTitle(this.selectedTrackKey)}`,
-      {
-        fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-        fontSize: '13px',
-        color: '#b7c0ff'
-      }
-    ).setOrigin(0.5);
-    hero.add(trackLabel);
+  // Línea stats (3 columnas)
+  const statY = pillY + pillH - 18;
+  const col1X = carCenterX - Math.floor(pillW * 0.28);
+  const col2X = carCenterX;
+  const col3X = carCenterX + Math.floor(pillW * 0.28);
+
+  const statStyle = {
+    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: '16px',
+    color: '#b7c0ff',
+    fontStyle: 'bold'
+  };
+
+  hero.add(this.add.text(col1X, statY, `${topKmh} km/h`, statStyle).setOrigin(0.5, 1));
+  hero.add(this.add.text(col2X, statY, this._trackTitle(this.selectedTrackKey), statStyle).setOrigin(0.5, 1));
+  hero.add(this.add.text(col3X, statY, 'Grip medio', statStyle).setOrigin(0.5, 1));
+}
 
 // =========================
 // Panel evento (SOLO imagen) -> IZQUIERDA (más pequeño + más arriba)
