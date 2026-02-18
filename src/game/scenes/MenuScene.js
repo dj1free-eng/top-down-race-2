@@ -348,6 +348,8 @@ makeImgBtn(xFactory, 'btn_factory', midW, () => {
 makeImgBtn(xTracks, 'btn_tracks', sideW, () => {
   this._openOverlay('tracks');
 });
+      // ✅ FIN renderUI()
+  }
 // =========================
 // PLAY grande (ARRANCAR MOTOR) — SIN colisión de variables
 // =========================
