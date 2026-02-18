@@ -2,10 +2,10 @@ import Phaser from 'phaser';
 import { CAR_SPECS } from '../cars/carSpecs.js';
 import { resolveCarParams } from '../cars/resolveCarParams.js';
 import { DEV_FACTORY } from '../dev/devFlags.js';
-
+import { BaseScene } from './BaseScene.js';
 function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
 
-export class MenuScene extends Phaser.Scene {
+export class MenuScene extends BaseScene {
   constructor() {
     super('menu');
     this._ui = null;
@@ -30,6 +30,8 @@ export class MenuScene extends Phaser.Scene {
   }
 
   create() {
+   super.create(); // 👈 SIEMPRE la primera línea
+    
     this.cameras.main.setBackgroundColor('#0b1020');
 
     // Leer prefs
