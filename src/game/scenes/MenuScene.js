@@ -189,8 +189,8 @@ this._ui.add(topBar);
     ease: 'Sine.easeInOut'
   });
 
-  // --- FICHA DEBAJO (nombre + 3 stats) ---
-  const infoY = Math.floor(heroH * 0.78);
+// --- FICHA ARRIBA (nombre + 3 stats) ---
+const infoY = Math.floor(heroH * 0.14); // arriba del coche
 
   // “pill” base
   const pillW = clamp(Math.floor(heroW * 0.72), 360, 760);
