@@ -233,13 +233,19 @@ export class MenuScene extends Phaser.Scene {
     hero.add(trackLabel);
 
 // =========================
-// Panel evento (imagen + overlays) estilo foto 2
+// Panel evento (SOLO imagen) réplica exacta foto 2
 // =========================
 const eventPanelY = Math.floor(height * 0.58);
 
-// Container del panel (todo vive aquí)
-const eventPanel = this.add.container(width / 2, eventPanelY).setDepth(5);
-this._ui.add(eventPanel);
+// Imagen panel (sin textos encima)
+const eventPanelImg = this.add.image(width / 2, eventPanelY, 'panel_event')
+  .setOrigin(0.5)
+  .setDepth(5);
+
+const panelMaxW = clamp(Math.floor(width * 0.82), 320, 620);
+eventPanelImg.setScale(panelMaxW / eventPanelImg.width);
+
+this._ui.add(eventPanelImg);
 
 // Imagen base
 const panelImg = this.add.image(0, 0, 'panel_event').setOrigin(0.5);
