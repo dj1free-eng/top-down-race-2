@@ -323,7 +323,7 @@ eventPanel.setScale(maxW / eventPanel.width);
 
 this._ui.add(eventPanel);
 // ===== Botonera (foto 2) SIN bottom bar =====
-const bottomY = height - bottomH;
+//const bottomY = height - bottomH;
 const bottom = this.add.container(0, bottomY);
 this._ui.add(bottom);
 
