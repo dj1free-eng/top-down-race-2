@@ -321,7 +321,37 @@ makeImgBtn(xFactory, 'btn_factory', midW, () => {
 makeImgBtn(xTracks, 'btn_tracks', sideW, () => {
   this._openOverlay('tracks');
 });
+// =========================
+// PLAY grande (ARRANCAR MOTOR) encima de la botonera
+// =========================
+const playY = bottomY - clamp(Math.floor(height * 0.10), 70, 110);
 
+// ancho objetivo del botón grande (barra)
+const playW = clamp(Math.floor(width * 0.46), 260, 420);
+
+const playBtn = this.add.image(Math.floor(width / 2), playY, 'btn_play')
+  .setOrigin(0.5)
+  .setInteractive({ useHandCursor: true });
+
+const playScale = playW / (playBtn.width || 1);
+playBtn.setScale(playScale);
+
+// Que esté por encima de todo el HUD
+playBtn.setDepth(60);
+
+playBtn.on('pointerdown', () => playBtn.setScale(playScale * 0.97));
+playBtn.on('pointerup', () => {
+  playBtn.setScale(playScale);
+  try {
+    localStorage.setItem('tdr2:carId', this.selectedCarId);
+    localStorage.setItem('tdr2:trackKey', this.selectedTrackKey);
+  } catch {}
+  this.scene.start('race', { carId: this.selectedCarId, trackKey: this.selectedTrackKey });
+});
+playBtn.on('pointerout', () => playBtn.setScale(playScale));
+
+// IMPORTANTE: si quieres que se destruya con el UI, mételo en _ui
+this._ui.add(playBtn);
 // ✅ CIERRE DE renderUI() (esto te faltaba)
 }
   // =========================
