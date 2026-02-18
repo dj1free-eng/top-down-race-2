@@ -7,7 +7,7 @@ export class BootScene extends Phaser.Scene {
 
   preload() {
     // UI
-this.load.image('orientation_portrait', 'assets/ui/orientation_portrait.png');
+this.load.image('ui_rotate_landscape', 'assets/ui/rotate_landscape.png');
 // Precarga mínima (logo/splash y UI esenciales)
 this.load.image('logo', 'assets/logo.webp');
 //Imagenes de MenuScene
