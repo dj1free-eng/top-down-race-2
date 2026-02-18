@@ -53,38 +53,23 @@ init(data) {
     }
     this._ui = this.add.container(0, 0);
 
-// Fondo más colorido (Brawl-ish) sin texturas
-const bg = this.add.graphics();
+// ===== Fondo (imagen exacta estilo foto 2) =====
+const bg = this.add.image(width / 2, height / 2, 'menu_bg')
+  .setOrigin(0.5)
+  .setDepth(0);
 
-// Base
-bg.fillStyle(0x071027, 1);
-bg.fillRect(0, 0, width, height);
+const fitCover = (img) => {
+  const sw = this.scale.width;
+  const sh = this.scale.height;
+  const sx = sw / img.width;
+  const sy = sh / img.height;
+  const s = Math.max(sx, sy); // cover
+  img.setScale(s);
+  img.setPosition(sw / 2, sh / 2);
+};
+fitCover(bg);
 
-// Gradiente falso por “capas” (blobs)
-bg.fillStyle(0x7c4dff, 0.14); // violeta
-bg.fillEllipse(width * 0.20, height * 0.22, width * 0.75, height * 0.65);
-
-bg.fillStyle(0x00d4ff, 0.10); // cian
-bg.fillEllipse(width * 0.70, height * 0.30, width * 0.90, height * 0.70);
-
-bg.fillStyle(0xffc400, 0.07); // amarillo
-bg.fillEllipse(width * 0.55, height * 0.12, width * 0.70, height * 0.45);
-
-bg.fillStyle(0x2bff88, 0.08); // verde
-bg.fillEllipse(width * 0.55, height * 0.70, width * 0.85, height * 0.70);
-
-// “Neblina” para unificar
-bg.fillStyle(0x141b33, 0.18);
-bg.fillRect(0, 0, width, height);
-
-    // rejilla MUY ligera (casi nada)
-    bg.lineStyle(1, 0xffffff, 0.02);
-    const step = 56;
-    for (let x = 0; x <= width; x += step) bg.lineBetween(x, 0, x, height);
-    for (let y = 0; y <= height; y += step) bg.lineBetween(0, y, width, y);
-
-    this._ui.add(bg);
-
+this._ui.add(bg);
     // ===== Top bar =====
     const topH = clamp(Math.floor(height * 0.14), 64, 88);
     const pad = clamp(Math.floor(width * 0.03), 14, 24);
@@ -314,145 +299,87 @@ this.tweens.add({
       color: '#b7c0ff'
     }).setOrigin(0.5);
     hero.add(trackLabel);
-// ===== Event card (Brawl-ish) =====
-const event = this.add.container(0, eventY);
-this._ui.add(event);
+// ===== Panel evento (imagen exacta estilo foto 2) =====
+const eventPanel = this.add.image(width / 2, eventY + Math.floor(eventH / 2), 'panel_event')
+  .setOrigin(0.5)
+  .setDepth(5);
 
-const eventPad = pad;
-const eventW = width - eventPad * 2;
+{
+  const maxW = Math.min(620, width - pad * 2);
+  eventPanel.setScale(maxW / eventPanel.width);
+}
 
-const eventBg = this.add.rectangle(eventPad, 0, eventW, eventH, 0x1b2a57, 0.78)
-  .setOrigin(0)
-  .setStrokeStyle(1, 0xb7c0ff, 0.18);
-event.add(eventBg);
-const eventGlow = this.add.rectangle(eventPad + 1, 1, eventW - 2, 6, 0xffffff, 0.10).setOrigin(0);
-event.add(eventGlow);
-    
-// Banda izquierda tipo “modo”
-const bandW = clamp(Math.floor(eventW * 0.18), 90, 150);
-const band = this.add.rectangle(eventPad, 0, bandW, eventH, 0x2bff88, 0.85).setOrigin(0);
-event.add(band);
+this._ui.add(eventPanel);
+// ===== Botonera (foto 2) SIN bottom bar =====
+const bottomY = height - bottomH;
+const bottom = this.add.container(0, bottomY);
+this._ui.add(bottom);
 
-const bandText = this.add.text(eventPad + bandW / 2, Math.floor(eventH / 2), 'EVENT', {
-  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-  fontSize: '14px',
-  color: '#0b1020',
-  fontStyle: 'bold'
-}).setOrigin(0.5);
-event.add(bandText);
+// Layout
+const btnY = bottomY + Math.floor(bottomH / 2);
+const gap = 14;
 
-const modeTitle = this.add.text(eventPad + bandW + 14, 12, `Modo: ${this._trackTitle(this.selectedTrackKey)}`, {
-  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-  fontSize: '14px',
-  color: '#ffffff',
-  fontStyle: 'bold'
-}).setOrigin(0, 0);
-event.add(modeTitle);
+// Tamaño objetivo por botón (ajusta si quieres más grandes)
+const bw = clamp(Math.floor(width * 0.24), 120, 190);
 
-const modeSub = this.add.text(eventPad + bandW + 14, 32, 'Recompensa: (próximamente) · Objetivo: mejora tu tiempo', {
-  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-  fontSize: '12px',
-  color: '#b7c0ff'
-}).setOrigin(0, 0);
-event.add(modeSub);
+// Posiciones: izquierda / centro / derecha
+const xGarage = pad + Math.floor(bw / 2);
+const xTracks = width - pad - Math.floor(bw / 2);
+const xPlay   = Math.floor(width / 2);
 
-// Botón “i”
-const infoW = 38;
-const infoX = width - eventPad - infoW;
-const infoBtn = this._makeButton(infoX, 10, infoW, eventH - 20, 'i', () => {
-  this._toast('Eventos: más adelante meteremos recompensas y misiones diarias 😉');
+// Helper: botón imagen con “press”
+const makeImgBtn = (x, key, onClick) => {
+  const img = this.add.image(x, btnY, key)
+    .setOrigin(0.5)
+    .setDepth(9999)
+    .setInteractive({ useHandCursor: true });
+
+  // Escala para ancho fijo (bw)
+  const baseScale = bw / img.width;
+  img.setScale(baseScale);
+
+  img.on('pointerdown', () => {
+    img.setScale(baseScale * 0.96);
+  });
+
+  img.on('pointerup', () => {
+    img.setScale(baseScale);
+    onClick && onClick();
+  });
+
+  img.on('pointerout', () => {
+    img.setScale(baseScale);
+  });
+
+  bottom.add(img);
+  return img;
+};
+
+// GARAGE (modo player SIEMPRE)
+makeImgBtn(xGarage, 'btn_garage', () => {
+  this.scene.start('GarageScene', { mode: 'player' });
 });
-event.add(infoBtn);
 
-// animación sutil (respira)
-this.tweens.add({
-  targets: eventBg,
-  alpha: { from: 0.58, to: 0.66 },
-  duration: 1200,
-  yoyo: true,
-  repeat: -1,
-  ease: 'Sine.easeInOut'
+// PLAY
+makeImgBtn(xPlay, 'btn_play', () => {
+  try {
+    localStorage.setItem('tdr2:carId', this.selectedCarId);
+    localStorage.setItem('tdr2:trackKey', this.selectedTrackKey);
+  } catch {}
+  this.scene.start('race', { carId: this.selectedCarId, trackKey: this.selectedTrackKey });
 });
-    // ===== Bottom bar (Brawl-ish) =====
-    const bottomY = height - bottomH;
-    const bottom = this.add.container(0, bottomY);
-    this._ui.add(bottom);
 
-    const bottomBg = this.add.rectangle(0, 0, width, bottomH, 0x0b1020, 0.55).setOrigin(0);
-    bottomBg.setStrokeStyle(1, 0xb7c0ff, 0.10);
-    bottom.add(bottomBg);
-// Mini progreso (placeholder premium)
-const progW = clamp(Math.floor(width * 0.28), 180, 300);
-const progH = 16;
-const progX = Math.floor(width / 2 - progW / 2);
-const progY = 8;
+// TRACKS
+makeImgBtn(xTracks, 'btn_tracks', () => {
+  this._openOverlay('tracks');
+});
 
-const progBg = this.add.rectangle(progX, progY, progW, progH, 0x0b1020, 0.85)
-  .setOrigin(0)
-  .setStrokeStyle(1, 0xb7c0ff, 0.35);
-
-const fakeProgress = 0.35; // placeholder
-const progFill = this.add.rectangle(
-  progX + 2,
-  progY + 2,
-  Math.floor((progW - 4) * fakeProgress),
-  progH - 4,
-  0x2bff88,
-  1
-).setOrigin(0);
-
-const progText = this.add.text(width / 2, progY - 14, 'Progreso · 35%', {
-  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-  fontSize: '11px',
-  color: '#b7c0ff'
-}).setOrigin(0.5);
-
-bottom.add([progBg, progFill, progText]);
-// Botón: GARAGE
-const btnH = clamp(Math.floor(bottomH * 0.62), 42, 62);
-const smallW = clamp(Math.floor(width * 0.20), 120, 170);
-
-const garageBtn = this._makeButton(
-  pad,
-  Math.floor((bottomH - btnH) / 2),
-  smallW,
-  btnH,
-  'GARAGE',
-  () => {
-    // ✅ Menú jugador: SIEMPRE modo player (sin contaminar admin)
-    this.scene.start('GarageScene', { mode: 'player' });
-  },
-  { accent: 0x00d4ff }
-);
-bottom.add(garageBtn);
-// Botón: TRACKS
-const tracksBtn = this._makeButton(
-  width - pad - smallW,
-  Math.floor((bottomH - btnH) / 2),
-  smallW,
-  btnH,
-  'TRACKS',
-  () => { this._openOverlay('tracks'); },
-  { accent: 0xffc400 }
-);
-bottom.add(tracksBtn);
-
-    // Botón grande: PLAY
-    const playW = clamp(Math.floor(width * 0.34), 200, 360);
-    const playX = Math.floor(width / 2 - playW / 2);
-    const playY = Math.floor((bottomH - btnH) / 2);
-
-    const playBtn = this._makeButton(playX, playY, playW, btnH, '▶ PLAY', () => {
-      // Guardar prefs
-      try {
-        localStorage.setItem('tdr2:carId', this.selectedCarId);
-        localStorage.setItem('tdr2:trackKey', this.selectedTrackKey);
-      } catch {}
-
-      this.scene.start('race', { carId: this.selectedCarId, trackKey: this.selectedTrackKey });
-    }, { primary: true });
-
-    bottom.add(playBtn);
+// Si había overlay abierto, lo reabrimos para no romper resize
+if (this._overlayType) {
+  const t = this._overlayType;
+  this._overlayType = null;
+  this._openOverlay(t);
+}
 
     // Si había overlay abierto, lo reabrimos para no romper resize
     if (this._overlayType) {
