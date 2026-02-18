@@ -46,6 +46,7 @@ init(data) {
   renderUI() {
     const { width, height } = this.scale;
 const pad = clamp(Math.floor(width * 0.04), 16, 28);
+    const topH = clamp(Math.floor(height * 0.14), 64, 88);  
     // Limpieza
     if (this._ui) {
       this._ui.destroy(true);
