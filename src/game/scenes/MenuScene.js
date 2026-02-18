@@ -233,16 +233,28 @@ export class MenuScene extends Phaser.Scene {
     hero.add(trackLabel);
 
 // =========================
-// Panel evento (SOLO imagen) réplica exacta foto 2
+// Panel evento (SOLO imagen) — centrado y a tamaño “objetivo”
+// Ocupa el centro inferior del HERO (como tu imagen objetivo)
 // =========================
-const eventPanelY = Math.floor(height * 0.58);
 
-const eventPanelImg = this.add.image(width / 2, eventPanelY, 'panel_event')
+// Tamaño objetivo del panel dentro del área central (hero)
+const eventTargetW = width - pad * 2;                 // casi todo el ancho útil
+const eventTargetH = Math.floor(centerH * 0.42);      // “gordito”, ocupa centro
+
+// Posición: centrado horizontal, en la parte baja del hero (sin tocar botones)
+const eventPanelX = Math.floor(width / 2);
+const eventPanelY = Math.floor(centerY0 + centerH * 0.78);
+
+const eventPanelImg = this.add.image(eventPanelX, eventPanelY, 'panel_event')
   .setOrigin(0.5)
-  .setDepth(5);
+  .setDepth(20); // por encima del hero
 
-const panelMaxW = clamp(Math.floor(width * 0.82), 320, 620);
-eventPanelImg.setScale(panelMaxW / (eventPanelImg.width || 1));
+// Escala por “contain” (encaja sin recortar)
+const sX = eventTargetW / (eventPanelImg.width || 1);
+const sY = eventTargetH / (eventPanelImg.height || 1);
+const s = Math.min(sX, sY);
+
+eventPanelImg.setScale(s);
 
 this._ui.add(eventPanelImg);
 
