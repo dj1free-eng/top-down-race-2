@@ -269,6 +269,11 @@ this._ui.add(hero);
     // =========================
     // Botonera (foto 2) SIN bottom bar
     // =========================
+    console.log(
+  'btn_garage', this.textures.exists('btn_garage'),
+  'btn_play', this.textures.exists('btn_play'),
+  'btn_tracks', this.textures.exists('btn_tracks')
+);
     const bottom = this.add.container(0, bottomY);
 bottom.setDepth(60); // ✅ por encima de TODO lo demás
 this._ui.add(bottom);
