@@ -119,7 +119,7 @@ this._ui.add(topBar);
     topBar.add([gear, gearText]);
 
 // =========================
-// Centro: HERO (coche grande + ficha debajo) estilo referencia
+// Centro: HERO (coche grande) + InfoBox derecha (como pediste)
 // =========================
 {
   const hero = this.add.container(0, centerY0);
@@ -129,10 +129,6 @@ this._ui.add(topBar);
   const heroPad = pad;
   const heroW = width - heroPad * 2;
   const heroH = centerH;
-
-  // (debug opcional)
-  // const heroBg = this.add.rectangle(heroPad, 0, heroW, heroH, 0x0b1020, 0.06).setOrigin(0);
-  // hero.add(heroBg);
 
   const carId = this.selectedCarId || 'stock';
   const baseSpec = CAR_SPECS[carId] || CAR_SPECS.stock;
@@ -154,14 +150,13 @@ this._ui.add(topBar);
 
   // --- COCHE GRANDE ---
   const carCenterX = heroPad + Math.floor(heroW / 2);
-const carCenterY = Math.floor(heroH * 0.48);
+  const carCenterY = Math.floor(heroH * 0.48);
 
   const carPreview = this.add.sprite(carCenterX, carCenterY, texKey).setOrigin(0.5);
 
   const refitBigCar = () => {
-    // 👇 aquí está la magia: más grande tipo referencia
-    const maxW = heroW * 0.48;      // antes era muy chico
-    const maxH = heroH * 0.58;      // ocupa más alto
+    const maxW = heroW * 0.48;
+    const maxH = heroH * 0.58;
 
     const sw = carPreview.width || 1;
     const sh = carPreview.height || 1;
@@ -179,7 +174,7 @@ const carCenterY = Math.floor(heroH * 0.48);
 
   hero.add(carPreview);
 
-  // Flotación sutil (como en tu versión, pero menos “mareo”)
+  // Flotación sutil
   this.tweens.add({
     targets: carPreview,
     y: carPreview.y - 8,
@@ -189,73 +184,68 @@ const carCenterY = Math.floor(heroH * 0.48);
     ease: 'Sine.easeInOut'
   });
 
-// =========================
-// FICHA estilo referencia real
-// =========================
+  // =========================
+  // INFOBOX a la derecha del centro (nombre + 3 datos)
+  // =========================
+  {
+    const isLandscape = width >= height * 1.05;
 
-const headerY = Math.floor(heroH * 0.18);
+    // Tamaño caja
+    const infoW = clamp(Math.floor(width * 0.34), 260, 520);
+    const infoH = clamp(Math.floor(height * 0.15), 86, 126);
 
-// ---- NOMBRE (FUERA de la pill) ----
-const nameText = this.add.text(carCenterX, headerY, (p.name || carId).toUpperCase(), {
-  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-  fontSize: '30px',
-  color: '#ffffff',
-  fontStyle: 'bold'
-}).setOrigin(0.5);
+    // Posición: derecha del coche, un pelín arriba para que no choque con play
+    const infoX = carCenterX + clamp(Math.floor(width * 0.20), 150, 260);
+    const infoY = carCenterY - clamp(Math.floor(height * 0.16), 90, 150);
 
-hero.add(nameText);
+    const info = this.add.container(infoX, infoY).setDepth(25);
+    hero.add(info);
 
-// ---- línea fina debajo del nombre ----
-const lineW = heroW * 0.55;
-const line = this.add.rectangle(
-  carCenterX - lineW / 2,
-  headerY + 26,
-  lineW,
-  2,
-  0xffffff,
-  0.18
-).setOrigin(0);
+    // Fondo HUD
+    const bg = this.add.rectangle(0, 0, infoW, infoH, 0x0b1020, 0.28)
+      .setOrigin(0.5)
+      .setStrokeStyle(1, 0xb7c0ff, 0.18);
+    info.add(bg);
 
-hero.add(line);
+    // Nombre
+    const title = this.add.text(0, -Math.floor(infoH * 0.28), (p.name || carId).toUpperCase(), {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: isLandscape ? '26px' : '22px',
+      color: '#ffffff',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
+    info.add(title);
 
-// ---- PILL SOLO PARA STATS ----
-const pillW = clamp(Math.floor(heroW * 0.72), 360, 760);
-const pillH = 70;
-const pillX = carCenterX - pillW / 2;
-const pillY = headerY + 40;
+    // Línea fina debajo del nombre (estilo referencia)
+    const lineW = Math.floor(infoW * 0.78);
+    const line = this.add.rectangle(-Math.floor(lineW / 2), -Math.floor(infoH * 0.05), lineW, 2, 0xffffff, 0.16)
+      .setOrigin(0);
+    info.add(line);
 
-const pill = this.add.rectangle(pillX, pillY, pillW, pillH, 0x0b1020, 0.35)
-  .setOrigin(0)
-  .setStrokeStyle(1, 0xb7c0ff, 0.22);
+    // 3 datos (una fila, 3 columnas)
+    const statY = Math.floor(infoH * 0.18);
+    const col = Math.floor(infoW * 0.32);
 
-hero.add(pill);
+    const statStyle = {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: '16px',
+      color: '#b7c0ff',
+      fontStyle: 'bold'
+    };
 
-// ---- STATS centradas en 3 columnas ----
-const statY = pillY + pillH / 2;
+    info.add(
+      this.add.text(-col, statY, `${topKmh} km/h`, statStyle).setOrigin(0.5)
+    );
 
-const colOffset = pillW * 0.28;
+    info.add(
+      this.add.text(0, statY, this._trackTitle(this.selectedTrackKey), statStyle).setOrigin(0.5)
+    );
 
-const statStyle = {
-  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-  fontSize: '18px',
-  color: '#b7c0ff',
-  fontStyle: 'bold'
-};
-
-hero.add(
-  this.add.text(carCenterX - colOffset, statY, `${topKmh} km/h`, statStyle)
-    .setOrigin(0.5)
-);
-
-hero.add(
-  this.add.text(carCenterX, statY, this._trackTitle(this.selectedTrackKey), statStyle)
-    .setOrigin(0.5)
-);
-
-hero.add(
-  this.add.text(carCenterX + colOffset, statY, 'Grip medio', statStyle)
-    .setOrigin(0.5)
-);
+    info.add(
+      this.add.text(col, statY, 'Grip medio', statStyle).setOrigin(0.5)
+    );
+  }
+}
 
 // =========================
 // Panel evento (SOLO imagen) -> IZQUIERDA (más pequeño + más arriba)
