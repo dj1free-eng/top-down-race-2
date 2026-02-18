@@ -242,7 +242,7 @@ const eventPanelImg = this.add.image(width / 2, eventPanelY, 'panel_event')
   .setOrigin(0.5)
   .setDepth(5);
 
-const panelMaxW = clamp(Math.floor(width * 0.82), 320, 620);
+const eventPanelMaxW = clamp(Math.floor(width * 0.82), 320, 620);
 eventPanelImg.setScale(panelMaxW / eventPanelImg.width);
 
 this._ui.add(eventPanelImg);
