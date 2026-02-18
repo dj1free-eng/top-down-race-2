@@ -266,7 +266,7 @@ this._ui.add(hero);
   // subir un poco extra (ph * 0.08) + un toque fijo
   const extraUp = Math.floor(ph * 0.08) + 6;
 
-  const panelY = (bottomY - pad - Math.floor(ph / 2)) - extraUp;
+const panelY = bottomY - pad - Math.floor(ph / 2) - Math.floor(ph * 0.20);
 
   eventPanel.setPosition(panelX, panelY);
 }
