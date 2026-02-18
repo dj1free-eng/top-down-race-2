@@ -190,10 +190,8 @@ if (DEV_FACTORY) {
 
     topBar.add([gear, gearText]);
 
-    // ===== Centro: “hero car” =====
-    const centerY0 = topH + 10;
-    const bottomH = clamp(Math.floor(height * 0.18), 78, 110);
-    const centerH = height - centerY0 - bottomH - 10;
+// ===== Centro: “hero car” =====
+// (centerY0, bottomH y centerH ya están declarados arriba)
 // Evento (tipo Brawl): tarjeta informativa encima del bottom bar
 const eventH = clamp(Math.floor(height * 0.13), 54, 76);
 const eventY = height - bottomH - eventH - 10;
