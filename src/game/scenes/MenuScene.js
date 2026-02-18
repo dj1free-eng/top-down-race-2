@@ -267,25 +267,20 @@ this._ui.add(hero);
   eventPanel.setPosition(panelX, panelY);
 }
     
-    // =========================
+// =========================
 // Botonera (foto 2)
 // =========================
-
-const bottomH = clamp(Math.floor(height * 0.16), 90, 120);
-const bottomY = height - bottomH;
-
 const bottom = this.add.container(0, bottomY);
-bottom.setDepth(50); // por encima del panel
+bottom.setDepth(50); // siempre por encima
 this._ui.add(bottom);
 
-// 👇 IMPORTANTE: ahora Y es RELATIVO al container
+// Y relativo al container bottom
 const btnY = Math.floor(bottomH / 2);
-
 const bw = clamp(Math.floor(width * 0.24), 120, 190);
 
 const xGarage = pad + Math.floor(bw / 2);
 const xTracks = width - pad - Math.floor(bw / 2);
-const xPlay = Math.floor(width / 2);
+const xPlay   = Math.floor(width / 2);
 
 const makeImgBtn = (x, key, onClick) => {
   const img = this.add.image(x, btnY, key)
@@ -296,10 +291,7 @@ const makeImgBtn = (x, key, onClick) => {
   img.setScale(baseScale);
 
   img.on('pointerdown', () => img.setScale(baseScale * 0.96));
-  img.on('pointerup', () => {
-    img.setScale(baseScale);
-    onClick && onClick();
-  });
+  img.on('pointerup', () => { img.setScale(baseScale); onClick && onClick(); });
   img.on('pointerout', () => img.setScale(baseScale));
 
   bottom.add(img);
@@ -317,16 +309,16 @@ makeImgBtn(xPlay, 'btn_play', () => {
     localStorage.setItem('tdr2:carId', this.selectedCarId);
     localStorage.setItem('tdr2:trackKey', this.selectedTrackKey);
   } catch {}
-  this.scene.start('race', {
-    carId: this.selectedCarId,
-    trackKey: this.selectedTrackKey
-  });
+  this.scene.start('race', { carId: this.selectedCarId, trackKey: this.selectedTrackKey });
 });
 
 // TRACKS
 makeImgBtn(xTracks, 'btn_tracks', () => {
   this._openOverlay('tracks');
 });
+
+// ✅ CIERRE DE renderUI() (esto te faltaba)
+}
   // =========================
   // Overlays
   // =========================
