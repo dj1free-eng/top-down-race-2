@@ -267,7 +267,7 @@ export class MenuScene extends Phaser.Scene {
     // Botonera (foto 2) SIN bottom bar
     // =========================
     const bottom = this.add.container(0, bottomY);
-bottom.setDepth(30); // ✅ por encima del panel
+bottom.setDepth(31); // ✅ por encima del panel
 this._ui.add(bottom);
 
     const btnY = bottomY + Math.floor(bottomH / 2);
