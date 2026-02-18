@@ -70,7 +70,7 @@ const fitCover = (img) => {
 fitCover(bg);
 
 this._ui.add(bg);
-    // ===== Top bar =====
+/*    // ===== Top bar =====
     const topH = clamp(Math.floor(height * 0.14), 64, 88);
     const pad = clamp(Math.floor(width * 0.03), 14, 24);
 
@@ -156,7 +156,7 @@ if (DEV_FACTORY) {
   }, { accent: 0x2cf6ff });
   
   topBar.add(factoryBtn);
-}
+} */
     // Settings button
     const gearW = 44;
     const gearX = width - pad - gearW;
