@@ -58,6 +58,8 @@ const centerH = height - centerY0 - bottomH - 10;
 // Evento entre “hero” y botones
 const eventH = clamp(Math.floor(height * 0.13), 54, 76);
 const eventY = height - bottomH - eventH - 10;
+    const topBar = this.add.container(0, 0);
+    this._ui.add(topBar);
     // Limpieza
     if (this._ui) {
       this._ui.destroy(true);
