@@ -269,68 +269,67 @@ this._ui.add(hero);
     // =========================
     // Botonera (foto 2) SIN bottom bar
     // =========================
-    console.log(
-  'btn_garage', this.textures.exists('btn_garage'),
-  'btn_play', this.textures.exists('btn_play'),
-  'btn_tracks', this.textures.exists('btn_tracks')
-);
-    const bottom = this.add.container(0, bottomY);
-bottom.setDepth(60); // ✅ por encima de TODO lo demás
+    
+    // =========================
+// Botonera (foto 2)
+// =========================
+
+const bottomH = clamp(Math.floor(height * 0.16), 90, 120);
+const bottomY = height - bottomH;
+
+const bottom = this.add.container(0, bottomY);
+bottom.setDepth(50); // por encima del panel
 this._ui.add(bottom);
 
-    const btnY = bottomY + Math.floor(bottomH / 2);
-    const bw = clamp(Math.floor(width * 0.24), 120, 190);
+// 👇 IMPORTANTE: ahora Y es RELATIVO al container
+const btnY = Math.floor(bottomH / 2);
 
-    const xGarage = pad + Math.floor(bw / 2);
-    const xTracks = width - pad - Math.floor(bw / 2);
-    const xPlay = Math.floor(width / 2);
+const bw = clamp(Math.floor(width * 0.24), 120, 190);
 
-    const makeImgBtn = (x, key, onClick) => {
-      const img = this.add.image(x, btnY, key)
-        .setOrigin(0.5)
-        .setDepth(9999)
-        .setInteractive({ useHandCursor: true });
+const xGarage = pad + Math.floor(bw / 2);
+const xTracks = width - pad - Math.floor(bw / 2);
+const xPlay = Math.floor(width / 2);
 
-      const baseScale = bw / (img.width || 1);
-      img.setScale(baseScale);
+const makeImgBtn = (x, key, onClick) => {
+  const img = this.add.image(x, btnY, key)
+    .setOrigin(0.5)
+    .setInteractive({ useHandCursor: true });
 
-      img.on('pointerdown', () => img.setScale(baseScale * 0.96));
-      img.on('pointerup', () => { img.setScale(baseScale); onClick && onClick(); });
-      img.on('pointerout', () => img.setScale(baseScale));
+  const baseScale = bw / (img.width || 1);
+  img.setScale(baseScale);
 
-      bottom.add(img);
-      return img;
-    };
-bottom.add(
-  this.add.rectangle(width / 2, Math.floor(bottomH / 2), width, bottomH, 0xff00ff, 0.15).setOrigin(0.5)
-);
-    // GARAGE (modo player SIEMPRE)
-    makeImgBtn(xGarage, 'btn_garage', () => {
-      this.scene.start('GarageScene', { mode: 'player' });
-    });
+  img.on('pointerdown', () => img.setScale(baseScale * 0.96));
+  img.on('pointerup', () => {
+    img.setScale(baseScale);
+    onClick && onClick();
+  });
+  img.on('pointerout', () => img.setScale(baseScale));
 
-    // PLAY
-    makeImgBtn(xPlay, 'btn_play', () => {
-      try {
-        localStorage.setItem('tdr2:carId', this.selectedCarId);
-        localStorage.setItem('tdr2:trackKey', this.selectedTrackKey);
-      } catch {}
-      this.scene.start('race', { carId: this.selectedCarId, trackKey: this.selectedTrackKey });
-    });
+  bottom.add(img);
+  return img;
+};
 
-    // TRACKS
-    makeImgBtn(xTracks, 'btn_tracks', () => {
-      this._openOverlay('tracks');
-    });
+// GARAGE
+makeImgBtn(xGarage, 'btn_garage', () => {
+  this.scene.start('GarageScene', { mode: 'player' });
+});
 
-    // Reabrir overlay si estaba abierto (solo UNA vez)
-    if (this._overlayType) {
-      const t = this._overlayType;
-      this._overlayType = null;
-      this._openOverlay(t);
-    }
-  }
+// PLAY
+makeImgBtn(xPlay, 'btn_play', () => {
+  try {
+    localStorage.setItem('tdr2:carId', this.selectedCarId);
+    localStorage.setItem('tdr2:trackKey', this.selectedTrackKey);
+  } catch {}
+  this.scene.start('race', {
+    carId: this.selectedCarId,
+    trackKey: this.selectedTrackKey
+  });
+});
 
+// TRACKS
+makeImgBtn(xTracks, 'btn_tracks', () => {
+  this._openOverlay('tracks');
+});
   // =========================
   // Overlays
   // =========================
