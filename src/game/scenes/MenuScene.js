@@ -300,13 +300,16 @@ this.tweens.add({
     }).setOrigin(0.5);
     hero.add(trackLabel);
 // ===== Panel evento (imagen exacta estilo foto 2) =====
-const eventPanel = this.add.image(width / 2, eventY + Math.floor(eventH / 2), 'panel_event')
+const eventPanelY = Math.floor(height * 0.58);
+
+const eventPanel = this.add.image(width / 2, eventPanelY, 'panel_event')
   .setOrigin(0.5)
   .setDepth(5);
 
 {
-  const maxW = Math.min(620, width - pad * 2);
-  eventPanel.setScale(maxW / eventPanel.width);
+const maxW = clamp(Math.floor(width * 0.82), 320, 620);
+eventPanel.setScale(maxW / eventPanel.width);
+
 }
 
 this._ui.add(eventPanel);
