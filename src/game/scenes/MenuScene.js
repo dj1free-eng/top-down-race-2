@@ -154,7 +154,7 @@ this._ui.add(topBar);
 
   // --- COCHE GRANDE ---
   const carCenterX = heroPad + Math.floor(heroW / 2);
-  const carCenterY = Math.floor(heroH * 0.42);
+const carCenterY = Math.floor(heroH * 0.48);
 
   const carPreview = this.add.sprite(carCenterX, carCenterY, texKey).setOrigin(0.5);
 
@@ -190,7 +190,7 @@ this._ui.add(topBar);
   });
 
 // --- FICHA ARRIBA (nombre + 3 stats) ---
-const infoY = Math.floor(heroH * 0.14); // arriba del coche
+const infoY = Math.floor(heroH * 0.20);
 
   // “pill” base
   const pillW = clamp(Math.floor(heroW * 0.72), 360, 760);
