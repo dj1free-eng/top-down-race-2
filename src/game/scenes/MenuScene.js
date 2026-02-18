@@ -296,7 +296,9 @@ this._ui.add(bottom);
       bottom.add(img);
       return img;
     };
-
+bottom.add(
+  this.add.rectangle(width / 2, Math.floor(bottomH / 2), width, bottomH, 0xff00ff, 0.15).setOrigin(0.5)
+);
     // GARAGE (modo player SIEMPRE)
     makeImgBtn(xGarage, 'btn_garage', () => {
       this.scene.start('GarageScene', { mode: 'player' });
