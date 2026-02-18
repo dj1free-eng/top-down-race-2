@@ -235,19 +235,19 @@ this._ui.add(hero);
     hero.add(trackLabel);
 
 // =========================
-// Panel evento (SOLO imagen) -> IZQUIERDA como referencia
+// Panel evento (SOLO imagen) -> IZQUIERDA (más pequeño + más arriba)
 // =========================
 {
   const isLandscape = width >= height * 1.05;
 
-  // Ancho objetivo del panel (landscape: más pequeño; portrait: casi full)
+  // 👇 Un pelín más pequeño que antes (para que no invada el botón central)
   const panelTargetW = isLandscape
-    ? clamp(Math.floor(width * 0.34), 260, 520)
-    : clamp(Math.floor(width * 0.82), 320, 620);
+    ? clamp(Math.floor(width * 0.31), 240, 480)   // antes 0.34 / 260 / 520
+    : clamp(Math.floor(width * 0.78), 300, 600); // antes 0.82 / 320 / 620
 
-  // Container del panel (para poder posicionar fácil)
-  const eventPanel = this.add.container(0, 0).setDepth(10);
- eventPanel.setDepth(20);
+  // Container del panel
+  const eventPanel = this.add.container(0, 0);
+  eventPanel.setDepth(20);
   this._ui.add(eventPanel);
 
   // Imagen del panel
@@ -256,13 +256,17 @@ this._ui.add(hero);
   panelImg.setScale(panelScale);
   eventPanel.add(panelImg);
 
-  // Medidas ya escaladas
+  // Medidas escaladas
   const pw = (panelImg.width || 1) * panelScale;
   const ph = (panelImg.height || 1) * panelScale;
 
-  // Posición: izquierda y justo encima de la botonera
+  // 👇 Posición: izquierda + un pelín más arriba
   const panelX = pad + Math.floor(pw / 2);
-  const panelY = bottomY - pad - Math.floor(ph / 2);
+
+  // subir un poco extra (ph * 0.08) + un toque fijo
+  const extraUp = Math.floor(ph * 0.08) + 6;
+
+  const panelY = (bottomY - pad - Math.floor(ph / 2)) - extraUp;
 
   eventPanel.setPosition(panelX, panelY);
 }
