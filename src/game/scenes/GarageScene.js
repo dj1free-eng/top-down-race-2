@@ -1,9 +1,9 @@
 import Phaser from 'phaser';
 import { CAR_SPECS } from '../cars/carSpecs.js';
-
+import { BaseScene } from './BaseScene.js';
 const CARD_BASE = 'assets/cars/runtime/'; // donde están tus card_*.webp
 
-export class GarageScene extends Phaser.Scene {
+export class GarageScene extends BaseScene {
   constructor() {
     super({ key: 'GarageScene' });
     this._mode = 'player';
@@ -15,6 +15,7 @@ export class GarageScene extends Phaser.Scene {
 }
 
   create() {
+    super.create(); // 👈 SIEMPRE la primera línea
     const { width, height } = this.scale;
 // Fondo base (Brawl-ish)
 const bg = this.add.rectangle(0, 0, width, height, 0x2b7bff, 1).setOrigin(0);
