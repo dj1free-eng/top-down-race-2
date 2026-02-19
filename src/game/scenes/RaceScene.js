@@ -5,6 +5,7 @@ import { makeTrack03Drift } from '../tracks/track03_drift.js';
 import { buildTrackRibbon } from '../tracks/TrackBuilder.js';
 import { CAR_SPECS } from '../cars/carSpecs.js';
 import { resolveCarParams } from '../cars/resolveCarParams.js';
+import { BaseScene } from './BaseScene.js';
 
 function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
 function wrapPi(a) {
@@ -100,7 +101,7 @@ function isPointOnTrackWorld(px, py, geom) {
   return false;
 }
 
-export class RaceScene extends Phaser.Scene {
+export class RaceScene extends BaseScene {
   constructor() {
     super('race');
 
@@ -688,6 +689,8 @@ _dbg(msg) {
     try { this._dbg(String(msg)); } catch {}
   }
   create() {
+    super.create()
+}
     // -------------------------------------------------
 // RESET DURO DE ESTADO (obligatorio al volver del menú)
 // -------------------------------------------------
