@@ -3978,4 +3978,3 @@ if (state.stickX === 0 && state.stickY === 0) {
 
     return state;
   }
-}
