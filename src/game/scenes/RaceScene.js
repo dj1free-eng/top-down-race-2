@@ -690,7 +690,7 @@ _dbg(msg) {
   }
   create() {
     super.create()
-}
+
     // -------------------------------------------------
 // RESET DURO DE ESTADO (obligatorio al volver del menú)
 // -------------------------------------------------
@@ -3977,4 +3977,5 @@ if (state.stickX === 0 && state.stickY === 0) {
     });
 
     return state;
+  }
   }
