@@ -7,7 +7,8 @@ const CORE_ASSETS = [
   './icons/icon-192.png',
   './icons/icon-256.png',
   './icons/icon-384.png',
-  './icons/icon-512.png'
+  './icons/icon-512.png',
+  './assets/ui/orientation_portrait.png'
 ];
   self.addEventListener('message', (event) => {
   if (event?.data?.type === 'SKIP_WAITING') self.skipWaiting();
