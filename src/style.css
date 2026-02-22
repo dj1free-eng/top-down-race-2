@@ -18,13 +18,18 @@ html, body {
 #rotateOverlay {
   position: fixed;
   inset: 0;
-  z-index: 99998;
+  z-index: 9999;
   display: none;
   align-items: center;
   justify-content: center;
-  background: rgba(11, 16, 32, 0.92);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: #0b1020;
+}
+
+.rot-image {
+  width: min(92vw, 720px);
+  height: auto;
+  max-height: 92vh;
+  object-fit: contain;
 }
 
 #rotateOverlay .rot-card {
