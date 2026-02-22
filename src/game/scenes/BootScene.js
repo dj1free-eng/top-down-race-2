@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { applyCarOverrides } from '../cars/carSpecs.js';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -18,6 +19,7 @@ this.load.image(
 // Precarga mínima (logo/splash y UI esenciales)
 this.load.image('logo', 'assets/logo.webp');
 //Imagenes de MenuScene
+this.load.json('car_overrides', 'assets/data/car_overrides.json');
 this.load.image('menu_bg', 'assets/ui/menu_bg.webp');
 this.load.image('panel_event', 'assets/ui/panel_event.webp');
 this.load.image('btn_play', 'assets/ui/btn_play.webp');
@@ -88,7 +90,10 @@ this.load.setPath('');
   cam.setBackgroundColor('#000000');
 
   const { width, height } = this.scale;
-
+try {
+  const payload = this.cache.json.get('car_overrides');
+  applyCarOverrides(payload);
+} catch {}
   // Creamos un <video> HTML para iOS/Android (lo más robusto)
   const video = document.createElement('video');
   video.src = 'assets/intro/intro.mp4';
