@@ -723,6 +723,10 @@ this._onShutdownRaceScene = () => {
   if (this._onResizeUiCam) this.scale.off('resize', this._onResizeUiCam);
   if (this._onResizeDevModal) this.scale.off('resize', this._onResizeDevModal);
   if (this._onResizeTTPanel) this.scale.off('resize', this._onResizeTTPanel);
+if (this._onResizeTouchControls) {
+  this.scale.off('resize', this._onResizeTouchControls);
+  this._onResizeTouchControls = null;
+}
   // 1b) Touch UI container (si existe) — evita que queden objetos colgando
   try { if (this.touchUI?.scene) this.touchUI.destroy(true); } catch (e) {}
   this.touchUI = null;
