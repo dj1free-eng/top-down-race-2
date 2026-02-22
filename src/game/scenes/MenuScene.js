@@ -166,11 +166,11 @@ const targetH = clamp(Math.floor(topH * 0.9), 48, 72);
 
       this._toast(nowAdmin === '1' ? 'ADMIN ON' : 'ADMIN OFF');
 
-      if (nowAdmin === '1') {
-        this.scene.start('AdminHubScene');
-      } else {
-        this.renderUI();
-      }
+if (nowAdmin === '1') {
+  this.scene.start('admin-hub');
+} else {
+  this.renderUI();
+}
     });
   });
 
