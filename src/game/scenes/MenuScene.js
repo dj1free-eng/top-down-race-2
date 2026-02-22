@@ -119,7 +119,66 @@ this._ui.add(topBar);
     });
 
     topBar.add([gear, gearText]);
+// =========================
+// Logo + acceso ADMIN (long-press)
+// =========================
+{
+  const logoX = pad;
+  const logoY = Math.floor(topH / 2);
 
+  const logoImg = this.add.image(logoX, logoY, 'logo')
+    .setOrigin(0, 0.5);
+
+  // Ajustar altura al top bar
+  const targetH = clamp(Math.floor(topH * 0.65), 36, 52);
+  const s = targetH / (logoImg.height || 1);
+  logoImg.setScale(s);
+
+  logoImg.setDepth(41);
+
+  // Hitbox cómoda
+  const hit = this.add.rectangle(
+    logoX,
+    Math.floor(topH / 2),
+    Math.max(logoImg.displayWidth + 20, 140),
+    clamp(Math.floor(topH * 0.9), 44, 64),
+    0x000000,
+    0.001
+  )
+    .setOrigin(0, 0.5)
+    .setInteractive({ useHandCursor: true });
+
+  // Long press = ADMIN
+  let pressTimer = null;
+
+  const clearPress = () => {
+    if (pressTimer) this.time.removeEvent(pressTimer);
+    pressTimer = null;
+  };
+
+  hit.on('pointerdown', () => {
+    clearPress();
+    pressTimer = this.time.delayedCall(700, () => {
+      const nowAdmin =
+        localStorage.getItem('tdr2:admin') === '1' ? '0' : '1';
+
+      try { localStorage.setItem('tdr2:admin', nowAdmin); } catch {}
+
+      this._toast(nowAdmin === '1' ? 'ADMIN ON' : 'ADMIN OFF');
+
+      if (nowAdmin === '1') {
+        this.scene.start('AdminHubScene');
+      } else {
+        this.renderUI();
+      }
+    });
+  });
+
+  hit.on('pointerup', clearPress);
+  hit.on('pointerout', clearPress);
+
+  topBar.add([hit, logoImg]);
+}
 // =========================
 // Centro: HERO (coche grande) + InfoBox derecha (como pediste)
 // =========================
