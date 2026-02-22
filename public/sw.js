@@ -4,6 +4,7 @@ const CORE_ASSETS = [
   './',
   './index.html',
   './manifest.webmanifest',
+  './assets/data/car_overrides.json',
   './icons/icon-192.png',
   './icons/icon-256.png',
   './icons/icon-384.png',
