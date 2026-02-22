@@ -1,12 +1,14 @@
 import Phaser from 'phaser';
+import { BaseScene } from './BaseScene.js';
 
-export class AdminHubScene extends Phaser.Scene {
+export class AdminHubScene extends BaseScene {
   constructor() {
     super('admin-hub');
   }
 
   create() {
-    const { width, height } = this.scale;
+  super.create(); // 👈 primera línea siempre
+  const { width, height } = this.scale;
 
     this.cameras.main.setBackgroundColor('#0b1020');
 
