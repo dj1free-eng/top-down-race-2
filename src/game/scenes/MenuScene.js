@@ -130,7 +130,7 @@ this._ui.add(topBar);
     .setOrigin(0, 0.5);
 
   // Ajustar altura al top bar
-  const targetH = clamp(Math.floor(topH * 0.65), 36, 52);
+const targetH = clamp(Math.floor(topH * 0.9), 48, 72);
   const s = targetH / (logoImg.height || 1);
   logoImg.setScale(s);
 
