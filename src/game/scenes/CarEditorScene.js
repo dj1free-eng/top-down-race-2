@@ -108,7 +108,10 @@ export class CarEditorScene extends Phaser.Scene {
     // -------- Botones (Phaser) --------
     const btnY = height - 92;
 
-    const saveBtn = this._button(width / 2 - 160, btnY, 140, 54, 'GUARDAR', () => {
+        // 3 botones (mejor en móvil: no se salen de pantalla)
+    const BW = 120;
+
+    const saveBtn = this._button(width / 2 - 150, btnY, BW, 54, 'GUARDAR', () => {
       // Guardar = convertir BASE+DRAFT en SAVED (differences vs FACTORY)
       const finalSpec = { ...(this._base || {}), ...(this._override || {}) };
       const factory = this._factory || {};
@@ -134,7 +137,18 @@ export class CarEditorScene extends Phaser.Scene {
       this._refreshDomValues(true);
     });
 
-    const testBtn = this._button(width / 2 + 20, btnY, 140, 54, 'TEST', () => {
+    const exportBtn = this._button(width / 2 - 10, btnY, BW, 54, 'EXPORT', () => {
+      try {
+        const payload = this._buildExportPayload();
+        const fname = `tdr2-car-overrides-${payload.updated_at.replace(/[:.]/g, '-')}.json`;
+        this._downloadJson(fname, payload);
+        this._toast('Export ✓');
+      } catch {
+        this._toast('Export falló');
+      }
+    });
+
+    const testBtn = this._button(width / 2 + 130, btnY, BW, 54, 'TEST', () => {
       // ✅ Mantener borrador para seguir testeando al volver
       this._writeDraft(this._carId, this._override);
 
@@ -153,6 +167,7 @@ export class CarEditorScene extends Phaser.Scene {
     });
 
     this.add.existing(saveBtn);
+    this.add.existing(exportBtn);
     this.add.existing(testBtn);
 
     // Limpieza al salir (si no, el DOM se queda pegado encima del juego)
@@ -780,7 +795,73 @@ export class CarEditorScene extends Phaser.Scene {
 
     this._techOverlayText.setText(lines.join('\n'));
   }
+  // -----------------------------
+  // EXPORT (Opción 2 PRO)
+  // Genera JSON público con overrides actuales
+  // -----------------------------
+  _buildExportPayload() {
+    const nowISO = new Date().toISOString();
 
+    const carsOut = {};
+    const carIds = Object.keys(CAR_SPECS || {}).filter(Boolean);
+
+    for (const carId of carIds) {
+      const factory = CAR_SPECS[carId];
+      if (!factory || typeof factory !== 'object') continue;
+
+      // Para el coche actual: exporta lo que estás tocando ahora (base + draft)
+      // así no dependes de pulsar GUARDAR.
+      if (carId === this._carId) {
+        const liveSpec = { ...(this._base || {}), ...(this._override || {}) };
+        const ov = this._diffNumericVsFactory(factory, liveSpec);
+        if (Object.keys(ov).length) carsOut[carId] = ov;
+        continue;
+      }
+
+      // Para el resto: exporta el SAVED persistente
+      const saved = this._readOverride(carId);
+      if (saved && typeof saved === 'object' && Object.keys(saved).length) {
+        carsOut[carId] = saved;
+      }
+    }
+
+    return {
+      schema_version: 1,
+      updated_at: nowISO,
+      cars: carsOut
+    };
+  }
+
+  _diffNumericVsFactory(factory, spec) {
+    const out = {};
+    for (const k of Object.keys(factory)) {
+      if (typeof factory[k] !== 'number') continue;
+      if (typeof spec?.[k] !== 'number') continue;
+      if (spec[k] !== factory[k]) out[k] = spec[k];
+    }
+
+    // Sanitiza como SAVED (clamps/redondeos consistentes)
+    const prevFactory = this._factory;
+    this._factory = factory;
+    const clean = this._sanitizeOverride(out);
+    this._factory = prevFactory;
+
+    return clean;
+  }
+
+  _downloadJson(filename, obj) {
+    const json = JSON.stringify(obj, null, 2);
+    const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.rel = 'noopener';
+    a.click();
+
+    setTimeout(() => URL.revokeObjectURL(url), 2500);
+  }
   _destroyDomPanel() {
     try {
       if (this._dom?.node) this._dom.node.remove();
