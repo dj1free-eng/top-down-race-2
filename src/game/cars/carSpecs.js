@@ -661,3 +661,38 @@ steeringProfile: 'DIRECT',
     gripBrake: 0.19
   }
 };
+// =========================
+// Community tuning overrides (Opción 2 PRO)
+//
+// - En producción, el juego carga (en BootScene) el JSON público:
+//   public/assets/data/car_overrides.json
+// - Ese JSON SOLO contiene parches por coche (campos que quieres sobrescribir)
+// - Aquí los aplicamos sobre CAR_SPECS en runtime.
+// =========================
+
+/**
+ * Aplica overrides (parches) SOBRE CAR_SPECS.
+ * - Merge superficial (top-level).
+ * - Ignora coches desconocidos.
+ */
+export function applyCarOverrides(payload) {
+  const cars = payload?.cars;
+  if (!cars || typeof cars !== 'object') return;
+
+  for (const [carId, patch] of Object.entries(cars)) {
+    if (!CAR_SPECS[carId] || !patch || typeof patch !== 'object') continue;
+    CAR_SPECS[carId] = { ...CAR_SPECS[carId], ...patch };
+  }
+}
+
+/**
+ * Crea un payload listo para publicar en car_overrides.json
+ * a partir de un mapa { carId: {campo: valor, ...} }.
+ */
+export function makeOverridesPayload(carsMap) {
+  return {
+    schema_version: 1,
+    updated_at: new Date().toISOString(),
+    cars: carsMap && typeof carsMap === 'object' ? carsMap : {}
+  };
+}
