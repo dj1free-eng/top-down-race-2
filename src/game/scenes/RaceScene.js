@@ -2420,7 +2420,7 @@ this.time.delayedCall(120, () => this._reflowStartModal());
     // Arranque automático del semáforo al cargar (sin GAS)
 this.time.delayedCall(150, () => {
   if (this._startState !== 'COUNTDOWN') this._startState = 'COUNTDOWN';
-
+this._startAutoFired = true; // ✅ ya está programado en create(), no lo repitas en update()
   if (this._startHint) this._startHint.setText('Mantente listo...');
   if (this._startStatus) {
     this._startStatus.setText('RED LIGHTS');
@@ -3783,101 +3783,18 @@ ensureAsphaltTexture() {
 const ui = this.add.container(0, 0).setScrollFactor(0).setDepth(1000);
 this.touchUI = ui; // ← referencia para cámaras
 
-    const build = () => {
-      ui.removeAll(true);
+const build = () => {
+  // ...
+};
 
-      const w = this.scale.width;
-      const h = this.scale.height;
-      const pad = 16;
+// ✅ guarda referencia para poder hacer off() en shutdown
+this._onResizeTouchControls = build;
 
-      const stickR = Math.max(54, Math.floor(Math.min(w, h) * 0.07));
-      const stickMax = stickR * 0.85;
+// ✅ evita duplicar listeners si la escena se reinicia
+this.scale.off('resize', this._onResizeTouchControls);
 
-// Ajuste físico del joystick respecto al grip:
-// +75% diámetro derecha
-// -20% diámetro izquierda
-// -20% diámetro arriba
-const JOY_OFFSET_X = stickR * (1.5 - 0.4); // = +1.1 * R
-const JOY_OFFSET_Y = -stickR * 0.4;        // = -20% diámetro
-
-const baseX = pad + stickR + 10 + JOY_OFFSET_X;
-const baseY = h - pad - stickR - 10 + JOY_OFFSET_Y;
-
-state.baseX = baseX;
-state.baseY = baseY;
-
-      state.baseX = baseX;
-      state.baseY = baseY;
-      state.knobX = baseX;
-      state.knobY = baseY;
-      state.stickR = stickR;
-      state.stickMax = stickMax;
-
-      const btnW = Math.max(110, Math.floor(w * 0.22));
-      const btnH = Math.max(78, Math.floor(h * 0.115));
-      const gap = 14;
-
-      const rightX = w - pad - btnW;
-      const throttleY = h - pad - btnH * 2 - gap;
-      const brakeY = h - pad - btnH;
-
-      state.rightX = rightX;
-      state.throttleY = throttleY;
-      state.brakeY = brakeY;
-      state.btnW = btnW;
-      state.btnH = btnH;
-
-      const g = this.add.graphics();
-
-      const draw = () => {
-        g.clear();
-
-        g.fillStyle(0x0b1020, 0.35);
-        g.fillCircle(state.baseX, state.baseY, state.stickR + 10);
-        g.lineStyle(2, 0xb7c0ff, 0.25);
-        g.strokeCircle(state.baseX, state.baseY, state.stickR + 10);
-
-        const knobR = Math.floor(state.stickR * 0.46);
-        g.fillStyle(0xffffff, state.leftActive ? 0.22 : 0.14);
-        g.fillCircle(state.knobX, state.knobY, knobR);
-        if (state.leftActive) {
-          g.lineStyle(2, 0x2bff88, 0.35);
-          g.strokeCircle(state.knobX, state.knobY, knobR);
-        }
-
-        g.fillStyle(0x0b1020, state.rightThrottle ? 0.50 : 0.28);
-        g.fillRoundedRect(state.rightX, state.throttleY, state.btnW, state.btnH, 16);
-        g.lineStyle(2, state.rightThrottle ? 0x2bff88 : 0xb7c0ff, state.rightThrottle ? 0.55 : 0.22);
-        g.strokeRoundedRect(state.rightX, state.throttleY, state.btnW, state.btnH, 16);
-
-        g.fillStyle(0x0b1020, state.rightBrake ? 0.50 : 0.28);
-        g.fillRoundedRect(state.rightX, state.brakeY, state.btnW, state.btnH, 16);
-        g.lineStyle(2, state.rightBrake ? 0xff5a7a : 0xb7c0ff, state.rightBrake ? 0.55 : 0.22);
-        g.strokeRoundedRect(state.rightX, state.brakeY, state.btnW, state.btnH, 16);
-      };
-
-      const tText = this.add.text(state.rightX + state.btnW / 2, state.throttleY + state.btnH / 2, 'GAS', {
-        fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-        fontSize: '16px',
-        color: '#2bff88',
-        fontStyle: 'bold'
-      }).setOrigin(0.5);
-
-      const bText = this.add.text(state.rightX + state.btnW / 2, state.brakeY + state.btnH / 2, 'FRENO', {
-        fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-        fontSize: '16px',
-        color: '#ff5a7a',
-        fontStyle: 'bold'
-      }).setOrigin(0.5);
-
-ui.add([g, tText, bText]);
-
-      state._draw = draw;
-      state._draw();
-    };
-
-    build();
-    this.scale.on('resize', build);
+build();
+this.scale.on('resize', this._onResizeTouchControls);
 
     const hitThrottle = (x, y) =>
       x >= state.rightX && x <= state.rightX + state.btnW &&
