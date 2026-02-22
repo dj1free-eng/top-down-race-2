@@ -3788,7 +3788,74 @@ const ui = this.add.container(0, 0).setScrollFactor(0).setDepth(1000);
 this.touchUI = ui; // ← referencia para cámaras
 
 const build = () => {
-  // ...
+  const w = this.scale.width;
+  const h = this.scale.height;
+
+  // Limpia UI anterior
+  ui.removeAll(true);
+
+  const pad = clamp(Math.floor(Math.min(w, h) * 0.04), 14, 28);
+
+  // Stick (izquierda)
+  state.stickR   = clamp(Math.floor(Math.min(w, h) * 0.17), 70, 140);
+  state.stickMax = clamp(Math.floor(state.stickR * 0.55), 36, 90);
+
+  state.baseX = pad + state.stickR;
+  state.baseY = h - pad - state.stickR;
+
+  // Si no está activo, el knob vuelve al centro
+  if (!state.leftActive) {
+    state.knobX = state.baseX;
+    state.knobY = state.baseY;
+  }
+
+  // Botones (derecha)
+  state.btnW = clamp(Math.floor(w * 0.22), 150, 260);
+  state.btnH = clamp(Math.floor(h * 0.16), 78, 140);
+
+  state.rightX    = w - pad - state.btnW;
+  state.brakeY    = h - pad - state.btnH;
+  state.throttleY = state.brakeY - Math.floor(state.btnH * 1.08);
+
+  // --- Stick visuals ---
+  const baseCircle = this.add.circle(state.baseX, state.baseY, state.stickR, 0x000000, 0.18)
+    .setStrokeStyle(3, 0xffffff, 0.25);
+
+  const knobCircle = this.add.circle(state.knobX, state.knobY, Math.floor(state.stickR * 0.33), 0xffffff, 0.18)
+    .setStrokeStyle(2, 0xffffff, 0.28);
+
+  // --- Buttons visuals ---
+  const makeBtn = (x, y, label, color) => {
+    const bg = this.add.rectangle(x, y, state.btnW, state.btnH, 0x0b1020, 0.55)
+      .setOrigin(0)
+      .setStrokeStyle(2, 0xffffff, 0.18);
+
+    const txt = this.add.text(x + state.btnW / 2, y + state.btnH / 2, label, {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: `${clamp(Math.floor(state.btnH * 0.35), 18, 34)}px`,
+      color,
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
+
+    return { bg, txt };
+  };
+
+  const gas   = makeBtn(state.rightX, state.throttleY, 'GAS',   '#2bff88');
+  const brake = makeBtn(state.rightX, state.brakeY,    'FRENO', '#ff4d6d');
+
+  // Dibujo reactivo (al pulsar)
+  state._draw = () => {
+    knobCircle.setPosition(state.knobX, state.knobY);
+
+    gas.bg.setAlpha(state.rightThrottle ? 0.82 : 0.55);
+    brake.bg.setAlpha(state.rightBrake ? 0.82 : 0.55);
+
+    gas.bg.setStrokeStyle(2, 0xffffff, state.rightThrottle ? 0.32 : 0.18);
+    brake.bg.setStrokeStyle(2, 0xffffff, state.rightBrake ? 0.32 : 0.18);
+  };
+
+  ui.add([baseCircle, knobCircle, gas.bg, gas.txt, brake.bg, brake.txt]);
+  state._draw();
 };
 
 // ✅ guarda referencia para poder hacer off() en shutdown
