@@ -3576,41 +3576,37 @@ if (this.speedHudText) {
 
       if (this._fitHud) this._fitHud();
     }
-// DEV HUD info (derecha)
+// DEV HUD info (derecha) — COMPACTO para móvil
 if (DEV_TOOLS && this.devInfo && this._devVisible) {
   const cp = (this._cpState || 0);
   const surf = this._surface || '??';
   const zoom = (this.zoom ?? 1).toFixed(2);
-  const cull = (this._cullEnabled !== false) ? 'ON' : 'OFF';
-  const carCell = this._carCellKey || ''; // si no existe, queda vacío
-  const diag = this._trackDiag || '';
-  const diag2 = this._trackDiag2 || '';
+
   const cam = this.cameras?.main;
   const sx = cam ? Math.round(cam.scrollX) : 0;
   const sy = cam ? Math.round(cam.scrollY) : 0;
-  const fx = cam?.followTarget ? 'YES' : 'NO';
 
   const cx = this.carBody ? Math.round(this.carBody.x) : 0;
   const cy = this.carBody ? Math.round(this.carBody.y) : 0;
 
-  const rigOK = (this.carRig && this.carRig.scene) ? 'YES' : 'NO';
-  const rigVis = (this.carRig && this.carRig.visible !== undefined) ? (this.carRig.visible ? 'VIS' : 'HID') : '??';
-  const rigA = (this.carRig && this.carRig.alpha !== undefined) ? this.carRig.alpha.toFixed(2) : '??';
-  
+  // ✅ Datos clave para calibrar velocímetro
+  const rawPx = (this.carBody?.body?.velocity)
+    ? Math.hypot(this.carBody.body.velocity.x, this.carBody.body.velocity.y)
+    : (this.carBody?.body?.speed ?? 0);
+
+  const maxFwdPx = (this.carParams?.maxFwd ?? 0);
+
+  // 0.10 = factor del juego para UI km/h
+  const kmhNow = rawPx * 0.10;
+
   this.devInfo.setText(
-  `Track: ${this.track?.meta?.id || this.track?.meta?.name || ''}\n` +
-  `CP: ${cp} | Lap: ${this.lapCount || 0}\n` +
-  `Surface: ${surf}\n` +
-  `Cull: ${cull}\n` +
-  `Zoom: ${zoom}\n` +
-  `Cam: ${sx},${sy} | Follow: ${fx}\n` +
-  `Car: ${cx},${cy}\n` +
-  `Rig: ${rigOK} | ${rigVis} | a:${rigA}\n` +
-  `accelMult: ${this._devTuning?.accelMult?.toFixed?.(2) ?? '1.00'}\n` +
-  (carCell ? `Cell: ${carCell}\n` : '') +
-  (diag ? `Diag: ${diag}\n` : '') +
-  (diag2 ? `Diag2: ${diag2}\n` : '')
-);
+    `Track: ${this.track?.meta?.id || this.track?.meta?.name || ''}\n` +
+    `Lap: ${this.lapCount || 0} | CP: ${cp}\n` +
+    `Surf: ${surf} | Zoom: ${zoom}\n` +
+    `Car: ${cx},${cy} | Cam: ${sx},${sy}\n` +
+    `Raw: ${rawPx.toFixed(1)} px/s  (${kmhNow.toFixed(0)} km/h)\n` +
+    `MaxFwd: ${maxFwdPx.toFixed(0)} px/s  (${(maxFwdPx * 0.10).toFixed(0)} km/h)`
+  );
 }
     // Sincronizar rig visual con body físico
     if (this.carRig && this.carBody) {
