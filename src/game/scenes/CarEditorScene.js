@@ -140,8 +140,8 @@ export class CarEditorScene extends Phaser.Scene {
     const exportBtn = this._button(width / 2 - 10, btnY, BW, 54, 'EXPORT', () => {
       try {
         const payload = this._buildExportPayload();
-        const fname = `tdr2-car-overrides-${payload.updated_at.replace(/[:.]/g, '-')}.json`;
-        this._downloadJson(fname, payload);
+        const fname = 'car-overrides.json';
+this._downloadJson(fname, payload);
         this._toast('Export ✓');
       } catch {
         this._toast('Export falló');
