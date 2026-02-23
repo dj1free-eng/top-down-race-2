@@ -217,7 +217,7 @@ if (nowAdmin === '1') {
     maxFwdAdd: 0, maxRevAdd: 0, turnMinAdd: 0
   };
   const p = resolveCarParams(baseSpec, neutralTuning);
-const topKmh = (p.maxFwd * 0.10).toFixed(0);
+const topKmh = (p.maxFwd * 0.185).toFixed(0);
 
   // Preview coche: skin real si existe, si no fallback a 'car'
   this._ensureCarTexture();
