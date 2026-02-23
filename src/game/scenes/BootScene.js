@@ -19,7 +19,7 @@ this.load.image(
 // Precarga mínima (logo/splash y UI esenciales)
 this.load.image('logo', 'assets/logo.webp');
 //Imagenes de MenuScene
-this.load.json('car_overrides', 'assets/data/car_overrides.json');
+this.load.json('car_overrides', 'community/car-overrides.json');
 this.load.image('menu_bg', 'assets/ui/menu_bg.webp');
 this.load.image('panel_event', 'assets/ui/panel_event.webp');
 this.load.image('btn_play', 'assets/ui/btn_play.webp');
