@@ -1,5 +1,5 @@
 /* Static-cache SW (sin Workbox) — reproducible y fácil de depurar */
-const CACHE_VERSION = 'tdr2-v12';
+const CACHE_VERSION = 'tdr2-v13';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -42,7 +42,23 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
-
+  // ✅ Community overrides: NETWORK-FIRST (para que se actualice sin reinstalar PWA)
+  if (url.pathname.endsWith('/community/car-overrides.json')) {
+    event.respondWith(
+      (async () => {
+        const cache = await caches.open(CACHE_VERSION);
+        try {
+          const fresh = await fetch(req, { cache: 'no-store' });
+          if (fresh && fresh.ok) cache.put(req, fresh.clone());
+          return fresh;
+        } catch {
+          const cached = await cache.match(req);
+          return cached || new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } });
+        }
+      })()
+    );
+    return;
+  }
   // Navegación: network-first con fallback a index cacheado (clave por URL real)
   if (isNavigationRequest(req)) {
     event.respondWith(
