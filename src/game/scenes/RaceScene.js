@@ -3543,7 +3543,7 @@ if (shouldShow) {
     this.prevCarY = this.car.y;
 
     // === HUD ===
-const KMH_PER_PXSEC = 0.10;
+const KMH_PER_PXSEC = 0.185;
 const kmh = speed * KMH_PER_PXSEC;
 // GPS HUD (abajo-centro) — safe (no tocar objetos destruidos)
 if (this.speedHud?.speedText?.scene) {
