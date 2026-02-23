@@ -4,14 +4,25 @@ import { resolveCarParams } from '../cars/resolveCarParams.js';
 import { DEV_FACTORY } from '../dev/devFlags.js';
 import { BaseScene } from './BaseScene.js';
 function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
+const LEGACY_CAR_IDS = new Set(['stock', 'touring', 'power']);
 
+function getFirstPlayableCarId() {
+  const cars = Object.values(CAR_SPECS || {}).filter(c => c?.id && !LEGACY_CAR_IDS.has(c.id));
+  return cars[0]?.id || Object.values(CAR_SPECS || {})[0]?.id || 'stock';
+}
+
+function isPlayableCarId(id) {
+  if (!id) return false;
+  if (LEGACY_CAR_IDS.has(id)) return false;
+  return !!CAR_SPECS?.[id];
+}
 export class MenuScene extends BaseScene {
   constructor() {
     super('menu');
     this._ui = null;
 
     // Persistencia (mínima y segura)
-    this.selectedCarId = 'stock';
+    this.selectedCarId = getFirstPlayableCarId();
     this.selectedTrackKey = 'track02';
 
     // Overlays
@@ -35,10 +46,16 @@ export class MenuScene extends BaseScene {
     this.cameras.main.setBackgroundColor('#0b1020');
 
     // Leer prefs
-    try {
-      this.selectedCarId = localStorage.getItem('tdr2:carId') || 'stock';
+        try {
+      const savedCar = localStorage.getItem('tdr2:carId');
+      const fallbackCar = getFirstPlayableCarId();
+      this.selectedCarId = isPlayableCarId(savedCar) ? savedCar : fallbackCar;
+      localStorage.setItem('tdr2:carId', this.selectedCarId);
+
       this.selectedTrackKey = localStorage.getItem('tdr2:trackKey') || 'track02';
-    } catch {}
+    } catch {
+      this.selectedCarId = getFirstPlayableCarId();
+    }
 
     // Re-render al cambiar tamaño/orientación
     this.scale.on('resize', () => this.renderUI());
@@ -191,8 +208,8 @@ if (nowAdmin === '1') {
   const heroW = width - heroPad * 2;
   const heroH = centerH;
 
-  const carId = this.selectedCarId || 'stock';
-  const baseSpec = CAR_SPECS[carId] || CAR_SPECS.stock;
+  const carId = isPlayableCarId(this.selectedCarId) ? this.selectedCarId : getFirstPlayableCarId();
+  const baseSpec = CAR_SPECS[carId] || CAR_SPECS[getFirstPlayableCarId()];
 
   // Stats rápidos (reales)
   const neutralTuning = {
@@ -501,7 +518,7 @@ makeImgBtn(xTracks, 'btn_tracks', sideW, () => {
     if (!ov) return;
 
     const pad = 16;
-    const cars = Object.values(CAR_SPECS || {});
+    const cars = Object.values(CAR_SPECS || {}).filter(c => c?.id && !LEGACY_CAR_IDS.has(c.id));
     const listY = y + pad;
 
     const info = this.add.text(x + pad, y + pad, 'Elige coche:', {
