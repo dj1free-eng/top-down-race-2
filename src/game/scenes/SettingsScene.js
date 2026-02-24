@@ -189,20 +189,28 @@ _buildTabs(panelX, panelY, panelW) {
 
     const c = this.add.container(x, y, [g, t, hit]);
 
-    hit.on('pointerdown', () => draw(tab === this.activeTab, true));
-    hit.on('pointerout', () => draw(tab === this.activeTab, false));
-    hit.on('pointerup', () => {
-      if (this.activeTab === tab) {
-        draw(true, false);
-        return;
-      }
-      this.activeTab = tab;
-      this.scene.restart();
-    });
+hit.on('pointerdown', () => {
+  draw(tab === this.activeTab, true);
+  c.setScale(0.98);
+});
 
-    x += pw + gap;
-  });
-}
+hit.on('pointerout', () => {
+  draw(tab === this.activeTab, false);
+  c.setScale(1.0);
+});
+
+hit.on('pointerup', () => {
+  draw(tab === this.activeTab, false);
+  c.setScale(1.0);
+
+  if (this.activeTab === tab) return;
+
+  this.activeTab = tab;
+
+  // Micro transición (para que no parezca un refresh feo)
+  this.cameras.main.fadeOut(90, 11, 16, 32);
+  this.time.delayedCall(95, () => this.scene.restart());
+});
 
   // ===============================
   // Tab Content
@@ -334,26 +342,90 @@ _renderTabContent(panelX, panelY, panelW, panelH) {
     });
   }
 
-  _toggleButton(value, x, y, onChange) {
-    const label = value ? 'ON' : 'OFF';
+_toggleButton(value, x, y, onChange) {
+  // Switch estilo iOS / consola
+  const w = 96;
+  const h = 34;
+  const r = 17;
 
-    const btn = this.add.rectangle(x, y, 80, 32,
-      value ? 0x2bff88 : 0x141b33,
-      0.9
-    ).setOrigin(0);
+  const c = this.add.container(x, y);
 
-    btn.setStrokeStyle(1, 0xb7c0ff, 0.5);
-    btn.setInteractive({ useHandCursor: true });
+  const g = this.add.graphics();
 
-    this.add.text(x + 40, y + 16, label, {
-      fontSize: '13px',
-      color: value ? '#0b1020' : '#ffffff'
-    }).setOrigin(0.5);
+  const knobR = 13;
+  const knobY = Math.floor(h / 2);
 
-    btn.on('pointerdown', () => {
-      onChange(!value);
+  const knob = this.add.circle(value ? (w - r) : r, knobY, knobR, 0xffffff, 1);
+
+  const txt = this.add.text(w + 12, knobY, value ? 'ON' : 'OFF', {
+    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: '12px',
+    color: value ? '#2bff88' : '#b7c0ff',
+    fontStyle: 'bold'
+  }).setOrigin(0, 0.5);
+
+  const draw = (v, pressed = false) => {
+    g.clear();
+
+    // Track
+    g.fillStyle(v ? 0x2bff88 : 0x141b33, pressed ? 0.95 : 0.85);
+    g.fillRoundedRect(0, 0, w, h, r);
+
+    // Stroke
+    g.lineStyle(1, v ? 0x2bff88 : 0xb7c0ff, v ? 0.45 : 0.22);
+    g.strokeRoundedRect(0, 0, w, h, r);
+
+    // Highlight superior sutil
+    g.fillStyle(0xffffff, v ? 0.14 : 0.10);
+    g.fillRoundedRect(2, 2, w - 4, Math.max(6, Math.floor(h * 0.35)), r - 2);
+
+    // Knob
+    knob.setFillStyle(0xffffff, 1);
+    knob.x = v ? (w - r) : r;
+
+    // Texto
+    txt.setText(v ? 'ON' : 'OFF');
+    txt.setColor(v ? '#2bff88' : '#b7c0ff');
+  };
+
+  draw(value, false);
+
+  const hit = this.add.rectangle(0, 0, w, h, 0x000000, 0.001)
+    .setOrigin(0)
+    .setInteractive({ useHandCursor: true });
+
+  const press = () => {
+    c.setScale(0.98);
+    draw(value, true);
+  };
+
+  const release = () => {
+    c.setScale(1.0);
+    draw(value, false);
+  };
+
+  hit.on('pointerdown', press);
+  hit.on('pointerout', release);
+  hit.on('pointerup', () => {
+    release();
+
+    // Animación knob (suave)
+    const next = !value;
+
+    // animación visual del knob (sin depender del restart)
+    this.tweens.add({
+      targets: knob,
+      x: next ? (w - r) : r,
+      duration: 140,
+      ease: 'Sine.easeOut'
     });
-  }
+
+    onChange(next);
+  });
+
+  c.add([g, knob, hit, txt]);
+  return c;
+}
 _fitCover(img) {
   const sw = this.scale.width;
   const sh = this.scale.height;
