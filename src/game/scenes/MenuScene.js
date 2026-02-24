@@ -210,7 +210,8 @@ if (nowAdmin === '1') {
 
   const carId = isPlayableCarId(this.selectedCarId) ? this.selectedCarId : getFirstPlayableCarId();
   const baseSpec = CAR_SPECS[carId] || CAR_SPECS[getFirstPlayableCarId()];
-
+const brandSlug = this._brandSlug(baseSpec?.brand);
+this._tryEnsureLogoTexture(brandSlug, false); // normal por ahora
   // Stats rápidos (reales)
   const neutralTuning = {
     accelMult: 1.0, brakeMult: 1.0, dragMult: 1.0, turnRateMult: 1.0,
@@ -283,7 +284,33 @@ const topKmh = (p.maxFwd * 0.185).toFixed(0);
     const bg = this.add.rectangle(0, 0, infoW, infoH, 0x0b1020, 0.28)
       .setOrigin(0.5)
       .setStrokeStyle(1, 0xb7c0ff, 0.18);
-    info.add(bg);
+info.add(bg);
+
+// ============================
+// LOGO MARCA
+// ============================
+
+if (brandSlug) {
+  const logoKey = this._logoKey(brandSlug, false);
+
+  if (this.textures.exists(logoKey)) {
+    const logo = this.add.image(
+      -Math.floor(infoW * 0.40), 
+      0, 
+      logoKey
+    )
+    .setOrigin(0.5)
+    .setAlpha(0.95);
+
+    const maxW = Math.floor(infoW * 0.22);
+    const maxH = Math.floor(infoH * 0.55);
+    const s = Math.min(maxW / (logo.width || 1), maxH / (logo.height || 1));
+
+    logo.setScale(s);
+
+    info.add(logo);
+  }
+}
 
     // Nombre
     const title = this.add.text(0, -Math.floor(infoH * 0.28), (p.name || carId).toUpperCase(), {
@@ -837,13 +864,73 @@ makeImgBtn(xTracks, 'btn_tracks', sideW, () => {
 
     if (!this.load.isLoading()) this.load.start();
   }
+_logoKey(brandSlug, negative = false) {
+  return `logo:${brandSlug}${negative ? ':neg' : ''}`;
+}
 
+_tryEnsureLogoTexture(brandSlug, negative = false) {
+  if (!brandSlug) return;
+
+  const key = this._logoKey(brandSlug, negative);
+  if (this.textures.exists(key)) return;
+
+  const url = `assets/logos/logo_${brandSlug}${negative ? '_negativo' : ''}.webp`;
+
+  this.load.image(key, url);
+
+  const onFileComplete = (k) => {
+    if (k !== key) return;
+    cleanup();
+    this.renderUI();
+  };
+
+  const onLoadError = (file) => {
+    if (!file || file.key !== key) return;
+    cleanup();
+    // si falla, no hacemos nada (simplemente no se verá)
+    this.renderUI();
+  };
+
+  const cleanup = () => {
+    this.load.off('filecomplete-image-' + key, onFileComplete);
+    this.load.off('loaderror', onLoadError);
+  };
+
+  this.load.once('filecomplete-image-' + key, onFileComplete);
+  this.load.on('loaderror', onLoadError);
+
+  if (!this.load.isLoading()) this.load.start();
+}
   _previewTextureKey(carId) {
     const key = this._skinKey(carId);
     if (this.textures.exists(key)) return key;
     return 'car';
   }
+_brandSlug(brand) {
+  const s = String(brand || '').trim().toLowerCase();
 
+  // mapeo por si en CAR_SPECS usas nombres “bonitos”
+  const map = {
+    'avenir': 'avenir',
+    'crown': 'crown',
+    'forge': 'forge',
+    'helix': 'helix',
+    'veloce': 'veloce',
+
+    // por si tienes “Base” o cosas así:
+    'base': null,
+    '—': null,
+    '-': null,
+  };
+
+  if (map.hasOwnProperty(s)) return map[s];
+
+  // fallback: slug básico por si metes marcas nuevas
+  return s
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
   _trackTitle(key) {
     if (key === 'track01') return 'Óvalo';
     if (key === 'track02') return 'Técnico';
