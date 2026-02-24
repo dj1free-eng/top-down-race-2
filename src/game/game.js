@@ -4,6 +4,7 @@ import { MenuScene } from './scenes/MenuScene.js';
 import { RaceScene } from './scenes/RaceScene.js';
 
 import { GarageScene } from './scenes/GarageScene.js';
+import { SettingsScene } from './scenes/SettingsScene.js';
 import { GarageDetailScene } from './scenes/GarageDetailScene.js';
 import { AdminHubScene } from './scenes/AdminHubScene.js';
 import { CarEditorScene } from './scenes/CarEditorScene.js';
@@ -15,7 +16,7 @@ export function createGame(parentId = 'app') {
     backgroundColor: '#0b1020',
     // IMPORTANT: si una Scene no está aquí, Vite la tree-shakea y en runtime verás
     // "ReferenceError: Can't find variable: ..." al abrirla.
-scene: [BootScene, MenuScene, GarageScene, GarageDetailScene, RaceScene, AdminHubScene, CarEditorScene],
+scene: [BootScene, MenuScene, GarageScene, SettingsScene, GarageDetailScene, RaceScene, AdminHubScene, CarEditorScene],
     dom: {
   createContainer: true
 },
