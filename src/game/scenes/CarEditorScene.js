@@ -839,6 +839,7 @@ this._downloadJson(fname, payload);
 
     const lines = [
       'DATOS TÉCNICOS',
+      `profile: ${liveSpec.handlingProfile || liveSpec.steeringProfile || 'ARCADE'}`,
       `maxFwd: ${fmt(liveSpec.maxFwd, 1)} px/s  ·  ${fmt(liveSpec.maxFwd * KMH_PER_PXPS, 0)} km/h`,
       `accel: ${fmt(liveSpec.accel, 2)}`,
       `brakeForce: ${fmt(liveSpec.brakeForce, 2)}`,
