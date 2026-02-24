@@ -211,7 +211,11 @@ hit.on('pointerup', () => {
   this.cameras.main.fadeOut(90, 11, 16, 32);
   this.time.delayedCall(95, () => this.scene.restart());
 });
-  }
+
+// avanzar cursor y cerrar tab
+x += pw + gap;
+  });
+}
   // ===============================
   // Tab Content
   // ===============================
