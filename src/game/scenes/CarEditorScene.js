@@ -557,7 +557,16 @@ this._downloadJson(fname, payload);
     `;
 
     node.prepend(style);
+    // Inicializar selector de perfil con valor actual (base+draft)
+    const getLiveProfile = () => {
+      const live = { ...(this._base || {}), ...(this._override || {}) };
+      return live.handlingProfile || live.steeringProfile || 'ARCADE';
+    };
 
+    const sel = node.querySelector('.selProfile');
+    if (sel) {
+      sel.value = getLiveProfile();
+    }
     const showTip = (text) => {
       const tip = node.querySelector('.tip');
       if (!tip) return;
@@ -588,6 +597,8 @@ this._downloadJson(fname, payload);
         this._writeDraft(this._carId, this._override);
         this._refreshDomValues(true);
         this._toast('Draft reseteado');
+                const sel = node.querySelector('.selProfile');
+        if (sel) sel.value = (this._base.handlingProfile || this._base.steeringProfile || 'ARCADE');
         return;
       }
 
@@ -602,6 +613,8 @@ this._downloadJson(fname, payload);
 
         this._refreshDomValues(true);
         this._toast('Datos de fábrica ✓');
+                const sel = node.querySelector('.selProfile');
+        if (sel) sel.value = (this._base.handlingProfile || this._base.steeringProfile || 'ARCADE');
         return;
       }
 
@@ -680,7 +693,20 @@ this._downloadJson(fname, payload);
       this._writeDraft(this._carId, this._override);
       this._refreshRow(row, key);
     });
+    // Cambio de perfil (select)
+    node.addEventListener('change', (e) => {
+      const t = e.target;
+      if (!t?.classList?.contains('selProfile')) return;
 
+      const pid = String(t.value || '').trim();
+
+      if (pid && HANDLING_PROFILES[pid]) {
+        this._override.handlingProfile = pid;
+        this._writeDraft(this._carId, this._override);
+        this._refreshTechOverlay();
+        this._toast(`Perfil: ${pid}`);
+      }
+    });
     // Search
     const search = node.querySelector('.search');
     search.addEventListener('input', () => {
