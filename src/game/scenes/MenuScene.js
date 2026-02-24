@@ -132,8 +132,8 @@ this._ui.add(topBar);
     }).setOrigin(0.5);
 
     gear.on('pointerdown', () => {
-      this._toast('Settings (pronto)');
-    });
+  this.scene.start('SettingsScene');
+});
 
     topBar.add([gear, gearText]);
 // =========================
