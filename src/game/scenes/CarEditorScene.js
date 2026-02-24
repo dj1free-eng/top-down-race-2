@@ -123,7 +123,16 @@ export class CarEditorScene extends Phaser.Scene {
         if (typeof finalSpec[k] !== 'number') continue;
         if (finalSpec[k] !== factory[k]) saved[k] = finalSpec[k];
       }
+      // Guardar también handlingProfile (si cambia respecto a fábrica)
+      const factoryProfile = factory.handlingProfile || factory.steeringProfile || 'ARCADE';
+      const finalProfile =
+        finalSpec.handlingProfile ||
+        finalSpec.steeringProfile ||
+        factoryProfile;
 
+      if (finalProfile !== factoryProfile) {
+        saved.handlingProfile = finalProfile;
+      }
       this._writeOverride(this._carId, saved);
 
       // Reset draft tras guardar
@@ -375,6 +384,11 @@ this._downloadJson(fname, payload);
       <div class="panel">
         <div class="bar">
           <input class="search" placeholder="Buscar parámetro…" />
+
+          <select class="selProfile" aria-label="perfil de dirección">
+            ${Object.keys(HANDLING_PROFILES).map(id => `<option value="${id}">${id}</option>`).join('')}
+          </select>
+
           <button class="mini" data-act="resetAll">RESET</button>
           <button class="mini" data-act="factory">FÁBRICA</button>
           <button class="mini" data-act="clear">CLEAR</button>
