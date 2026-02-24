@@ -893,13 +893,20 @@ this._downloadJson(fname, payload);
 
   _diffNumericVsFactory(factory, spec) {
     const out = {};
+
+    // Números
     for (const k of Object.keys(factory)) {
       if (typeof factory[k] !== 'number') continue;
       if (typeof spec?.[k] !== 'number') continue;
       if (spec[k] !== factory[k]) out[k] = spec[k];
     }
 
-    // Sanitiza como SAVED (clamps/redondeos consistentes)
+    // Perfil (string)
+    const factoryProfile = factory.handlingProfile || factory.steeringProfile || 'ARCADE';
+    const specProfile = spec?.handlingProfile || spec?.steeringProfile || factoryProfile;
+    if (specProfile !== factoryProfile) out.handlingProfile = specProfile;
+
+    // Sanitiza como SAVED (clamps/redondeos consistentes + perfil válido)
     const prevFactory = this._factory;
     this._factory = factory;
     const clean = this._sanitizeOverride(out);
