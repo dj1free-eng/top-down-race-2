@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { CAR_SPECS } from '../cars/carSpecs.js';
+import { HANDLING_PROFILES } from '../cars/handlingProfiles.js';
 
 function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
 
@@ -226,7 +227,13 @@ this._downloadJson(fname, payload);
 
       out[k] = (Math.abs(v) < 1) ? Math.round(v * 1000) / 1000 : Math.round(v * 100) / 100;
     }
-
+    // Permitir perfil de conducción/dirección (string)
+    if (typeof obj?.handlingProfile === 'string') {
+      const pid = obj.handlingProfile.trim();
+      if (pid && HANDLING_PROFILES[pid]) {
+        out.handlingProfile = pid;
+      }
+    }
     return out;
   }
 
