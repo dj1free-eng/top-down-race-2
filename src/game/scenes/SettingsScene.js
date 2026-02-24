@@ -37,127 +37,284 @@ export class SettingsScene extends Phaser.Scene {
   }
 
   create() {
-    const { width, height } = this.scale;
-    this.cameras.main.setBackgroundColor('#0b1020');
+  const { width, height } = this.scale;
 
-    this._buildHeader(width);
-    this._buildTabs(width);
-    this._renderTabContent(width, height);
+  // Fondo base
+  this.cameras.main.setBackgroundColor('#0b1020');
+
+  // Fondo imagen (si existe en el juego)
+  if (this.textures.exists('menu_bg')) {
+    const bg = this.add.image(width / 2, height / 2, 'menu_bg').setOrigin(0.5);
+    this._fitCover(bg);
   }
+
+  // Layout (similar al lobby)
+  const pad = Math.max(14, Math.min(24, Math.floor(width * 0.03)));
+  const topH = Math.max(64, Math.min(88, Math.floor(height * 0.14)));
+
+  // Panel principal
+  const panelX = pad;
+  const panelY = topH + 12;
+  const panelW = width - pad * 2;
+  const panelH = height - panelY - pad;
+
+  // Header + Tabs + Contenido dentro del panel
+  this._buildHeader(width, topH, pad);
+  this._buildPanel(panelX, panelY, panelW, panelH);
+  this._buildTabs(panelX, panelY, panelW);
+  this._renderTabContent(panelX, panelY, panelW, panelH);
+}
 
   // ===============================
   // Header
   // ===============================
 
-  _buildHeader(width) {
-    const header = this.add.rectangle(0, 0, width, 64, 0x141b33, 0.95)
-      .setOrigin(0);
+_buildHeader(width, topH, pad) {
+  // Barra superior sutil (como HUD)
+  const bar = this.add.rectangle(0, 0, width, topH, 0x0b1020, 0.35).setOrigin(0);
+  bar.setDepth(10);
 
-    const back = this.add.text(20, 20, '←', {
-      fontSize: '24px',
-      color: '#ffffff'
-    }).setInteractive({ useHandCursor: true });
+  // Botón BACK tipo pill
+  const x = pad;
+  const y = Math.floor(topH / 2);
 
-    back.on('pointerdown', () => {
-      this.scene.start('menu');
-    });
+  const btnW = 84;
+  const btnH = 38;
 
-    this.add.text(width / 2, 22, 'CONFIGURACIÓN', {
-      fontSize: '18px',
-      color: '#ffffff'
-    }).setOrigin(0.5);
-  }
+  const g = this.add.graphics();
+  g.setDepth(11);
 
+  const draw = (pressed) => {
+    g.clear();
+    g.fillStyle(0x141b33, pressed ? 0.85 : 0.55);
+    g.fillRoundedRect(x, y - btnH / 2, btnW, btnH, 16);
+    g.lineStyle(1, 0xb7c0ff, pressed ? 0.45 : 0.22);
+    g.strokeRoundedRect(x, y - btnH / 2, btnW, btnH, 16);
+  };
+  draw(false);
+
+  const label = this.add.text(x + btnW / 2, y, '← VOLVER', {
+    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: '13px',
+    color: '#ffffff',
+    fontStyle: 'bold'
+  }).setOrigin(0.5).setDepth(12);
+
+  const hit = this.add.rectangle(x, y - btnH / 2, btnW, btnH, 0x000000, 0.001)
+    .setOrigin(0)
+    .setInteractive({ useHandCursor: true })
+    .setDepth(13);
+
+  hit.on('pointerdown', () => { draw(true); });
+  hit.on('pointerup', () => { draw(false); this.scene.start('menu'); });
+  hit.on('pointerout', () => { draw(false); });
+
+  // Título centrado
+  this.add.text(width / 2, y, 'CONFIGURACIÓN', {
+    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: '18px',
+    color: '#ffffff',
+    fontStyle: 'bold'
+  }).setOrigin(0.5).setDepth(12);
+}
+_buildPanel(x, y, w, h) {
+  // Panel principal estilo overlay del lobby
+  const bg = this.add.rectangle(x, y, w, h, 0x0b1020, 0.72)
+    .setOrigin(0)
+    .setStrokeStyle(1, 0xb7c0ff, 0.18);
+
+  // Header interior (zona tabs)
+  const headH = 56;
+  const head = this.add.rectangle(x, y, w, headH, 0x141b33, 0.70).setOrigin(0);
+
+  // Guardamos métricas internas
+  this._panel = { x, y, w, h, headH };
+}
   // ===============================
   // Tabs
   // ===============================
 
-  _buildTabs(width) {
-    const tabs = ['controls', 'video', 'audio'];
-    const labels = {
-      controls: 'CONTROLES',
-      video: 'VÍDEO',
-      audio: 'AUDIO'
-    };
+_buildTabs(panelX, panelY, panelW) {
+  const { headH } = this._panel;
 
-    let x = 40;
-    tabs.forEach(tab => {
-      const isActive = tab === this.activeTab;
+  const tabs = ['controls', 'video', 'audio'];
+  const labels = { controls: 'CONTROLES', video: 'VÍDEO', audio: 'AUDIO' };
 
-      const btn = this.add.rectangle(x, 80, 120, 36,
-        0x141b33,
-        isActive ? 0.85 : 0.45
-      ).setOrigin(0);
+  const pad = 14;
+  const pillH = 36;
+  const gap = 10;
 
-      btn.setStrokeStyle(1, isActive ? 0x2bff88 : 0xb7c0ff, 0.5);
-      btn.setInteractive({ useHandCursor: true });
+  let x = panelX + pad;
+  const y = panelY + Math.floor((headH - pillH) / 2);
 
-      const text = this.add.text(x + 60, 98, labels[tab], {
-        fontSize: '13px',
-        color: '#ffffff'
-      }).setOrigin(0.5);
+  tabs.forEach(tab => {
+    const isActive = tab === this.activeTab;
 
-      btn.on('pointerdown', () => {
-        this.activeTab = tab;
-        this.scene.restart();
-      });
-
-      x += 140;
+    const textObj = this.add.text(0, 0, labels[tab], {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: '13px',
+      color: '#ffffff',
+      fontStyle: 'bold'
     });
-  }
+
+    const pillPadX = 16;
+    const pw = Math.max(118, textObj.width + pillPadX * 2);
+    textObj.destroy(); // solo lo usamos para medir
+
+    const g = this.add.graphics();
+    const draw = (selected, pressed) => {
+      g.clear();
+      g.fillStyle(0x141b33, selected ? 0.85 : 0.45);
+      g.fillRoundedRect(0, 0, pw, pillH, 16);
+      g.lineStyle(1, selected ? 0x2bff88 : 0xb7c0ff, selected ? 0.55 : 0.22);
+      g.strokeRoundedRect(0, 0, pw, pillH, 16);
+
+      if (pressed) {
+        g.fillStyle(0x000000, 0.10);
+        g.fillRoundedRect(0, 0, pw, pillH, 16);
+      }
+    };
+    draw(isActive, false);
+
+    const t = this.add.text(Math.floor(pw / 2), Math.floor(pillH / 2), labels[tab], {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: '13px',
+      color: '#ffffff',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
+
+    const hit = this.add.rectangle(0, 0, pw, pillH, 0x000000, 0.001)
+      .setOrigin(0)
+      .setInteractive({ useHandCursor: true });
+
+    const c = this.add.container(x, y, [g, t, hit]);
+
+    hit.on('pointerdown', () => draw(tab === this.activeTab, true));
+    hit.on('pointerout', () => draw(tab === this.activeTab, false));
+    hit.on('pointerup', () => {
+      if (this.activeTab === tab) {
+        draw(true, false);
+        return;
+      }
+      this.activeTab = tab;
+      this.scene.restart();
+    });
+
+    x += pw + gap;
+  });
+}
 
   // ===============================
   // Tab Content
   // ===============================
 
-  _renderTabContent(width, height) {
-    const startY = 140;
+_renderTabContent(panelX, panelY, panelW, panelH) {
+  const { headH } = this._panel;
 
-    if (this.activeTab === 'controls') {
-      this._sectionTitle('Tipo de control', 40, startY);
-      this._textLine(`Actual: ${this.settings.controls.scheme}`, 40, startY + 30);
+  const pad = 16;
+  const contentX = panelX + pad;
+  const contentY = panelY + headH + pad;
 
-      this._sectionTitle('Invertir dirección', 40, startY + 90);
-      this._toggleButton(
-        this.settings.controls.invertSteer,
-        40,
-        startY + 120,
-        (value) => {
-          this.settings.controls.invertSteer = value;
-          this._saveSettings();
-          this.scene.restart();
-        }
-      );
-    }
+  // Footer
+  const footerH = 54;
+  const footerY = panelY + panelH - footerH;
 
-    if (this.activeTab === 'video') {
-      this._sectionTitle('Mostrar FPS', 40, startY);
-      this._toggleButton(
-        this.settings.video.showFPS,
-        40,
-        startY + 30,
-        (value) => {
-          this.settings.video.showFPS = value;
-          this._saveSettings();
-          this.scene.restart();
-        }
-      );
-    }
+  // Línea separadora
+  this.add.rectangle(panelX + 10, footerY, panelW - 20, 1, 0xffffff, 0.08).setOrigin(0);
 
-    if (this.activeTab === 'audio') {
-      this._sectionTitle('Modo silencio', 40, startY);
-      this._toggleButton(
-        this.settings.audio.mute,
-        40,
-        startY + 30,
-        (value) => {
-          this.settings.audio.mute = value;
-          this._saveSettings();
-          this.scene.restart();
-        }
-      );
-    }
+  // Botón "Restablecer" (por ahora solo UI)
+  const reset = this.add.rectangle(contentX, footerY + 10, 140, 34, 0x141b33, 0.55)
+    .setOrigin(0)
+    .setStrokeStyle(1, 0xb7c0ff, 0.18)
+    .setInteractive({ useHandCursor: true });
+
+  const resetTxt = this.add.text(contentX + 70, footerY + 27, 'RESTABLECER', {
+    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: '12px',
+    color: '#ffffff',
+    fontStyle: 'bold'
+  }).setOrigin(0.5);
+
+  reset.on('pointerdown', () => {
+    // Nota: ahora mismo solo resetea y guarda
+    this.settings = structuredClone(DEFAULT_SETTINGS);
+    this._saveSettings();
+    this.scene.restart();
+  });
+
+  // Estado guardado
+  this.add.text(panelX + panelW - pad, footerY + 27, 'Guardado ✓', {
+    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: '12px',
+    color: '#2bff88',
+    fontStyle: 'bold'
+  }).setOrigin(1, 0.5);
+
+  // Zona de contenido útil (para no chocar con footer)
+  const maxY = footerY - 12;
+
+  let y = contentY;
+
+  const title = (txt) => {
+    this._sectionTitle(txt, contentX, y);
+    y += 28;
+  };
+
+  const rowGap = 14;
+
+  if (this.activeTab === 'controls') {
+    title('CONTROLES');
+    this._textLine(`Tipo de control: ${this.settings.controls.scheme}`, contentX, y);
+    y += 26 + rowGap;
+
+    this._sectionTitle('Invertir dirección', contentX, y);
+    y += 26;
+    this._toggleButton(
+      this.settings.controls.invertSteer,
+      contentX,
+      y,
+      (value) => {
+        this.settings.controls.invertSteer = value;
+        this._saveSettings();
+        this.scene.restart();
+      }
+    );
   }
+
+  if (this.activeTab === 'video') {
+    title('VÍDEO');
+
+    this._sectionTitle('Mostrar FPS', contentX, y);
+    y += 26;
+    this._toggleButton(
+      this.settings.video.showFPS,
+      contentX,
+      y,
+      (value) => {
+        this.settings.video.showFPS = value;
+        this._saveSettings();
+        this.scene.restart();
+      }
+    );
+  }
+
+  if (this.activeTab === 'audio') {
+    title('AUDIO');
+
+    this._sectionTitle('Modo silencio', contentX, y);
+    y += 26;
+    this._toggleButton(
+      this.settings.audio.mute,
+      contentX,
+      y,
+      (value) => {
+        this.settings.audio.mute = value;
+        this._saveSettings();
+        this.scene.restart();
+      }
+    );
+  }
+}
 
   // ===============================
   // UI Helpers
@@ -197,7 +354,15 @@ export class SettingsScene extends Phaser.Scene {
       onChange(!value);
     });
   }
-
+_fitCover(img) {
+  const sw = this.scale.width;
+  const sh = this.scale.height;
+  const sx = sw / (img.width || 1);
+  const sy = sh / (img.height || 1);
+  const s = Math.max(sx, sy); // cover
+  img.setScale(s);
+  img.setPosition(sw / 2, sh / 2);
+}
   // ===============================
   // Storage
   // ===============================
