@@ -446,6 +446,17 @@ this._downloadJson(fname, payload);
         padding:0 10px;
         outline:none;
       }
+        .selProfile{
+        height:34px;
+        border-radius:10px;
+        border:1px solid rgba(183,192,255,0.18);
+        background:rgba(7,16,39,0.65);
+        color:#fff;
+        padding:0 10px;
+        outline:none;
+        font-weight:900;
+        max-width: 170px;
+      }
       .mini{
         height:34px;
         border-radius:10px;
