@@ -430,13 +430,9 @@ makeImgBtn(xGarage, 'btn_garage', sideW, () => {
   this.scene.start('GarageScene', { mode: 'player' });
 });
 
-// FACTORY (si tienes Scene DEV / tuning / lo que sea)
+// FACTORY
 makeImgBtn(xFactory, 'btn_factory', midW, () => {
-  // Ajusta el destino real según tu proyecto:
-  // - si tienes CarFactoryScene: this.scene.start('CarFactoryScene');
-  // - si es otra: cámbialo aquí
-  if (DEV_FACTORY) this.scene.start('CarFactoryScene');
-  else this._toast('Factory (pronto)');
+  this.scene.start('upgrade-shop');
 });
 
 // TRACKS
