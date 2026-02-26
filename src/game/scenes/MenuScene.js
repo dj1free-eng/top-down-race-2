@@ -475,19 +475,38 @@ makeImgBtn(xTracks, 'btn_tracks', sideW, () => {
   const bigPlayScale = bigPlayW / (bigPlayBtn.width || 1);
   bigPlayBtn.setScale(bigPlayScale);
 
-  bigPlayBtn.on('pointerdown', () => bigPlayBtn.setScale(bigPlayScale * 0.97));
-  bigPlayBtn.on('pointerup', () => {
-    bigPlayBtn.setScale(bigPlayScale);
-    try {
-      localStorage.setItem('tdr2:carId', this.selectedCarId);
-      localStorage.setItem('tdr2:trackKey', this.selectedTrackKey);
-    } catch {}
-    this.scene.start('race', {
-      carId: this.selectedCarId,
-      trackKey: this.selectedTrackKey
-    });
+let armedPlay = false;
+
+bigPlayBtn.on('pointerdown', () => {
+  armedPlay = true;
+  bigPlayBtn.setScale(bigPlayScale * 0.97);
+});
+
+bigPlayBtn.on('pointerout', () => {
+  armedPlay = false;
+  bigPlayBtn.setScale(bigPlayScale);
+});
+
+bigPlayBtn.on('pointerup', () => {
+  bigPlayBtn.setScale(bigPlayScale);
+  if (!armedPlay) return;
+  armedPlay = false;
+
+  try {
+    localStorage.setItem('tdr2:carId', this.selectedCarId);
+    localStorage.setItem('tdr2:trackKey', this.selectedTrackKey);
+  } catch {}
+
+  this.scene.start('race', {
+    carId: this.selectedCarId,
+    trackKey: this.selectedTrackKey
   });
-  bigPlayBtn.on('pointerout', () => bigPlayBtn.setScale(bigPlayScale));
+});
+
+bigPlayBtn.on('pointerupoutside', () => {
+  armedPlay = false;
+  bigPlayBtn.setScale(bigPlayScale);
+});
 
   this._ui.add(bigPlayBtn);
 }
