@@ -169,7 +169,14 @@ _createCard(x, y, w, h, carId, spec) {
   if (this._mode === 'admin') {
     this.scene.start('car-editor', { carId });
   } else {
-this.scene.start('GarageDetailScene', { carId, mode: 'player' });
+	// PLAYER MODE: al tocar un coche, lo seleccionamos y volvemos al menú.
+	// (El menú ya lee el coche activo desde localStorage: tdr2:carId)
+	try {
+	  localStorage.setItem('tdr2:carId', carId);
+	} catch (e) {
+	  // si localStorage falla por cualquier motivo, seguimos igualmente
+	}
+	this.scene.start('menu');
   }
 });
 
