@@ -417,9 +417,29 @@ const makeImgBtn = (x, key, targetW, onClick) => {
   const baseScale = targetW / (img.width || 1);
   img.setScale(baseScale);
 
-  img.on('pointerdown', () => img.setScale(baseScale * 0.96));
-  img.on('pointerup', () => { img.setScale(baseScale); onClick && onClick(); });
-  img.on('pointerout', () => img.setScale(baseScale));
+  let armed = false;
+
+  img.on('pointerdown', () => {
+    armed = true;
+    img.setScale(baseScale * 0.96);
+  });
+
+  img.on('pointerout', () => {
+    armed = false;
+    img.setScale(baseScale);
+  });
+
+  img.on('pointerup', () => {
+    img.setScale(baseScale);
+    if (!armed) return;
+    armed = false;
+    onClick && onClick();
+  });
+
+  img.on('pointerupoutside', () => {
+    armed = false;
+    img.setScale(baseScale);
+  });
 
   bottom.add(img);
   return img;
