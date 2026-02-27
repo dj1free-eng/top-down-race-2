@@ -1330,7 +1330,7 @@ _drawGate(this.checkpoints.cp2, 0x2dff6a);
 this.cameras.main.stopFollow();
 this.cameras.main.setScroll(0, 0);
 
-this.cameras.main.startFollow(this.carRig, true, 0.12, 0.12);
+this.cameras.main.startFollow(this.carBody, true, 0.12, 0.12);
 this.cameras.main.setZoom(this.zoom);
 this.cameras.main.roundPixels = true;
 
@@ -1340,7 +1340,7 @@ this.cameras.main.centerOn(this.carBody.x, this.carBody.y);
 // iOS: a veces el follow no “engancha” hasta el siguiente tick al reentrar
 this.time.delayedCall(0, () => {
   if (!this.carRig || !this.carBody) return;
-  this.cameras.main.startFollow(this.carRig, true, 0.12, 0.12);
+  this.cameras.main.startFollow(this.carBody, true, 0.12, 0.12);
   this.cameras.main.centerOn(this.carBody.x, this.carBody.y);
 });
 
