@@ -690,7 +690,34 @@ _dbg(msg) {
   }
   create() {
     super.create()
+// ===============================
+// DEV DIAG overlay (iPhone-safe)
+// ===============================
+this._diagLines = [];
+this._diagText = this.add.text(10, 10, '', {
+  fontFamily: 'monospace',
+  fontSize: '12px',
+  color: '#ffffff',
+  align: 'left',
+  backgroundColor: 'rgba(0,0,0,0.55)',
+  padding: { left: 8, right: 8, top: 6, bottom: 6 }
+})
+  .setScrollFactor(0)
+  .setDepth(9999);
 
+// Si tienes uiCam, asegúrate de que lo vea la cámara UI (y no “desaparezca”)
+if (this.uiCam) {
+  try { this.uiCam.ignore([]); } catch (e) {}
+}
+
+// helper para imprimir líneas
+this._diag = (msg) => {
+  try {
+    this._diagLines.push(String(msg));
+    if (this._diagLines.length > 8) this._diagLines.shift();
+    if (this._diagText) this._diagText.setText(this._diagLines.join('\n'));
+  } catch (e) {}
+};
     // -------------------------------------------------
 // RESET DURO DE ESTADO (obligatorio al volver del menú)
 // -------------------------------------------------
@@ -903,7 +930,22 @@ geom: buildTrackRibbon({
 };
     // TT: métricas de centerline (progreso por distancia, corrige óvalo)
 this._initTTCenterlineMetrics();
+// ===============================
+// DIAG 2ª ENTRADA — track chunks visibles
+// ===============================
+this.time.delayedCall(500, () => {
+  const geomCells = this.track?.geom?.cells?.size ?? 0;
+  const gfxCells = this.track?.gfxByCell?.size ?? 0;
 
+  let visibleTiles = 0;
+  if (this.track?.gfxByCell) {
+    for (const cell of this.track.gfxByCell.values()) {
+      if (cell?.tile?.visible) visibleTiles++;
+    }
+  }
+
+  this._diag?.(`[DIAG] geomCells=${geomCells} gfxCells=${gfxCells} visibleTiles=${visibleTiles}`);
+});
 // =========================
 // 3) Fondo del mundo: OFF + GRASS BAND
 // =========================
