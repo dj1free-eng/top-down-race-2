@@ -788,6 +788,11 @@ if (this._onResizeTouchControls) {
     this.speedHud.clockText = null;
     this.speedHud.built = false;
   }
+  // DEV DIAG overlay cleanup
+try { if (this._diagText?.scene) this._diagText.destroy(); } catch (e) {}
+this._diagText = null;
+this._diagLines = null;
+this._diag = null;
 };
 this.events.once(Phaser.Scenes.Events.SHUTDOWN, this._onShutdownRaceScene, this);
     
