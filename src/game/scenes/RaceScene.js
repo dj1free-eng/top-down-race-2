@@ -730,6 +730,10 @@ this._visibleTiles = null;
     // FIX: si venimos del menú, puede quedar un rig viejo (y la cámara seguirlo mal)
 try { if (this.carRig?.scene) this.carRig.destroy(true); } catch (e) {}
 this.carRig = null;
+    // FIX: el body físico también debe morir entre entradas (si no, conserva x/y)
+try { if (this.carBody?.scene) this.carBody.destroy(true); } catch (e) {}
+this.carBody = null;
+this.car = null;
     // Alias compatible con código viejo
     this._dbgSet = (m) => this._dbg(m);
  // Limpieza al salir de RaceScene (evita refs a objetos destruidos al volver del menú)
@@ -788,11 +792,23 @@ if (this._onResizeTouchControls) {
     this.speedHud.clockText = null;
     this.speedHud.built = false;
   }
+
+  // ===============================
+  // FIX: destruir coche y cortar follow
+  // ===============================
+  try { if (this.carRig?.scene) this.carRig.destroy(true); } catch (e) {}
+  try { if (this.carBody?.scene) this.carBody.destroy(true); } catch (e) {}
+  this.carRig = null;
+  this.carBody = null;
+  this.car = null;
+
+  try { this.cameras?.main?.stopFollow(); } catch (e) {}
+
   // DEV DIAG overlay cleanup
-try { if (this._diagText?.scene) this._diagText.destroy(); } catch (e) {}
-this._diagText = null;
-this._diagLines = null;
-this._diag = null;
+  try { if (this._diagText?.scene) this._diagText.destroy(); } catch (e) {}
+  this._diagText = null;
+  this._diagLines = null;
+  this._diag = null;
 };
 this.events.once(Phaser.Scenes.Events.SHUTDOWN, this._onShutdownRaceScene, this);
     
