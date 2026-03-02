@@ -15,6 +15,7 @@ export class TrackEditorScene extends BaseScene {
 
     this._gRaw = null;
     this._gClean = null;
+    this._gOverlay = null;   // ✅ overlay validación
 
     this._minSampleDist = 10; // px
     this._drawRect = null;    // Phaser.Geom.Rectangle
@@ -28,6 +29,9 @@ export class TrackEditorScene extends BaseScene {
     this._ui.widthValue = null;
     this._ui.validateBtn = null;
     this._ui.report = null;
+
+    // ✅ último reporte de validación (para overlay)
+    this._lastValidation = null;
   }
 
   create() {
@@ -36,12 +40,12 @@ export class TrackEditorScene extends BaseScene {
 
     // Fondo
     this.cameras.main.setBackgroundColor('#1b6bff');
-// --- Responsive flags (DECLARAR ARRIBA DEL TODO) ---
-const isNarrow = width < 520;
-const uiScale = isNarrow ? 0.70 : 1.0;
-const S = (n) => Math.floor(n * uiScale);
 
-    
+    // --- Responsive flags (DECLARAR ARRIBA DEL TODO) ---
+    const isNarrow = width < 520;
+    const uiScale = isNarrow ? 0.70 : 1.0;
+    const S = (n) => Math.floor(n * uiScale);
+
     // --- Flecha atrás (arriba izquierda) ---
     const backSize = isNarrow ? 40 : 44;
     const backX = isNarrow ? 12 : 16;
@@ -127,47 +131,48 @@ const S = (n) => Math.floor(n * uiScale);
     }).setAlpha(0.9).setDepth(51);
 
     // --- UI Sidebar (auto-fit por altura) ---
-const btnW = Math.floor(sideW - 36);
-const btnX = Math.floor(sideX + (sideW - btnW) / 2);
+    const btnW = Math.floor(sideW - 36);
+    const btnX = Math.floor(sideX + (sideW - btnW) / 2);
 
-// Arranque del bloque dentro del sidebar
-const uiTop = Math.floor(sideY + S(46));
+    // Arranque del bloque dentro del sidebar
+    const uiTop = Math.floor(sideY + S(46));
 
-// Queremos que quepan: 4 botones + slider + puntos + margen
-const btnCount = 4; // Dibujar, Borrar, Limpiar, Validar
+    // Queremos que quepan: 4 botones + slider + puntos + reporte + margen
+    const btnCount = 4; // Dibujar, Borrar, Limpiar, Validar
 
-// Estimación de lo que “se come” abajo (slider + puntos + aire)
-const sliderBlockH = S(92);
-const statsBlockH = S(26);
-const bottomMargin = S(16);
+    // Estimación de lo que “se come” abajo (slider + puntos + reporte + aire)
+    const sliderBlockH = S(92);
+    const statsBlockH = S(26);
+    const reportBlockH = S(56);
+    const bottomMargin = S(16);
 
-// Alto disponible real para los botones
-const availableForButtons = Math.max(
-  0,
-  sideH - (uiTop - sideY) - sliderBlockH - statsBlockH - bottomMargin
-);
+    // Alto disponible real para los botones
+    const availableForButtons = Math.max(
+      0,
+      sideH - (uiTop - sideY) - sliderBlockH - statsBlockH - reportBlockH - bottomMargin
+    );
 
-// Rango de tamaños aceptables
-const hardMinBtnH = S(34);
-const hardMaxBtnH = S(54);
-const hardMinGap = S(6);
-const hardMaxGap = S(14);
+    // Rango de tamaños aceptables
+    const hardMinBtnH = S(34);
+    const hardMaxBtnH = S(54);
+    const hardMinGap = S(6);
+    const hardMaxGap = S(14);
 
-// Calcula GAP y H para que entren sí o sí
-let btnGap = Phaser.Math.Clamp(
-  Math.floor(availableForButtons * 0.06 / btnCount),
-  hardMinGap,
-  hardMaxGap
-);
+    // Calcula GAP y H para que entren sí o sí
+    let btnGap = Phaser.Math.Clamp(
+      Math.floor(availableForButtons * 0.06 / btnCount),
+      hardMinGap,
+      hardMaxGap
+    );
 
-let btnH = Phaser.Math.Clamp(
-  Math.floor((availableForButtons - btnGap * (btnCount - 1)) / btnCount),
-  hardMinBtnH,
-  hardMaxBtnH
-);
+    let btnH = Phaser.Math.Clamp(
+      Math.floor((availableForButtons - btnGap * (btnCount - 1)) / btnCount),
+      hardMinBtnH,
+      hardMaxBtnH
+    );
 
-// Si estamos en el mínimo, aprieta gap al mínimo también
-if (btnH === hardMinBtnH) btnGap = hardMinGap;
+    // Si estamos en el mínimo, aprieta gap al mínimo también
+    if (btnH === hardMinBtnH) btnGap = hardMinGap;
 
     const makeSideBtn = (y, label, onClick) => {
       const r = this.add.rectangle(btnX, y, btnW, btnH, 0xffffff, 0.18)
@@ -178,7 +183,7 @@ if (btnH === hardMinBtnH) btnGap = hardMinGap;
 
       const t = this.add.text(btnX + btnW / 2, y + btnH / 2, label, {
         fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-        fontSize: `${S(15)}px`,   // iPhone ~ 10–11px
+        fontSize: `${S(15)}px`,
         color: '#ffffff',
         fontStyle: 'bold'
       }).setOrigin(0.5).setDepth(61);
@@ -211,6 +216,7 @@ if (btnH === hardMinBtnH) btnGap = hardMinGap;
       if (this._rawPoints.length > 0) {
         this._rawPoints.pop();
         this._rebuildClean();
+        this._lastValidation = null; // invalidamos overlay
         this._redraw();
       }
       this._refreshStats();
@@ -222,17 +228,24 @@ if (btnH === hardMinBtnH) btnGap = hardMinGap;
       this._isDrawing = false;
       this._rawPoints.length = 0;
       this._cleanPoints.length = 0;
+      this._lastValidation = null;
       this._redraw();
       this._refreshStats();
+      if (this._ui.report) this._ui.report.setText('Sin validar');
+      // Reset look del botón validar
+      if (this._ui.validateBtn?.r) {
+        this._ui.validateBtn.r.setFillStyle(0xffffff, 0.18);
+        this._ui.validateBtn.r.setStrokeStyle(2, 0xffffff, 0.45);
+      }
     });
     y += btnH + btnGap;
 
-    // VALIDAR (si ya lo tienes implementado, aquí lo enganchas)
+    // VALIDAR
     this._ui.validateBtn = makeSideBtn(y, 'VALIDAR', () => {
-      if (this._validateTrack) {
-        const rep = this._validateTrack();
-        if (this._setReport) this._setReport(rep);
-      }
+      const rep = this._validateTrack();
+      this._lastValidation = rep;
+      this._setReport(rep);
+      this._redraw(); // ✅ pinta overlay
     });
     y += btnH + S(18);
 
@@ -281,6 +294,8 @@ if (btnH === hardMinBtnH) btnGap = hardMinGap;
       this._trackWidth = v;
       this._ui.widthValue.setText(`${v}px`);
       this._positionWidthKnob();
+      // cambiar ancho invalida la validación previa
+      this._lastValidation = null;
       this._redraw();
     };
 
@@ -297,6 +312,20 @@ if (btnH === hardMinBtnH) btnGap = hardMinGap;
       fontSize: `${S(13)}px`,
       color: '#ffffff'
     }).setAlpha(0.85).setDepth(61);
+
+    // ✅ Report (debajo de Puntos)
+    this._ui.report = this.add.text(
+      sideX + 18,
+      trackY + sliderH + S(40),
+      'Sin validar',
+      {
+        fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+        fontSize: `${S(12)}px`,
+        color: '#ffffff',
+        lineSpacing: 2,
+        wordWrap: { width: Math.max(120, sideW - 36), useAdvancedWrap: true }
+      }
+    ).setAlpha(0.9).setDepth(61);
 
     // Estado inicial del botón draw
     this._ui.drawBtn.r.setAlpha(1);
@@ -321,6 +350,7 @@ if (btnH === hardMinBtnH) btnGap = hardMinGap;
     // --- Layers de dibujo ---
     this._gRaw = this.add.graphics().setDepth(10);
     this._gClean = this.add.graphics().setDepth(11);
+    this._gOverlay = this.add.graphics().setDepth(12); // ✅ overlay encima
 
     // --- Input táctil ---
     this.input.addPointer(1);
@@ -350,6 +380,9 @@ if (btnH === hardMinBtnH) btnGap = hardMinGap;
         }
       }
 
+      // dibujar invalida validación previa
+      this._lastValidation = null;
+
       this._rebuildClean();
       this._redraw();
       this._refreshStats();
@@ -360,6 +393,7 @@ if (btnH === hardMinBtnH) btnGap = hardMinGap;
       if (this._drawRect && !this._drawRect.contains(p.worldX, p.worldY)) return;
 
       this._pushPointIfFar(p.worldX, p.worldY);
+      this._lastValidation = null;
       this._rebuildClean();
       this._redraw();
       this._refreshStats();
@@ -391,6 +425,7 @@ if (btnH === hardMinBtnH) btnGap = hardMinGap;
   _redraw() {
     this._gRaw.clear();
     this._gClean.clear();
+    if (this._gOverlay) this._gOverlay.clear();
 
     if (this._rawPoints.length >= 2) {
       this._gRaw.lineStyle(3, 0xffffff, 0.45);
@@ -412,6 +447,59 @@ if (btnH === hardMinBtnH) btnGap = hardMinGap;
       }
       this._gClean.strokePath();
     }
+
+    // ✅ overlay de validación (si existe reporte)
+    this._drawValidationOverlay();
+  }
+
+  _drawValidationOverlay() {
+    if (!this._gOverlay) return;
+    const pts = this._cleanPoints || [];
+    if (pts.length === 0) return;
+
+    // Siempre mostramos start/end, aunque no haya validación
+    const start = pts[0];
+    const end = pts[pts.length - 1];
+
+    // Start verde
+    this._gOverlay.fillStyle(0x3dff7a, 0.95);
+    this._gOverlay.fillCircle(start.x, start.y, 7);
+
+    // End rojo
+    this._gOverlay.fillStyle(0xff3d5a, 0.95);
+    this._gOverlay.fillCircle(end.x, end.y, 7);
+
+    const rep = this._lastValidation;
+    if (!rep) return; // si no está validado, no dibujamos más
+
+    // Línea cierre (verde si OK, rojo si no)
+    const closeDist = rep.closeDist ?? Phaser.Math.Distance.Between(start.x, start.y, end.x, end.y);
+    const closeThresh = rep.closeThresh ?? Math.max(20, Math.min(90, this._trackWidth * 0.35));
+    const okClose = closeDist <= closeThresh;
+
+    this._gOverlay.lineStyle(okClose ? 3 : 4, okClose ? 0x3dff7a : 0xff3d5a, okClose ? 0.55 : 0.75);
+    this._gOverlay.beginPath();
+    this._gOverlay.moveTo(start.x, start.y);
+    this._gOverlay.lineTo(end.x, end.y);
+    this._gOverlay.strokePath();
+
+    // Cruce: X roja en el punto aproximado
+    const hit = rep.hit;
+    if (hit && hit.p) {
+      const x = hit.p.x;
+      const y = hit.p.y;
+
+      this._gOverlay.lineStyle(5, 0xff3d5a, 0.9);
+      this._gOverlay.beginPath();
+      this._gOverlay.moveTo(x - 10, y - 10);
+      this._gOverlay.lineTo(x + 10, y + 10);
+      this._gOverlay.moveTo(x + 10, y - 10);
+      this._gOverlay.lineTo(x - 10, y + 10);
+      this._gOverlay.strokePath();
+
+      this._gOverlay.lineStyle(3, 0xff3d5a, 0.7);
+      this._gOverlay.strokeCircle(x, y, 14);
+    }
   }
 
   _refreshStats() {
@@ -429,14 +517,28 @@ if (btnH === hardMinBtnH) btnGap = hardMinGap;
 
     knob.setPosition(x, y);
   }
-    _setReport(rep) {
-    if (!this._ui || !this._ui.report) return;
 
-    if (rep.ok) {
+  _setReport(rep) {
+    if (!this._ui) return;
+
+    // ✅ botón VALIDAR cambia look
+    if (this._ui.validateBtn && this._ui.validateBtn.r) {
+      if (rep && rep.ok) {
+        this._ui.validateBtn.r.setFillStyle(0x3dff7a, 0.22);
+        this._ui.validateBtn.r.setStrokeStyle(2, 0x3dff7a, 0.55);
+      } else {
+        this._ui.validateBtn.r.setFillStyle(0xff3d5a, 0.22);
+        this._ui.validateBtn.r.setStrokeStyle(2, 0xff3d5a, 0.55);
+      }
+    }
+
+    if (!this._ui.report) return;
+
+    if (rep && rep.ok) {
       this._ui.report.setText(`✅ OK\n${rep.msg}`);
     } else {
-      const lines = rep.errors.map(e => `• ${e}`);
-      this._ui.report.setText(`❌ ERRORES\n${lines.join('\n')}`);
+      const lines = (rep?.errors || []).map(e => `• ${e}`);
+      this._ui.report.setText(`❌ ERRORES\n${lines.join('\n') || 'Sin datos'}`);
     }
   }
 
@@ -447,7 +549,7 @@ if (btnH === hardMinBtnH) btnGap = hardMinGap;
     // 1) mínimos
     if (!pts || pts.length < 12) {
       errors.push('Muy pocos puntos (mínimo 12).');
-      return { ok: false, errors };
+      return { ok: false, errors, closeDist: null, closeThresh: null, hit: null };
     }
 
     // 2) longitud mínima
@@ -475,11 +577,15 @@ if (btnH === hardMinBtnH) btnGap = hardMinGap;
     const hit = this._findSelfIntersection(pts);
     if (hit) errors.push('Auto-intersección detectada (cruce de trazado).');
 
-    if (errors.length) return { ok: false, errors };
+    if (errors.length) return { ok: false, errors, len, closeDist, closeThresh, hit };
 
     return {
       ok: true,
-      msg: `Longitud: ${Math.round(len)}px · Cierre OK · Sin cruces`
+      msg: `Longitud: ${Math.round(len)}px · Cierre OK · Sin cruces`,
+      len,
+      closeDist,
+      closeThresh,
+      hit: null
     };
   }
 
@@ -504,12 +610,33 @@ if (btnH === hardMinBtnH) btnGap = hardMinGap;
 
         const b1 = pts[j - 1], b2 = pts[j];
 
-        // Si comparten endpoint (caso raro), saltar
+        // Si comparten endpoint, saltar
         if (a1 === b1 || a1 === b2 || a2 === b1 || a2 === b2) continue;
 
-        if (segIntersects(a1, a2, b1, b2)) return { i, j };
+        if (segIntersects(a1, a2, b1, b2)) {
+          const p = this._segmentIntersectionPoint(a1, a2, b1, b2);
+          return { i, j, p };
+        }
       }
     }
     return null;
+  }
+
+  _segmentIntersectionPoint(p1, p2, p3, p4) {
+    const x1 = p1.x, y1 = p1.y;
+    const x2 = p2.x, y2 = p2.y;
+    const x3 = p3.x, y3 = p3.y;
+    const x4 = p4.x, y4 = p4.y;
+
+    const den = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+    if (Math.abs(den) < 1e-6) {
+      // casi paralelo: devolvemos algo razonable
+      return { x: (x2 + x3) * 0.5, y: (y2 + y3) * 0.5 };
+    }
+
+    const px = ((x1 * y2 - y1 * x2) * (x3 - x4) - (x1 - x2) * (x3 * y4 - y3 * x4)) / den;
+    const py = ((x1 * y2 - y1 * x2) * (y3 - y4) - (y1 - y2) * (x3 * y4 - y3 * x4)) / den;
+
+    return { x: px, y: py };
   }
 }
