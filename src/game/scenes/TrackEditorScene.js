@@ -14,7 +14,7 @@ export class TrackEditorScene extends BaseScene {
     this._gClean = null;     // Graphics para trazo “limpio”
     this._minSampleDist = 10; // px (móvil friendly)
     this._drawRect = null; // Phaser.Geom.Rectangle (zona habilitada)
-    this._uiTopH = 150;    // espacio para título/toolbar futura
+    this._uiTopH = 110;    // espacio para título/toolbar futura
   }
 
   create() {
@@ -81,6 +81,14 @@ this.add.text(sideX + 18, sideY + 14, 'HERRAMIENTAS', {
   color: '#ffffff',
   fontStyle: 'bold'
 }).setAlpha(0.9).setDepth(51);
+    this.add.text(sideX + 18, sideY + 44,
+  '· Dibujar\n· Borrar punto\n· Ancho pista\n· Validar\n· Guardar',
+  {
+    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: '13px',
+    color: '#ffffff'
+  }
+).setAlpha(0.75).setDepth(51);
 
 // Botón Volver a ADMIN (abajo del sidebar)
 const btnW = Math.floor(sideW - 36);
@@ -162,20 +170,22 @@ backBtn.on('pointerdown', () => this.scene.start('admin-hub'));
       this._isDrawing = false;
     });
     
-    // Título
-    this.add.text(width / 2, 60, 'EDITOR DE PISTAS', {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '24px',
-      color: '#ffffff',
-      fontStyle: 'bold'
-    }).setOrigin(0.5);
+// Título (centrado sobre el canvas)
+const titleX = this._drawRect ? (this._drawRect.x + this._drawRect.width / 2) : (width / 2);
 
-    // Nota provisional
-    this.add.text(width / 2, 110, '(Fase 0: Scene conectada)', {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '14px',
-      color: '#e8f0ff'
-    }).setOrigin(0.5);
+this.add.text(titleX, 54, 'EDITOR DE PISTAS', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '24px',
+  color: '#ffffff',
+  fontStyle: 'bold'
+}).setOrigin(0.5);
+
+// Subtítulo pequeño (opcional, más “pro”)
+this.add.text(titleX, 82, 'Admin Tool · Dibuja el trazado y valida la pista', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '12px',
+  color: '#e8f0ff'
+}).setOrigin(0.5).setAlpha(0.9);
 
 
   _rebuildClean() {
