@@ -139,8 +139,17 @@ export class TrackEditorScene extends BaseScene {
       this._refreshStats();
     });
 
+        // Botón: LIMPIAR TODO
+    this._ui.clearBtn = makeSideBtn(uiTop + 140, 'LIMPIAR', () => {
+      this._isDrawing = false;
+      this._rawPoints.length = 0;
+      this._cleanPoints.length = 0;
+      this._redraw();
+      this._refreshStats();
+    });
+
     // Contador de puntos
-    this._ui.stats = this.add.text(sideX + 18, uiTop + 140, 'Puntos: 0', {
+    this._ui.stats = this.add.text(sideX + 18, uiTop + 210, 'Puntos: 0', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
       fontSize: '13px',
       color: '#ffffff'
