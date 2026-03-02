@@ -399,8 +399,35 @@ export class TrackEditorScene extends BaseScene {
       this._refreshStats();
     });
 
-    this.input.on('pointerup', () => { this._isDrawing = false; });
-    this.input.on('pointerupoutside', () => { this._isDrawing = false; });
+this.input.on('pointerup', () => {
+  this._isDrawing = false;
+
+  // Snap-to-close al soltar el dedo
+  if (this._drawMode) {
+    const didSnap = this._snapCloseIfNear();
+    if (didSnap) {
+      this._lastValidation = null; // si estaba validado, ahora cambió
+      this._rebuildClean();
+      this._redraw();
+      this._refreshStats();
+    }
+  }
+});
+
+this.input.on('pointerupoutside', () => {
+  this._isDrawing = false;
+
+  // Snap-to-close también si suelta fuera
+  if (this._drawMode) {
+    const didSnap = this._snapCloseIfNear();
+    if (didSnap) {
+      this._lastValidation = null;
+      this._rebuildClean();
+      this._redraw();
+      this._refreshStats();
+    }
+  }
+});
   }
 
   _pushPointIfFar(x, y) {
@@ -501,7 +528,32 @@ export class TrackEditorScene extends BaseScene {
       this._gOverlay.strokeCircle(x, y, 14);
     }
   }
+  _snapCloseIfNear() {
+    const pts = this._rawPoints;
+    if (!pts || pts.length < 6) return false; // evita cierres absurdos
 
+    const first = pts[0];
+    const last = pts[pts.length - 1];
+
+    // Si ya está cerrado (último igual al primero), no hagas nada
+    const same = (Math.abs(last.x - first.x) < 0.001) && (Math.abs(last.y - first.y) < 0.001);
+    if (same) return false;
+
+    const dx = last.x - first.x;
+    const dy = last.y - first.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    // Umbral de cierre (coherente con tu validador)
+    const closeThresh = Math.max(20, Math.min(90, this._trackWidth * 0.35));
+
+    if (dist <= closeThresh) {
+      // Cierre “pro”: último punto = primer punto
+      pts.push({ x: first.x, y: first.y });
+      return true;
+    }
+
+    return false;
+  }
   _refreshStats() {
     if (!this._ui || !this._ui.stats) return;
     this._ui.stats.setText(`Puntos: ${this._rawPoints.length}`);
