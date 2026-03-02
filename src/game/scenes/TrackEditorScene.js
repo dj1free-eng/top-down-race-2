@@ -34,12 +34,6 @@ export class TrackEditorScene extends BaseScene {
     super.create();
     const { width, height } = this.scale;
 
-    // Responsive: iPhone compacto
-    const isNarrow = width < 760;
-    const uiScale = isNarrow ? 0.82 : 1.0;
-
-    const S = (n) => Math.floor(n * uiScale);
-
     // Fondo
     this.cameras.main.setBackgroundColor('#1b6bff');
 
