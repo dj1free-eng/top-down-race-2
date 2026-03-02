@@ -26,6 +26,8 @@ export class TrackEditorScene extends BaseScene {
 
     this._ui.widthSlider = null;
     this._ui.widthValue = null;
+    this._ui.validateBtn = null;
+    this._ui.report = null;
   }
 
   create() {
@@ -189,9 +191,14 @@ export class TrackEditorScene extends BaseScene {
       this._redraw();
       this._refreshStats();
     });
+    const yValidate = yClear + btnH + btnGapY;
 
+    this._ui.validateBtn = makeSideBtn(yValidate, 'VALIDAR', () => {
+      const rep = this._validateTrack();
+      this._setReport(rep);
+    });
     // --- Slider: ANCHO DE PISTA ---
-    const sliderY = Math.floor(yClear + btnH + S(18));
+const sliderY = Math.floor(yValidate + btnH + S(18));
 
     this.add.text(sideX + 16, sliderY, isNarrow ? 'ANCHO' : 'ANCHO DE PISTA', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
@@ -253,7 +260,14 @@ export class TrackEditorScene extends BaseScene {
       fontSize: `${S(13)}px`,
       color: '#ffffff'
     }).setAlpha(0.85).setDepth(61);
+    const reportY = statsY + S(26);
 
+    this._ui.report = this.add.text(sideX + 16, reportY, 'Validación: —', {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: `${S(12)}px`,
+      color: '#ffffff',
+      wordWrap: { width: sideW - 32 }
+    }).setAlpha(0.9).setDepth(61);
     // Estado inicial
     this._ui.drawBtn.r.setAlpha(1);
     this._ui.drawBtn.t.setAlpha(1);
@@ -384,5 +398,88 @@ export class TrackEditorScene extends BaseScene {
     const y = Math.floor(trackY + sliderH / 2);
 
     knob.setPosition(x, y);
+  }
+    _setReport(rep) {
+    if (!this._ui || !this._ui.report) return;
+
+    if (rep.ok) {
+      this._ui.report.setText(`✅ OK\n${rep.msg}`);
+    } else {
+      const lines = rep.errors.map(e => `• ${e}`);
+      this._ui.report.setText(`❌ ERRORES\n${lines.join('\n')}`);
+    }
+  }
+
+  _validateTrack() {
+    const pts = this._cleanPoints;
+    const errors = [];
+
+    // 1) mínimos
+    if (!pts || pts.length < 12) {
+      errors.push('Muy pocos puntos (mínimo 12).');
+      return { ok: false, errors };
+    }
+
+    // 2) longitud mínima
+    let len = 0;
+    for (let i = 1; i < pts.length; i++) {
+      const dx = pts[i].x - pts[i - 1].x;
+      const dy = pts[i].y - pts[i - 1].y;
+      len += Math.sqrt(dx * dx + dy * dy);
+    }
+    if (len < 600) errors.push('Longitud insuficiente (mínimo 600px).');
+
+    // 3) cierre (inicio cerca del final)
+    const a = pts[0];
+    const b = pts[pts.length - 1];
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const closeDist = Math.sqrt(dx * dx + dy * dy);
+
+    const closeThresh = Math.max(20, Math.min(90, this._trackWidth * 0.35));
+    if (closeDist > closeThresh) {
+      errors.push(`No está cerrado (distancia ${Math.round(closeDist)}px).`);
+    }
+
+    // 4) auto-intersecciones (básico)
+    const hit = this._findSelfIntersection(pts);
+    if (hit) errors.push('Auto-intersección detectada (cruce de trazado).');
+
+    if (errors.length) return { ok: false, errors };
+
+    return {
+      ok: true,
+      msg: `Longitud: ${Math.round(len)}px · Cierre OK · Sin cruces`
+    };
+  }
+
+  _findSelfIntersection(pts) {
+    // Segmentos (i-1 -> i)
+    // Ignoramos segmentos adyacentes (comparten punto) para evitar falsos positivos.
+    const n = pts.length;
+    if (n < 4) return null;
+
+    const segIntersects = (p1, p2, p3, p4) => {
+      // orientación / ccw
+      const ccw = (A, B, C) => (C.y - A.y) * (B.x - A.x) > (B.y - A.y) * (C.x - A.x);
+      return (ccw(p1, p3, p4) !== ccw(p2, p3, p4)) && (ccw(p1, p2, p3) !== ccw(p1, p2, p4));
+    };
+
+    for (let i = 1; i < n; i++) {
+      const a1 = pts[i - 1], a2 = pts[i];
+
+      for (let j = i + 2; j < n; j++) {
+        // Evitar comparar con el segmento vecino inmediato
+        if (j === i || j === i - 1) continue;
+
+        const b1 = pts[j - 1], b2 = pts[j];
+
+        // Si comparten endpoint (caso raro), saltar
+        if (a1 === b1 || a1 === b2 || a2 === b1 || a2 === b2) continue;
+
+        if (segIntersects(a1, a2, b1, b2)) return { i, j };
+      }
+    }
+    return null;
   }
 }
