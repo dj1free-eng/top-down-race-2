@@ -272,4 +272,8 @@ export class TrackEditorScene extends BaseScene {
       this._gClean.strokePath();
     }
   }
+        _refreshStats() {
+    if (!this._ui || !this._ui.stats) return;
+    this._ui.stats.setText(`Puntos: ${this._rawPoints.length}`);
+  }
 }
