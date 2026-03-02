@@ -27,6 +27,32 @@ export class TrackEditorScene extends BaseScene {
     // Fondo
     this.cameras.main.setBackgroundColor('#1b6bff');
 
+    // --- Flecha atrás (arriba izquierda) ---
+    const backSize = 44;
+    const backX = 16;
+    const backY = 16;
+
+    const backHit = this.add.rectangle(backX, backY, backSize, backSize, 0x000000, 0.0)
+      .setOrigin(0)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(200);
+
+    const backG = this.add.graphics().setDepth(201);
+    backG.lineStyle(5, 0xffffff, 0.9);
+
+    // Dibujo simple de flecha ←
+    const cx = backX + backSize / 2;
+    const cy = backY + backSize / 2;
+    backG.beginPath();
+    backG.moveTo(cx + 10, cy - 14);
+    backG.lineTo(cx - 10, cy);
+    backG.lineTo(cx + 10, cy + 14);
+    backG.strokePath();
+
+    backHit.on('pointerdown', () => {
+      this.scene.start('admin-hub');
+    });
+    
     // --- Layout pro (Canvas 3:2 + Sidebar) ---
     const pad = 16;
     const gap = 14;
@@ -149,7 +175,7 @@ export class TrackEditorScene extends BaseScene {
     });
 
     // Contador de puntos
-    this._ui.stats = this.add.text(sideX + 18, uiTop + 210, 'Puntos: 0', {
+        this._ui.stats = this.add.text(sideX + 18, uiTop + 220, 'Puntos: 0', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
       fontSize: '13px',
       color: '#ffffff'
@@ -158,27 +184,6 @@ export class TrackEditorScene extends BaseScene {
     // Estado inicial del botón draw
     this._ui.drawBtn.r.setAlpha(1);
     this._ui.drawBtn.t.setAlpha(1);
-
-    // Botón Volver a ADMIN (abajo del sidebar)
-    const btnW = Math.floor(sideW - 36);
-    const btnH = 58;
-    const btnX = Math.floor(sideX + (sideW - btnW) / 2);
-    const btnY = Math.floor(sideY + sideH - btnH - 18);
-
-    const backBtn = this.add.rectangle(btnX, btnY, btnW, btnH, 0xffffff, 0.22)
-      .setOrigin(0)
-      .setStrokeStyle(2, 0xffffff, 0.55)
-      .setInteractive({ useHandCursor: true })
-      .setDepth(60);
-
-    this.add.text(btnX + btnW / 2, btnY + btnH / 2, 'Volver a ADMIN', {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '16px',
-      color: '#ffffff',
-      fontStyle: 'bold'
-    }).setOrigin(0.5).setDepth(61);
-
-    backBtn.on('pointerdown', () => this.scene.start('admin-hub'));
 
     // --- Título (centrado sobre el canvas) ---
     const titleX = this._drawRect.x + this._drawRect.width / 2;
