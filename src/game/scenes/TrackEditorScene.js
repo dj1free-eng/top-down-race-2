@@ -82,51 +82,84 @@ export class TrackEditorScene extends BaseScene {
       color: '#e8f0ff'
     }).setOrigin(0.5);
 
-        // --- Zona de dibujo (Fase 1.2) ---
-    const pad = 18;
-    const bottomReserve = 160; // hueco para el botón volver + margen
-    const drawX = pad;
-    const drawY = this._uiTopH;
-    const drawW = Math.floor(width - pad * 2);
-    const drawH = Math.floor(height - bottomReserve - drawY);
+// --- Layout pro (Canvas 3:2 + Sidebar) ---
+const pad = 16;
+const gap = 14;
 
-    this._drawRect = new Phaser.Geom.Rectangle(drawX, drawY, drawW, drawH);
+// Sidebar fijo a la derecha
+const sideW = Math.floor(Math.max(220, Math.min(320, width * 0.28)));
+const sideX = Math.floor(width - pad - sideW);
+const sideY = this._uiTopH;
+const sideH = Math.floor(height - sideY - pad);
 
-    // Panel visual del “lienzo”
-    const panel = this.add.graphics().setDepth(5);
-    panel.fillStyle(0xffffff, 0.14);
-    panel.fillRoundedRect(drawX, drawY, drawW, drawH, 18);
-    panel.lineStyle(3, 0xffffff, 0.55);
-    panel.strokeRoundedRect(drawX, drawY, drawW, drawH, 18);
+// Canvas disponible (a la izquierda del sidebar)
+const canvasX = pad;
+const canvasY = this._uiTopH;
+const canvasMaxW = Math.floor(sideX - gap - canvasX);
+const canvasMaxH = Math.floor(height - canvasY - pad);
 
-    this.add.text(drawX + 14, drawY + 10, 'ZONA DE DIBUJO', {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '12px',
-      color: '#ffffff',
-      fontStyle: 'bold'
-    }).setAlpha(0.85).setDepth(6);
+// Forzar ratio 3:2 (W:H = 1.5)
+let drawW = canvasMaxW;
+let drawH = Math.floor(drawW / 1.5);
+if (drawH > canvasMaxH) {
+  drawH = canvasMaxH;
+  drawW = Math.floor(drawH * 1.5);
+}
 
-    // Botón volver
-    const w = 260, h = 60;
-    const x = width / 2 - w / 2;
-    const y = Math.floor(height - 120);
+// Centrar canvas en su zona disponible
+const drawX = Math.floor(canvasX + (canvasMaxW - drawW) / 2);
+const drawY = Math.floor(canvasY + (canvasMaxH - drawH) / 2);
 
-    const bg = this.add.rectangle(x, y, w, h, 0xffffff, 0.25)
-      .setOrigin(0)
-      .setStrokeStyle(2, 0xffffff, 0.7)
-      .setInteractive({ useHandCursor: true });
+this._drawRect = new Phaser.Geom.Rectangle(drawX, drawY, drawW, drawH);
 
-    this.add.text(width / 2, y + h / 2, 'Volver a ADMIN', {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '16px',
-      color: '#ffffff',
-      fontStyle: 'bold'
-    }).setOrigin(0.5);
+// Panel visual del “lienzo”
+const canvasPanel = this.add.graphics().setDepth(5);
+canvasPanel.fillStyle(0xffffff, 0.14);
+canvasPanel.fillRoundedRect(drawX, drawY, drawW, drawH, 18);
+canvasPanel.lineStyle(3, 0xffffff, 0.55);
+canvasPanel.strokeRoundedRect(drawX, drawY, drawW, drawH, 18);
 
-    bg.on('pointerdown', () => {
-      this.scene.start('admin-hub');
-    });
-  }
+this.add.text(drawX + 14, drawY + 10, 'ZONA DE DIBUJO (3:2)', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '12px',
+  color: '#ffffff',
+  fontStyle: 'bold'
+}).setAlpha(0.85).setDepth(6);
+
+// Sidebar visual
+const sidePanel = this.add.graphics().setDepth(50);
+sidePanel.fillStyle(0xffffff, 0.12);
+sidePanel.fillRoundedRect(sideX, sideY, sideW, sideH, 18);
+sidePanel.lineStyle(3, 0xffffff, 0.35);
+sidePanel.strokeRoundedRect(sideX, sideY, sideW, sideH, 18);
+
+this.add.text(sideX + 18, sideY + 14, 'HERRAMIENTAS', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '13px',
+  color: '#ffffff',
+  fontStyle: 'bold'
+}).setAlpha(0.9).setDepth(51);
+
+// Botón Volver a ADMIN (abajo del sidebar)
+const btnW = Math.floor(sideW - 36);
+const btnH = 58;
+const btnX = Math.floor(sideX + (sideW - btnW) / 2);
+const btnY = Math.floor(sideY + sideH - btnH - 18);
+
+const backBtn = this.add.rectangle(btnX, btnY, btnW, btnH, 0xffffff, 0.22)
+  .setOrigin(0)
+  .setStrokeStyle(2, 0xffffff, 0.55)
+  .setInteractive({ useHandCursor: true })
+  .setDepth(60);
+
+this.add.text(btnX + btnW / 2, btnY + btnH / 2, 'Volver a ADMIN', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '16px',
+  color: '#ffffff',
+  fontStyle: 'bold'
+}).setOrigin(0.5).setDepth(61);
+
+backBtn.on('pointerdown', () => this.scene.start('admin-hub'));
     _pushPointIfFar(x, y) {
     const n = this._rawPoints.length;
     if (n === 0) {
