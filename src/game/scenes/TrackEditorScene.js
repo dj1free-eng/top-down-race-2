@@ -16,7 +16,8 @@ export class TrackEditorScene extends BaseScene {
     this._gRaw = null;
     this._gClean = null;
     this._gOverlay = null;   // ✅ overlay validación
-
+    this._resampleStep = 12;   // px entre puntos “limpios”
+    this._smoothSubdiv = 6;    // subdivisiones por tramo (Catmull)
     this._minSampleDist = 10; // px
     this._drawRect = null;    // Phaser.Geom.Rectangle
     this._uiTopH = 110;       // header compacto
@@ -445,9 +446,23 @@ this.input.on('pointerupoutside', () => {
     return true;
   }
 
-  _rebuildClean() {
-    this._cleanPoints = this._rawPoints.slice();
+_rebuildClean() {
+  const src = this._rawPoints || [];
+  if (src.length < 2) {
+    this._cleanPoints = src.slice();
+    return;
   }
+
+  // 1) Resample a paso fijo
+  const step = Math.max(6, this._resampleStep | 0);
+  const res = this._resamplePolyline(src, step);
+
+  // 2) Smooth Catmull-Rom (manteniendo cierre si está cerrado)
+  const closed = this._isClosedPolyline(res);
+  const smooth = this._catmullRom(res, this._smoothSubdiv, closed);
+
+  this._cleanPoints = smooth;
+}
 
   _redraw() {
     this._gRaw.clear();
@@ -691,4 +706,111 @@ this.input.on('pointerupoutside', () => {
 
     return { x: px, y: py };
   }
+  _resamplePolyline(pts, step) {
+  const out = [];
+  out.push({ x: pts[0].x, y: pts[0].y });
+
+  let acc = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1];
+    const b = pts[i];
+    let dx = b.x - a.x;
+    let dy = b.y - a.y;
+    let segLen = Math.sqrt(dx * dx + dy * dy);
+    if (segLen < 1e-6) continue;
+
+    let t = 0;
+    while (acc + segLen >= step) {
+      const need = step - acc;
+      const k = need / segLen;
+      t += k;
+
+      const px = a.x + dx * t;
+      const py = a.y + dy * t;
+      out.push({ x: px, y: py });
+
+      segLen -= need;
+      acc = 0;
+
+      // nuevo origen “virtual” en el punto insertado
+      dx = b.x - px;
+      dy = b.y - py;
+      if (segLen < 1e-6) break;
+    }
+    acc += segLen;
+  }
+
+  // Si la polyline termina exactamente en el primero (cerrada), mantenemos ese punto final
+  const last = pts[pts.length - 1];
+  out.push({ x: last.x, y: last.y });
+
+  return out;
+}
+
+_isClosedPolyline(pts) {
+  if (!pts || pts.length < 3) return false;
+  const a = pts[0];
+  const b = pts[pts.length - 1];
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  return (dx * dx + dy * dy) < 1.0; // prácticamente igual
+}
+
+_catmullRom(pts, subdiv, closed) {
+  const n = pts.length;
+  if (n < 4) return pts.slice();
+
+  const out = [];
+  const get = (i) => {
+    if (closed) {
+      const k = (i % n + n) % n;
+      return pts[k];
+    }
+    return pts[Math.max(0, Math.min(n - 1, i))];
+  };
+
+  const steps = Math.max(2, subdiv | 0);
+
+  // Recorremos “segmentos” p1->p2
+  const segCount = closed ? n : (n - 1);
+  for (let i = 0; i < segCount; i++) {
+    const p0 = get(i - 1);
+    const p1 = get(i);
+    const p2 = get(i + 1);
+    const p3 = get(i + 2);
+
+    for (let s = 0; s < steps; s++) {
+      const t = s / steps;
+      const t2 = t * t;
+      const t3 = t2 * t;
+
+      // Catmull-Rom spline (centripetal sería más pro, pero esta es estable y rápida)
+      const x =
+        0.5 * ((2 * p1.x) +
+          (-p0.x + p2.x) * t +
+          (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 +
+          (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3);
+
+      const y =
+        0.5 * ((2 * p1.y) +
+          (-p0.y + p2.y) * t +
+          (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 +
+          (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3);
+
+      out.push({ x, y });
+    }
+  }
+
+  // Añadimos el último punto para cerrar o rematar
+  if (!closed) {
+    const end = pts[n - 1];
+    out.push({ x: end.x, y: end.y });
+  } else {
+    // si es cerrado, garantizamos cierre exacto
+    const a = out[0];
+    out.push({ x: a.x, y: a.y });
+  }
+
+  return out;
+}
 }
