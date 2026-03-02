@@ -36,7 +36,12 @@ export class TrackEditorScene extends BaseScene {
 
     // Fondo
     this.cameras.main.setBackgroundColor('#1b6bff');
+// --- Responsive flags (DECLARAR ARRIBA DEL TODO) ---
+const isNarrow = width < 520;
+const uiScale = isNarrow ? 0.70 : 1.0;
+const S = (n) => Math.floor(n * uiScale);
 
+    
     // --- Flecha atrás (arriba izquierda) ---
     const backSize = isNarrow ? 40 : 44;
     const backX = isNarrow ? 12 : 16;
@@ -120,11 +125,6 @@ export class TrackEditorScene extends BaseScene {
       color: '#ffffff',
       fontStyle: 'bold'
     }).setAlpha(0.9).setDepth(51);
-
-    // --- UI Sidebar (compacto en iPhone) ---
-    const isNarrow = width < 520;           // iPhone portrait cae aquí
-    const uiScale = isNarrow ? 0.70 : 1.0;  // más agresivo que antes (cabe seguro)
-    const S = (n) => Math.floor(n * uiScale);
 
     const btnW = Math.floor(sideW - 36);
     const btnH = S(54);          // iPhone ~ 37px
