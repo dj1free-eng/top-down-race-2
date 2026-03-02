@@ -127,12 +127,17 @@ export class TrackEditorScene extends BaseScene {
       fontStyle: 'bold'
     }).setAlpha(0.9).setDepth(51);
 
-    // --- UI Sidebar ---
-    const btnW = Math.floor(sideW - 32);
-    const btnH = S(54);               // se compacta en iPhone
-    const btnGapY = S(16);            // gap vertical compacto
+    // --- UI Sidebar (compacto en iPhone) ---
+    const isNarrow = width < 520;           // iPhone portrait cae aquí
+    const uiScale = isNarrow ? 0.70 : 1.0;  // más agresivo que antes (cabe seguro)
+    const S = (n) => Math.floor(n * uiScale);
+
+    const btnW = Math.floor(sideW - 36);
+    const btnH = S(54);          // iPhone ~ 37px
+    const btnGap = S(14);        // iPhone ~ 9px
     const btnX = Math.floor(sideX + (sideW - btnW) / 2);
-    const uiTop = Math.floor(sideY + S(46));
+
+    const uiTop = Math.floor(sideY + S(46));  // sube un poco el bloque en iPhone
 
     const makeSideBtn = (y, label, onClick) => {
       const r = this.add.rectangle(btnX, y, btnW, btnH, 0xffffff, 0.18)
@@ -143,7 +148,7 @@ export class TrackEditorScene extends BaseScene {
 
       const t = this.add.text(btnX + btnW / 2, y + btnH / 2, label, {
         fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-        fontSize: `${S(15)}px`,
+        fontSize: `${S(15)}px`,   // iPhone ~ 10–11px
         color: '#ffffff',
         fontStyle: 'bold'
       }).setOrigin(0.5).setDepth(61);
@@ -155,26 +160,24 @@ export class TrackEditorScene extends BaseScene {
       return { r, t };
     };
 
-    // Etiquetas compactas en iPhone
-    const L_DRAW_ON  = isNarrow ? 'DIBUJAR ON' : 'DIBUJAR: ON';
-    const L_DRAW_OFF = isNarrow ? 'DIBUJAR OFF' : 'DIBUJAR: OFF';
-    const L_UNDO     = isNarrow ? 'BORRAR' : 'BORRAR ÚLTIMO';
+    // Posiciones: una debajo de otra (NO offsets fijos)
+    let y = uiTop;
 
-    const yDraw  = uiTop;
-    const yUndo  = yDraw + btnH + btnGapY;
-    const yClear = yUndo + btnH + btnGapY;
-
-    // Botón: DIBUJAR ON/OFF
-    this._ui.drawBtn = makeSideBtn(yDraw, L_DRAW_ON, () => {
+    // DIBUJAR
+    this._ui.drawBtn = makeSideBtn(y, isNarrow ? 'DIBUJAR ON' : 'DIBUJAR: ON', () => {
       this._drawMode = !this._drawMode;
-      this._ui.drawBtn.t.setText(this._drawMode ? L_DRAW_ON : L_DRAW_OFF);
+      this._ui.drawBtn.t.setText(this._drawMode
+        ? (isNarrow ? 'DIBUJAR ON' : 'DIBUJAR: ON')
+        : (isNarrow ? 'DIBUJAR OFF' : 'DIBUJAR: OFF')
+      );
       this._ui.drawBtn.r.setAlpha(this._drawMode ? 1 : 0.6);
       this._ui.drawBtn.t.setAlpha(this._drawMode ? 1 : 0.75);
       if (!this._drawMode) this._isDrawing = false;
     });
+    y += btnH + btnGap;
 
-    // Botón: BORRAR ÚLTIMO
-    this._ui.undoBtn = makeSideBtn(yUndo, L_UNDO, () => {
+    // BORRAR ÚLTIMO
+    this._ui.undoBtn = makeSideBtn(y, isNarrow ? 'BORRAR' : 'BORRAR ÚLTIMO', () => {
       if (this._rawPoints.length > 0) {
         this._rawPoints.pop();
         this._rebuildClean();
@@ -182,32 +185,38 @@ export class TrackEditorScene extends BaseScene {
       }
       this._refreshStats();
     });
+    y += btnH + btnGap;
 
-    // Botón: LIMPIAR
-    this._ui.clearBtn = makeSideBtn(yClear, 'LIMPIAR', () => {
+    // LIMPIAR
+    this._ui.clearBtn = makeSideBtn(y, 'LIMPIAR', () => {
       this._isDrawing = false;
       this._rawPoints.length = 0;
       this._cleanPoints.length = 0;
       this._redraw();
       this._refreshStats();
     });
-    const yValidate = yClear + btnH + btnGapY;
+    y += btnH + btnGap;
 
-    this._ui.validateBtn = makeSideBtn(yValidate, 'VALIDAR', () => {
-      const rep = this._validateTrack();
-      this._setReport(rep);
+    // VALIDAR (si ya lo tienes implementado, aquí lo enganchas)
+    this._ui.validateBtn = makeSideBtn(y, 'VALIDAR', () => {
+      if (this._validateTrack) {
+        const rep = this._validateTrack();
+        if (this._setReport) this._setReport(rep);
+      }
     });
-    // --- Slider: ANCHO DE PISTA ---
-const sliderY = Math.floor(yValidate + btnH + S(18));
+    y += btnH + S(18);
 
-    this.add.text(sideX + 16, sliderY, isNarrow ? 'ANCHO' : 'ANCHO DE PISTA', {
+    // --- Slider: ANCHO DE PISTA (arranca justo después del último botón) ---
+    const sliderY = y;
+
+    this.add.text(sideX + 18, sliderY, isNarrow ? 'ANCHO' : 'ANCHO DE PISTA', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
       fontSize: `${S(13)}px`,
       color: '#ffffff',
       fontStyle: 'bold'
     }).setAlpha(0.9).setDepth(61);
 
-    this._ui.widthValue = this.add.text(sideX + 16, sliderY + S(18), `${this._trackWidth}px`, {
+    this._ui.widthValue = this.add.text(sideX + 18, sliderY + S(18), `${this._trackWidth}px`, {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
       fontSize: `${S(13)}px`,
       color: '#ffffff'
@@ -247,28 +256,19 @@ const sliderY = Math.floor(yValidate + btnH + S(18));
 
     sHit.on('pointerdown', (p) => setWidthFromPointer(p.worldX));
     sHit.on('pointermove', (p) => { if (p.isDown) setWidthFromPointer(p.worldX); });
-
     knob.on('pointerdown', (p) => setWidthFromPointer(p.worldX));
     knob.on('pointermove', (p) => { if (p.isDown) setWidthFromPointer(p.worldX); });
 
     this._positionWidthKnob();
 
-    // Contador de puntos (debajo del slider)
-    const statsY = trackY + sliderH + S(22);
-    this._ui.stats = this.add.text(sideX + 16, statsY, 'Puntos: 0', {
+    // Contador de puntos (siempre visible, justo bajo el slider)
+    this._ui.stats = this.add.text(sideX + 18, trackY + sliderH + S(18), 'Puntos: 0', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
       fontSize: `${S(13)}px`,
       color: '#ffffff'
     }).setAlpha(0.85).setDepth(61);
-    const reportY = statsY + S(26);
 
-    this._ui.report = this.add.text(sideX + 16, reportY, 'Validación: —', {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: `${S(12)}px`,
-      color: '#ffffff',
-      wordWrap: { width: sideW - 32 }
-    }).setAlpha(0.9).setDepth(61);
-    // Estado inicial
+    // Estado inicial del botón draw
     this._ui.drawBtn.r.setAlpha(1);
     this._ui.drawBtn.t.setAlpha(1);
 
