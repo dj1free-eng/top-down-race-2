@@ -40,10 +40,14 @@ export class AdminHubScene extends BaseScene {
     };
 
     makeBtn(140, 'Editar coches', () => {
-      this.scene.start('GarageScene', { mode: 'admin' });
-    });
+  this.scene.start('GarageScene', { mode: 'admin' });
+});
 
-    makeBtn(220, 'Salir ADMIN', () => {
+makeBtn(220, 'Editar pistas', () => {
+  this.scene.start('TrackEditorScene');
+});
+
+makeBtn(300, 'Salir ADMIN', () => {
   try { localStorage.setItem('tdr2:admin', '0'); } catch {}
   this.scene.start('menu', { forcePlayer: true });
 });
