@@ -18,6 +18,12 @@ export class TrackEditorScene extends BaseScene {
     this._minSampleDist = 10; // px
     this._drawRect = null;    // Phaser.Geom.Rectangle
     this._uiTopH = 110;       // header compacto
+    this._trackWidth = 160;     // ancho pista “real” (como tus tracks)
+    this._trackWidthMin = 80;
+    this._trackWidthMax = 260;
+
+    this._ui.widthSlider = null;
+    this._ui.widthValue = null;
   }
 
   create() {
@@ -174,8 +180,68 @@ export class TrackEditorScene extends BaseScene {
       this._refreshStats();
     });
 
+    // --- Slider: ANCHO DE PISTA ---
+    const sliderY = uiTop + 220;
+
+    this.add.text(sideX + 18, sliderY, 'ANCHO DE PISTA', {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: '13px',
+      color: '#ffffff',
+      fontStyle: 'bold'
+    }).setAlpha(0.9).setDepth(61);
+
+    this._ui.widthValue = this.add.text(sideX + 18, sliderY + 20, `${this._trackWidth}px`, {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: '13px',
+      color: '#ffffff'
+    }).setAlpha(0.85).setDepth(61);
+
+    const sliderW = Math.floor(sideW - 36);
+    const sliderH = 14;
+    const sliderX = Math.floor(sideX + (sideW - sliderW) / 2);
+    const trackY = sliderY + 52;
+
+    // Pista del slider
+    const sTrack = this.add.rectangle(sliderX, trackY, sliderW, sliderH, 0xffffff, 0.18)
+      .setOrigin(0)
+      .setStrokeStyle(2, 0xffffff, 0.35)
+      .setDepth(61);
+
+    // Knob (bolita)
+    const knobR = 14;
+    const knob = this.add.circle(0, trackY + sliderH / 2, knobR, 0xffffff, 0.55)
+      .setStrokeStyle(3, 0xffffff, 0.85)
+      .setDepth(62)
+      .setInteractive({ useHandCursor: true });
+
+    // Hit area del slider (para poder tocar en cualquier punto)
+    const sHit = this.add.rectangle(sliderX, trackY - 10, sliderW, sliderH + 20, 0x000000, 0.0)
+      .setOrigin(0)
+      .setInteractive()
+      .setDepth(63);
+
+    this._ui.widthSlider = { sTrack, knob, sHit, sliderX, sliderW, trackY, sliderH };
+
+    const setWidthFromPointer = (px) => {
+      const t = Phaser.Math.Clamp((px - sliderX) / sliderW, 0, 1);
+      const v = Math.round(this._trackWidthMin + t * (this._trackWidthMax - this._trackWidthMin));
+      this._trackWidth = v;
+      this._ui.widthValue.setText(`${v}px`);
+      this._positionWidthKnob();
+      this._redraw();
+    };
+
+    sHit.on('pointerdown', (p) => setWidthFromPointer(p.worldX));
+    sHit.on('pointermove', (p) => { if (p.isDown) setWidthFromPointer(p.worldX); });
+
+    knob.on('pointerdown', (p) => setWidthFromPointer(p.worldX));
+    knob.on('pointermove', (p) => { if (p.isDown) setWidthFromPointer(p.worldX); });
+
+    // Colocar knob inicial
+    this._positionWidthKnob();
+    
     // Contador de puntos
-        this._ui.stats = this.add.text(sideX + 18, uiTop + 220, 'Puntos: 0', {
+    this._ui.stats = this.add.text(sideX + 18, uiTop + 310, 'Puntos: 0', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
       fontSize: '13px',
       color: '#ffffff'
@@ -295,7 +361,8 @@ export class TrackEditorScene extends BaseScene {
 
     // CLEAN: gordo (provisional)
     if (this._cleanPoints.length >= 2) {
-      this._gClean.lineStyle(10, 0xfff000, 0.85);
+      const previewPx = Math.max(6, Math.min(40, Math.round(this._trackWidth / 6)));
+      this._gClean.lineStyle(previewPx, 0xfff000, 0.85);
       this._gClean.beginPath();
       this._gClean.moveTo(this._cleanPoints[0].x, this._cleanPoints[0].y);
       for (let i = 1; i < this._cleanPoints.length; i++) {
@@ -307,5 +374,15 @@ export class TrackEditorScene extends BaseScene {
         _refreshStats() {
     if (!this._ui || !this._ui.stats) return;
     this._ui.stats.setText(`Puntos: ${this._rawPoints.length}`);
+  }
+    _positionWidthKnob() {
+    if (!this._ui || !this._ui.widthSlider) return;
+    const { knob, sliderX, sliderW, trackY, sliderH } = this._ui.widthSlider;
+
+    const t = (this._trackWidth - this._trackWidthMin) / (this._trackWidthMax - this._trackWidthMin);
+    const x = Math.floor(sliderX + Phaser.Math.Clamp(t, 0, 1) * sliderW);
+    const y = Math.floor(trackY + sliderH / 2);
+
+    knob.setPosition(x, y);
   }
 }
