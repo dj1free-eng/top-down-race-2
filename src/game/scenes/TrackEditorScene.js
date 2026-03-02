@@ -13,6 +13,8 @@ export class TrackEditorScene extends BaseScene {
     this._gRaw = null;       // Graphics para trazo raw
     this._gClean = null;     // Graphics para trazo “limpio”
     this._minSampleDist = 10; // px (móvil friendly)
+    this._drawRect = null; // Phaser.Geom.Rectangle (zona habilitada)
+    this._uiTopH = 150;    // espacio para título/toolbar futura
   }
 
   create() {
@@ -31,6 +33,11 @@ export class TrackEditorScene extends BaseScene {
 
     // --- Input táctil ---
     this.input.on('pointerdown', (p) => {
+            // Solo permitir dibujo dentro del lienzo
+      if (this._drawRect && !this._drawRect.contains(p.worldX, p.worldY)) {
+        this._isDrawing = false;
+        return;
+      }
       // Solo un dedo: evitamos pinch/scroll por ahora
       if (p.pointerId !== 1 && p.id !== 0) { /* Phaser varía; no bloqueamos */ }
 
@@ -45,6 +52,8 @@ export class TrackEditorScene extends BaseScene {
 
     this.input.on('pointermove', (p) => {
       if (!this._isDrawing) return;
+      if (this._drawRect && !this._drawRect.contains(p.worldX, p.worldY)) return;
+
       this._pushPointIfFar(p.worldX, p.worldY);
       this._rebuildClean();
       this._redraw();
@@ -72,6 +81,30 @@ export class TrackEditorScene extends BaseScene {
       fontSize: '14px',
       color: '#e8f0ff'
     }).setOrigin(0.5);
+
+        // --- Zona de dibujo (Fase 1.2) ---
+    const pad = 18;
+    const bottomReserve = 160; // hueco para el botón volver + margen
+    const drawX = pad;
+    const drawY = this._uiTopH;
+    const drawW = Math.floor(width - pad * 2);
+    const drawH = Math.floor(height - bottomReserve - drawY);
+
+    this._drawRect = new Phaser.Geom.Rectangle(drawX, drawY, drawW, drawH);
+
+    // Panel visual del “lienzo”
+    const panel = this.add.graphics().setDepth(5);
+    panel.fillStyle(0xffffff, 0.14);
+    panel.fillRoundedRect(drawX, drawY, drawW, drawH, 18);
+    panel.lineStyle(3, 0xffffff, 0.55);
+    panel.strokeRoundedRect(drawX, drawY, drawW, drawH, 18);
+
+    this.add.text(drawX + 14, drawY + 10, 'ZONA DE DIBUJO', {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: '12px',
+      color: '#ffffff',
+      fontStyle: 'bold'
+    }).setAlpha(0.85).setDepth(6);
 
     // Botón volver
     const w = 260, h = 60;
