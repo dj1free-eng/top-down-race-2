@@ -662,23 +662,42 @@ _rebuildClean() {
     const n = pts.length;
     if (n < 4) return null;
 
+    // ✅ circuito cerrado si último ~= primero (por coords)
+    const closed = this._isClosedPolyline(pts);
+    const EPS2 = 1e-4; // tolerancia cuadrada (0.01px^2 aprox)
+
+    const samePoint = (A, B) => {
+      if (!A || !B) return false;
+      const dx = A.x - B.x;
+      const dy = A.y - B.y;
+      return (dx * dx + dy * dy) <= EPS2;
+    };
+
     const segIntersects = (p1, p2, p3, p4) => {
-      // orientación / ccw
+      // orientación / ccw (simple, suficiente para ahora)
       const ccw = (A, B, C) => (C.y - A.y) * (B.x - A.x) > (B.y - A.y) * (C.x - A.x);
       return (ccw(p1, p3, p4) !== ccw(p2, p3, p4)) && (ccw(p1, p2, p3) !== ccw(p1, p2, p4));
     };
 
+    // i segment = (i-1 -> i), con i en [1..n-1]
     for (let i = 1; i < n; i++) {
       const a1 = pts[i - 1], a2 = pts[i];
 
       for (let j = i + 2; j < n; j++) {
-        // Evitar comparar con el segmento vecino inmediato
-        if (j === i || j === i - 1) continue;
-
         const b1 = pts[j - 1], b2 = pts[j];
 
-        // Si comparten endpoint, saltar
-        if (a1 === b1 || a1 === b2 || a2 === b1 || a2 === b2) continue;
+        // 1) Saltar si comparten endpoint (por coordenadas)
+        if (samePoint(a1, b1) || samePoint(a1, b2) || samePoint(a2, b1) || samePoint(a2, b2)) continue;
+
+        // 2) Saltar adyacentes (en abierto ya lo evitamos con j=i+2)
+        // 3) En cerrado, también son “adyacentes” el primer y el último segmento
+        //    primer segmento: (0->1)  => i==1
+        //    último segmento: (n-2->n-1) => j==n-1
+        if (closed) {
+          const isFirstSeg = (i === 1);
+          const isLastSeg = (j === n - 1);
+          if (isFirstSeg && isLastSeg) continue;
+        }
 
         if (segIntersects(a1, a2, b1, b2)) {
           const p = this._segmentIntersectionPoint(a1, a2, b1, b2);
