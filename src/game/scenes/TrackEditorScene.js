@@ -160,6 +160,7 @@ this.add.text(btnX + btnW / 2, btnY + btnH / 2, 'Volver a ADMIN', {
 }).setOrigin(0.5).setDepth(61);
 
 backBtn.on('pointerdown', () => this.scene.start('admin-hub'));
+  }
     _pushPointIfFar(x, y) {
     const n = this._rawPoints.length;
     if (n === 0) {
