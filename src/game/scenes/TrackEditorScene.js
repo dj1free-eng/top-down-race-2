@@ -126,12 +126,48 @@ const S = (n) => Math.floor(n * uiScale);
       fontStyle: 'bold'
     }).setAlpha(0.9).setDepth(51);
 
-    const btnW = Math.floor(sideW - 36);
-    const btnH = S(54);          // iPhone ~ 37px
-    const btnGap = S(14);        // iPhone ~ 9px
-    const btnX = Math.floor(sideX + (sideW - btnW) / 2);
+    // --- UI Sidebar (auto-fit por altura) ---
+const btnW = Math.floor(sideW - 36);
+const btnX = Math.floor(sideX + (sideW - btnW) / 2);
 
-    const uiTop = Math.floor(sideY + S(46));  // sube un poco el bloque en iPhone
+// Arranque del bloque dentro del sidebar
+const uiTop = Math.floor(sideY + S(46));
+
+// Queremos que quepan: 4 botones + slider + puntos + margen
+const btnCount = 4; // Dibujar, Borrar, Limpiar, Validar
+
+// Estimación de lo que “se come” abajo (slider + puntos + aire)
+const sliderBlockH = S(92);
+const statsBlockH = S(26);
+const bottomMargin = S(16);
+
+// Alto disponible real para los botones
+const availableForButtons = Math.max(
+  0,
+  sideH - (uiTop - sideY) - sliderBlockH - statsBlockH - bottomMargin
+);
+
+// Rango de tamaños aceptables
+const hardMinBtnH = S(34);
+const hardMaxBtnH = S(54);
+const hardMinGap = S(6);
+const hardMaxGap = S(14);
+
+// Calcula GAP y H para que entren sí o sí
+let btnGap = Phaser.Math.Clamp(
+  Math.floor(availableForButtons * 0.06 / btnCount),
+  hardMinGap,
+  hardMaxGap
+);
+
+let btnH = Phaser.Math.Clamp(
+  Math.floor((availableForButtons - btnGap * (btnCount - 1)) / btnCount),
+  hardMinBtnH,
+  hardMaxBtnH
+);
+
+// Si estamos en el mínimo, aprieta gap al mínimo también
+if (btnH === hardMinBtnH) btnGap = hardMinGap;
 
     const makeSideBtn = (y, label, onClick) => {
       const r = this.add.rectangle(btnX, y, btnW, btnH, 0xffffff, 0.18)
