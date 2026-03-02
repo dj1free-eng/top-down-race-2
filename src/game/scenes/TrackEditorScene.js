@@ -196,6 +196,7 @@ export class TrackEditorScene extends BaseScene {
 
     this.input.on('pointerdown', (p) => {
       if (!this._drawMode) return;
+
       // Solo permitir dibujo dentro del lienzo
       if (this._drawRect && !this._drawRect.contains(p.worldX, p.worldY)) {
         this._isDrawing = false;
@@ -203,10 +204,27 @@ export class TrackEditorScene extends BaseScene {
       }
 
       this._isDrawing = true;
-      this._rawPoints.length = 0;
-      this._cleanPoints.length = 0;
 
-      this._pushPointIfFar(p.worldX, p.worldY);
+      // Si ya hay puntos, continuamos el trazado (NO reseteamos).
+      // Si no hay puntos, empezamos uno nuevo.
+      if (this._rawPoints.length === 0) {
+        this._pushPointIfFar(p.worldX, p.worldY);
+      } else {
+        // “Anclar” el nuevo trazo al último punto para que no haya salto raro.
+        const last = this._rawPoints[this._rawPoints.length - 1];
+        const dx = p.worldX - last.x;
+        const dy = p.worldY - last.y;
+        const d2 = dx * dx + dy * dy;
+
+        // Si el nuevo toque está lejos, metemos un punto extra para conectar suavemente.
+        // (Más adelante esto será más pro con herramientas de edición.)
+        if (d2 > (this._minSampleDist * this._minSampleDist) * 4) {
+          this._rawPoints.push({ x: p.worldX, y: p.worldY });
+        } else {
+          this._pushPointIfFar(p.worldX, p.worldY);
+        }
+      }
+
       this._rebuildClean();
       this._redraw();
       this._refreshStats();
