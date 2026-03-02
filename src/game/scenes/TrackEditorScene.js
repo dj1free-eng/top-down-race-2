@@ -9,6 +9,7 @@ export class TrackEditorScene extends BaseScene {
     this._isDrawing = false;
     this._drawMode = true;   // herramienta “Dibujar” activa (toggle)
     this._ui = {};           // refs UI (botones/textos)
+
     this._rawPoints = [];    // [{x,y}, ...]
     this._cleanPoints = [];  // por ahora copia (Fase 2: filtrado/smooth)
 
@@ -18,7 +19,8 @@ export class TrackEditorScene extends BaseScene {
     this._minSampleDist = 10; // px
     this._drawRect = null;    // Phaser.Geom.Rectangle
     this._uiTopH = 110;       // header compacto
-    this._trackWidth = 160;     // ancho pista “real” (como tus tracks)
+
+    this._trackWidth = 160;
     this._trackWidthMin = 80;
     this._trackWidthMax = 260;
 
@@ -30,13 +32,19 @@ export class TrackEditorScene extends BaseScene {
     super.create();
     const { width, height } = this.scale;
 
+    // Responsive: iPhone compacto
+    const isNarrow = width < 760;
+    const uiScale = isNarrow ? 0.82 : 1.0;
+
+    const S = (n) => Math.floor(n * uiScale);
+
     // Fondo
     this.cameras.main.setBackgroundColor('#1b6bff');
 
     // --- Flecha atrás (arriba izquierda) ---
-    const backSize = 44;
-    const backX = 16;
-    const backY = 16;
+    const backSize = isNarrow ? 40 : 44;
+    const backX = isNarrow ? 12 : 16;
+    const backY = isNarrow ? 12 : 16;
 
     const backHit = this.add.rectangle(backX, backY, backSize, backSize, 0x000000, 0.0)
       .setOrigin(0)
@@ -44,27 +52,27 @@ export class TrackEditorScene extends BaseScene {
       .setDepth(200);
 
     const backG = this.add.graphics().setDepth(201);
-    backG.lineStyle(5, 0xffffff, 0.9);
+    backG.lineStyle(isNarrow ? 4 : 5, 0xffffff, 0.9);
 
-    // Dibujo simple de flecha ←
     const cx = backX + backSize / 2;
     const cy = backY + backSize / 2;
     backG.beginPath();
-    backG.moveTo(cx + 10, cy - 14);
-    backG.lineTo(cx - 10, cy);
-    backG.lineTo(cx + 10, cy + 14);
+    backG.moveTo(cx + (isNarrow ? 9 : 10), cy - (isNarrow ? 12 : 14));
+    backG.lineTo(cx - (isNarrow ? 9 : 10), cy);
+    backG.lineTo(cx + (isNarrow ? 9 : 10), cy + (isNarrow ? 12 : 14));
     backG.strokePath();
 
     backHit.on('pointerdown', () => {
       this.scene.start('admin-hub');
     });
-    
-    // --- Layout pro (Canvas 3:2 + Sidebar) ---
-    const pad = 16;
-    const gap = 14;
 
-    // Sidebar fijo a la derecha
-    const sideW = Math.floor(Math.max(220, Math.min(320, width * 0.28)));
+    // --- Layout pro (Canvas 3:2 + Sidebar) ---
+    const pad = isNarrow ? 12 : 16;
+    const gap = isNarrow ? 10 : 14;
+    const round = isNarrow ? 16 : 18;
+
+    // Sidebar fijo a la derecha (en iPhone lo hacemos un pelín más estrecho)
+    const sideW = Math.floor(Math.max(isNarrow ? 200 : 220, Math.min(isNarrow ? 280 : 320, width * (isNarrow ? 0.30 : 0.28))));
     const sideX = Math.floor(width - pad - sideW);
     const sideY = this._uiTopH;
     const sideH = Math.floor(height - sideY - pad);
@@ -75,7 +83,7 @@ export class TrackEditorScene extends BaseScene {
     const canvasMaxW = Math.floor(sideX - gap - canvasX);
     const canvasMaxH = Math.floor(height - canvasY - pad);
 
-    // Forzar ratio 3:2 (W:H = 1.5)
+    // Forzar ratio 3:2
     let drawW = canvasMaxW;
     let drawH = Math.floor(drawW / 1.5);
     if (drawH > canvasMaxH) {
@@ -83,7 +91,7 @@ export class TrackEditorScene extends BaseScene {
       drawW = Math.floor(drawH * 1.5);
     }
 
-    // Centrar canvas en su zona disponible
+    // Centrar canvas
     const drawX = Math.floor(canvasX + (canvasMaxW - drawW) / 2);
     const drawY = Math.floor(canvasY + (canvasMaxH - drawH) / 2);
 
@@ -92,13 +100,13 @@ export class TrackEditorScene extends BaseScene {
     // Panel visual del “lienzo”
     const canvasPanel = this.add.graphics().setDepth(5);
     canvasPanel.fillStyle(0xffffff, 0.14);
-    canvasPanel.fillRoundedRect(drawX, drawY, drawW, drawH, 18);
-    canvasPanel.lineStyle(3, 0xffffff, 0.55);
-    canvasPanel.strokeRoundedRect(drawX, drawY, drawW, drawH, 18);
+    canvasPanel.fillRoundedRect(drawX, drawY, drawW, drawH, round);
+    canvasPanel.lineStyle(isNarrow ? 2 : 3, 0xffffff, 0.55);
+    canvasPanel.strokeRoundedRect(drawX, drawY, drawW, drawH, round);
 
     this.add.text(drawX + 14, drawY + 10, 'ZONA DE DIBUJO (3:2)', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '12px',
+      fontSize: isNarrow ? '11px' : '12px',
       color: '#ffffff',
       fontStyle: 'bold'
     }).setAlpha(0.85).setDepth(6);
@@ -106,63 +114,65 @@ export class TrackEditorScene extends BaseScene {
     // Sidebar visual
     const sidePanel = this.add.graphics().setDepth(50);
     sidePanel.fillStyle(0xffffff, 0.12);
-    sidePanel.fillRoundedRect(sideX, sideY, sideW, sideH, 18);
-    sidePanel.lineStyle(3, 0xffffff, 0.35);
-    sidePanel.strokeRoundedRect(sideX, sideY, sideW, sideH, 18);
+    sidePanel.fillRoundedRect(sideX, sideY, sideW, sideH, round);
+    sidePanel.lineStyle(isNarrow ? 2 : 3, 0xffffff, 0.35);
+    sidePanel.strokeRoundedRect(sideX, sideY, sideW, sideH, round);
 
-    this.add.text(sideX + 18, sideY + 14, 'HERRAMIENTAS', {
+    this.add.text(sideX + 16, sideY + 12, 'HERRAMIENTAS', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '13px',
+      fontSize: isNarrow ? '12px' : '13px',
       color: '#ffffff',
       fontStyle: 'bold'
     }).setAlpha(0.9).setDepth(51);
 
-        // --- UI Sidebar: Botones (Fase 1.3) ---
-    const makeSideBtn = (y, label, onClick) => {
-      const bw = Math.floor(sideW - 36);
-      const bh = 54;
-      const bx = Math.floor(sideX + (sideW - bw) / 2);
+    // --- UI Sidebar ---
+    const btnW = Math.floor(sideW - 32);
+    const btnH = S(54);               // se compacta en iPhone
+    const btnGapY = S(16);            // gap vertical compacto
+    const btnX = Math.floor(sideX + (sideW - btnW) / 2);
+    const uiTop = Math.floor(sideY + S(46));
 
-      const r = this.add.rectangle(bx, y, bw, bh, 0xffffff, 0.18)
+    const makeSideBtn = (y, label, onClick) => {
+      const r = this.add.rectangle(btnX, y, btnW, btnH, 0xffffff, 0.18)
         .setOrigin(0)
         .setStrokeStyle(2, 0xffffff, 0.45)
         .setInteractive({ useHandCursor: true })
         .setDepth(60);
 
-      const t = this.add.text(bx + bw / 2, y + bh / 2, label, {
+      const t = this.add.text(btnX + btnW / 2, y + btnH / 2, label, {
         fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-        fontSize: '15px',
+        fontSize: `${S(15)}px`,
         color: '#ffffff',
         fontStyle: 'bold'
       }).setOrigin(0.5).setDepth(61);
 
-      r.on('pointerdown', () => {
-        r.setScale(0.98);
-      });
-      r.on('pointerup', () => {
-        r.setScale(1);
-        onClick?.();
-      });
+      r.on('pointerdown', () => r.setScale(0.98));
+      r.on('pointerup', () => { r.setScale(1); onClick?.(); });
       r.on('pointerupoutside', () => r.setScale(1));
 
-      return { r, t, bx, bw, bh };
+      return { r, t };
     };
 
-    const uiTop = sideY + 56;
+    // Etiquetas compactas en iPhone
+    const L_DRAW_ON  = isNarrow ? 'DIBUJAR ON' : 'DIBUJAR: ON';
+    const L_DRAW_OFF = isNarrow ? 'DIBUJAR OFF' : 'DIBUJAR: OFF';
+    const L_UNDO     = isNarrow ? 'BORRAR' : 'BORRAR ÚLTIMO';
+
+    const yDraw  = uiTop;
+    const yUndo  = yDraw + btnH + btnGapY;
+    const yClear = yUndo + btnH + btnGapY;
 
     // Botón: DIBUJAR ON/OFF
-    this._ui.drawBtn = makeSideBtn(uiTop, 'DIBUJAR: ON', () => {
+    this._ui.drawBtn = makeSideBtn(yDraw, L_DRAW_ON, () => {
       this._drawMode = !this._drawMode;
-      this._ui.drawBtn.t.setText(this._drawMode ? 'DIBUJAR: ON' : 'DIBUJAR: OFF');
-      // Feedback visual: cuando OFF, bajar opacidad del botón
+      this._ui.drawBtn.t.setText(this._drawMode ? L_DRAW_ON : L_DRAW_OFF);
       this._ui.drawBtn.r.setAlpha(this._drawMode ? 1 : 0.6);
       this._ui.drawBtn.t.setAlpha(this._drawMode ? 1 : 0.75);
-      // Si apagamos mientras dibuja, cortar trazo
       if (!this._drawMode) this._isDrawing = false;
     });
 
     // Botón: BORRAR ÚLTIMO
-    this._ui.undoBtn = makeSideBtn(uiTop + 70, 'BORRAR ÚLTIMO', () => {
+    this._ui.undoBtn = makeSideBtn(yUndo, L_UNDO, () => {
       if (this._rawPoints.length > 0) {
         this._rawPoints.pop();
         this._rebuildClean();
@@ -171,8 +181,8 @@ export class TrackEditorScene extends BaseScene {
       this._refreshStats();
     });
 
-        // Botón: LIMPIAR TODO
-    this._ui.clearBtn = makeSideBtn(uiTop + 140, 'LIMPIAR', () => {
+    // Botón: LIMPIAR
+    this._ui.clearBtn = makeSideBtn(yClear, 'LIMPIAR', () => {
       this._isDrawing = false;
       this._rawPoints.length = 0;
       this._cleanPoints.length = 0;
@@ -181,41 +191,38 @@ export class TrackEditorScene extends BaseScene {
     });
 
     // --- Slider: ANCHO DE PISTA ---
-    const sliderY = uiTop + 220;
+    const sliderY = Math.floor(yClear + btnH + S(18));
 
-    this.add.text(sideX + 18, sliderY, 'ANCHO DE PISTA', {
+    this.add.text(sideX + 16, sliderY, isNarrow ? 'ANCHO' : 'ANCHO DE PISTA', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '13px',
+      fontSize: `${S(13)}px`,
       color: '#ffffff',
       fontStyle: 'bold'
     }).setAlpha(0.9).setDepth(61);
 
-    this._ui.widthValue = this.add.text(sideX + 18, sliderY + 20, `${this._trackWidth}px`, {
+    this._ui.widthValue = this.add.text(sideX + 16, sliderY + S(18), `${this._trackWidth}px`, {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '13px',
+      fontSize: `${S(13)}px`,
       color: '#ffffff'
     }).setAlpha(0.85).setDepth(61);
 
-    const sliderW = Math.floor(sideW - 36);
-    const sliderH = 14;
-    const sliderX = Math.floor(sideX + (sideW - sliderW) / 2);
-    const trackY = sliderY + 52;
+    const sliderW = btnW;
+    const sliderH = S(14);
+    const sliderX = btnX;
+    const trackY = sliderY + S(44);
 
-    // Pista del slider
     const sTrack = this.add.rectangle(sliderX, trackY, sliderW, sliderH, 0xffffff, 0.18)
       .setOrigin(0)
       .setStrokeStyle(2, 0xffffff, 0.35)
       .setDepth(61);
 
-    // Knob (bolita)
-    const knobR = 14;
+    const knobR = S(14);
     const knob = this.add.circle(0, trackY + sliderH / 2, knobR, 0xffffff, 0.55)
       .setStrokeStyle(3, 0xffffff, 0.85)
       .setDepth(62)
       .setInteractive({ useHandCursor: true });
 
-    // Hit area del slider (para poder tocar en cualquier punto)
-    const sHit = this.add.rectangle(sliderX, trackY - 10, sliderW, sliderH + 20, 0x000000, 0.0)
+    const sHit = this.add.rectangle(sliderX, trackY - S(10), sliderW, sliderH + S(20), 0x000000, 0.0)
       .setOrigin(0)
       .setInteractive()
       .setDepth(63);
@@ -237,37 +244,37 @@ export class TrackEditorScene extends BaseScene {
     knob.on('pointerdown', (p) => setWidthFromPointer(p.worldX));
     knob.on('pointermove', (p) => { if (p.isDown) setWidthFromPointer(p.worldX); });
 
-    // Colocar knob inicial
     this._positionWidthKnob();
-    
-    // Contador de puntos
-    this._ui.stats = this.add.text(sideX + 18, uiTop + 310, 'Puntos: 0', {
+
+    // Contador de puntos (debajo del slider)
+    const statsY = trackY + sliderH + S(22);
+    this._ui.stats = this.add.text(sideX + 16, statsY, 'Puntos: 0', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '13px',
+      fontSize: `${S(13)}px`,
       color: '#ffffff'
     }).setAlpha(0.85).setDepth(61);
 
-    // Estado inicial del botón draw
+    // Estado inicial
     this._ui.drawBtn.r.setAlpha(1);
     this._ui.drawBtn.t.setAlpha(1);
 
     // --- Título (centrado sobre el canvas) ---
     const titleX = this._drawRect.x + this._drawRect.width / 2;
 
-    this.add.text(titleX, 54, 'EDITOR DE PISTAS', {
+    this.add.text(titleX, isNarrow ? 48 : 54, 'EDITOR DE PISTAS', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '24px',
+      fontSize: isNarrow ? '22px' : '24px',
       color: '#ffffff',
       fontStyle: 'bold'
     }).setOrigin(0.5);
 
-    this.add.text(titleX, 82, 'Admin Tool · Dibuja el trazado y valida la pista', {
+    this.add.text(titleX, isNarrow ? 74 : 82, 'Admin Tool · Dibuja el trazado y valida la pista', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '12px',
+      fontSize: isNarrow ? '11px' : '12px',
       color: '#e8f0ff'
     }).setOrigin(0.5).setAlpha(0.9);
 
-    // --- Layers de dibujo (por encima del panel canvas) ---
+    // --- Layers de dibujo ---
     this._gRaw = this.add.graphics().setDepth(10);
     this._gClean = this.add.graphics().setDepth(11);
 
@@ -277,7 +284,6 @@ export class TrackEditorScene extends BaseScene {
     this.input.on('pointerdown', (p) => {
       if (!this._drawMode) return;
 
-      // Solo permitir dibujo dentro del lienzo
       if (this._drawRect && !this._drawRect.contains(p.worldX, p.worldY)) {
         this._isDrawing = false;
         return;
@@ -285,19 +291,14 @@ export class TrackEditorScene extends BaseScene {
 
       this._isDrawing = true;
 
-      // Si ya hay puntos, continuamos el trazado (NO reseteamos).
-      // Si no hay puntos, empezamos uno nuevo.
       if (this._rawPoints.length === 0) {
         this._pushPointIfFar(p.worldX, p.worldY);
       } else {
-        // “Anclar” el nuevo trazo al último punto para que no haya salto raro.
         const last = this._rawPoints[this._rawPoints.length - 1];
         const dx = p.worldX - last.x;
         const dy = p.worldY - last.y;
         const d2 = dx * dx + dy * dy;
 
-        // Si el nuevo toque está lejos, metemos un punto extra para conectar suavemente.
-        // (Más adelante esto será más pro con herramientas de edición.)
         if (d2 > (this._minSampleDist * this._minSampleDist) * 4) {
           this._rawPoints.push({ x: p.worldX, y: p.worldY });
         } else {
@@ -340,7 +341,6 @@ export class TrackEditorScene extends BaseScene {
   }
 
   _rebuildClean() {
-    // Fase 1: aún no filtramos. Solo copia.
     this._cleanPoints = this._rawPoints.slice();
   }
 
@@ -348,7 +348,6 @@ export class TrackEditorScene extends BaseScene {
     this._gRaw.clear();
     this._gClean.clear();
 
-    // RAW: fino
     if (this._rawPoints.length >= 2) {
       this._gRaw.lineStyle(3, 0xffffff, 0.45);
       this._gRaw.beginPath();
@@ -359,7 +358,6 @@ export class TrackEditorScene extends BaseScene {
       this._gRaw.strokePath();
     }
 
-    // CLEAN: gordo (provisional)
     if (this._cleanPoints.length >= 2) {
       const previewPx = Math.max(6, Math.min(40, Math.round(this._trackWidth / 6)));
       this._gClean.lineStyle(previewPx, 0xfff000, 0.85);
@@ -371,11 +369,13 @@ export class TrackEditorScene extends BaseScene {
       this._gClean.strokePath();
     }
   }
-        _refreshStats() {
+
+  _refreshStats() {
     if (!this._ui || !this._ui.stats) return;
     this._ui.stats.setText(`Puntos: ${this._rawPoints.length}`);
   }
-    _positionWidthKnob() {
+
+  _positionWidthKnob() {
     if (!this._ui || !this._ui.widthSlider) return;
     const { knob, sliderX, sliderW, trackY, sliderH } = this._ui.widthSlider;
 
