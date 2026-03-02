@@ -24,64 +24,6 @@ export class TrackEditorScene extends BaseScene {
     // Fondo provisional (luego lo pondremos Brawl/arcade)
     this.cameras.main.setBackgroundColor('#1b6bff');
 
-    // --- Layers de dibujo (Fase 1) ---
-    this._gRaw = this.add.graphics().setDepth(10);
-    this._gClean = this.add.graphics().setDepth(11);
-
-    // Evitar gestos raros del navegador/scroll en móvil
-    this.input.addPointer(1);
-
-    // --- Input táctil ---
-    this.input.on('pointerdown', (p) => {
-            // Solo permitir dibujo dentro del lienzo
-      if (this._drawRect && !this._drawRect.contains(p.worldX, p.worldY)) {
-        this._isDrawing = false;
-        return;
-      }
-      // Solo un dedo: evitamos pinch/scroll por ahora
-      if (p.pointerId !== 1 && p.id !== 0) { /* Phaser varía; no bloqueamos */ }
-
-      this._isDrawing = true;
-      this._rawPoints.length = 0;
-      this._cleanPoints.length = 0;
-
-      this._pushPointIfFar(p.worldX, p.worldY);
-      this._rebuildClean();
-      this._redraw();
-    });
-
-    this.input.on('pointermove', (p) => {
-      if (!this._isDrawing) return;
-      if (this._drawRect && !this._drawRect.contains(p.worldX, p.worldY)) return;
-
-      this._pushPointIfFar(p.worldX, p.worldY);
-      this._rebuildClean();
-      this._redraw();
-    });
-
-    this.input.on('pointerup', () => {
-      this._isDrawing = false;
-    });
-
-    this.input.on('pointerupoutside', () => {
-      this._isDrawing = false;
-    });
-    
-    // Título
-    this.add.text(width / 2, 60, 'EDITOR DE PISTAS', {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '24px',
-      color: '#ffffff',
-      fontStyle: 'bold'
-    }).setOrigin(0.5);
-
-    // Nota provisional
-    this.add.text(width / 2, 110, '(Fase 0: Scene conectada)', {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '14px',
-      color: '#e8f0ff'
-    }).setOrigin(0.5);
-
 // --- Layout pro (Canvas 3:2 + Sidebar) ---
 const pad = 16;
 const gap = 14;
@@ -175,6 +117,66 @@ backBtn.on('pointerdown', () => this.scene.start('admin-hub'));
     this._rawPoints.push({ x, y });
     return true;
   }
+
+    
+    // --- Layers de dibujo (Fase 1) ---
+    this._gRaw = this.add.graphics().setDepth(10);
+    this._gClean = this.add.graphics().setDepth(11);
+
+    // Evitar gestos raros del navegador/scroll en móvil
+    this.input.addPointer(1);
+
+    // --- Input táctil ---
+    this.input.on('pointerdown', (p) => {
+            // Solo permitir dibujo dentro del lienzo
+      if (this._drawRect && !this._drawRect.contains(p.worldX, p.worldY)) {
+        this._isDrawing = false;
+        return;
+      }
+      // Solo un dedo: evitamos pinch/scroll por ahora
+      if (p.pointerId !== 1 && p.id !== 0) { /* Phaser varía; no bloqueamos */ }
+
+      this._isDrawing = true;
+      this._rawPoints.length = 0;
+      this._cleanPoints.length = 0;
+
+      this._pushPointIfFar(p.worldX, p.worldY);
+      this._rebuildClean();
+      this._redraw();
+    });
+
+    this.input.on('pointermove', (p) => {
+      if (!this._isDrawing) return;
+      if (this._drawRect && !this._drawRect.contains(p.worldX, p.worldY)) return;
+
+      this._pushPointIfFar(p.worldX, p.worldY);
+      this._rebuildClean();
+      this._redraw();
+    });
+
+    this.input.on('pointerup', () => {
+      this._isDrawing = false;
+    });
+
+    this.input.on('pointerupoutside', () => {
+      this._isDrawing = false;
+    });
+    
+    // Título
+    this.add.text(width / 2, 60, 'EDITOR DE PISTAS', {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: '24px',
+      color: '#ffffff',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
+
+    // Nota provisional
+    this.add.text(width / 2, 110, '(Fase 0: Scene conectada)', {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: '14px',
+      color: '#e8f0ff'
+    }).setOrigin(0.5);
+
 
   _rebuildClean() {
     // Fase 1: aún no filtramos. Solo copia.
