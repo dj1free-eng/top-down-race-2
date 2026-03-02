@@ -80,7 +80,7 @@ export class TrackEditorScene extends BaseScene {
     // Sidebar fijo a la derecha (en iPhone lo hacemos un pelín más estrecho)
     const sideW = Math.floor(Math.max(isNarrow ? 200 : 220, Math.min(isNarrow ? 280 : 320, width * (isNarrow ? 0.30 : 0.28))));
     const sideX = Math.floor(width - pad - sideW);
-    const sideY = this._uiTopH;
+    const sideY = pad; // ✅ sidebar usa todo el alto disponible
     const sideH = Math.floor(height - sideY - pad);
 
     // Canvas disponible (a la izquierda del sidebar)
@@ -136,7 +136,7 @@ export class TrackEditorScene extends BaseScene {
     const btnX = Math.floor(sideX + (sideW - btnW) / 2);
 
     // Arranque del bloque dentro del sidebar
-    const uiTop = Math.floor(sideY + S(46));
+const uiTop = Math.floor(sideY + S(isNarrow ? 34 : 46));
 
     // Queremos que quepan: 4 botones + slider + puntos + reporte + margen
     const btnCount = 4; // Dibujar, Borrar, Limpiar, Validar
