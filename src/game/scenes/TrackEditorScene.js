@@ -250,6 +250,16 @@ const uiTop = Math.floor(sideY + S(isNarrow ? 34 : 46));
     });
     y += btnH + S(18);
 
+    // EXPORTAR (solo se habilita si la validación sale OK)
+    this._ui.exportBtn = makeSideBtn(y, isNarrow ? "EXPORTAR" : "EXPORTAR", () => {
+      this._exportTrack();
+    });
+    this._ui.exportBtn.r.setAlpha(0.55);
+    this._ui.exportBtn.t.setAlpha(0.65);
+    this._ui.exportBtn.r.disableInteractive();
+    y += btnH + btnGap;
+
+
     // --- Slider: ANCHO DE PISTA (arranca justo después del último botón) ---
     const sliderY = y;
 
@@ -607,6 +617,20 @@ _rebuildClean() {
       const lines = (rep?.errors || []).map(e => `• ${e}`);
       this._ui.report.setText(`❌ ERRORES\n${lines.join('\n') || 'Sin datos'}`);
     }
+
+    // ✅ Habilitar EXPORTAR solo si la validación es OK
+    if (this._ui.exportBtn && this._ui.exportBtn.r && this._ui.exportBtn.t) {
+      if (rep && rep.ok) {
+        this._ui.exportBtn.r.setAlpha(1);
+        this._ui.exportBtn.t.setAlpha(1);
+        this._ui.exportBtn.r.setInteractive({ useHandCursor: true });
+      } else {
+        this._ui.exportBtn.r.setAlpha(0.55);
+        this._ui.exportBtn.t.setAlpha(0.65);
+        this._ui.exportBtn.r.disableInteractive();
+      }
+    }
+
   }
 
   _validateTrack() {
