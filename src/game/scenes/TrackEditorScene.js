@@ -856,4 +856,121 @@ _catmullRom(pts, subdiv, closed) {
 
   return out;
 }
+
+
+  // --- Export (JSON listo para crear un track real) ---
+  _exportTrack() {
+    const rep = this._lastValidation;
+    if (!rep || !rep.ok) {
+      this._setReport({ ok: false, msg: 'No se puede exportar: la pista no pasa la validación.' });
+      return;
+    }
+
+    // Usamos la línea central ya procesada (resample + smooth)
+    const pts = (this._cleanPoints && this._cleanPoints.length >= 3) ? this._cleanPoints : this._rawPoints;
+    if (!pts || pts.length < 3 || !this._drawRect) return;
+
+    // Quitar cierre duplicado si existe (último = primero)
+    const cleaned = pts.slice();
+    if (cleaned.length >= 2) {
+      const a = cleaned[0];
+      const b = cleaned[cleaned.length - 1];
+      const dx = a.x - b.x;
+      const dy = a.y - b.y;
+      if ((dx * dx + dy * dy) < 1) cleaned.pop();
+    }
+
+    // Mapeo canvas (screen) -> world (como los tracks existentes)
+    const worldW = 8000;
+    const worldH = 5000;
+
+    const drawW = this._drawRect.width;
+    const drawH = this._drawRect.height;
+
+    // margen para que no quede pegado a bordes
+    const margin = 0.85;
+    const s = Math.min((worldW * margin) / drawW, (worldH * margin) / drawH);
+    const ox = (worldW - drawW * s) * 0.5;
+    const oy = (worldH - drawH * s) * 0.5;
+
+    const centerline = cleaned.map(p => {
+      const cx = (p.x - this._drawRect.x) * s + ox;
+      const cy = (p.y - this._drawRect.y) * s + oy;
+      return [Math.round(cx * 10) / 10, Math.round(cy * 10) / 10];
+    });
+
+    // TrackWidth en "world px"
+    const trackWidth = Math.round(this._trackWidth * s);
+
+    // Start/Finish automáticos basados en el primer segmento
+    const p0 = centerline[0];
+    const p1 = centerline[1] || centerline[0];
+    const vx = p1[0] - p0[0];
+    const vy = p1[1] - p0[1];
+    const heading = Math.atan2(vy, vx);
+    const ux = Math.cos(heading);
+    const uy = Math.sin(heading);
+    const px = -uy;
+    const py = ux;
+
+    const half = trackWidth * 0.55;
+
+    const finish = {
+      x: Math.round(p0[0] * 10) / 10,
+      y: Math.round(p0[1] * 10) / 10,
+      a: { x: Math.round((p0[0] + px * half) * 10) / 10, y: Math.round((p0[1] + py * half) * 10) / 10 },
+      b: { x: Math.round((p0[0] - px * half) * 10) / 10, y: Math.round((p0[1] - py * half) * 10) / 10 },
+      heading: Math.round(heading * 10000) / 10000
+    };
+
+    const start = {
+      x: Math.round((p0[0] - ux * (trackWidth * 0.7)) * 10) / 10,
+      y: Math.round((p0[1] - uy * (trackWidth * 0.7)) * 10) / 10,
+      r: Math.round(heading * 10000) / 10000
+    };
+
+    const id = `track_custom_${Date.now()}`;
+    const spec = {
+      id,
+      name: 'Custom Track',
+      worldW,
+      worldH,
+      centerline,
+      trackWidth,
+      start,
+      finish
+    };
+
+    // Guarda un último export por si quieres recuperarlo
+    try { localStorage.setItem('tdr2:trackExport:last', JSON.stringify(spec)); } catch (e) {}
+
+    this._downloadJson(`${id}.json`, spec);
+
+    // Feedback UI
+    this._setReport({ ok: true, msg: `Exportado: ${id}.json (copiado al portapapeles si es posible)` });
+  }
+
+  _downloadJson(filename, data) {
+    try {
+      const json = JSON.stringify(data, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      setTimeout(() => URL.revokeObjectURL(url), 500);
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(json).catch(() => {});
+      }
+    } catch (e) {
+      console.error(e);
+      this._setReport({ ok: false, msg: 'Error exportando JSON' });
+    }
+  }
 }
