@@ -467,8 +467,11 @@ init(data) {
     if (parsed && Number.isFinite(parsed.lapMs)) {
       this.ttBest = {
         lapMs: parsed.lapMs,
+        lapTick: parsed.lapTick ?? null,
         s1: Number.isFinite(parsed.s1) ? parsed.s1 : null,
-        s2: Number.isFinite(parsed.s2) ? parsed.s2 : null
+        s1Tick: parsed.s1Tick ?? null,
+        s2: Number.isFinite(parsed.s2) ? parsed.s2 : null,
+        s2Tick: parsed.s2Tick ?? null
       };
     }
   } catch (e) {
@@ -859,6 +862,10 @@ this.timing = {
   lastLap: null,
   bestLap: null
 };
+
+// SIM CLOCK
+this.simTick = 0;
+this.lapStartTick = null;
 this.simTick = 0;
 this.lapStartTick = null;
 // 4) Coche (body físico + rig visual)
@@ -2741,6 +2748,15 @@ if (DEV_TOOLS) {
 
   update(time, deltaMs) {
     const dt = Math.min(0.05, (deltaMs || 0) / 1000);
+
+// SIM TICK accumulator
+this._simAccMs = (this._simAccMs || 0) + (deltaMs || 0);
+const SIM_STEP_MS = 1000 / 60;
+if (this._simAccMs > 250) this._simAccMs = 250;
+while (this._simAccMs >= SIM_STEP_MS) {
+  this.simTick++;
+  this._simAccMs -= SIM_STEP_MS;
+}
 // ✅ SIM TICK (aprox) — base para cronómetro determinista
 // Por ahora: acumulamos tiempo y convertimos a ticks de 60 Hz.
 // Más adelante haremos timestep fijo real.
@@ -3441,6 +3457,7 @@ if (cp1 && this._cpCooldown1Ms === 0 && _crossGate(cp1)) {
 
     if (this.timing?.lapStart != null) {
       this.timing.s1 = performance.now() - this.timing.lapStart;
+this.timing.s1Tick = (this.lapStartTick != null) ? (this.simTick - this.lapStartTick) : null;
 
       // Color SOLO al cruzar CP1
       if (this.ttBest?.s1 != null) {
@@ -3463,6 +3480,7 @@ if (cp2 && this._cpCooldown2Ms === 0 && _crossGate(cp2)) {
 
     if (this.timing?.lapStart != null) {
       this.timing.s2 = performance.now() - this.timing.lapStart;
+this.timing.s2Tick = (this.lapStartTick != null) ? (this.simTick - this.lapStartTick) : null;
 
       // Color SOLO al cruzar CP2
       if (this.ttBest?.s2 != null) {
@@ -3484,6 +3502,7 @@ if (within && crossed && forward && this._lapCooldownMs === 0) {
 if (this.timing) {
   const now = performance.now();
   const lapTime = now - this.timing.lapStart;
+const lapTicks = (this.lapStartTick != null) ? (this.simTick - this.lapStartTick) : null;
 // === TT Panel: captura del best ANTES de actualizar (para delta real)
 const prevBestMs = (this.ttBest && Number.isFinite(this.ttBest.lapMs)) ? this.ttBest.lapMs : null;
 // ========================================
@@ -3493,8 +3512,11 @@ if (this.ttHistory && this.ttHistKey) {
   const rec = {
     t: Date.now(),
     lapMs: lapTime,
+      lapTick: lapTicks,
     s1: Number.isFinite(this.timing.s1) ? this.timing.s1 : null,
-    s2: Number.isFinite(this.timing.s2) ? this.timing.s2 : null
+      s1Tick: this.timing.s1Tick ?? null,
+    s2: Number.isFinite(this.timing.s2) ? this.timing.s2 : null,
+      s2Tick: this.timing.s2Tick ?? null
   };
 
   this.ttHistory.push(rec);
@@ -3528,8 +3550,11 @@ if (this.ttHistory && this.ttHistKey) {
   if (improves) {
     this.ttBest = {
       lapMs: lapTime,
+      lapTick: lapTicks,
       s1: Number.isFinite(this.timing.s1) ? this.timing.s1 : null,
-      s2: Number.isFinite(this.timing.s2) ? this.timing.s2 : null
+      s1Tick: this.timing.s1Tick ?? null,
+      s2: Number.isFinite(this.timing.s2) ? this.timing.s2 : null,
+      s2Tick: this.timing.s2Tick ?? null
     };
     try {
       localStorage.setItem(this.ttKey, JSON.stringify(this.ttBest));
@@ -3542,6 +3567,7 @@ if (this.ttHistory && this.ttHistKey) {
 
   // Reset de vuelta: arranca nueva vuelta desde ahora
   this.timing.lapStart = now;
+this.lapStartTick = this.simTick;
   this.timing.s1 = null;
   this.timing.s2 = null;
 
