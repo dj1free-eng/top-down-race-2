@@ -1576,6 +1576,10 @@ this.scale.on('resize', (gs) => {
   this.speedHudText.setPosition(gs.width / 2, y - 36);
   this.speedHudUnit.setPosition(gs.width / 2, y - 14);
 });
+    // ✅ Evitar “HUD fantasma” con zoom: el world cam no debe renderizar UI
+try {
+  this.cameras.main.ignore([this.speedHudBg, this.speedHudText, this.speedHudUnit]);
+} catch (e) {}
 // =================================================
 // DEV HUD (panel derecha) — solo para desarrollo
 // (sin botones: zoom/cull se operarán desde Config más adelante)
@@ -1626,6 +1630,10 @@ if (DEV_TOOLS) {
     lineSpacing: 2,
     wordWrap: { width: panelW - 20, useAdvancedWrap: false }
   }).setScrollFactor(0).setDepth(1100);
+  // ✅ Evitar “DEV fantasma” con zoom: el world cam no debe renderizar UI dev
+try {
+  this.cameras.main.ignore([this.devBox, this.devTitle, this.devInfo, this._dbgText, this.devBtnMap].filter(Boolean));
+} catch (e) {}
 // ===============================
 // DEV BUTTONS (mínimo viable)
 // ===============================
