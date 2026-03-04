@@ -110,7 +110,7 @@ export class RaceScene extends BaseScene {
 
     this.car = null;
     this.keys = null;
-    this.zoom = 0.6;
+    this.zoom = 0.45;
 
     this.hud = null;
 
@@ -2817,11 +2817,11 @@ this.ttHud.lapText.setText(`VUELTA ${lapInProgress}`);
 
     // Zoom (solo si existen teclas)
     if (justDown && keys.zoomIn && justDown(keys.zoomIn)) {
-      this.zoom = clamp((this.zoom ?? 0.85) + 0.1, 0.6, 1.6);
+      this.zoom = clamp((this.zoom ?? 0.85) + 0.1, 0.3, 1.6);
       this.cameras.main.setZoom(this.zoom);
     }
     if (justDown && keys.zoomOut && justDown(keys.zoomOut)) {
-      this.zoom = clamp((this.zoom ?? 0.85) - 0.1, 0.6, 1.6);
+      this.zoom = clamp((this.zoom ?? 0.85) - 0.1, 0.3, 1.6);
       this.cameras.main.setZoom(this.zoom);
     }
 // DEBUG: toggle culling (ON / OFF)
