@@ -1647,6 +1647,45 @@ const mkBtn = (x, y, label, onClick) => {
 
 const bx = panelX + 10;
 const by = panelY + 146;
+
+  // MAP = toggle zoom normal <-> mapa completo
+this.devBtnMap = mkBtn(bx, by, 'MAP', () => {
+  const cam = this.cameras.main;
+
+  // Estado actual
+  this._mapZoomOn = !!this._mapZoomOn;
+
+  if (!this._mapZoomOn) {
+    // Guardar zoom normal actual
+    this._zoomNormal = (this.zoom != null) ? this.zoom : cam.zoom;
+
+    // Intentar bounds del mundo (Arcade) para encuadrar “todo”
+    const b = this.physics?.world?.bounds;
+    if (!b || !b.width || !b.height) return;
+
+    const marginPx = 24; // margen para que no quede pegado a bordes/panel
+    const vw = Math.max(1, this.scale.width - marginPx);
+    const vh = Math.max(1, this.scale.height - marginPx);
+
+    // zoom para que quepa todo el mundo en pantalla
+    let zMap = Math.min(vw / b.width, vh / b.height) * 0.95;
+    zMap = Math.max(0.05, Math.min(zMap, 2.0));
+
+    this.zoom = zMap;
+    cam.setZoom(this.zoom);
+
+    // centrar en el mundo
+    cam.centerOn(b.x + b.width * 0.5, b.y + b.height * 0.5);
+
+    this._mapZoomOn = true;
+  } else {
+    // Volver a zoom normal
+    const z = (this._zoomNormal != null) ? this._zoomNormal : 0.45;
+    this.zoom = z;
+    cam.setZoom(this.zoom);
+    this._mapZoomOn = false;
+  }
+});
 /*
 // A+ / A- = accelMult
 this.devBtnAPlus = mkBtn(bx, by, 'A+', () => {
@@ -1677,7 +1716,7 @@ this._devRegister(this.devBtnAPlus, this.devBtnAMinus, this.devBtnSave, this.dev
   }
 
   // Registrar para toggle ON/OFF
-  this._devRegister(this.devBox, this.devTitle, this.devInfo, this._dbgText);
+this._devRegister(this.devBox, this.devTitle, this.devInfo, this._dbgText, this.devBtnMap);
 // -------------------------------
 // DEV MODAL (Tuning) — FIX total (orden + input + contraste)
 // -------------------------------
