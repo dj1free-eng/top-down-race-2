@@ -2378,7 +2378,7 @@ this._applyCameraIgnores = () => {
     this.devTitle,
     this.devInfo,
     this.devBtnMap,
-    this.devBtnTune,
+    this.devTuneBtn,
     this._touchDbg,
 
     // Menú UI
