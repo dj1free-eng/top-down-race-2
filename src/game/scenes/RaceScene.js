@@ -436,7 +436,7 @@ const pick = (k) => (isBuiltIn(k) || isImport(k)) ? k : null;
 this.trackKey =
   pick(incomingTrack) ||
   pick(savedTrack) ||
-  'track02';
+'import:import_test';
 
   localStorage.setItem('tdr2:trackKey', this.trackKey);
 
