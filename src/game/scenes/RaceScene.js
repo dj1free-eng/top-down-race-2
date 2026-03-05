@@ -428,11 +428,15 @@ init(data) {
   // 1.1) Resolver circuito seleccionado (prioridad: data -> localStorage -> track02)
   const incomingTrack = data?.trackKey;
   const savedTrack = localStorage.getItem('tdr2:trackKey');
-  const valid = (k) => (k === 'track01' || k === 'track02' || k === 'track03');
+const isBuiltIn = (k) => (k === 'track01' || k === 'track02' || k === 'track03');
+const isImport = (k) => (typeof k === 'string' && k.startsWith('import:') && k.slice('import:'.length).trim().length > 0);
 
-  this.trackKey = valid(incomingTrack)
-    ? incomingTrack
-    : (valid(savedTrack) ? savedTrack : 'track02');
+const pick = (k) => (isBuiltIn(k) || isImport(k)) ? k : null;
+
+this.trackKey =
+  pick(incomingTrack) ||
+  pick(savedTrack) ||
+'import:import_test';
 
   localStorage.setItem('tdr2:trackKey', this.trackKey);
 
@@ -821,9 +825,49 @@ if (this._onResizeTouchControls) {
   this._diag = null;
 };
 this.events.once(Phaser.Scenes.Events.SHUTDOWN, this._onShutdownRaceScene, this);
-    
-// 1) Track meta primero (define world real)
-const t01 = this._resolveTrackMeta(this.trackKey);
+ // ========================================
+// IMPORT TRACK: carga dinámica JSON + restart
+// ========================================
+if (typeof this.trackKey === 'string' && this.trackKey.startsWith('import:')) {
+  const slug = this.trackKey.slice('import:'.length).trim();
+
+  // key de cache para el json del track importado
+  const jsonKey = `trackjson:${slug}`;
+
+  // Si NO está cargado aún, lo cargamos y reiniciamos la escena al completar
+  if (!this.cache.json.exists(jsonKey)) {
+    // mini feedback (por si tarda)
+    try {
+      this._diag?.(`[IMPORT] loading ${slug}...`);
+    } catch (e) {}
+
+    // Ruta esperada en /public
+    const url = `tracks/${slug}/track.json`;
+
+    this.load.json(jsonKey, url);
+
+    this.load.once('complete', () => {
+      try { this._diag?.(`[IMPORT] loaded ${slug} ✓`); } catch (e) {}
+      // Reiniciar manteniendo el trackKey importado
+      this.scene.restart({ trackKey: `import:${slug}` });
+    });
+
+    this.load.once('loaderror', (file) => {
+      try { this._diag?.(`[IMPORT] load ERROR: ${file?.key || 'unknown'}`); } catch (e) {}
+      // fallback seguro: volvemos a track02
+      this.scene.restart({ trackKey: 'track02' });
+    });
+
+    this.load.start();
+    return; // IMPORTANTÍSIMO: no seguimos creando escena sin el JSON
+  }
+}   
+    // 1) Track meta primero (define world real)
+let t01;
+if (this.trackKey === 'track01') t01 = makeTrack01Oval();
+else if (this.trackKey === 'track02') t01 = makeTrack02Technical();
+else if (this.trackKey === 'track03') t01 = makeTrack03Drift();
+else t01 = makeTrack02Technical(); // fallback seguro
 
 const spec = this.baseSpec || CAR_SPECS.stock;
     this.worldW = t01.worldW;
@@ -4131,12 +4175,95 @@ if (state.stickX === 0 && state.stickY === 0) {
 
     return state;
   }
-    _resolveTrackMeta(trackKey) {
+  _resolveTrackMeta(trackKey) {
+    // 1) Tracks "built-in" (procedurales actuales)
     if (trackKey === 'track01') return makeTrack01Oval();
     if (trackKey === 'track02') return makeTrack02Technical();
     if (trackKey === 'track03') return makeTrack03Drift();
 
-    // fallback seguro (mantiene el comportamiento actual)
+    // 2) Tracks importados: "import:<slug>"
+    if (typeof trackKey === 'string' && trackKey.startsWith('import:')) {
+      const slug = trackKey.slice('import:'.length).trim();
+      this._importTrackSlug = slug || null;
+
+      const jsonKey = `trackjson:${slug}`;
+      const data = this.cache?.json?.get?.(jsonKey);
+
+      // Si por lo que sea no está, fallback seguro (la carga dinámica lo trae antes)
+      if (!data || typeof data !== 'object') return makeTrack02Technical();
+
+      // Convertir JSON -> meta compatible con tu pipeline
+      return this._metaFromImportJson(slug, data);
+    }
+
+    // 3) fallback seguro
     return makeTrack02Technical();
+  }
+    _metaFromImportJson(slug, j) {
+    // Formato esperado del JSON (mínimo):
+    // {
+    //   "worldW": 8000, "worldH": 5000,
+    //   "trackWidth": 300, "grassMargin": 220,
+    //   "start": { "x":..., "y":..., "r":... },
+    //   "centerline": [ [x,y], ... ]  // o [{x,y},...]
+    //   "finishLine": { "a":{x,y}, "b":{x,y}, "normal":{x,y}? }  // opcional
+    // }
+
+    const num = (v, fb) => (Number.isFinite(v) ? v : fb);
+
+    const worldW = num(j.worldW, 8000);
+    const worldH = num(j.worldH, 5000);
+
+    const trackWidth = num(j.trackWidth, 300);
+    const grassMargin = num(j.grassMargin, 220);
+    const sampleStepPx = num(j.sampleStepPx, 22);
+    const cellSize = num(j.cellSize, 400);
+    const shoulderPx = num(j.shoulderPx, 28);
+
+    const start = {
+      x: num(j.start?.x, 400),
+      y: num(j.start?.y, 400),
+      r: num(j.start?.r, 0)
+    };
+
+    // centerline: acepta [[x,y],...] o [{x,y},...]
+    const rawCL = Array.isArray(j.centerline) ? j.centerline : [];
+    const centerline = rawCL.map((p) => {
+      if (!p) return null;
+      if (Array.isArray(p) && p.length >= 2) return [Number(p[0]), Number(p[1])];
+      if (typeof p.x === 'number' && typeof p.y === 'number') return [p.x, p.y];
+      return null;
+    }).filter(Boolean);
+
+    // finishLine opcional (si no, tu código ya tiene fallback calculado)
+    const fl = j.finishLine || j.finish || null;
+    const finishLine = (fl && fl.a && fl.b) ? {
+      a: { x: Number(fl.a.x), y: Number(fl.a.y) },
+      b: { x: Number(fl.b.x), y: Number(fl.b.y) },
+      normal: (fl.normal && Number.isFinite(fl.normal.x) && Number.isFinite(fl.normal.y))
+        ? { x: Number(fl.normal.x), y: Number(fl.normal.y) }
+        : undefined
+    } : undefined;
+
+    return {
+      key: `import:${slug}`,
+      name: j.name || slug,
+
+      worldW,
+      worldH,
+
+      trackWidth,
+      grassMargin,
+      sampleStepPx,
+      cellSize,
+      shoulderPx,
+
+      start,
+      centerline,
+
+      // compat con tu código: finishLine o finish
+      finishLine,
+      finish: finishLine
+    };
   }
   }
