@@ -439,7 +439,9 @@ this.trackKey =
 'import:import_test';
 
   localStorage.setItem('tdr2:trackKey', this.trackKey);
-
+// TEMP: fuerza pista importada para test
+this.trackKey = 'import:import_test';
+localStorage.setItem('tdr2:trackKey', this.trackKey);
   // ========================================
   // Time Trial: histórico de vueltas (por pista) — máx 500
   // ========================================
