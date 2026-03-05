@@ -858,12 +858,8 @@ if (typeof this.trackKey === 'string' && this.trackKey.startsWith('import:')) {
     return; // IMPORTANTÍSIMO: no seguimos creando escena sin el JSON
   }
 }   
-    // 1) Track meta primero (define world real)
-let t01;
-if (this.trackKey === 'track01') t01 = makeTrack01Oval();
-else if (this.trackKey === 'track02') t01 = makeTrack02Technical();
-else if (this.trackKey === 'track03') t01 = makeTrack03Drift();
-else t01 = makeTrack02Technical(); // fallback seguro
+// 1) Track meta primero (define world real)
+const t01 = this._resolveTrackMeta(this.trackKey);
 
 const spec = this.baseSpec || CAR_SPECS.stock;
     this.worldW = t01.worldW;
