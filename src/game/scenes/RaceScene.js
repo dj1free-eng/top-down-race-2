@@ -4135,4 +4135,24 @@ if (state.stickX === 0 && state.stickY === 0) {
 
     return state;
   }
+    _resolveTrackMeta(trackKey) {
+    // 1) Tracks "built-in" (procedurales actuales)
+    if (trackKey === 'track01') return makeTrack01Oval();
+    if (trackKey === 'track02') return makeTrack02Technical();
+    if (trackKey === 'track03') return makeTrack03Drift();
+
+    // 2) Tracks importados: "import:<slug>"
+    // (aún no cargamos JSON en este paso; devolvemos fallback seguro)
+    if (typeof trackKey === 'string' && trackKey.startsWith('import:')) {
+      const slug = trackKey.slice('import:'.length).trim();
+      // Guardamos el slug para el Paso 3 (cargar JSON + imagen)
+      this._importTrackSlug = slug || null;
+
+      // Fallback seguro por ahora (no rompe la escena)
+      return makeTrack02Technical();
+    }
+
+    // 3) fallback seguro (mantiene el comportamiento actual)
+    return makeTrack02Technical();
+  }
   }
