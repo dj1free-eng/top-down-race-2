@@ -428,11 +428,15 @@ init(data) {
   // 1.1) Resolver circuito seleccionado (prioridad: data -> localStorage -> track02)
   const incomingTrack = data?.trackKey;
   const savedTrack = localStorage.getItem('tdr2:trackKey');
-  const valid = (k) => (k === 'track01' || k === 'track02' || k === 'track03');
+const isBuiltIn = (k) => (k === 'track01' || k === 'track02' || k === 'track03');
+const isImport = (k) => (typeof k === 'string' && k.startsWith('import:') && k.slice('import:'.length).trim().length > 0);
 
-  this.trackKey = valid(incomingTrack)
-    ? incomingTrack
-    : (valid(savedTrack) ? savedTrack : 'track02');
+const pick = (k) => (isBuiltIn(k) || isImport(k)) ? k : null;
+
+this.trackKey =
+  pick(incomingTrack) ||
+  pick(savedTrack) ||
+  'track02';
 
   localStorage.setItem('tdr2:trackKey', this.trackKey);
 
@@ -821,7 +825,43 @@ if (this._onResizeTouchControls) {
   this._diag = null;
 };
 this.events.once(Phaser.Scenes.Events.SHUTDOWN, this._onShutdownRaceScene, this);
-    
+ // ========================================
+// IMPORT TRACK: carga dinámica JSON + restart
+// ========================================
+if (typeof this.trackKey === 'string' && this.trackKey.startsWith('import:')) {
+  const slug = this.trackKey.slice('import:'.length).trim();
+
+  // key de cache para el json del track importado
+  const jsonKey = `trackjson:${slug}`;
+
+  // Si NO está cargado aún, lo cargamos y reiniciamos la escena al completar
+  if (!this.cache.json.exists(jsonKey)) {
+    // mini feedback (por si tarda)
+    try {
+      this._diag?.(`[IMPORT] loading ${slug}...`);
+    } catch (e) {}
+
+    // Ruta esperada en /public
+    const url = `tracks/${slug}/track.json`;
+
+    this.load.json(jsonKey, url);
+
+    this.load.once('complete', () => {
+      try { this._diag?.(`[IMPORT] loaded ${slug} ✓`); } catch (e) {}
+      // Reiniciar manteniendo el trackKey importado
+      this.scene.restart({ trackKey: `import:${slug}` });
+    });
+
+    this.load.once('loaderror', (file) => {
+      try { this._diag?.(`[IMPORT] load ERROR: ${file?.key || 'unknown'}`); } catch (e) {}
+      // fallback seguro: volvemos a track02
+      this.scene.restart({ trackKey: 'track02' });
+    });
+
+    this.load.start();
+    return; // IMPORTANTÍSIMO: no seguimos creando escena sin el JSON
+  }
+}   
     // 1) Track meta primero (define world real)
 let t01;
 if (this.trackKey === 'track01') t01 = makeTrack01Oval();
