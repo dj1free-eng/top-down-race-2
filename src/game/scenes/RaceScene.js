@@ -4175,24 +4175,95 @@ if (state.stickX === 0 && state.stickY === 0) {
 
     return state;
   }
-    _resolveTrackMeta(trackKey) {
+  _resolveTrackMeta(trackKey) {
     // 1) Tracks "built-in" (procedurales actuales)
     if (trackKey === 'track01') return makeTrack01Oval();
     if (trackKey === 'track02') return makeTrack02Technical();
     if (trackKey === 'track03') return makeTrack03Drift();
 
     // 2) Tracks importados: "import:<slug>"
-    // (aún no cargamos JSON en este paso; devolvemos fallback seguro)
     if (typeof trackKey === 'string' && trackKey.startsWith('import:')) {
       const slug = trackKey.slice('import:'.length).trim();
-      // Guardamos el slug para el Paso 3 (cargar JSON + imagen)
       this._importTrackSlug = slug || null;
 
-      // Fallback seguro por ahora (no rompe la escena)
-      return makeTrack02Technical();
+      const jsonKey = `trackjson:${slug}`;
+      const data = this.cache?.json?.get?.(jsonKey);
+
+      // Si por lo que sea no está, fallback seguro (la carga dinámica lo trae antes)
+      if (!data || typeof data !== 'object') return makeTrack02Technical();
+
+      // Convertir JSON -> meta compatible con tu pipeline
+      return this._metaFromImportJson(slug, data);
     }
 
-    // 3) fallback seguro (mantiene el comportamiento actual)
+    // 3) fallback seguro
     return makeTrack02Technical();
+  }
+    _metaFromImportJson(slug, j) {
+    // Formato esperado del JSON (mínimo):
+    // {
+    //   "worldW": 8000, "worldH": 5000,
+    //   "trackWidth": 300, "grassMargin": 220,
+    //   "start": { "x":..., "y":..., "r":... },
+    //   "centerline": [ [x,y], ... ]  // o [{x,y},...]
+    //   "finishLine": { "a":{x,y}, "b":{x,y}, "normal":{x,y}? }  // opcional
+    // }
+
+    const num = (v, fb) => (Number.isFinite(v) ? v : fb);
+
+    const worldW = num(j.worldW, 8000);
+    const worldH = num(j.worldH, 5000);
+
+    const trackWidth = num(j.trackWidth, 300);
+    const grassMargin = num(j.grassMargin, 220);
+    const sampleStepPx = num(j.sampleStepPx, 22);
+    const cellSize = num(j.cellSize, 400);
+    const shoulderPx = num(j.shoulderPx, 28);
+
+    const start = {
+      x: num(j.start?.x, 400),
+      y: num(j.start?.y, 400),
+      r: num(j.start?.r, 0)
+    };
+
+    // centerline: acepta [[x,y],...] o [{x,y},...]
+    const rawCL = Array.isArray(j.centerline) ? j.centerline : [];
+    const centerline = rawCL.map((p) => {
+      if (!p) return null;
+      if (Array.isArray(p) && p.length >= 2) return [Number(p[0]), Number(p[1])];
+      if (typeof p.x === 'number' && typeof p.y === 'number') return [p.x, p.y];
+      return null;
+    }).filter(Boolean);
+
+    // finishLine opcional (si no, tu código ya tiene fallback calculado)
+    const fl = j.finishLine || j.finish || null;
+    const finishLine = (fl && fl.a && fl.b) ? {
+      a: { x: Number(fl.a.x), y: Number(fl.a.y) },
+      b: { x: Number(fl.b.x), y: Number(fl.b.y) },
+      normal: (fl.normal && Number.isFinite(fl.normal.x) && Number.isFinite(fl.normal.y))
+        ? { x: Number(fl.normal.x), y: Number(fl.normal.y) }
+        : undefined
+    } : undefined;
+
+    return {
+      key: `import:${slug}`,
+      name: j.name || slug,
+
+      worldW,
+      worldH,
+
+      trackWidth,
+      grassMargin,
+      sampleStepPx,
+      cellSize,
+      shoulderPx,
+
+      start,
+      centerline,
+
+      // compat con tu código: finishLine o finish
+      finishLine,
+      finish: finishLine
+    };
   }
   }
