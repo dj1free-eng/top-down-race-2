@@ -677,16 +677,21 @@ if (!this._useFactorySpec) {
 _dbg(msg) {
   // Si existe pero ya fue destruido al cambiar de escena, lo recreamos
   if (!this._dbgText || !this._dbgText.scene) {
-this._dbgText = this.add.text(12, 130, '', {
-  fontFamily: 'monospace',
-  fontSize: '11px',
-  color: '#ffcc66',
-  backgroundColor: 'rgba(0,0,0,0.6)',
-  padding: { x: 6, y: 4 }
-}).setScrollFactor(0).setDepth(5000);
 
-// Evitar HUD fantasma con zoom
-try { this.cameras.main.ignore(this._dbgText); } catch (e) {}
+    this._dbgText = this.add.text(12, 130, '', {
+      fontFamily: 'monospace',
+      fontSize: '11px',
+      color: '#ffcc66',
+      backgroundColor: 'rgba(0,0,0,0.6)',
+      padding: { x: 6, y: 4 }
+    })
+    .setScrollFactor(0)
+    .setDepth(5000);
+
+    // Evitar HUD fantasma con zoom
+    try { this.cameras.main.ignore(this._dbgText); } catch (e) {}
+  }
+
   this._dbgText.setText(String(msg));
 }
     _hudLog(msg) {
