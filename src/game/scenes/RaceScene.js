@@ -4226,63 +4226,61 @@ if (state.stickX === 0 && state.stickY === 0) {
       if (typeof p.x === 'number' && typeof p.y === 'number') return [p.x, p.y];
       return null;
     }).filter(Boolean);
-    // -------------------------------------------------
-    // AUTO-ALIGN (imports): start.r + finishLine desde centerline
-    // - Corrige el bug "coche cruzado" por _carVisualRotOffset = PI/2
-    // - Genera meta perpendicular a la pista en el punto de salida
-    // -------------------------------------------------
-    const pts = centerline; // [[x,y], ...]
-    const havePts = Array.isArray(pts) && pts.length >= 3;
+// -------------------------------------------------
+// AUTO-ALIGN (imports): start.r + finishLine desde centerline
+// - Corrige coche cruzado por _carVisualRotOffset = PI/2
+// - Genera meta perpendicular a la pista en el punto de salida
+// -------------------------------------------------
+const pts = centerline; // [[x,y], ...]
+const havePts = Array.isArray(pts) && pts.length >= 3;
 
-    if (havePts) {
-      // 1) Encontrar el punto del centerline más cercano al start
-      let bestI = 0;
-      let bestD2 = Infinity;
-      for (let i = 0; i < pts.length; i++) {
-        const dx = pts[i][0] - start.x;
-        const dy = pts[i][1] - start.y;
-        const d2 = dx * dx + dy * dy;
-        if (d2 < bestD2) { bestD2 = d2; bestI = i; }
-      }
+if (havePts) {
+  // 1) Punto del centerline más cercano al start
+  let bestI = 0;
+  let bestD2 = Infinity;
 
-      // 2) Tangente local (suavizada) usando vecinos (circuito cerrado)
-      const im1 = (bestI - 1 + pts.length) % pts.length;
-      const ip1 = (bestI + 1) % pts.length;
+  for (let k = 0; k < pts.length; k++) {
+    const dx = pts[k][0] - start.x;
+    const dy = pts[k][1] - start.y;
+    const d2 = dx * dx + dy * dy;
+    if (d2 < bestD2) { bestD2 = d2; bestI = k; }
+  }
 
-      const tx0 = pts[ip1][0] - pts[im1][0];
-      const ty0 = pts[ip1][1] - pts[im1][1];
-      const tLen = Math.hypot(tx0, ty0) || 1;
+  // 2) Tangente local (suavizada) usando vecinos (circuito cerrado)
+  const im1 = (bestI - 1 + pts.length) % pts.length;
+  const ip1 = (bestI + 1) % pts.length;
 
-      const tx = tx0 / tLen;
-      const ty = ty0 / tLen;
+  const tx0 = pts[ip1][0] - pts[im1][0];
+  const ty0 = pts[ip1][1] - pts[im1][1];
+  const tLen = Math.hypot(tx0, ty0) || 1;
 
-      // ángulo de la pista (dirección de marcha)
-      const theta = Math.atan2(ty, tx);
+  const tx = tx0 / tLen;
+  const ty = ty0 / tLen;
 
-      // 3) START ROTATION:
-      // tu render hace: rigRot = bodyRot + (PI/2).
-      // Queremos rigRot = theta  =>  bodyRot = theta - PI/2
-      const VISUAL_OFFSET = Math.PI / 2;
-      start.r = theta - VISUAL_OFFSET;
+  // Dirección de marcha (tangente)
+  const theta = Math.atan2(ty, tx);
 
-      // 4) FINISH LINE:
-      // si no viene en JSON, generarla cruzando la pista en el punto del start
-      if (!finishLine) {
-const mid = { x: pts[bestI][0], y: pts[bestI][1] };
+  // 3) START ROTATION:
+  // rigRot = bodyRot + PI/2  =>  bodyRot = theta - PI/2
+  const VISUAL_OFFSET = Math.PI / 2;
+  start.r = theta - VISUAL_OFFSET;
 
-        // perpendicular a la tangente
-        const px = -ty;
-        const py = tx;
+  // 4) FINISH LINE:
+  // Si no viene en JSON, la generamos cruzando la pista en el punto bestI
+  if (!finishLine) {
+    const mid = { x: pts[bestI][0], y: pts[bestI][1] };
 
-        const half = (trackWidth || 300) * 0.5;
-        const a2 = { x: mid.x - px * half, y: mid.y - py * half };
-        const b2 = { x: mid.x + px * half, y: mid.y + py * half };
+    // perpendicular a la tangente
+    const px = -ty;
+    const py = tx;
 
-        // OJO: finishLine es const ahora, pero devolvemos uno nuevo en el return final
-        // Lo guardamos en j para leerlo en el return
-        j.__autoFinishLine = { a: a2, b: b2 };
-      }
-    }
+    const half = (trackWidth || 300) * 0.5;
+    const a2 = { x: mid.x - px * half, y: mid.y - py * half };
+    const b2 = { x: mid.x + px * half, y: mid.y + py * half };
+
+    j.__autoFinishLine = { a: a2, b: b2 };
+  }
+}
     // finishLine opcional (si no, tu código ya tiene fallback calculado)
 const fl = j.finishLine || j.finish || j.__autoFinishLine || null;
     const finishLine = (fl && fl.a && fl.b) ? {
