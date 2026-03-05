@@ -4226,6 +4226,11 @@ if (state.stickX === 0 && state.stickY === 0) {
       if (typeof p.x === 'number' && typeof p.y === 'number') return [p.x, p.y];
       return null;
     }).filter(Boolean);
+// finishLine opcional del JSON original
+const hasJsonFinish =
+  !!((j.finishLine && j.finishLine.a && j.finishLine.b) ||
+     (j.finish && j.finish.a && j.finish.b));
+
 // -------------------------------------------------
 // AUTO-ALIGN (imports): start.r + finishLine desde centerline
 // - Corrige coche cruzado por _carVisualRotOffset = PI/2
@@ -4243,7 +4248,10 @@ if (havePts) {
     const dx = pts[k][0] - start.x;
     const dy = pts[k][1] - start.y;
     const d2 = dx * dx + dy * dy;
-    if (d2 < bestD2) { bestD2 = d2; bestI = k; }
+    if (d2 < bestD2) {
+      bestD2 = d2;
+      bestI = k;
+    }
   }
 
   // 2) Tangente local (suavizada) usando vecinos (circuito cerrado)
@@ -4267,7 +4275,7 @@ if (havePts) {
 
   // 4) FINISH LINE:
   // Si no viene en JSON, la generamos cruzando la pista en el punto bestI
-  if (!finishLine) {
+  if (!hasJsonFinish) {
     const mid = { x: pts[bestI][0], y: pts[bestI][1] };
 
     // perpendicular a la tangente
