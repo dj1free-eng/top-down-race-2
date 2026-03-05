@@ -2362,49 +2362,62 @@ this._onResizeSpeedHud = () => {
 };
 this.scale.on('resize', this._onResizeSpeedHud);
     
-    // 1) La cámara principal NO debe renderizar UI
-this.cameras.main.ignore([
-  this.hudBox,
-  this.hud,
-  this.upUI,
-  this._dbgText,
-  this.devBox,
-  this.devTitle,
-  this.devInfo,
-  this.devToggleBtn,
-  this.devToggleTxt,
+// =================================================
+// UI CAMERA: asegurar que la main NO pinte UI (y viceversa)
+// =================================================
+this._applyCameraIgnores = () => {
+  // 1) La cámara principal NO debe renderizar UI
+  this.cameras.main.ignore([
+    this.hudBox,
+    this.hud,
+    this.upUI,
+    this._dbgText,
 
-  // Time Trial HUD (solo debe renderizarse en uiCam)
-  this.ttHud?.timeText,
-  this.ttHud?.lapText,
-  this.ttHud?.barBase,
-  this.ttHud?.barSlider,
-  this.ttHud?.ticksGfx,
+    // DEV panel + botones
+    this.devBox,
+    this.devTitle,
+    this.devInfo,
+    this.devBtnMap,
+    this.devBtnTune,
+    this._touchDbg,
 
-  // TT Panel (solo debe renderizarse en uiCam)
-  this.ttPanel?.c,
-  this.ttPanel?.bg,
-  this.ttPanel?.title,
-  this.ttPanel?.body,
+    // Menú UI
+    this.uiMenuBtn,
 
+    // Time Trial HUD (solo debe renderizarse en uiCam)
+    this.ttHud?.timeText,
+    this.ttHud?.lapText,
+    this.ttHud?.bestLapText,
+    this.ttHud?.barBase,
+    this.ttHud?.barSlider,
+    this.ttHud?.ticksGfx,
 
-  // Botones de zoom
-  this._zoomBtnPlus?.r,
-  this._zoomBtnPlus?.t,
-  this._zoomBtnMinus?.r,
-  this._zoomBtnMinus?.t,
-  this._zoomBtnCull?.r,
-  this._zoomBtnCull?.t,
+    // TT Panel (solo debe renderizarse en uiCam)
+    this.ttPanel?.c,
+    this.ttPanel?.bg,
+    this.ttPanel?.title,
+    this.ttPanel?.body,
 
-  // Controles táctiles
-  this.touchUI
-]
-.filter(Boolean));
+    // Botones de zoom
+    this._zoomBtnPlus?.r,
+    this._zoomBtnPlus?.t,
+    this._zoomBtnMinus?.r,
+    this._zoomBtnMinus?.t,
+    this._zoomBtnCull?.r,
+    this._zoomBtnCull?.t,
 
-// 2) La cámara UI NO debe renderizar mundo (lo que ya existe ahora)
-if (this.bgWorld) this.uiCam.ignore(this.bgWorld);
-if (this.carRig) this.uiCam.ignore(this.carRig);
-if (this.finishGfx) this.uiCam.ignore(this.finishGfx);
+    // Controles táctiles
+    this.touchUI
+  ].filter(Boolean));
+
+  // 2) La cámara UI NO debe renderizar mundo
+  if (this.bgWorld) this.uiCam?.ignore(this.bgWorld);
+  if (this.carRig) this.uiCam?.ignore(this.carRig);
+  if (this.finishGfx) this.uiCam?.ignore(this.finishGfx);
+};
+
+// aplicar una vez aquí
+this._applyCameraIgnores();
 
 // Mantener tamaño si rota/cambia viewport (SIN duplicar listeners)
 this.scale.off('resize', this._onResizeUiCam);
