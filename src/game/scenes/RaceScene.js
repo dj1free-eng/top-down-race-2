@@ -822,12 +822,8 @@ if (this._onResizeTouchControls) {
 };
 this.events.once(Phaser.Scenes.Events.SHUTDOWN, this._onShutdownRaceScene, this);
     
-    // 1) Track meta primero (define world real)
-let t01;
-if (this.trackKey === 'track01') t01 = makeTrack01Oval();
-else if (this.trackKey === 'track02') t01 = makeTrack02Technical();
-else if (this.trackKey === 'track03') t01 = makeTrack03Drift();
-else t01 = makeTrack02Technical(); // fallback seguro
+// 1) Track meta primero (define world real)
+const t01 = this._resolveTrackMeta(this.trackKey);
 
 const spec = this.baseSpec || CAR_SPECS.stock;
     this.worldW = t01.worldW;
@@ -4134,5 +4130,13 @@ if (state.stickX === 0 && state.stickY === 0) {
     });
 
     return state;
+  }
+    _resolveTrackMeta(trackKey) {
+    if (trackKey === 'track01') return makeTrack01Oval();
+    if (trackKey === 'track02') return makeTrack02Technical();
+    if (trackKey === 'track03') return makeTrack03Drift();
+
+    // fallback seguro (mantiene el comportamiento actual)
+    return makeTrack02Technical();
   }
   }
