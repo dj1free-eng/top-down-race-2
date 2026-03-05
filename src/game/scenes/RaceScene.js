@@ -1639,7 +1639,7 @@ if (DEV_TOOLS) {
   }).setScrollFactor(0).setDepth(1100);
   // ✅ Evitar “DEV fantasma” con zoom: el world cam no debe renderizar UI dev
 try {
-  this.cameras.main.ignore([this.devBox, this.devTitle, this.devInfo, this._dbgText, this.devBtnMap].filter(Boolean));
+  this.cameras.main.ignore([this.devBox, this.devTuneBtn, this.devTitle, this.devInfo, this._dbgText, this.devBtnMap].filter(Boolean));
 } catch (e) {}
 // ===============================
 // DEV BUTTONS (mínimo viable)
