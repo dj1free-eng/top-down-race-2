@@ -433,13 +433,7 @@ const isImport = (k) => (typeof k === 'string' && k.startsWith('import:') && k.s
 
 const pick = (k) => (isBuiltIn(k) || isImport(k)) ? k : null;
 
-this.trackKey =
-  pick(incomingTrack) ||
-  pick(savedTrack) ||
-'import:import_test';
-
-  localStorage.setItem('tdr2:trackKey', this.trackKey);
-// TEMP: fuerza pista importada para test
+// TEST IMPORT TRACK (forzado)
 this.trackKey = 'import:import_test';
 localStorage.setItem('tdr2:trackKey', this.trackKey);
   // ========================================
