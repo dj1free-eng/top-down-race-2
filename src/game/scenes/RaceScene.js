@@ -2662,7 +2662,8 @@ if (DEV_TOOLS) {
     backgroundColor: 'rgba(0,0,0,0.35)',
     padding: { left: 6, right: 6, top: 4, bottom: 4 }
   }).setOrigin(1, 0).setScrollFactor(0).setDepth(999999);
-
+// ✅ Evitar “HUD fantasma” con zoom: la cámara del mundo no debe renderizar este indicador
+try { this.cameras.main.ignore(this._touchDbg); } catch (e) {}
   // Cuenta dedos realmente “down” según Phaser
   const downCount = () => {
     const ps = this.input.manager?.pointers || [];
