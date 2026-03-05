@@ -4268,7 +4268,7 @@ if (state.stickX === 0 && state.stickY === 0) {
       // 4) FINISH LINE:
       // si no viene en JSON, generarla cruzando la pista en el punto del start
       if (!finishLine) {
-        const mid = { x: pts[bestI][0], y: pts[bestI][1] };
+const mid = { x: pts[bestI][0], y: pts[bestI][1] };
 
         // perpendicular a la tangente
         const px = -ty;
