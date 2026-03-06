@@ -249,6 +249,7 @@ for (let i = 0; i < cl.length; i++) {
 
   grassLeft.push([p[0] + oxG, p[1] + oyG]);
   grassRight.push([p[0] - oxG, p[1] - oyG]);
+}
   // 4) Ribbon en segmentos (quad -> 2 tri) y asignación a celdas
   // Guardamos polys como arrays de {x,y}
     const cells = new Map();
