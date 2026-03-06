@@ -216,7 +216,7 @@ const grassRight = [];
 
 const eps = 1e-6;
 const MITER_LIMIT = 2.0; // 2.0–2.5 típico. Más alto = más puntas, más bajo = más “bevel”.
-let prevNx = null, prevNy = null;
+
 for (let i = 0; i < cl.length; i++) {
   const pPrev = cl[(i - 1 + cl.length) % cl.length];
   const p = cl[i];
@@ -228,48 +228,68 @@ for (let i = 0; i < cl.length; i++) {
   const v1x = pNext[0] - p[0];
   const v1y = pNext[1] - p[1];
 
- // Normales de cada segmento (izquierda) + continuidad (evita “twist”)
-let [n0x, n0y] = normalize(-v0y, v0x);
-let [n1x, n1y] = normalize(-v1y, v1x);
+  // Normales de cada segmento (izquierda)
+  let [n0x, n0y] = normalize(-v0y, v0x);
+  let [n1x, n1y] = normalize(-v1y, v1x);
+
+  // Si una normal viene invertida respecto a la otra, alinearla
+  if ((n0x * n1x + n0y * n1y) < 0) {
+    n1x = -n1x;
+    n1y = -n1y;
+  }
 
   // Miter = normalizada (n0 + n1)
   let mx = n0x + n1x;
   let my = n0y + n1y;
+
+  // Si se anulan casi por completo, usar una normal segura
+  if (Math.hypot(mx, my) < eps) {
+    mx = n1x;
+    my = n1y;
+  }
+
   const [miterX, miterY] = normalize(mx, my);
 
   // Escala del miter: half / dot(miter, n0)
   const denom = (miterX * n0x + miterY * n0y);
-  let miterLen = half / Math.max(Math.abs(denom), eps);
+  const safeDenom = Math.max(Math.abs(denom), eps);
+  const miterLen = half / safeDenom;
 
-  // Fallback bevel si el ángulo es muy agudo (miter muy largo o denom muy pequeño)
-const tooSharp =
-  (Math.abs(denom) < 0.35) ||        // ángulo muy cerrado
-  (miterLen > MITER_LIMIT * half) || // miter excesivo
-  (denom < 0);                       // giro brusco (normales opuestas)
+  // Fallback bevel si el ángulo es muy agudo o el miter se dispara
+  const tooSharp =
+    (safeDenom < 0.35) ||
+    (miterLen > MITER_LIMIT * half);
 
-  // Dirección del offset (unidad). La reutilizamos para TRACK y GRASS.
-  let dirX, dirY;
+  let dirX, dirY, scaleT, scaleG;
 
   if (tooSharp) {
-    // Bevel-ish: usa una normal “segura” (la del segmento siguiente) para evitar puntas
-    dirX = n1x;
-    dirY = n1y;
+    // Bevel estable: media simple de normales, y si falla, n1
+    let bx = n0x + n1x;
+    let by = n0y + n1y;
+    if (Math.hypot(bx, by) < eps) {
+      bx = n1x;
+      by = n1y;
+    }
+    [dirX, dirY] = normalize(bx, by);
+    scaleT = half;
+    scaleG = halfGrass;
   } else {
-    // Miter direction
     dirX = miterX;
     dirY = miterY;
+    scaleT = miterLen;
+    scaleG = miterLen * (halfGrass / half);
   }
 
   // TRACK offsets
-  const oxT = dirX * half;
-  const oyT = dirY * half;
+  const oxT = dirX * scaleT;
+  const oyT = dirY * scaleT;
 
   left.push([p[0] + oxT, p[1] + oyT]);
   right.push([p[0] - oxT, p[1] - oyT]);
 
-  // GRASS offsets (misma forma, más ancho)
-  const oxG = dirX * halfGrass;
-  const oyG = dirY * halfGrass;
+  // GRASS offsets
+  const oxG = dirX * scaleG;
+  const oyG = dirY * scaleG;
 
   grassLeft.push([p[0] + oxG, p[1] + oyG]);
   grassRight.push([p[0] - oxG, p[1] - oyG]);
