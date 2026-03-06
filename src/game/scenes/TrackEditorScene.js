@@ -131,62 +131,30 @@ export class TrackEditorScene extends BaseScene {
       fontStyle: 'bold'
     }).setAlpha(0.9).setDepth(51);
 
-    // --- UI Sidebar (auto-fit por altura) ---
+    // --- UI Sidebar (2 columnas compactas) ---
     const btnW = Math.floor(sideW - 36);
     const btnX = Math.floor(sideX + (sideW - btnW) / 2);
 
-    // Arranque del bloque dentro del sidebar
-const uiTop = Math.floor(sideY + S(isNarrow ? 34 : 46));
+    const uiTop = Math.floor(sideY + S(isNarrow ? 34 : 46));
 
-    // Queremos que quepan: 4 botones + slider + puntos + reporte + margen
-    const btnCount = 4; // Dibujar, Borrar, Limpiar, Validar
+    const colGap = S(8);
+    const btnW2 = Math.floor((btnW - colGap) / 2);
+    const btnH2 = Math.max(S(26), Math.min(S(32), Math.floor(sideH * 0.055)));
 
-    // Estimación de lo que “se come” abajo (slider + puntos + reporte + aire)
-    const sliderBlockH = S(92);
-    const statsBlockH = S(26);
-    const reportBlockH = S(56);
-    const bottomMargin = S(16);
-
-    // Alto disponible real para los botones
-    const availableForButtons = Math.max(
-      0,
-      sideH - (uiTop - sideY) - sliderBlockH - statsBlockH - reportBlockH - bottomMargin
-    );
-
-    // Rango de tamaños aceptables
-    const hardMinBtnH = S(34);
-    const hardMaxBtnH = S(54);
-    const hardMinGap = S(6);
-    const hardMaxGap = S(14);
-
-    // Calcula GAP y H para que entren sí o sí
-    let btnGap = Phaser.Math.Clamp(
-      Math.floor(availableForButtons * 0.06 / btnCount),
-      hardMinGap,
-      hardMaxGap
-    );
-
-    let btnH = Phaser.Math.Clamp(
-      Math.floor((availableForButtons - btnGap * (btnCount - 1)) / btnCount),
-      hardMinBtnH,
-      hardMaxBtnH
-    );
-
-    // Si estamos en el mínimo, aprieta gap al mínimo también
-    if (btnH === hardMinBtnH) btnGap = hardMinGap;
-
-    const makeSideBtn = (y, label, onClick) => {
-      const r = this.add.rectangle(btnX, y, btnW, btnH, 0xffffff, 0.18)
+    const makeSideBtn = (x, y, w, h, label, onClick) => {
+      const r = this.add.rectangle(x, y, w, h, 0xffffff, 0.18)
         .setOrigin(0)
         .setStrokeStyle(2, 0xffffff, 0.45)
         .setInteractive({ useHandCursor: true })
         .setDepth(60);
 
-      const t = this.add.text(btnX + btnW / 2, y + btnH / 2, label, {
+      const t = this.add.text(x + w / 2, y + h / 2, label, {
         fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-        fontSize: `${S(15)}px`,
+        fontSize: `${S(11)}px`,
         color: '#ffffff',
-        fontStyle: 'bold'
+        fontStyle: 'bold',
+        align: 'center',
+        wordWrap: { width: Math.max(40, w - 10), useAdvancedWrap: true }
       }).setOrigin(0.5).setDepth(61);
 
       r.on('pointerdown', () => r.setScale(0.98));
@@ -196,36 +164,98 @@ const uiTop = Math.floor(sideY + S(isNarrow ? 34 : 46));
       return { r, t };
     };
 
-    // Posiciones: una debajo de otra (NO offsets fijos)
     let y = uiTop;
+    const col1 = btnX;
+    const col2 = btnX + btnW2 + colGap;
 
-    // DIBUJAR
-    this._ui.drawBtn = makeSideBtn(y, isNarrow ? 'DIBUJAR ON' : 'DIBUJAR: ON', () => {
+    // --- Imagen de fondo para calcar circuitos ---
+    this._bgImage = null;
+    this._bgImageKey = null;
+
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.style.display = 'none';
+    document.body.appendChild(fileInput);
+
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target?.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const dataUrl = ev.target?.result;
+        if (!dataUrl) return;
+
+        const htmlImg = new Image();
+        htmlImg.onload = () => {
+          const key = `track_bg_${Date.now()}`;
+
+          try { if (this._bgImage) this._bgImage.destroy(); } catch (err) {}
+          this._bgImage = null;
+
+          try {
+            if (this._bgImageKey && this.textures.exists(this._bgImageKey)) {
+              this.textures.remove(this._bgImageKey);
+            }
+          } catch (err) {}
+
+          this._bgImageKey = key;
+          this.textures.addImage(key, htmlImg);
+
+          const img = this.add.image(
+            this._drawRect.x + this._drawRect.width / 2,
+            this._drawRect.y + this._drawRect.height / 2,
+            key
+          ).setDepth(7);
+
+          const scale = Math.min(
+            this._drawRect.width / Math.max(1, htmlImg.width),
+            this._drawRect.height / Math.max(1, htmlImg.height)
+          );
+
+          img.setScale(scale);
+          img.setAlpha(0.42);
+
+          this._bgImage = img;
+        };
+
+        htmlImg.onerror = () => {
+          if (this._ui?.report) {
+            this._ui.report.setText('❌ ERRORES\n• No se pudo cargar la imagen.');
+          }
+        };
+
+        htmlImg.src = dataUrl;
+      };
+
+      reader.readAsDataURL(file);
+      fileInput.value = '';
+    });
+
+    // fila 1
+    this._ui.drawBtn = makeSideBtn(col1, y, btnW2, btnH2, 'DIBUJAR', () => {
       this._drawMode = !this._drawMode;
-      this._ui.drawBtn.t.setText(this._drawMode
-        ? (isNarrow ? 'DIBUJAR ON' : 'DIBUJAR: ON')
-        : (isNarrow ? 'DIBUJAR OFF' : 'DIBUJAR: OFF')
-      );
+      this._ui.drawBtn.t.setText(this._drawMode ? 'DIBUJAR' : 'PAUSADO');
       this._ui.drawBtn.r.setAlpha(this._drawMode ? 1 : 0.6);
       this._ui.drawBtn.t.setAlpha(this._drawMode ? 1 : 0.75);
       if (!this._drawMode) this._isDrawing = false;
     });
-    y += btnH + btnGap;
 
-    // BORRAR ÚLTIMO
-    this._ui.undoBtn = makeSideBtn(y, isNarrow ? 'BORRAR' : 'BORRAR ÚLTIMO', () => {
+    this._ui.undoBtn = makeSideBtn(col2, y, btnW2, btnH2, 'BORRAR', () => {
       if (this._rawPoints.length > 0) {
         this._rawPoints.pop();
         this._rebuildClean();
-        this._lastValidation = null; // invalidamos overlay
+        this._lastValidation = null;
         this._redraw();
       }
       this._refreshStats();
     });
-    y += btnH + btnGap;
 
-    // LIMPIAR
-    this._ui.clearBtn = makeSideBtn(y, 'LIMPIAR', () => {
+    y += btnH2 + colGap;
+
+    // fila 2
+    this._ui.clearBtn = makeSideBtn(col1, y, btnW2, btnH2, 'LIMPIAR', () => {
       this._isDrawing = false;
       this._rawPoints.length = 0;
       this._cleanPoints.length = 0;
@@ -233,60 +263,67 @@ const uiTop = Math.floor(sideY + S(isNarrow ? 34 : 46));
       this._redraw();
       this._refreshStats();
       if (this._ui.report) this._ui.report.setText('Sin validar');
-      // Reset look del botón validar
       if (this._ui.validateBtn?.r) {
         this._ui.validateBtn.r.setFillStyle(0xffffff, 0.18);
         this._ui.validateBtn.r.setStrokeStyle(2, 0xffffff, 0.45);
       }
+      if (this._ui.exportBtn?.r) {
+        this._ui.exportBtn.r.setAlpha(0.55);
+        this._ui.exportBtn.t.setAlpha(0.65);
+        this._ui.exportBtn.r.disableInteractive();
+      }
     });
-    y += btnH + btnGap;
 
-    // VALIDAR
-    this._ui.validateBtn = makeSideBtn(y, 'VALIDAR', () => {
+    this._ui.validateBtn = makeSideBtn(col2, y, btnW2, btnH2, 'VALIDAR', () => {
       const rep = this._validateTrack();
       this._lastValidation = rep;
       this._setReport(rep);
-      this._redraw(); // ✅ pinta overlay
+      this._redraw();
     });
-    y += btnH + S(18);
 
-    // EXPORTAR (solo se habilita si la validación sale OK)
-    this._ui.exportBtn = makeSideBtn(y, isNarrow ? "EXPORTAR" : "EXPORTAR", () => {
+    y += btnH2 + colGap;
+
+    // fila 3
+    this._ui.exportBtn = makeSideBtn(col1, y, btnW2, btnH2, 'EXPORTAR', () => {
       this._exportTrack();
     });
     this._ui.exportBtn.r.setAlpha(0.55);
     this._ui.exportBtn.t.setAlpha(0.65);
     this._ui.exportBtn.r.disableInteractive();
-    y += btnH + btnGap;
 
+    this._ui.loadImgBtn = makeSideBtn(col2, y, btnW2, btnH2, 'CARGAR IMG', () => {
+      fileInput.click();
+    });
 
-    // --- Slider: ANCHO DE PISTA (arranca justo después del último botón) ---
+    y += btnH2 + S(16);
+
+    // --- Slider: ANCHO DE PISTA ---
     const sliderY = y;
 
     this.add.text(sideX + 18, sliderY, isNarrow ? 'ANCHO' : 'ANCHO DE PISTA', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: `${S(13)}px`,
+      fontSize: `${S(12)}px`,
       color: '#ffffff',
       fontStyle: 'bold'
     }).setAlpha(0.9).setDepth(61);
 
-    this._ui.widthValue = this.add.text(sideX + 18, sliderY + S(18), `${this._trackWidth}px`, {
+    this._ui.widthValue = this.add.text(sideX + 18, sliderY + S(16), `${this._trackWidth}px`, {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: `${S(13)}px`,
+      fontSize: `${S(12)}px`,
       color: '#ffffff'
     }).setAlpha(0.85).setDepth(61);
 
     const sliderW = btnW;
-    const sliderH = S(14);
+    const sliderH = S(12);
     const sliderX = btnX;
-    const trackY = sliderY + S(44);
+    const trackY = sliderY + S(38);
 
     const sTrack = this.add.rectangle(sliderX, trackY, sliderW, sliderH, 0xffffff, 0.18)
       .setOrigin(0)
       .setStrokeStyle(2, 0xffffff, 0.35)
       .setDepth(61);
 
-    const knobR = S(14);
+    const knobR = S(13);
     const knob = this.add.circle(0, trackY + sliderH / 2, knobR, 0xffffff, 0.55)
       .setStrokeStyle(3, 0xffffff, 0.85)
       .setDepth(62)
@@ -305,7 +342,6 @@ const uiTop = Math.floor(sideY + S(isNarrow ? 34 : 46));
       this._trackWidth = v;
       this._ui.widthValue.setText(`${v}px`);
       this._positionWidthKnob();
-      // cambiar ancho invalida la validación previa
       this._lastValidation = null;
       this._redraw();
     };
@@ -317,21 +353,19 @@ const uiTop = Math.floor(sideY + S(isNarrow ? 34 : 46));
 
     this._positionWidthKnob();
 
-    // Contador de puntos (siempre visible, justo bajo el slider)
-    this._ui.stats = this.add.text(sideX + 18, trackY + sliderH + S(18), 'Puntos: 0', {
+    this._ui.stats = this.add.text(sideX + 18, trackY + sliderH + S(16), 'Puntos: 0', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: `${S(13)}px`,
+      fontSize: `${S(12)}px`,
       color: '#ffffff'
     }).setAlpha(0.85).setDepth(61);
 
-    // ✅ Report (debajo de Puntos)
     this._ui.report = this.add.text(
       sideX + 18,
-      trackY + sliderH + S(40),
+      trackY + sliderH + S(36),
       'Sin validar',
       {
         fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-        fontSize: `${S(12)}px`,
+        fontSize: `${S(11)}px`,
         color: '#ffffff',
         lineSpacing: 2,
         wordWrap: { width: Math.max(120, sideW - 36), useAdvancedWrap: true }
