@@ -232,16 +232,6 @@ for (let i = 0; i < cl.length; i++) {
 let [n0x, n0y] = normalize(-v0y, v0x);
 let [n1x, n1y] = normalize(-v1y, v1x);
 
-// Forzar continuidad: si la normal “flipa” respecto a la anterior, la invertimos
-if (prevNx !== null) {
-  const dot = (n1x * prevNx + n1y * prevNy);
-  if (dot < 0) {
-    n0x = -n0x; n0y = -n0y;
-    n1x = -n1x; n1y = -n1y;
-  }
-}
-prevNx = n1x; prevNy = n1y;
-
   // Miter = normalizada (n0 + n1)
   let mx = n0x + n1x;
   let my = n0y + n1y;
