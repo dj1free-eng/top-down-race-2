@@ -396,79 +396,7 @@ trackFileInput.click();
     this._gClean = this.add.graphics().setDepth(11);
     this._gOverlay = this.add.graphics().setDepth(12); // ✅ overlay encima
 
-// --- Imagen de fondo para calcar circuitos ---
-this._bgImage = null;
-this._bgImageKey = null;
 
-const fileInput = document.createElement('input');
-fileInput.type = 'file';
-fileInput.accept = 'image/*';
-fileInput.style.display = 'none';
-document.body.appendChild(fileInput);
-
-fileInput.addEventListener('change', (e) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = (ev) => {
-    const key = 'track_bg_' + Date.now();
-    const base64 = ev.target?.result;
-    if (!base64) return;
-
-    // limpiar imagen anterior
-    try { if (this._bgImage) this._bgImage.destroy(); } catch {}
-    this._bgImage = null;
-
-    // limpiar textura anterior
-    try {
-      if (this._bgImageKey && this.textures.exists(this._bgImageKey)) {
-        this.textures.remove(this._bgImageKey);
-      }
-    } catch {}
-
-    this._bgImageKey = key;
-
-    // IMPORTANTE: esperar a que la textura esté lista
-    this.textures.once(Phaser.Textures.Events.ADD, (addedKey) => {
-      if (addedKey !== key) return;
-
-      const tex = this.textures.get(key);
-      const src = tex?.getSourceImage?.();
-      const tw = src?.width || tex?.source?.[0]?.width || 1;
-      const th = src?.height || tex?.source?.[0]?.height || 1;
-
-      const img = this.add.image(
-        this._drawRect.x + this._drawRect.width / 2,
-        this._drawRect.y + this._drawRect.height / 2,
-        key
-      ).setDepth(6);
-
-      const scale = Math.min(
-        this._drawRect.width / tw,
-        this._drawRect.height / th
-      );
-
-      img.setScale(scale);
-      img.setAlpha(0.42);
-
-      this._bgImage = img;
-    });
-
-    this.textures.addBase64(key, base64);
-  };
-
-  reader.readAsDataURL(file);
-
-  // permitir volver a cargar la misma imagen
-  fileInput.value = '';
-});
-
-// botón cargar imagen
-this._ui.loadImgBtn = makeSideBtn(y, 'CARGAR IMAGEN', () => {
-  fileInput.click();
-});
-y += btnH + btnGap;
     
     // --- Input táctil ---
     this.input.addPointer(1);
