@@ -955,7 +955,69 @@ _catmullRom(pts, subdiv, closed) {
   return out;
 }
 
+  _buildTrackMaskFromBg() {
+    if (!this._bgImage || !this._bgImageKey || !this._drawRect) return null;
 
+    const tex = this.textures.get(this._bgImageKey);
+    const src = tex?.getSourceImage?.() || tex?.source?.[0]?.image || tex?.source?.[0];
+    if (!src || !src.width || !src.height) return null;
+
+    // Canvas temporal del tamaño exacto del área de dibujo
+    const w = Math.max(1, Math.floor(this._drawRect.width));
+    const h = Math.max(1, Math.floor(this._drawRect.height));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return null;
+
+    // Fondo negro
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, w, h);
+
+    // Dibujar la imagen centrada y escalada igual que en Phaser
+    const scale = Math.min(w / src.width, h / src.height);
+    const dw = src.width * scale;
+    const dh = src.height * scale;
+    const dx = (w - dw) * 0.5;
+    const dy = (h - dh) * 0.5;
+
+    ctx.drawImage(src, dx, dy, dw, dh);
+
+    const img = ctx.getImageData(0, 0, w, h);
+    const data = img.data;
+
+    // Máscara binaria: 255 = pista, 0 = no pista
+    // Heurística inicial:
+    // - asfalto suele ser más oscuro que la hierba
+    // - evitamos verdes dominantes
+    // - evitamos zonas muy claras (bordillos blancos / fondo)
+    const mask = new Uint8Array(w * h);
+
+    for (let i = 0, p = 0; i < data.length; i += 4, p++) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      const a = data[i + 3];
+
+      if (a < 10) {
+        mask[p] = 0;
+        continue;
+      }
+
+      const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      const greenDominance = g - Math.max(r, b);
+
+      // Regla inicial conservadora
+      const isDarkEnough = lum < 150;
+      const notTooGreen = greenDominance < 18;
+
+      mask[p] = (isDarkEnough && notTooGreen) ? 255 : 0;
+    }
+
+    return { canvas, ctx, w, h, mask };
+  }
   // --- Export (JSON listo para crear un track real) ---
   _exportTrack() {
     const rep = this._lastValidation;
