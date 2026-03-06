@@ -123,7 +123,8 @@ export function buildTrackRibbon({
     return [NaN, NaN];
   });
 
-  // 1) Suavizado Catmull-Rom -> nube densa
+  // 1) Base lineal estable (sin Catmull-Rom)
+  // Objetivo: eliminar overshoot / auto-cruces locales en curvas raras.
   const dense = [];
   const n = src.length;
   const closed = true;
@@ -132,25 +133,11 @@ export function buildTrackRibbon({
     return { center: [], left: [], right: [], cells: new Map(), cellSize };
   }
 
-  const get = (idx) => {
-    const i = (idx + n) % n;
-    return src[i];
-  };
-
-  // Generamos puntos densos entre cada par p1->p2
-  const SUB = 10; // densidad inicial (luego remuestreamos)
   for (let i = 0; i < n; i++) {
-    const p0 = get(i - 1);
-    const p1 = get(i);
-    const p2 = get(i + 1);
-    const p3 = get(i + 2);
-
-    for (let s = 0; s < SUB; s++) {
-      const t = s / SUB;
-      dense.push(catmullRom(p0, p1, p2, p3, t));
-    }
+    dense.push(src[i]);
   }
-  if (closed) dense.push(dense[0]);
+
+  if (closed) dense.push(src[0]);
 
   // 2) Remuestreo a paso fijo (10–20px)
   const cl = resample(dense, sampleStepPx);
