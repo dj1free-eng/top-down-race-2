@@ -260,20 +260,18 @@ for (let i = 0; i < cl.length; i++) {
     (safeDenom < 0.35) ||
     (miterLen > MITER_LIMIT * half);
 
-  let dirX, dirY, scaleT, scaleG;
+    // Dirección del offset + escala real
+  let dirX, dirY;
+  let scaleT, scaleG;
 
   if (tooSharp) {
-    // Bevel estable: media simple de normales, y si falla, n1
-    let bx = n0x + n1x;
-    let by = n0y + n1y;
-    if (Math.hypot(bx, by) < eps) {
-      bx = n1x;
-      by = n1y;
-    }
-    [dirX, dirY] = normalize(bx, by);
+    // Bevel estable: usar una normal segura con ancho normal
+    dirX = n1x;
+    dirY = n1y;
     scaleT = half;
     scaleG = halfGrass;
   } else {
+    // Miter real: hay que usar miterLen, no half
     dirX = miterX;
     dirY = miterY;
     scaleT = miterLen;
@@ -293,7 +291,6 @@ for (let i = 0; i < cl.length; i++) {
 
   grassLeft.push([p[0] + oxG, p[1] + oyG]);
   grassRight.push([p[0] - oxG, p[1] - oyG]);
-}
   // 4) Ribbon en segmentos (quad -> 2 tri) y asignación a celdas
   // Guardamos polys como arrays de {x,y}
     const cells = new Map();
