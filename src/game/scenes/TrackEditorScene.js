@@ -363,6 +363,53 @@ const uiTop = Math.floor(sideY + S(isNarrow ? 34 : 46));
     this._gClean = this.add.graphics().setDepth(11);
     this._gOverlay = this.add.graphics().setDepth(12); // ✅ overlay encima
 
+// --- Imagen de fondo para calcar circuitos ---
+this._bgImage = null;
+
+const fileInput = document.createElement('input');
+fileInput.type = 'file';
+fileInput.accept = 'image/*';
+fileInput.style.display = 'none';
+document.body.appendChild(fileInput);
+
+fileInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const key = 'track_bg_' + Date.now();
+
+    this.textures.addBase64(key, ev.target.result);
+
+    if (this._bgImage) this._bgImage.destroy();
+
+    const img = this.add.image(
+      this._drawRect.x + this._drawRect.width / 2,
+      this._drawRect.y + this._drawRect.height / 2,
+      key
+    ).setDepth(6);
+
+    const scale = Math.min(
+      this._drawRect.width / img.width,
+      this._drawRect.height / img.height
+    );
+
+    img.setScale(scale);
+    img.setAlpha(0.45);
+
+    this._bgImage = img;
+  };
+
+  reader.readAsDataURL(file);
+});
+
+// botón cargar imagen
+this._ui.loadImgBtn = makeSideBtn(y, "CARGAR IMAGEN", () => {
+  fileInput.click();
+});
+y += btnH + btnGap;
+    
     // --- Input táctil ---
     this.input.addPointer(1);
 
