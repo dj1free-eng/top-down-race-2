@@ -4254,17 +4254,36 @@ if (havePts) {
     }
   }
 
-  // 2) Tangente local (suavizada) usando vecinos (circuito cerrado)
-  const im1 = (bestI - 1 + pts.length) % pts.length;
-  const ip1 = (bestI + 1) % pts.length;
+// 2) Tangente local robusta (evita el "wrap vector" basura en el primer punto)
+const im1 = (bestI - 1 + pts.length) % pts.length;
+const ip1 = (bestI + 1) % pts.length;
 
-  const tx0 = pts[ip1][0] - pts[im1][0];
-  const ty0 = pts[ip1][1] - pts[im1][1];
-  const tLen = Math.hypot(tx0, ty0) || 1;
+// Vector hacia delante (best -> next)
+const fx = pts[ip1][0] - pts[bestI][0];
+const fy = pts[ip1][1] - pts[bestI][1];
+const fLen = Math.hypot(fx, fy) || 1;
 
-  const tx = tx0 / tLen;
-  const ty = ty0 / tLen;
+// Vector hacia atrás (prev -> best)
+const bx = pts[bestI][0] - pts[im1][0];
+const by = pts[bestI][1] - pts[im1][1];
+const bLen = Math.hypot(bx, by) || 1;
 
+// Si el tramo "atrás" es muchísimo más largo que el "adelante", el wrap está metiendo un salto.
+// En ese caso usamos SOLO el forward, que es el tramo real local.
+let tx0, ty0;
+if (bLen > fLen * 2.5) {
+  tx0 = fx; ty0 = fy;
+} else if (fLen > bLen * 2.5) {
+  tx0 = bx; ty0 = by;
+} else {
+  // promedio suave si ambos son razonables
+  tx0 = (fx / fLen) + (bx / bLen);
+  ty0 = (fy / fLen) + (by / bLen);
+}
+
+const tLen = Math.hypot(tx0, ty0) || 1;
+const tx = tx0 / tLen;
+const ty = ty0 / tLen;
   // Dirección de marcha (tangente)
   const theta = Math.atan2(ty, tx);
 
