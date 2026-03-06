@@ -216,7 +216,7 @@ const grassRight = [];
 
 const eps = 1e-6;
 const MITER_LIMIT = 2.0; // 2.0–2.5 típico. Más alto = más puntas, más bajo = más “bevel”.
-
+let prevNx = null, prevNy = null;
 for (let i = 0; i < cl.length; i++) {
   const pPrev = cl[(i - 1 + cl.length) % cl.length];
   const p = cl[i];
@@ -228,9 +228,19 @@ for (let i = 0; i < cl.length; i++) {
   const v1x = pNext[0] - p[0];
   const v1y = pNext[1] - p[1];
 
-  // Normales de cada segmento (izquierda)
-  const [n0x, n0y] = normalize(-v0y, v0x);
-  const [n1x, n1y] = normalize(-v1y, v1x);
+ // Normales de cada segmento (izquierda) + continuidad (evita “twist”)
+let [n0x, n0y] = normalize(-v0y, v0x);
+let [n1x, n1y] = normalize(-v1y, v1x);
+
+// Forzar continuidad: si la normal “flipa” respecto a la anterior, la invertimos
+if (prevNx !== null) {
+  const dot = (n1x * prevNx + n1y * prevNy);
+  if (dot < 0) {
+    n0x = -n0x; n0y = -n0y;
+    n1x = -n1x; n1y = -n1y;
+  }
+}
+prevNx = n1x; prevNy = n1y;
 
   // Miter = normalizada (n0 + n1)
   let mx = n0x + n1x;
