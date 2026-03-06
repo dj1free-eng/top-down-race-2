@@ -1,6 +1,6 @@
 {
-  "id": "track_custom_1772833405613",
-  "name": "Custom Track",
+  "id": "karting-tenerife-largo",
+  "name": "karting-tenerife-largo",
   "worldW": 8000,
   "worldH": 5000,
   "centerline": [
@@ -2013,23 +2013,23 @@
       632.2
     ]
   ],
-  "trackWidth": 1624,
-  "start": {
-    "x": 1002.1,
-    "y": 618.6,
-    "r": 0
-  },
-  "finish": {
+"trackWidth": 160,
+"start": {
+  "x": 1975,
+  "y": 618.6,
+  "r": 0
+},
+"finish": {
+  "x": 2138.9,
+  "y": 618.6,
+  "a": {
     "x": 2138.9,
-    "y": 618.6,
-    "a": {
-      "x": 2138.9,
-      "y": 1511.8
-    },
-    "b": {
-      "x": 2138.9,
-      "y": -274.6
-    },
-    "heading": 0
-  }
+    "y": 706.6
+  },
+  "b": {
+    "x": 2138.9,
+    "y": 530.6
+  },
+  "heading": 0
+}
 }
