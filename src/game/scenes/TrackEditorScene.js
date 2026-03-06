@@ -325,12 +325,14 @@ this._ui.autoTraceBtn = makeSideBtn(col1, y, btnW2, btnH2, 'AUTO TRACE', () => {
     return;
   }
 
-  this._drawMaskPreview(res);
+  const cleaned = this._cleanTrackMask(res);
+  this._lastMaskResult = cleaned;
+  this._drawMaskPreview(cleaned);
+
   if (this._ui?.report) {
-    this._ui.report.setText('✅ OK\nMáscara generada.\nRevisa si detecta bien el asfalto.');
+    this._ui.report.setText('✅ OK\nMáscara limpiada.\nLista para centerline.');
   }
 });
-
 this._ui.clearMaskBtn = makeSideBtn(col2, y, btnW2, btnH2, 'BORRAR MASK', () => {
   if (this._gMask) this._gMask.clear();
 });
@@ -1059,6 +1061,102 @@ _catmullRom(pts, subdiv, closed) {
         }
       }
     }
+  }
+    _cleanTrackMask(res) {
+    if (!res || !res.mask || !res.w || !res.h) return res;
+
+    const { w, h } = res;
+    let mask = new Uint8Array(res.mask); // copia
+
+    // 1) Quedarnos con la componente conectada más grande
+    mask = this._largestConnectedComponent(mask, w, h);
+
+    // 2) Suavizado binario simple:
+    //    una pasada de "opening/closing" ligera mediante filtro vecinal
+    mask = this._binaryMajorityFilter(mask, w, h, 1);
+    mask = this._binaryMajorityFilter(mask, w, h, 1);
+
+    return { ...res, mask };
+  }
+
+  _largestConnectedComponent(mask, w, h) {
+    const visited = new Uint8Array(w * h);
+    const out = new Uint8Array(w * h);
+
+    let bestCount = 0;
+    let bestPixels = null;
+
+    const dirs = [
+      [-1, 0], [1, 0], [0, -1], [0, 1]
+    ];
+
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const start = y * w + x;
+        if (visited[start] || mask[start] === 0) continue;
+
+        const queue = [start];
+        const pixels = [];
+        visited[start] = 1;
+
+        let q = 0;
+        while (q < queue.length) {
+          const p = queue[q++];
+          pixels.push(p);
+
+          const py = Math.floor(p / w);
+          const px = p - py * w;
+
+          for (const [dx, dy] of dirs) {
+            const nx = px + dx;
+            const ny = py + dy;
+            if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+
+            const np = ny * w + nx;
+            if (visited[np] || mask[np] === 0) continue;
+
+            visited[np] = 1;
+            queue.push(np);
+          }
+        }
+
+        if (pixels.length > bestCount) {
+          bestCount = pixels.length;
+          bestPixels = pixels;
+        }
+      }
+    }
+
+    if (!bestPixels) return out;
+
+    for (const p of bestPixels) out[p] = 255;
+    return out;
+  }
+
+  _binaryMajorityFilter(mask, w, h, radius = 1) {
+    const out = new Uint8Array(w * h);
+
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        let on = 0;
+        let total = 0;
+
+        for (let dy = -radius; dy <= radius; dy++) {
+          for (let dx = -radius; dx <= radius; dx++) {
+            const nx = x + dx;
+            const ny = y + dy;
+            if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+
+            total++;
+            if (mask[ny * w + nx] > 0) on++;
+          }
+        }
+
+        out[y * w + x] = (on >= Math.ceil(total * 0.5)) ? 255 : 0;
+      }
+    }
+
+    return out;
   }
   // --- Export (JSON listo para crear un track real) ---
   _exportTrack() {
