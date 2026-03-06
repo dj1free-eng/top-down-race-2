@@ -425,18 +425,15 @@ init(data) {
     ? (this.factorySpec.id || '__factory__')
     : (data?.carId || localStorage.getItem('tdr2:carId') || 'stock');
 
-  // 1.1) Resolver circuito seleccionado (prioridad: data -> localStorage -> track02)
-  const incomingTrack = data?.trackKey;
-  const savedTrack = localStorage.getItem('tdr2:trackKey');
-const isBuiltIn = (k) => (k === 'track01' || k === 'track02' || k === 'track03');
-const isImport = (k) => (typeof k === 'string' && k.startsWith('import:') && k.slice('import:'.length).trim().length > 0);
-
-const pick = (k) => (isBuiltIn(k) || isImport(k)) ? k : null;
+// 1.1) Resolver circuito seleccionado (prioridad: data -> localStorage -> track02)
+const incomingTrack = data?.trackKey;
+const savedTrack = localStorage.getItem('tdr2:trackKey');
 
 const isBuiltIn = (k) => (k === 'track01' || k === 'track02' || k === 'track03');
-const isImport = (k) => (typeof k === 'string' && k.startsWith('import:') && k.slice('import:'.length).trim().length > 0);
-const pick = (k) => (isBuiltIn(k) || isImport(k)) ? k : null;
+const isImport = (k) =>
+  (typeof k === 'string' && k.startsWith('import:') && k.slice('import:'.length).trim().length > 0);
 
+const pick = (k) => (isBuiltIn(k) || isImport(k)) ? k : null;
 this.trackKey =
   pick(incomingTrack) ||
   pick(savedTrack) ||
