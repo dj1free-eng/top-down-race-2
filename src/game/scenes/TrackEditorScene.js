@@ -172,16 +172,15 @@ export class TrackEditorScene extends BaseScene {
     this._bgImage = null;
     this._bgImageKey = null;
 
-    const fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.accept = 'image/*';
-    fileInput.style.display = 'none';
-    document.body.appendChild(fileInput);
+    const trackFileInput = document.createElement('input');
+trackFileInput.type = 'file';
+trackFileInput.accept = 'image/*';
+trackFileInput.style.display = 'none';
+document.body.appendChild(trackFileInput);
 
-    fileInput.addEventListener('change', (e) => {
-      const file = e.target?.files?.[0];
-      if (!file) return;
-
+trackFileInput.addEventListener('change', (e) => {
+  const file = e.target?.files?.[0];
+  if (!file) return;
       const reader = new FileReader();
       reader.onload = (ev) => {
         const dataUrl = ev.target?.result;
@@ -230,7 +229,7 @@ export class TrackEditorScene extends BaseScene {
       };
 
       reader.readAsDataURL(file);
-      fileInput.value = '';
+trackFileInput.value = '';
     });
 
     // fila 1
@@ -292,7 +291,7 @@ export class TrackEditorScene extends BaseScene {
     this._ui.exportBtn.r.disableInteractive();
 
     this._ui.loadImgBtn = makeSideBtn(col2, y, btnW2, btnH2, 'CARGAR IMG', () => {
-      fileInput.click();
+trackFileInput.click();
     });
 
     y += btnH2 + S(16);
