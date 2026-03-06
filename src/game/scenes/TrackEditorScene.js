@@ -314,8 +314,27 @@ this._ui.clearImgBtn = makeSideBtn(col2, y, btnW2, btnH2, 'BORRAR IMG', () => {
 
   this._ui.toggleImgBtn.t.setText('OCULTAR IMG');
 });
+y += btnH2 + colGap;
 
-    y += btnH2 + S(16);
+this._ui.autoTraceBtn = makeSideBtn(col1, y, btnW2, btnH2, 'AUTO TRACE', () => {
+  const res = this._buildTrackMaskFromBg();
+  if (!res) {
+    if (this._ui?.report) {
+      this._ui.report.setText('❌ ERRORES\n• No hay imagen cargada.');
+    }
+    return;
+  }
+
+  this._drawMaskPreview(res);
+  if (this._ui?.report) {
+    this._ui.report.setText('✅ OK\nMáscara generada.\nRevisa si detecta bien el asfalto.');
+  }
+});
+
+this._ui.clearMaskBtn = makeSideBtn(col2, y, btnW2, btnH2, 'BORRAR MASK', () => {
+  if (this._gMask) this._gMask.clear();
+});
+    y += btnH2 + S(14);
 // --- OPACIDAD IMAGEN ---
 this.add.text(sideX + 18, y, 'OPACIDAD IMG', {
   fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
@@ -454,10 +473,11 @@ y += S(26);
       color: '#e8f0ff'
     }).setOrigin(0.5).setAlpha(0.9);
 
-    // --- Layers de dibujo ---
-    this._gRaw = this.add.graphics().setDepth(10);
-    this._gClean = this.add.graphics().setDepth(11);
-    this._gOverlay = this.add.graphics().setDepth(12); // ✅ overlay encima
+// --- Layers de dibujo ---
+this._gRaw = this.add.graphics().setDepth(10);
+this._gClean = this.add.graphics().setDepth(11);
+this._gMask = this.add.graphics().setDepth(11.5);
+this._gOverlay = this.add.graphics().setDepth(12); // ✅ overlay encima
 
 
     
@@ -1017,6 +1037,28 @@ _catmullRom(pts, subdiv, closed) {
     }
 
     return { canvas, ctx, w, h, mask };
+  }
+    _drawMaskPreview(res) {
+    if (!this._gMask || !res) return;
+    this._gMask.clear();
+
+    const { w, h, mask } = res;
+    const ox = this._drawRect.x;
+    const oy = this._drawRect.y;
+
+    // muestreo visual para no fundir rendimiento
+    const step = 4;
+
+    this._gMask.fillStyle(0x00ff88, 0.22);
+
+    for (let y = 0; y < h; y += step) {
+      for (let x = 0; x < w; x += step) {
+        const p = y * w + x;
+        if (mask[p] > 0) {
+          this._gMask.fillRect(ox + x, oy + y, step, step);
+        }
+      }
+    }
   }
   // --- Export (JSON listo para crear un track real) ---
   _exportTrack() {
