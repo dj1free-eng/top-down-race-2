@@ -284,18 +284,81 @@ trackFileInput.value = '';
 
     // fila 3
     this._ui.exportBtn = makeSideBtn(col1, y, btnW2, btnH2, 'EXPORTAR', () => {
-      this._exportTrack();
-    });
-    this._ui.exportBtn.r.setAlpha(0.55);
-    this._ui.exportBtn.t.setAlpha(0.65);
-    this._ui.exportBtn.r.disableInteractive();
+  this._exportTrack();
+});
+this._ui.exportBtn.r.setAlpha(0.55);
+this._ui.exportBtn.t.setAlpha(0.65);
+this._ui.exportBtn.r.disableInteractive();
 
-    this._ui.loadImgBtn = makeSideBtn(col2, y, btnW2, btnH2, 'CARGAR IMG', () => {
-trackFileInput.click();
-    });
+this._ui.loadImgBtn = makeSideBtn(col2, y, btnW2, btnH2, 'CARGAR IMG', () => {
+  trackFileInput.click();
+});
+
+y += btnH2 + colGap;
+
+// fila nueva
+this._ui.toggleImgBtn = makeSideBtn(col1, y, btnW2, btnH2, 'OCULTAR IMG', () => {
+  if (!this._bgImage) return;
+
+  const visible = this._bgImage.visible;
+  this._bgImage.setVisible(!visible);
+
+  this._ui.toggleImgBtn.t.setText(visible ? 'MOSTRAR IMG' : 'OCULTAR IMG');
+});
+
+this._ui.clearImgBtn = makeSideBtn(col2, y, btnW2, btnH2, 'BORRAR IMG', () => {
+  if (!this._bgImage) return;
+
+  this._bgImage.destroy();
+  this._bgImage = null;
+
+  this._ui.toggleImgBtn.t.setText('OCULTAR IMG');
+});
 
     y += btnH2 + S(16);
+// --- OPACIDAD IMAGEN ---
+this.add.text(sideX + 18, y, 'OPACIDAD IMG', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: `${S(12)}px`,
+  color: '#ffffff',
+  fontStyle: 'bold'
+}).setAlpha(0.9).setDepth(61);
 
+y += S(18);
+
+const imgSliderW = btnW;
+const imgSliderH = S(12);
+const imgSliderX = btnX;
+
+const imgTrack = this.add.rectangle(imgSliderX, y, imgSliderW, imgSliderH, 0xffffff, 0.18)
+  .setOrigin(0)
+  .setStrokeStyle(2, 0xffffff, 0.35)
+  .setDepth(61);
+
+const imgKnob = this.add.circle(imgSliderX + imgSliderW * 0.42, y + imgSliderH / 2, S(12), 0xffffff, 0.6)
+  .setStrokeStyle(3, 0xffffff, 0.85)
+  .setInteractive({ useHandCursor: true })
+  .setDepth(62);
+
+const imgHit = this.add.rectangle(imgSliderX, y - S(10), imgSliderW, imgSliderH + S(20), 0x000000, 0)
+  .setOrigin(0)
+  .setInteractive()
+  .setDepth(63);
+
+const setImgOpacity = (px) => {
+  const t = Phaser.Math.Clamp((px - imgSliderX) / imgSliderW, 0, 1);
+
+  imgKnob.x = imgSliderX + t * imgSliderW;
+
+  if (this._bgImage) {
+    this._bgImage.setAlpha(0.1 + t * 0.9);
+  }
+};
+
+imgHit.on('pointerdown', p => setImgOpacity(p.worldX));
+imgHit.on('pointermove', p => { if (p.isDown) setImgOpacity(p.worldX); });
+
+y += S(26);
     // --- Slider: ANCHO DE PISTA ---
     const sliderY = y;
 
