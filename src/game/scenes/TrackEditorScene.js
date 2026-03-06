@@ -337,6 +337,38 @@ this._ui.clearMaskBtn = makeSideBtn(col2, y, btnW2, btnH2, 'BORRAR MASK', () => 
   if (this._gMask) this._gMask.clear();
 });
     y += btnH2 + S(14);
+
+    y += btnH2 + colGap;
+
+this._ui.genTrackBtn = makeSideBtn(col1, y, btnW2, btnH2, 'GENERAR PISTA', () => {
+  if (!this._lastMaskResult) {
+    if (this._ui?.report) {
+      this._ui.report.setText('❌ Ejecuta AUTO TRACE primero.');
+    }
+    return;
+  }
+
+  const pts = this._extractCenterline(this._lastMaskResult);
+  if (!pts || pts.length < 8) {
+    if (this._ui?.report) {
+      this._ui.report.setText('❌ No se pudo extraer la línea.');
+    }
+    return;
+  }
+
+  // Volcar puntos al editor como si hubieras dibujado
+  this._cleanPoints.length = 0;
+  for (const p of pts) {
+    this._cleanPoints.push({ x: p.x, y: p.y });
+  }
+
+  this._redraw();
+  this._refreshStats();
+
+  if (this._ui?.report) {
+    this._ui.report.setText('🏁 Pista generada.\nLista para VALIDAR.');
+  }
+});
 // --- OPACIDAD IMAGEN ---
 this.add.text(sideX + 18, y, 'OPACIDAD IMG', {
   fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
@@ -1158,6 +1190,101 @@ _catmullRom(pts, subdiv, closed) {
 
     return out;
   }
+  _extractCenterline(res) {
+  const { w, h, mask } = res;
+
+  // distancia a borde aproximada
+  const dist = new Float32Array(w * h);
+  const queue = [];
+
+  for (let i = 0; i < mask.length; i++) {
+    if (mask[i] === 0) {
+      dist[i] = 0;
+      queue.push(i);
+    } else {
+      dist[i] = 1e9;
+    }
+  }
+
+  const dirs = [-1, 1, -w, w];
+
+  while (queue.length) {
+    const p = queue.shift();
+    for (const d of dirs) {
+      const n = p + d;
+      if (n < 0 || n >= dist.length) continue;
+      const nd = dist[p] + 1;
+      if (nd < dist[n]) {
+        dist[n] = nd;
+        queue.push(n);
+      }
+    }
+  }
+
+  // buscar máximos locales (centro de pista)
+  const centers = [];
+
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const p = y * w + x;
+      if (mask[p] === 0) continue;
+
+      const d = dist[p];
+
+      if (
+        d > dist[p - 1] &&
+        d > dist[p + 1] &&
+        d > dist[p - w] &&
+        d > dist[p + w]
+      ) {
+        centers.push({ x, y });
+      }
+    }
+  }
+
+  if (centers.length < 10) return null;
+
+  // ordenar puntos siguiendo proximidad
+  const ordered = [];
+  const used = new Set();
+
+  ordered.push(centers[0]);
+  used.add(0);
+
+  while (ordered.length < centers.length) {
+    const last = ordered[ordered.length - 1];
+
+    let best = -1;
+    let bestDist = Infinity;
+
+    for (let i = 0; i < centers.length; i++) {
+      if (used.has(i)) continue;
+
+      const dx = centers[i].x - last.x;
+      const dy = centers[i].y - last.y;
+      const d = dx * dx + dy * dy;
+
+      if (d < bestDist) {
+        bestDist = d;
+        best = i;
+      }
+    }
+
+    if (best === -1) break;
+
+    used.add(best);
+    ordered.push(centers[best]);
+  }
+
+  // convertir a coordenadas del canvas
+  const ox = this._drawRect.x;
+  const oy = this._drawRect.y;
+
+  return ordered.map(p => ({
+    x: ox + p.x,
+    y: oy + p.y
+  }));
+}
   // --- Export (JSON listo para crear un track real) ---
   _exportTrack() {
     const rep = this._lastValidation;
