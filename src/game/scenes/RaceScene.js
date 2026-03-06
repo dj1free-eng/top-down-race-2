@@ -1096,22 +1096,15 @@ const drawPolylineClosed = (pts, lineW, color, alpha) => {
 
   if (!pts || pts.length < 2) return g;
 
+  // Dibujar segmento a segmento, SIN closePath()
+  // para evitar el “atajo” que genera el triángulo en la última curva.
   g.beginPath();
   g.moveTo(pts[0][0], pts[0][1]);
-  for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
-
-  // Cerrar SOLO si el final está cerca del inicio (evita “chord” raro / triángulos)
-  const a = pts[0];
-  const b = pts[pts.length - 1];
-  const dx = b[0] - a[0];
-  const dy = b[1] - a[1];
-  const d = Math.hypot(dx, dy);
-
-  if (d < 80) {
-    g.lineTo(a[0], a[1]);
+  for (let i = 1; i < pts.length; i++) {
+    g.lineTo(pts[i][0], pts[i][1]);
   }
-
   g.strokePath();
+
   return g;
 };
 
