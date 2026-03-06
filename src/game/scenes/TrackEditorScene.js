@@ -1191,100 +1191,181 @@ _catmullRom(pts, subdiv, closed) {
     return out;
   }
   _extractCenterline(res) {
-  const { w, h, mask } = res;
+    const { w, h, mask } = res;
+    if (!mask || !w || !h) return null;
 
-  // distancia a borde aproximada
-  const dist = new Float32Array(w * h);
-  const queue = [];
+    // 1) Adelgazar máscara a esqueleto 1px
+    const skeleton = this._zhangSuenThinning(mask, w, h);
 
-  for (let i = 0; i < mask.length; i++) {
-    if (mask[i] === 0) {
-      dist[i] = 0;
-      queue.push(i);
-    } else {
-      dist[i] = 1e9;
-    }
-  }
-
-  const dirs = [-1, 1, -w, w];
-
-  while (queue.length) {
-    const p = queue.shift();
-    for (const d of dirs) {
-      const n = p + d;
-      if (n < 0 || n >= dist.length) continue;
-      const nd = dist[p] + 1;
-      if (nd < dist[n]) {
-        dist[n] = nd;
-        queue.push(n);
-      }
-    }
-  }
-
-  // buscar máximos locales (centro de pista)
-  const centers = [];
-
-  for (let y = 1; y < h - 1; y++) {
-    for (let x = 1; x < w - 1; x++) {
-      const p = y * w + x;
-      if (mask[p] === 0) continue;
-
-      const d = dist[p];
-
-      if (
-        d > dist[p - 1] &&
-        d > dist[p + 1] &&
-        d > dist[p - w] &&
-        d > dist[p + w]
-      ) {
-        centers.push({ x, y });
-      }
-    }
-  }
-
-  if (centers.length < 10) return null;
-
-  // ordenar puntos siguiendo proximidad
-  const ordered = [];
-  const used = new Set();
-
-  ordered.push(centers[0]);
-  used.add(0);
-
-  while (ordered.length < centers.length) {
-    const last = ordered[ordered.length - 1];
-
-    let best = -1;
-    let bestDist = Infinity;
-
-    for (let i = 0; i < centers.length; i++) {
-      if (used.has(i)) continue;
-
-      const dx = centers[i].x - last.x;
-      const dy = centers[i].y - last.y;
-      const d = dx * dx + dy * dy;
-
-      if (d < bestDist) {
-        bestDist = d;
-        best = i;
+    // 2) Sacar píxeles del esqueleto
+    const pts = [];
+    for (let y = 1; y < h - 1; y++) {
+      for (let x = 1; x < w - 1; x++) {
+        const p = y * w + x;
+        if (skeleton[p] > 0) pts.push({ x, y });
       }
     }
 
-    if (best === -1) break;
+    if (pts.length < 20) return null;
 
-    used.add(best);
-    ordered.push(centers[best]);
+    // 3) Elegir un punto de arranque estable: el más arriba-izquierda
+    let startI = 0;
+    for (let i = 1; i < pts.length; i++) {
+      if (pts[i].y < pts[startI].y || (pts[i].y === pts[startI].y && pts[i].x < pts[startI].x)) {
+        startI = i;
+      }
+    }
+
+    // 4) Ordenar por vecino más cercano con radio limitado
+    const used = new Uint8Array(pts.length);
+    const ordered = [];
+    ordered.push(pts[startI]);
+    used[startI] = 1;
+
+    const MAX_STEP2 = 18 * 18;
+
+    while (ordered.length < pts.length) {
+      const last = ordered[ordered.length - 1];
+
+      let best = -1;
+      let bestD2 = Infinity;
+
+      for (let i = 0; i < pts.length; i++) {
+        if (used[i]) continue;
+
+        const dx = pts[i].x - last.x;
+        const dy = pts[i].y - last.y;
+        const d2 = dx * dx + dy * dy;
+
+        if (d2 < bestD2 && d2 <= MAX_STEP2) {
+          bestD2 = d2;
+          best = i;
+        }
+      }
+
+      if (best === -1) break;
+
+      used[best] = 1;
+      ordered.push(pts[best]);
+    }
+
+    if (ordered.length < 20) return null;
+
+    // 5) Reducir ruido: quedarnos con 1 de cada N puntos
+    const reduced = [];
+    const stride = 6;
+    for (let i = 0; i < ordered.length; i += stride) {
+      reduced.push(ordered[i]);
+    }
+
+    // 6) Convertir a coords del canvas
+    const ox = this._drawRect.x;
+    const oy = this._drawRect.y;
+
+    return reduced.map(p => ({
+      x: ox + p.x,
+      y: oy + p.y
+    }));
   }
+    _zhangSuenThinning(mask, w, h) {
+    const img = new Uint8Array(mask.length);
+    for (let i = 0; i < mask.length; i++) img[i] = mask[i] > 0 ? 1 : 0;
 
-  // convertir a coordenadas del canvas
-  const ox = this._drawRect.x;
-  const oy = this._drawRect.y;
+    let changed = true;
 
-  return ordered.map(p => ({
-    x: ox + p.x,
-    y: oy + p.y
-  }));
-}
+    const idx = (x, y) => y * w + x;
+
+    while (changed) {
+      changed = false;
+      let toDelete = [];
+
+      // Subiteración 1
+      for (let y = 1; y < h - 1; y++) {
+        for (let x = 1; x < w - 1; x++) {
+          const p1 = img[idx(x, y)];
+          if (p1 !== 1) continue;
+
+          const p2 = img[idx(x, y - 1)];
+          const p3 = img[idx(x + 1, y - 1)];
+          const p4 = img[idx(x + 1, y)];
+          const p5 = img[idx(x + 1, y + 1)];
+          const p6 = img[idx(x, y + 1)];
+          const p7 = img[idx(x - 1, y + 1)];
+          const p8 = img[idx(x - 1, y)];
+          const p9 = img[idx(x - 1, y - 1)];
+
+          const B = p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
+          const A =
+            (p2 === 0 && p3 === 1) +
+            (p3 === 0 && p4 === 1) +
+            (p4 === 0 && p5 === 1) +
+            (p5 === 0 && p6 === 1) +
+            (p6 === 0 && p7 === 1) +
+            (p7 === 0 && p8 === 1) +
+            (p8 === 0 && p9 === 1) +
+            (p9 === 0 && p2 === 1);
+
+          if (
+            A === 1 &&
+            B >= 2 && B <= 6 &&
+            (p2 * p4 * p6) === 0 &&
+            (p4 * p6 * p8) === 0
+          ) {
+            toDelete.push(idx(x, y));
+          }
+        }
+      }
+
+      if (toDelete.length) changed = true;
+      for (const p of toDelete) img[p] = 0;
+
+      toDelete = [];
+
+      // Subiteración 2
+      for (let y = 1; y < h - 1; y++) {
+        for (let x = 1; x < w - 1; x++) {
+          const p1 = img[idx(x, y)];
+          if (p1 !== 1) continue;
+
+          const p2 = img[idx(x, y - 1)];
+          const p3 = img[idx(x + 1, y - 1)];
+          const p4 = img[idx(x + 1, y)];
+          const p5 = img[idx(x + 1, y + 1)];
+          const p6 = img[idx(x, y + 1)];
+          const p7 = img[idx(x - 1, y + 1)];
+          const p8 = img[idx(x - 1, y)];
+          const p9 = img[idx(x - 1, y - 1)];
+
+          const B = p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
+          const A =
+            (p2 === 0 && p3 === 1) +
+            (p3 === 0 && p4 === 1) +
+            (p4 === 0 && p5 === 1) +
+            (p5 === 0 && p6 === 1) +
+            (p6 === 0 && p7 === 1) +
+            (p7 === 0 && p8 === 1) +
+            (p8 === 0 && p9 === 1) +
+            (p9 === 0 && p2 === 1);
+
+          if (
+            A === 1 &&
+            B >= 2 && B <= 6 &&
+            (p2 * p4 * p8) === 0 &&
+            (p2 * p6 * p8) === 0
+          ) {
+            toDelete.push(idx(x, y));
+          }
+        }
+      }
+
+      if (toDelete.length) changed = true;
+      for (const p of toDelete) img[p] = 0;
+    }
+
+    const out = new Uint8Array(img.length);
+    for (let i = 0; i < img.length; i++) out[i] = img[i] ? 255 : 0;
+    return out;
+  }
   // --- Export (JSON listo para crear un track real) ---
   _exportTrack() {
     const rep = this._lastValidation;
