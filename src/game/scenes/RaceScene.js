@@ -3852,39 +3852,63 @@ ensureOffTexture() {
   const key = 'off';
   const size = 1024;
 
-  // ✅ NO borrar en caliente (WebGL). Create-once.
   if (this.textures.exists(key)) return;
 
   const g = this.make.graphics({ x: 0, y: 0, add: false });
 
-  g.fillStyle(0x6a5a3a, 1);
+  // Base tierra/arena
+  g.fillStyle(0x8a7448, 1);
   g.fillRect(0, 0, size, size);
 
-  const blobs = 26;
-  for (let i = 0; i < blobs; i++) {
-    const r = 80 + Math.random() * 210;
+  // Variación grande de tono
+  for (let i = 0; i < 18; i++) {
+    const r = 180 + Math.random() * 280;
     const x = Math.random() * size;
     const y = Math.random() * size;
 
-    const col = (Math.random() > 0.5) ? 0x5a4a31 : 0x7a6a46;
-    const alpha = 0.04 + Math.random() * 0.05;
+    const col = Math.random() > 0.5 ? 0x7b6740 : 0x9a8455;
+    const a = 0.045 + Math.random() * 0.03;
 
-    g.fillStyle(col, alpha);
+    g.fillStyle(col, a);
     g.fillCircle(x, y, r);
   }
 
-  for (let i = 0; i < 8; i++) {
-    const r = 60 + Math.random() * 160;
+  // Zonas más oscuras compactadas
+  for (let i = 0; i < 14; i++) {
+    const w = 90 + Math.random() * 220;
+    const h = 60 + Math.random() * 180;
+    const x = Math.random() * (size - w);
+    const y = Math.random() * (size - h);
+
+    g.fillStyle(0x5f5033, 0.035 + Math.random() * 0.035);
+    g.fillRoundedRect(x, y, w, h, 16);
+  }
+
+  // Micrograno
+  for (let i = 0; i < 22000; i++) {
     const x = Math.random() * size;
     const y = Math.random() * size;
-    g.fillStyle(0x3f3524, 0.03 + Math.random() * 0.04);
+
+    const col = Math.random() > 0.5 ? 0xb39a64 : 0x5f5033;
+    const a = 0.03 + Math.random() * 0.05;
+
+    g.fillStyle(col, a);
+    g.fillRect(x, y, 1, 1);
+  }
+
+  // Algunas manchas secas claras
+  for (let i = 0; i < 8; i++) {
+    const r = 70 + Math.random() * 130;
+    const x = Math.random() * size;
+    const y = Math.random() * size;
+
+    g.fillStyle(0xd2bb7c, 0.04);
     g.fillCircle(x, y, r);
   }
 
   g.generateTexture(key, size, size);
   g.destroy();
 }
-
 ensureBgTexture() {
 
   const key = 'grass';
