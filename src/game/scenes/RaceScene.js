@@ -134,10 +134,12 @@ this._zoomGameplayMax = 1.20; // lento = más cerca
 this._zoomKmhRef = 140;       // velocidad de referencia
 this._zoomLerp = 0.06;        // suavidad
 this._zoomCurrent = this.zoom;
-    // =========================================
+  }
+
+  // =========================================
   // Skins: carga dinámica por coche (runtime)
   // =========================================
-ensureCarSkinTexture(spec) {
+  ensureCarSkinTexture(spec) {
   const file = spec?.skin;
   if (!file) return Promise.resolve(null);
 
