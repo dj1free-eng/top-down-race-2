@@ -134,6 +134,7 @@ this._zoomGameplayMax = 1.20; // lento = más cerca
 this._zoomKmhRef = 140;       // velocidad de referencia
 this._zoomLerp = 0.06;        // suavidad
 this._zoomCurrent = this.zoom;
+this.minimap = null;
   }
 
   // =========================================
@@ -1628,7 +1629,90 @@ this.ttHud.bestLapText = this.add.text(barX, barY + 10, `MEJOR ${this._fmtTT2(be
   .setDepth(2000);
 
 this.ttHud.bestLapText.setShadow(0, 1, '#000000', 2, false, true);
-// Fade-in suave (100–150ms)
+
+// =================================================
+// MINIMAPA HUD (top-right)
+// =================================================
+{
+  const mmW = 132;
+  const mmH = 92;
+  const mmPad = 12;
+  const mmX = this.scale.width - mmW - mmPad;
+  const mmY = 54;
+
+  const cl = this.track?.meta?.centerline || [];
+
+  const pts = cl.map((p) => {
+    if (Array.isArray(p)) return { x: p[0], y: p[1] };
+    if (p && typeof p.x === 'number' && typeof p.y === 'number') return { x: p.x, y: p.y };
+    return null;
+  }).filter(Boolean);
+
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const p of pts) {
+    if (p.x < minX) minX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y > maxY) maxY = p.y;
+  }
+
+  const bw = Math.max(1, maxX - minX);
+  const bh = Math.max(1, maxY - minY);
+  const inset = 10;
+  const sx = (mmW - inset * 2) / bw;
+  const sy = (mmH - inset * 2) / bh;
+  const s = Math.min(sx, sy);
+
+  const ox = mmX + Math.floor((mmW - bw * s) / 2);
+  const oy = mmY + Math.floor((mmH - bh * s) / 2);
+
+  const mapPts = pts.map((p) => ({
+    x: ox + (p.x - minX) * s,
+    y: oy + (p.y - minY) * s
+  }));
+
+  const mmBg = this.add.rectangle(mmX, mmY, mmW, mmH, 0x000000, 0.42)
+    .setOrigin(0)
+    .setStrokeStyle(1, 0xffffff, 0.18)
+    .setScrollFactor(0)
+    .setDepth(2000);
+
+  const mmG = this.add.graphics()
+    .setScrollFactor(0)
+    .setDepth(2001);
+
+  mmG.lineStyle(2, 0xffffff, 0.55);
+  if (mapPts.length >= 2) {
+    mmG.beginPath();
+    mmG.moveTo(mapPts[0].x, mapPts[0].y);
+    for (let i = 1; i < mapPts.length; i++) {
+      mmG.lineTo(mapPts[i].x, mapPts[i].y);
+    }
+    mmG.strokePath();
+  }
+
+  const mmDot = this.add.circle(
+    mapPts[0]?.x || (mmX + mmW / 2),
+    mapPts[0]?.y || (mmY + mmH / 2),
+    4,
+    0x2bff88,
+    1
+  )
+    .setScrollFactor(0)
+    .setDepth(2002);
+
+  this.minimap = {
+    x: mmX,
+    y: mmY,
+    w: mmW,
+    h: mmH,
+    bg: mmBg,
+    gfx: mmG,
+    dot: mmDot,
+    points: mapPts
+  };
+}    
+    // Fade-in suave (100–150ms)
 this.ttHud.timeText.setAlpha(0);
 this.ttHud.lapText.setAlpha(0);
 this.ttHud.barBase.setAlpha(0);
