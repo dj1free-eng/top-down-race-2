@@ -11,7 +11,7 @@ export class BootScene extends Phaser.Scene {
 if (this.textures.exists('ui_rotate_landscape')) {
   this.textures.remove('ui_rotate_landscape');
 }
-
+this.load.image('track_karting_tenerife', 'assets/tracks/karting-tenerife-completo.png');
 this.load.image(
   'ui_rotate_landscape',
   'assets/ui/orientation_portrait.png'
