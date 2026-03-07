@@ -110,7 +110,7 @@ export class RaceScene extends BaseScene {
 
     this.car = null;
     this.keys = null;
-    this.zoom = 0.45;
+    this.zoom = 1.85;
 
     this.hud = null;
 
