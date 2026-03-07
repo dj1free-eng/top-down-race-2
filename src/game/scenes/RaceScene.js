@@ -1006,7 +1006,13 @@ rig.setDepth(30);
 this.carBody = body;
 this.carRig = rig;
 this.car = body; // compat con tu update()
-
+// FIX IMPORT TRACK: centrar cámara ya sobre el coche antes de construir/renderizar pista
+this.cameras.main.stopFollow();
+this.cameras.main.setScroll(0, 0);
+this.cameras.main.centerOn(this.carBody.x, this.carBody.y);
+this.cameras.main.startFollow(this.carBody, true, 0.12, 0.12);
+this.cameras.main.setZoom(this.zoom);
+this.cameras.main.roundPixels = true;
 // Skin runtime: si existe, sustituye la textura del sprite sin romper nada
 this.ensureCarSkinTexture(specFinal).then((texKey) => {
   if (!texKey) return;
