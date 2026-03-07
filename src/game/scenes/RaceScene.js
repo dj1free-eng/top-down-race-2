@@ -326,6 +326,84 @@ else this._ttProg.idx = startIdx;
     this._ttProg.idx = bestI;
     return byDist(bestI);
   }
+    // =================================================
+  // Minimap: proyección precisa del coche sobre centerline
+  // Devuelve:
+  // { progress01, segIndex, segT, x, y }
+  // =================================================
+  _computeCenterlineProjection(px, py) {
+    const cl = this.track?.meta?.centerline;
+    const n = cl?.length ?? 0;
+    if (n < 2 || !Number.isFinite(px) || !Number.isFinite(py)) {
+      return { progress01: 0, segIndex: 0, segT: 0, x: px, y: py };
+    }
+
+    const getXY = (p) => {
+      if (!p) return [NaN, NaN];
+      if (Array.isArray(p)) return [p[0], p[1]];
+      if (typeof p.x === 'number' && typeof p.y === 'number') return [p.x, p.y];
+      return [NaN, NaN];
+    };
+
+    const cum = this._ttCl?.cum;
+    const total = this._ttCl?.total || 1;
+    const startDist = this._ttCl?.startDist || 0;
+
+    let best = {
+      d2: Infinity,
+      segIndex: 0,
+      segT: 0,
+      projX: px,
+      projY: py,
+      distAlong: 0
+    };
+
+    for (let i = 0; i < n - 1; i++) {
+      const [x1, y1] = getXY(cl[i]);
+      const [x2, y2] = getXY(cl[i + 1]);
+      if (!Number.isFinite(x1) || !Number.isFinite(y1) || !Number.isFinite(x2) || !Number.isFinite(y2)) continue;
+
+      const vx = x2 - x1;
+      const vy = y2 - y1;
+      const len2 = vx * vx + vy * vy;
+      if (len2 < 1e-6) continue;
+
+      let t = ((px - x1) * vx + (py - y1) * vy) / len2;
+      t = Phaser.Math.Clamp(t, 0, 1);
+
+      const qx = x1 + vx * t;
+      const qy = y1 + vy * t;
+
+      const dx = px - qx;
+      const dy = py - qy;
+      const d2 = dx * dx + dy * dy;
+
+      if (d2 < best.d2) {
+        const segLen = Math.sqrt(len2);
+        const baseDist = cum?.[i] ?? 0;
+        best = {
+          d2,
+          segIndex: i,
+          segT: t,
+          projX: qx,
+          projY: qy,
+          distAlong: baseDist + segLen * t
+        };
+      }
+    }
+
+    let d = best.distAlong - startDist;
+    d %= total;
+    if (d < 0) d += total;
+
+    return {
+      progress01: d / total,
+      segIndex: best.segIndex,
+      segT: best.segT,
+      x: best.projX,
+      y: best.projY
+    };
+  }
   // =================================================
   // Time Trial: construir informe de evolución por pista
   // =================================================
@@ -1687,9 +1765,21 @@ const mmG = this.add.graphics()
     mmG.strokePath();
   }
 
-  const mmFlag = this.add.text(
-  mapPts[0]?.x || (mmX + mmW / 2),
-  (mapPts[0]?.y || (mmY + mmH / 2)) - 2,
+  const finish = this.track?.meta?.finishLine || this.track?.meta?.finish;
+let flagX = mapPts[0]?.x || (mmX + mmW / 2);
+let flagY = (mapPts[0]?.y || (mmY + mmH / 2)) - 2;
+
+if (finish?.a && finish?.b) {
+  const fx = (finish.a.x + finish.b.x) * 0.5;
+  const fy = (finish.a.y + finish.b.y) * 0.5;
+
+  flagX = ox + (fx - minX) * s;
+  flagY = oy + (fy - minY) * s - 2;
+}
+
+const mmFlag = this.add.text(
+  flagX,
+  flagY,
   '🏁',
   {
     fontFamily: 'system-ui, -apple-system, Segoe UI Emoji, Apple Color Emoji, Arial',
@@ -3070,30 +3160,25 @@ if (this.car) {
   const px = barX + this.ttHud.progress01 * barW;
   this.ttHud.barSlider.setPosition(px, barY);
 
-  // Minimap dot — movimiento continuo, preciso y suave
+  // Minimap dot — proyección geométrica precisa y suave
   if (this.minimap?.dot && this.minimap?.points?.length >= 2) {
+    const proj = this._computeCenterlineProjection(this.car.x, this.car.y);
     const pts = this.minimap.points;
-    const n = pts.length;
+    const segIndex = Phaser.Math.Clamp(proj.segIndex, 0, pts.length - 2);
+    const segT = Phaser.Math.Clamp(proj.segT, 0, 1);
 
-    // progreso 0..1 -> posición continua sobre la polyline del minimapa
-    const raw = Phaser.Math.Clamp(this.ttHud.progress01, 0, 0.999999) * n;
-    const i0 = Math.floor(raw) % n;
-    const i1 = (i0 + 1) % n;
-    const t = raw - Math.floor(raw);
+    const a = pts[segIndex];
+    const b = pts[segIndex + 1] || pts[segIndex];
 
-    const a = pts[i0];
-    const b = pts[i1];
+    const tx = Phaser.Math.Linear(a.x, b.x, segT);
+    const ty = Phaser.Math.Linear(a.y, b.y, segT);
 
-    const tx = Phaser.Math.Linear(a.x, b.x, t);
-    const ty = Phaser.Math.Linear(a.y, b.y, t);
-
-    // suavizado extra visual
     const curX = this.minimap.dot.x ?? tx;
     const curY = this.minimap.dot.y ?? ty;
 
     this.minimap.dot.setPosition(
-      Phaser.Math.Linear(curX, tx, 0.35),
-      Phaser.Math.Linear(curY, ty, 0.35)
+      Phaser.Math.Linear(curX, tx, 0.42),
+      Phaser.Math.Linear(curY, ty, 0.42)
     );
   }
 }
