@@ -442,8 +442,8 @@ const isBuiltIn = (k) => (k === 'track01' || k === 'track02' || k === 'track03')
 const pick = (k) => isBuiltIn(k) ? k : null;
 
 this.trackKey =
-  pick(incomingTrack) ||
-  pick(savedTrack) ||
+  incomingTrack ||
+  savedTrack ||
   'track02';
 localStorage.setItem('tdr2:trackKey', this.trackKey);
   // ========================================
