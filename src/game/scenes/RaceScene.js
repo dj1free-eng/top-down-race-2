@@ -1144,14 +1144,42 @@ const drawPolylineClosed = (pts, lineW, color, alpha) => {
 
   return g;
 };
+// ================================
+// Arcén visual sucio (GLOBAL)
+// ================================
+const drawShoulderBand = (outerPts, innerPts, color, alpha) => {
+  const g = this.add.graphics();
+  g.setDepth(11); // entre asfalto (10) y líneas de borde (12)
+  g.setScrollFactor(1);
+  g.fillStyle(color, alpha);
 
+  if (!outerPts || !innerPts) return g;
+  if (outerPts.length < 2 || innerPts.length < 2) return g;
+  if (outerPts.length !== innerPts.length) return g;
+
+  g.beginPath();
+  g.moveTo(outerPts[0][0], outerPts[0][1]);
+
+  for (let i = 1; i < outerPts.length; i++) {
+    g.lineTo(outerPts[i][0], outerPts[i][1]);
+  }
+
+  for (let i = innerPts.length - 1; i >= 0; i--) {
+    g.lineTo(innerPts[i][0], innerPts[i][1]);
+  }
+
+  g.closePath();
+  g.fillPath();
+
+  return g;
+};
 // Borde exterior e interior del ribbon
 // ================================
 // Líneas del borde: INSET dentro del asfalto (arcén visual antes del césped)
 // - Sigue siendo TRACK físicamente (solo cambiamos dónde pintamos la línea)
 // ================================
 const halfW = (this.track?.meta?.trackWidth ?? 300) * 0.5;
-const shoulderPx = this.track?.meta?.shoulderPx ?? 28; // ← punto de ataque (px hacia dentro)
+const shoulderPx = this.track?.meta?.shoulderPx ?? 28;
 const tInset = Math.max(0, Math.min(1, shoulderPx / Math.max(1, halfW)));
 
 const centerPts = this.track.geom.center; // [[x,y], ...]
@@ -1172,10 +1200,17 @@ const insetTowardCenter = (edgePts) => {
 const leftInset = insetTowardCenter(this.track.geom.left);
 const rightInset = insetTowardCenter(this.track.geom.right);
 
+// Arcén visual entre borde exterior e inset
+this._shoulderLeft = drawShoulderBand(this.track.geom.left, leftInset, 0xc9b07a, 0.18);
+this._shoulderRight = drawShoulderBand(this.track.geom.right, rightInset, 0xc9b07a, 0.18);
+
+// Línea blanca encima del arcén
 this._borderLeft = drawPolylineClosed(leftInset, 4, 0xf2f2f2, 0.8);
 this._borderRight = drawPolylineClosed(rightInset, 4, 0xf2f2f2, 0.8);
 
 // UI camera no debe renderizar bordes
+this.uiCam?.ignore?.(this._shoulderLeft);
+this.uiCam?.ignore?.(this._shoulderRight);
 this.uiCam?.ignore?.(this._borderLeft);
 this.uiCam?.ignore?.(this._borderRight);
 this._isOnTrack = (x, y) => isPointOnTrackWorld(x, y, this.track?.geom);
