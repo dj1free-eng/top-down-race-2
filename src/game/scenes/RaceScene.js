@@ -3886,42 +3886,59 @@ ensureOffTexture() {
 }
 
 ensureBgTexture() {
+
   const key = 'grass';
   const size = 1024;
 
-  // ✅ NO borrar en caliente (WebGL). Create-once.
   if (this.textures.exists(key)) return;
 
-  const g = this.make.graphics({ x: 0, y: 0, add: false });
+  const g = this.make.graphics({ x:0, y:0, add:false });
 
-  g.fillStyle(0x2f5e36, 1);
-  g.fillRect(0, 0, size, size);
+  // color base
+  g.fillStyle(0x2f6b34,1);
+  g.fillRect(0,0,size,size);
 
-  const blobs = 28;
-  for (let i = 0; i < blobs; i++) {
-    const r = 70 + Math.random() * 190;
-    const x = Math.random() * size;
-    const y = Math.random() * size;
+  // variación de tono grande (muy suave)
+  for(let i=0;i<15;i++){
 
-    const col = (Math.random() > 0.5) ? 0x355c3b : 0x2b552f;
-    const alpha = 0.035 + Math.random() * 0.045;
+    const r = 200 + Math.random()*300;
+    const x = Math.random()*size;
+    const y = Math.random()*size;
 
-    g.fillStyle(col, alpha);
-    g.fillCircle(x, y, r);
+    const col = Math.random()>0.5 ? 0x2a5f30 : 0x357c3c;
+    const a = 0.05;
+
+    g.fillStyle(col,a);
+    g.fillCircle(x,y,r);
   }
 
-  for (let i = 0; i < 6; i++) {
-    const r = 90 + Math.random() * 180;
-    const x = Math.random() * size;
-    const y = Math.random() * size;
-    g.fillStyle(0x4b5a33, 0.02 + Math.random() * 0.03);
-    g.fillCircle(x, y, r);
+  // micro grano
+  for(let i=0;i<25000;i++){
+
+    const x = Math.random()*size;
+    const y = Math.random()*size;
+
+    const col = Math.random()>0.5 ? 0x3f8d44 : 0x1f4e24;
+    const a = 0.08;
+
+    g.fillStyle(col,a);
+    g.fillRect(x,y,1,1);
   }
 
-  g.generateTexture(key, size, size);
+  // pequeñas zonas secas
+  for(let i=0;i<10;i++){
+
+    const r = 80 + Math.random()*120;
+    const x = Math.random()*size;
+    const y = Math.random()*size;
+
+    g.fillStyle(0x8c7b48,0.05);
+    g.fillCircle(x,y,r);
+  }
+
+  g.generateTexture(key,size,size);
   g.destroy();
 }
-
 ensureAsphaltTexture() {
   const key = 'asphalt';
   const size = 1024;
