@@ -1122,13 +1122,24 @@ this.car = body; // compat con tu update()
 this.ensureCarSkinTexture(specFinal).then((texKey) => {
   if (!texKey) return;
 
-carSprite.setTexture(texKey);
-carSprite.setOrigin(0.78, 0.50);
-// El sprite sigue neutro: rota el rig
-carSprite.rotation = 0;
+  carSprite.setTexture(texKey);
+  carSprite.setOrigin(0.78, 0.50);
+  // El sprite sigue neutro: rota el rig
+  carSprite.rotation = 0;
 
-// Refit sin deformar (misma caja objetivo)
-fitSpriteToBox();
+  // Refit sin deformar (misma caja objetivo)
+  fitSpriteToBox();
+
+  // Minimapa: actualizar también al skin real cuando termine de cargar
+  if (this.minimap?.car?.scene) {
+    this.minimap.car.setTexture(texKey);
+
+    const targetW = 12;
+    const sw = this.minimap.car.width || 1;
+    const sh = this.minimap.car.height || 1;
+    const s = Math.min(targetW / sw, 8 / sh);
+    this.minimap.car.setScale(s);
+  }
 });
 
 // 5) Track ribbon (geom + culling state)
