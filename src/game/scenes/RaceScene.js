@@ -22,7 +22,7 @@ function fmtTime(ms) {
   return `${m}:${String(s).padStart(2, '0')}.${String(ms3).padStart(3, '0')}`;
 }
 const DEV_TOOLS = true; // ponlo en false para ocultar botones de zoom/cull
-const ASPHALT_OVERLAY_ALPHA = 0.08; // rango sano: 0.08 – 0.12
+const ASPHALT_OVERLAY_ALPHA = 0.16; // rango sano: 0.08 – 0.12
 
 // Base path de skins (carpeta en /public)
 const CAR_SKIN_BASE = 'assets/skins/'; 
@@ -3988,25 +3988,44 @@ ensureAsphaltTexture() {
   g.generateTexture(key, size, size);
   g.destroy();
 }
-  ensureAsphaltOverlayTexture() {
+ensureAsphaltOverlayTexture() {
   const key = 'asphaltOverlay';
-  const size = 512;
+  const size = 1024;
 
-  // ✅ Create-once
   if (this.textures.exists(key)) return;
 
   const g = this.make.graphics({ x: 0, y: 0, add: false });
   g.clear();
 
-  // Overlay sutil: manchas grandes suaves (sin grano)
-  const patches = 18;
-  for (let i = 0; i < patches; i++) {
-    const r = 140 + Math.random() * 260;
+  // 1) Variación suave general
+  for (let i = 0; i < 16; i++) {
+    const r = 120 + Math.random() * 260;
     const x = Math.random() * size;
     const y = Math.random() * size;
 
-    g.fillStyle(0xffffff, 0.06 + Math.random() * 0.08);
+    g.fillStyle(0xffffff, 0.025 + Math.random() * 0.03);
     g.fillCircle(x, y, r);
+  }
+
+  // 2) Manchas oscuras tipo goma / suciedad
+  for (let i = 0; i < 14; i++) {
+    const w = 120 + Math.random() * 260;
+    const h = 20 + Math.random() * 60;
+    const x = Math.random() * (size - w);
+    const y = Math.random() * (size - h);
+
+    g.fillStyle(0x000000, 0.035 + Math.random() * 0.035);
+    g.fillRoundedRect(x, y, w, h, 12);
+  }
+
+  // 3) Microdetalle fino
+  for (let i = 0; i < 18000; i++) {
+    const x = Math.random() * size;
+    const y = Math.random() * size;
+
+    const isDark = Math.random() > 0.5;
+    g.fillStyle(isDark ? 0x000000 : 0xffffff, 0.018 + Math.random() * 0.03);
+    g.fillRect(x, y, 1, 1);
   }
 
   g.generateTexture(key, size, size);
