@@ -902,7 +902,32 @@ if (this._onResizeTouchControls) {
   this.car = null;
 
   try { this.cameras?.main?.stopFollow(); } catch (e) {}
+  // FIX 2ª carga: destruir cámaras extra (uiCam y otras) y children heredados
+  try {
+    const extraCams = this.cameras?.cameras?.slice(1) || [];
+    for (const cam of extraCams) {
+      try { this.cameras.remove(cam); } catch (e) {}
+    }
+  } catch (e) {}
 
+  try {
+    const keep = new Set([
+      this.sys?.displayList,
+      this.sys?.updateList
+    ]);
+    for (const child of [...(this.children?.list || [])]) {
+      if (!child) continue;
+      try { child.destroy?.(); } catch (e) {}
+    }
+  } catch (e) {}
+
+  this.uiCam = null;
+  this.minimap = null;
+  this.ttHud = null;
+  this.ttPanel = null;
+  this._grassMaskGfx = null;
+  this._grassMask = null;
+  this.trackImage = null;
   // DEV DIAG overlay cleanup
   try { if (this._diagText?.scene) this._diagText.destroy(); } catch (e) {}
   this._diagText = null;
