@@ -871,7 +871,23 @@ const spec = this.baseSpec || CAR_SPECS.stock;
 
     this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
     this.cameras.main.setBounds(0, 0, this.worldW, this.worldH);
-// Producción: asegurar que NO hay debug gráfico de físicas (si se creó en algún momento)
+
+// =========================
+// Track image background (solo import Tenerife por ahora)
+// =========================
+if (this.trackKey === 'import:karting-tenerife-largo') {
+  this.trackImage = this.add.image(
+    Math.floor(this.worldW / 2),
+    Math.floor(this.worldH / 2),
+    'track_karting_tenerife'
+  );
+
+  this.trackImage
+    .setDisplaySize(this.worldW, this.worldH)
+    .setScrollFactor(1)
+    .setDepth(-110);
+}    
+    // Producción: asegurar que NO hay debug gráfico de físicas (si se creó en algún momento)
 this.physics.world.drawDebug = false;
 
 if (this.physics.world.debugGraphic) {
@@ -1023,27 +1039,32 @@ this.time.delayedCall(500, () => {
 // 3) Fondo del mundo: OFF + GRASS BAND
 // =========================
 
-// OFF: cubre todo el mundo (arena / tierra)
-this.bgOff = this.add.tileSprite(
-  0, 0,
-  this.worldW,
-  this.worldH,
-  'off'
-)
-  .setOrigin(0, 0)
-  .setScrollFactor(1)
-  .setDepth(-100);
+// Si usamos imagen real del circuito, no pintamos fondo procedural
+if (this.trackKey !== 'import:karting-tenerife-largo') {
+  this.bgOff = this.add.tileSprite(
+    0, 0,
+    this.worldW,
+    this.worldH,
+    'off'
+  )
+    .setOrigin(0, 0)
+    .setScrollFactor(1)
+    .setDepth(-100);
 
-// GRASS: se verá SOLO donde exista la banda GRASS
-this.bgGrass = this.add.tileSprite(
-  0, 0,
-  this.worldW,
-  this.worldH,
-  'grass'
-)
-  .setOrigin(0, 0)
-  .setScrollFactor(1)
-  .setDepth(-90);
+  // GRASS: se verá SOLO donde exista la banda GRASS
+  this.bgGrass = this.add.tileSprite(
+    0, 0,
+    this.worldW,
+    this.worldH,
+    'grass'
+  )
+    .setOrigin(0, 0)
+    .setScrollFactor(1)
+    .setDepth(-90);
+} else {
+  this.bgOff = null;
+  this.bgGrass = null;
+}
 
 // ===============================
 // GRASS MASK (solo afecta a bgGrass)
