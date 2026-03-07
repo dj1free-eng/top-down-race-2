@@ -947,8 +947,7 @@ this.timing = {
 // SIM CLOCK
 this.simTick = 0;
 this.lapStartTick = null;
-this.simTick = 0;
-this.lapStartTick = null;
+
 // 4) Coche (body físico + rig visual)
 // Cuerpo físico SIN sprite (evita __MISSING)
 const body = this.physics.add.sprite(t01.start.x, t01.start.y, '__BODY__');
@@ -1087,10 +1086,7 @@ if (this.trackKey !== 'import:karting-tenerife-largo') {
   this.bgOff = null;
   this.bgGrass = null;
 }
-} else {
-  this.bgOff = null;
-  this.bgGrass = null;
-}
+
 
 // ===============================
 // GRASS MASK (solo afecta a bgGrass)
@@ -1126,7 +1122,9 @@ const grassMask = gMaskGfx.createGeometryMask();
 this.uiCam?.ignore?.(gMaskGfx);
 
 // Aplicar SOLO al grass
-this.bgGrass.setMask(grassMask);
+if (this.bgGrass) {
+  this.bgGrass.setMask(grassMask);
+}
 
 // Guardamos referencias por si en el futuro queremos limpiar / rehacer
 this._grassMaskGfx = gMaskGfx;
