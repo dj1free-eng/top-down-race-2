@@ -824,44 +824,59 @@ if (this._onResizeTouchControls) {
   this._diagLines = null;
   this._diag = null;
 };
-this.events.once(Phaser.Scenes.Events.SHUTDOWN, this._onShutdownRaceScene, this);
- // ========================================
-// IMPORT TRACK: carga dinámica JSON + restart
+this.events.once(Phaser.Scenes.Events.SHUTDOWN, this._onShutdownRaceScene, this);// ========================================
+// ========================================
+// IMPORT TRACK: carga dinámica JSON + imagen + restart
 // ========================================
 if (typeof this.trackKey === 'string' && this.trackKey.startsWith('import:')) {
   const slug = this.trackKey.slice('import:'.length).trim();
 
-  // key de cache para el json del track importado
+  // keys de cache
   const jsonKey = `trackjson:${slug}`;
+  const imgKey = `trackimg:${slug}`;
 
-  // Si NO está cargado aún, lo cargamos y reiniciamos la escena al completar
+  // 1) JSON del track
   if (!this.cache.json.exists(jsonKey)) {
-    // mini feedback (por si tarda)
-    try {
-      this._diag?.(`[IMPORT] loading ${slug}...`);
-    } catch (e) {}
+    try { this._diag?.(`[IMPORT] loading json ${slug}...`); } catch (e) {}
 
-    // Ruta esperada en /public
     const url = `tracks/${slug}/track.json`;
-
     this.load.json(jsonKey, url);
 
     this.load.once('complete', () => {
-      try { this._diag?.(`[IMPORT] loaded ${slug} ✓`); } catch (e) {}
-      // Reiniciar manteniendo el trackKey importado
+      try { this._diag?.(`[IMPORT] json loaded ${slug} ✓`); } catch (e) {}
       this.scene.restart({ trackKey: `import:${slug}` });
     });
 
     this.load.once('loaderror', (file) => {
-      try { this._diag?.(`[IMPORT] load ERROR: ${file?.key || 'unknown'}`); } catch (e) {}
-      // fallback seguro: volvemos a track02
+      try { this._diag?.(`[IMPORT] json ERROR: ${file?.key || 'unknown'}`); } catch (e) {}
       this.scene.restart({ trackKey: 'track02' });
     });
 
     this.load.start();
-    return; // IMPORTANTÍSIMO: no seguimos creando escena sin el JSON
+    return;
   }
-}   
+
+  // 2) Imagen del track (solo para Tenerife largo por ahora)
+  if (slug === 'karting-tenerife-largo' && !this.textures.exists(imgKey)) {
+    try { this._diag?.(`[IMPORT] loading image ${slug}...`); } catch (e) {}
+
+    this.load.image(imgKey, 'assets/tracks/karting-tenerife-completo.png');
+
+    this.load.once('complete', () => {
+      try { this._diag?.(`[IMPORT] image loaded ${slug} ✓`); } catch (e) {}
+      this.scene.restart({ trackKey: `import:${slug}` });
+    });
+
+    this.load.once('loaderror', (file) => {
+      try { this._diag?.(`[IMPORT] image ERROR: ${file?.key || 'unknown'}`); } catch (e) {}
+      // Si falla la imagen, seguimos sin imagen pero con el track funcional
+      this.scene.restart({ trackKey: `import:${slug}` });
+    });
+
+    this.load.start();
+    return;
+  }
+}
 // 1) Track meta primero (define world real)
 const t01 = this._resolveTrackMeta(this.trackKey);
 
@@ -873,20 +888,27 @@ const spec = this.baseSpec || CAR_SPECS.stock;
     this.cameras.main.setBounds(0, 0, this.worldW, this.worldH);
 
 // =========================
-// Track image background (solo import Tenerife por ahora)
+// Track image background (solo import Tenerife largo por ahora)
 // =========================
 if (this.trackKey === 'import:karting-tenerife-largo') {
-  this.trackImage = this.add.image(
-    Math.floor(this.worldW / 2),
-    Math.floor(this.worldH / 2),
-    'track_karting_tenerife'
-  );
+  const imgKey = 'trackimg:karting-tenerife-largo';
 
-  this.trackImage
-    .setDisplaySize(this.worldW, this.worldH)
-    .setScrollFactor(1)
-    .setDepth(-110);
-}    
+  if (this.textures.exists(imgKey)) {
+    this.trackImage = this.add.image(
+      Math.floor(this.worldW / 2),
+      Math.floor(this.worldH / 2),
+      imgKey
+    );
+
+    this.trackImage
+      .setDisplaySize(this.worldW, this.worldH)
+      .setScrollFactor(1)
+      .setDepth(-110);
+  } else {
+    this.trackImage = null;
+    try { this._diag?.('[IMPORT] track image missing in textures'); } catch (e) {}
+  }
+}k
     // Producción: asegurar que NO hay debug gráfico de físicas (si se creó en algún momento)
 this.physics.world.drawDebug = false;
 
@@ -1039,8 +1061,8 @@ this.time.delayedCall(500, () => {
 // 3) Fondo del mundo: OFF + GRASS BAND
 // =========================
 
-// Si usamos imagen real del circuito, no pintamos fondo procedural
 if (this.trackKey !== 'import:karting-tenerife-largo') {
+  // OFF: cubre todo el mundo (arena / tierra)
   this.bgOff = this.add.tileSprite(
     0, 0,
     this.worldW,
@@ -1061,6 +1083,10 @@ if (this.trackKey !== 'import:karting-tenerife-largo') {
     .setOrigin(0, 0)
     .setScrollFactor(1)
     .setDepth(-90);
+} else {
+  this.bgOff = null;
+  this.bgGrass = null;
+}
 } else {
   this.bgOff = null;
   this.bgGrass = null;
