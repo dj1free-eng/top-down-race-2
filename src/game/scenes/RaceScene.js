@@ -427,18 +427,14 @@ init(data) {
 
 // 1.1) Resolver circuito seleccionado (prioridad: data -> localStorage -> track02)
 const incomingTrack = data?.trackKey;
-const savedTrack = localStorage.getItem('tdr2:trackKey');
 
+// TEMP: desactivar imports y forzar solo built-ins
 const isBuiltIn = (k) => (k === 'track01' || k === 'track02' || k === 'track03');
-const isImport = (k) =>
-  (typeof k === 'string' && k.startsWith('import:') && k.slice('import:'.length).trim().length > 0);
+const pick = (k) => isBuiltIn(k) ? k : null;
 
-const pick = (k) => (isBuiltIn(k) || isImport(k)) ? k : null;
 this.trackKey =
   pick(incomingTrack) ||
-  pick(savedTrack) ||
   'track02';
-
 localStorage.setItem('tdr2:trackKey', this.trackKey);
   // ========================================
   // Time Trial: histórico de vueltas (por pista) — máx 500
