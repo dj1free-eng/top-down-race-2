@@ -1040,13 +1040,15 @@ geom: buildTrackRibbon({
   activeCells: new Set(),
   cullRadiusCells: 2
 };
-    // ========================================
+// ========================================
 // IMPORT TRACK: render plano sin chunks/masks
 // ========================================
 this._flatImportTrackGfx = null;
 
 if (typeof this.trackKey === 'string' && this.trackKey.startsWith('import:')) {
   this._flatImportTrackGfx = this.add.graphics().setDepth(10).setScrollFactor(1);
+
+  const cellSize = this.track?.geom?.cellSize || 400;
 
   const toXY = (pt) => {
     if (!pt) return { x: NaN, y: NaN };
@@ -1058,20 +1060,37 @@ if (typeof this.trackKey === 'string' && this.trackKey.startsWith('import:')) {
   this._flatImportTrackGfx.clear();
   this._flatImportTrackGfx.fillStyle(0x2b2234, 1);
 
-  for (const cell of this.track.geom.cells.values()) {
+  for (const [cellKey, cell] of this.track.geom.cells.entries()) {
+    if (!cell?.polys?.length) continue;
+
+    const [cx, cy] = cellKey.split(',').map(Number);
+    const oxCell = cx * cellSize;
+    const oyCell = cy * cellSize;
+
     for (const poly of cell.polys) {
       if (!poly || poly.length < 3) continue;
 
       const p0 = toXY(poly[0]);
       if (!Number.isFinite(p0.x) || !Number.isFinite(p0.y)) continue;
 
+      const looksWorld =
+        (p0.x > cellSize * 1.5) || (p0.y > cellSize * 1.5) ||
+        (p0.x < -cellSize * 0.5) || (p0.y < -cellSize * 0.5);
+
+      const x0 = looksWorld ? p0.x : (p0.x + oxCell);
+      const y0 = looksWorld ? p0.y : (p0.y + oyCell);
+
       this._flatImportTrackGfx.beginPath();
-      this._flatImportTrackGfx.moveTo(p0.x, p0.y);
+      this._flatImportTrackGfx.moveTo(x0, y0);
 
       for (let i = 1; i < poly.length; i++) {
         const p = toXY(poly[i]);
         if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) continue;
-        this._flatImportTrackGfx.lineTo(p.x, p.y);
+
+        const x = looksWorld ? p.x : (p.x + oxCell);
+        const y = looksWorld ? p.y : (p.y + oyCell);
+
+        this._flatImportTrackGfx.lineTo(x, y);
       }
 
       this._flatImportTrackGfx.closePath();
