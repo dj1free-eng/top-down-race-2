@@ -110,7 +110,7 @@ export class RaceScene extends BaseScene {
 
     this.car = null;
     this.keys = null;
-    this.zoom = 1.85;
+    this.zoom = 0.86;
 
     this.hud = null;
 
@@ -124,10 +124,16 @@ export class RaceScene extends BaseScene {
     this._saveUpgrades = null;
     this.buyUpgrade = null;
 
-    // Car rig
-    this.carBody = null;
-    this.carRig = null;
-  }
+// Car rig
+this.carBody = null;
+this.carRig = null;
+
+// Zoom dinámico
+this._zoomGameplayMin = 0.86; // rápido = más lejos
+this._zoomGameplayMax = 1.20; // lento = más cerca
+this._zoomKmhRef = 140;       // velocidad de referencia
+this._zoomLerp = 0.06;        // suavidad
+this._zoomCurrent = this.zoom;
     // =========================================
   // Skins: carga dinámica por coche (runtime)
   // =========================================
@@ -3811,6 +3817,23 @@ if (shouldShow) {
     // === HUD ===
 const KMH_PER_PXSEC = 0.185;
 const kmh = speed * KMH_PER_PXSEC;
+    // === ZOOM DINÁMICO ===
+{
+  const speed01 = Phaser.Math.Clamp(kmh / this._zoomKmhRef, 0, 1);
+
+  const targetZoom =
+    this._zoomGameplayMax -
+    (this._zoomGameplayMax - this._zoomGameplayMin) * speed01;
+
+  this._zoomCurrent = Phaser.Math.Linear(
+    this._zoomCurrent ?? this.zoom,
+    targetZoom,
+    this._zoomLerp
+  );
+
+  this.zoom = this._zoomCurrent;
+  this.cameras.main.setZoom(this.zoom);
+}
 // GPS HUD (abajo-centro) — safe (no tocar objetos destruidos)
 if (this.speedHud?.speedText?.scene) {
   const v = Math.max(0, Math.round(kmh));
