@@ -908,7 +908,7 @@ if (this.trackKey === 'import:karting-tenerife-largo') {
     this.trackImage = null;
     try { this._diag?.('[IMPORT] track image missing in textures'); } catch (e) {}
   }
-}k
+}
     // Producción: asegurar que NO hay debug gráfico de físicas (si se creó en algún momento)
 this.physics.world.drawDebug = false;
 
