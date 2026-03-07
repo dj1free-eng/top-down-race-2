@@ -3384,10 +3384,6 @@ if (steeringInput) {
   body.velocity.x = fx * vF + rx * vL2;
   body.velocity.y = fy * vF + ry * vL2;
 }
-// En tracks importados usamos render plano, no chunks/masks
-if (this._flatImportTrackGfx) {
-  // no hacer nada aquí
-} else
 // === Track culling render (solo celdas cercanas) ===
 // IMPORTANTE: si aquí explota, no debe tumbar el update entero.
 try {
