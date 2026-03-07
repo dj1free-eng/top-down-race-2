@@ -899,7 +899,7 @@ if (this.trackKey === 'import:karting-tenerife-largo') {
     this.trackImage
       .setDisplaySize(this.worldW, this.worldH)
       .setScrollFactor(1)
-      .setDepth(-110);
+      .setDepth(-1000);
   } else {
     this.trackImage = null;
     try { this._diag?.('[IMPORT] track image missing in textures'); } catch (e) {}
