@@ -3850,7 +3850,7 @@ this.carRig.rotation = this.carBody.rotation + (this._carVisualRotOffset || 0);
   }
 ensureOffTexture() {
   const key = 'off';
-  const size = 512;
+  const size = 1024;
 
   // ✅ NO borrar en caliente (WebGL). Create-once.
   if (this.textures.exists(key)) return;
@@ -3887,7 +3887,7 @@ ensureOffTexture() {
 
 ensureBgTexture() {
   const key = 'grass';
-  const size = 512;
+  const size = 1024;
 
   // ✅ NO borrar en caliente (WebGL). Create-once.
   if (this.textures.exists(key)) return;
@@ -3924,7 +3924,7 @@ ensureBgTexture() {
 
 ensureAsphaltTexture() {
   const key = 'asphalt';
-  const size = 512;
+  const size = 1024;
 
   if (this.textures.exists(key)) return;
 
