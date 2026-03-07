@@ -1040,6 +1040,47 @@ geom: buildTrackRibbon({
   activeCells: new Set(),
   cullRadiusCells: 2
 };
+    // ========================================
+// IMPORT TRACK: render plano sin chunks/masks
+// ========================================
+this._flatImportTrackGfx = null;
+
+if (typeof this.trackKey === 'string' && this.trackKey.startsWith('import:')) {
+  this._flatImportTrackGfx = this.add.graphics().setDepth(10).setScrollFactor(1);
+
+  const toXY = (pt) => {
+    if (!pt) return { x: NaN, y: NaN };
+    if (typeof pt.x === 'number' && typeof pt.y === 'number') return { x: pt.x, y: pt.y };
+    if (Array.isArray(pt) && pt.length >= 2) return { x: pt[0], y: pt[1] };
+    return { x: NaN, y: NaN };
+  };
+
+  this._flatImportTrackGfx.clear();
+  this._flatImportTrackGfx.fillStyle(0x2b2234, 1);
+
+  for (const cell of this.track.geom.cells.values()) {
+    for (const poly of cell.polys) {
+      if (!poly || poly.length < 3) continue;
+
+      const p0 = toXY(poly[0]);
+      if (!Number.isFinite(p0.x) || !Number.isFinite(p0.y)) continue;
+
+      this._flatImportTrackGfx.beginPath();
+      this._flatImportTrackGfx.moveTo(p0.x, p0.y);
+
+      for (let i = 1; i < poly.length; i++) {
+        const p = toXY(poly[i]);
+        if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) continue;
+        this._flatImportTrackGfx.lineTo(p.x, p.y);
+      }
+
+      this._flatImportTrackGfx.closePath();
+      this._flatImportTrackGfx.fillPath();
+    }
+  }
+
+  this.uiCam?.ignore?.(this._flatImportTrackGfx);
+}
     // TT: métricas de centerline (progreso por distancia, corrige óvalo)
 this._initTTCenterlineMetrics();
 // ===============================
