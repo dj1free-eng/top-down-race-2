@@ -1061,6 +1061,7 @@ body.setVisible(false);
 
 // Escala del coche según spec FINAL (baseSpec ya incluye overrides del editor)
 const specFinal = this.baseSpec || spec || CAR_SPECS.stock;
+this.ensureCarSkinTexture(specFinal).catch(() => {});
 const vScale = Number(specFinal?.visualScale ?? 1.0);
 
 // Colisión: si quieres que el camión “ocupe pista”, esto es CLAVE
@@ -1815,15 +1816,37 @@ const mmFlag = this.add.text(
   .setScrollFactor(0)
   .setDepth(2002);
 
-const mmDot = this.add.circle(
+const mmShadow = this.add.circle(
   mapPts[0]?.x || (mmX + mmW / 2),
   mapPts[0]?.y || (mmY + mmH / 2),
-  3.5,
-  0x2bff88,
-  1
+  4.5,
+  0x000000,
+  0.35
 )
   .setScrollFactor(0)
   .setDepth(2003);
+
+const mmCarTex =
+  (this.carId && this.textures.exists(`car_${this.carId}`))
+    ? `car_${this.carId}`
+    : 'car';
+
+const mmCar = this.add.sprite(
+  mapPts[0]?.x || (mmX + mmW / 2),
+  mapPts[0]?.y || (mmY + mmH / 2),
+  mmCarTex
+)
+  .setScrollFactor(0)
+  .setDepth(2004);
+
+// tamaño premium pequeño pero legible
+{
+  const targetW = 12;
+  const sw = mmCar.width || 1;
+  const sh = mmCar.height || 1;
+  const s = Math.min(targetW / sw, 8 / sh);
+  mmCar.setScale(s);
+}
 
 this.minimap = {
   x: mmX,
@@ -1833,7 +1856,8 @@ this.minimap = {
   bg: mmBg,
   gfx: mmG,
   flag: mmFlag,
-  dot: mmDot,
+  shadow: mmShadow,
+  car: mmCar,
   points: mapPts
 };
 }    
@@ -2699,7 +2723,8 @@ this._applyCameraIgnores = () => {
 this.minimap?.bg,
 this.minimap?.gfx,
 this.minimap?.flag,
-this.minimap?.dot,
+this.minimap?.shadow,
+this.minimap?.car,
     // Time Trial HUD (solo debe renderizarse en uiCam)
     this.ttHud?.timeText,
     this.ttHud?.lapText,
@@ -3185,27 +3210,35 @@ if (this.car) {
   const px = barX + this.ttHud.progress01 * barW;
   this.ttHud.barSlider.setPosition(px, barY);
 
-  // Minimap dot — proyección geométrica precisa y suave
-  if (this.minimap?.dot && this.minimap?.points?.length >= 2) {
-    const proj = this._computeCenterlineProjection(this.car.x, this.car.y);
-    const pts = this.minimap.points;
-    const segIndex = Phaser.Math.Clamp(proj.segIndex, 0, pts.length - 2);
-    const segT = Phaser.Math.Clamp(proj.segT, 0, 1);
+// Minimap car — proyección geométrica precisa, suave y con rotación
+if (this.minimap?.car && this.minimap?.points?.length >= 2) {
+  const proj = this._computeCenterlineProjection(this.car.x, this.car.y);
+  const pts = this.minimap.points;
+  const segIndex = Phaser.Math.Clamp(proj.segIndex, 0, pts.length - 2);
+  const segT = Phaser.Math.Clamp(proj.segT, 0, 1);
 
-    const a = pts[segIndex];
-    const b = pts[segIndex + 1] || pts[segIndex];
+  const a = pts[segIndex];
+  const b = pts[segIndex + 1] || pts[segIndex];
 
-    const tx = Phaser.Math.Linear(a.x, b.x, segT);
-    const ty = Phaser.Math.Linear(a.y, b.y, segT);
+  const tx = Phaser.Math.Linear(a.x, b.x, segT);
+  const ty = Phaser.Math.Linear(a.y, b.y, segT);
 
-    const curX = this.minimap.dot.x ?? tx;
-    const curY = this.minimap.dot.y ?? ty;
+  const curX = this.minimap.car.x ?? tx;
+  const curY = this.minimap.car.y ?? ty;
 
-    this.minimap.dot.setPosition(
-      Phaser.Math.Linear(curX, tx, 0.42),
-      Phaser.Math.Linear(curY, ty, 0.42)
-    );
+  const nx = Phaser.Math.Linear(curX, tx, 0.42);
+  const ny = Phaser.Math.Linear(curY, ty, 0.42);
+
+  if (this.minimap.shadow) {
+    this.minimap.shadow.setPosition(nx, ny);
   }
+
+  this.minimap.car.setPosition(nx, ny);
+
+  // Rotación del coche mini
+  // mismo criterio visual que el coche grande
+  this.minimap.car.rotation = this.car.rotation + (this._carVisualRotOffset || 0);
+}
 }
 }
     // Guardas duras: si create() no terminó, no reventamos el loop.
