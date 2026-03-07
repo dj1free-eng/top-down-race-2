@@ -1671,15 +1671,11 @@ this.ttHud.bestLapText.setShadow(0, 1, '#000000', 2, false, true);
     y: oy + (p.y - minY) * s
   }));
 
-  const mmBg = this.add.rectangle(mmX, mmY, mmW, mmH, 0x000000, 0.42)
-    .setOrigin(0)
-    .setStrokeStyle(1, 0xffffff, 0.18)
-    .setScrollFactor(0)
-    .setDepth(2000);
+  const mmBg = null;
 
-  const mmG = this.add.graphics()
-    .setScrollFactor(0)
-    .setDepth(2001);
+const mmG = this.add.graphics()
+  .setScrollFactor(0)
+  .setDepth(2001);
 
   mmG.lineStyle(2, 0xffffff, 0.55);
   if (mapPts.length >= 2) {
@@ -1691,26 +1687,40 @@ this.ttHud.bestLapText.setShadow(0, 1, '#000000', 2, false, true);
     mmG.strokePath();
   }
 
-  const mmDot = this.add.circle(
-    mapPts[0]?.x || (mmX + mmW / 2),
-    mapPts[0]?.y || (mmY + mmH / 2),
-    4,
-    0x2bff88,
-    1
-  )
-    .setScrollFactor(0)
-    .setDepth(2002);
+  const mmFlag = this.add.text(
+  mapPts[0]?.x || (mmX + mmW / 2),
+  (mapPts[0]?.y || (mmY + mmH / 2)) - 2,
+  '🏁',
+  {
+    fontFamily: 'system-ui, -apple-system, Segoe UI Emoji, Apple Color Emoji, Arial',
+    fontSize: '11px'
+  }
+)
+  .setOrigin(0.5, 0.5)
+  .setScrollFactor(0)
+  .setDepth(2002);
 
-  this.minimap = {
-    x: mmX,
-    y: mmY,
-    w: mmW,
-    h: mmH,
-    bg: mmBg,
-    gfx: mmG,
-    dot: mmDot,
-    points: mapPts
-  };
+const mmDot = this.add.circle(
+  mapPts[0]?.x || (mmX + mmW / 2),
+  mapPts[0]?.y || (mmY + mmH / 2),
+  3.5,
+  0x2bff88,
+  1
+)
+  .setScrollFactor(0)
+  .setDepth(2003);
+
+this.minimap = {
+  x: mmX,
+  y: mmY,
+  w: mmW,
+  h: mmH,
+  bg: mmBg,
+  gfx: mmG,
+  flag: mmFlag,
+  dot: mmDot,
+  points: mapPts
+};
 }    
     // Fade-in suave (100–150ms)
 this.ttHud.timeText.setAlpha(0);
