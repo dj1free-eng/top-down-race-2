@@ -435,13 +435,15 @@ init(data) {
 
 // 1.1) Resolver circuito seleccionado (prioridad: data -> localStorage -> track02)
 const incomingTrack = data?.trackKey;
+const savedTrack = localStorage.getItem('tdr2:trackKey');
 
-// TEMP: desactivar imports y forzar solo built-ins
+// TEMP: built-ins sí, imports no
 const isBuiltIn = (k) => (k === 'track01' || k === 'track02' || k === 'track03');
 const pick = (k) => isBuiltIn(k) ? k : null;
 
 this.trackKey =
   pick(incomingTrack) ||
+  pick(savedTrack) ||
   'track02';
 localStorage.setItem('tdr2:trackKey', this.trackKey);
   // ========================================
