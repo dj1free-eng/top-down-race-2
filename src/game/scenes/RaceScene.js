@@ -3930,33 +3930,46 @@ ensureAsphaltTexture() {
   const key = 'asphalt';
   const size = 512;
 
-  // ✅ NO borrar en caliente (WebGL). Create-once.
   if (this.textures.exists(key)) return;
 
   const g = this.make.graphics({ x: 0, y: 0, add: false });
 
-  g.fillStyle(0x2b2234, 1);
+  // Base más neutra y realista
+  g.fillStyle(0x3a3a3d, 1);
   g.fillRect(0, 0, size, size);
 
-  const patches = 22;
-  for (let i = 0; i < patches; i++) {
-    const r = 120 + Math.random() * 260;
+  // Manchas grandes muy suaves (tono general)
+  for (let i = 0; i < 18; i++) {
+    const r = 90 + Math.random() * 180;
     const x = Math.random() * size;
     const y = Math.random() * size;
-
-    const col = (Math.random() > 0.5) ? 0x272a30 : 0x33343a;
-    const alpha = 0.018 + Math.random() * 0.028;
+    const col = Math.random() > 0.5 ? 0x343437 : 0x444448;
+    const alpha = 0.035 + Math.random() * 0.035;
 
     g.fillStyle(col, alpha);
     g.fillCircle(x, y, r);
   }
 
-  for (let i = 0; i < 10; i++) {
-    const r = 110 + Math.random() * 230;
+  // Micrograno fino: aquí está el truco para que no parezca plastilina
+  for (let i = 0; i < 14000; i++) {
     const x = Math.random() * size;
     const y = Math.random() * size;
-    g.fillStyle(0x1f1f24, 0.012 + Math.random() * 0.02);
-    g.fillCircle(x, y, r);
+    const a = 0.035 + Math.random() * 0.06;
+    const col = Math.random() > 0.55 ? 0x5a5a5e : 0x262629;
+
+    g.fillStyle(col, a);
+    g.fillRect(x, y, 1.2, 1.2);
+  }
+
+  // Algunas zonas ligeramente pulidas / gastadas
+  for (let i = 0; i < 8; i++) {
+    const w = 120 + Math.random() * 220;
+    const h = 28 + Math.random() * 60;
+    const x = Math.random() * (size - w);
+    const y = Math.random() * (size - h);
+
+    g.fillStyle(0xffffff, 0.018 + Math.random() * 0.02);
+    g.fillRoundedRect(x, y, w, h, 10);
   }
 
   g.generateTexture(key, size, size);
