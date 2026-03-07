@@ -2570,7 +2570,10 @@ this._applyCameraIgnores = () => {
 
     // Menú UI
     this.uiMenuBtn,
-
+// Minimap HUD
+this.minimap?.bg,
+this.minimap?.gfx,
+this.minimap?.dot,
     // Time Trial HUD (solo debe renderizarse en uiCam)
     this.ttHud?.timeText,
     this.ttHud?.lapText,
@@ -3050,12 +3053,19 @@ const lapInProgress = (this.lapCount || 0) + 1; // lapCount = vueltas completada
 this.ttHud.lapText.setText(`VUELTA ${lapInProgress}`);
 
   // Progreso REAL (0..1) por centerline (solo si hay coche)
-  if (this.car) {
-    this.ttHud.progress01 = this._computeLapProgress01(this.car.x, this.car.y);
-    const { barX, barW, barY } = this.ttHud.bar;
-    const px = barX + this.ttHud.progress01 * barW;
-    this.ttHud.barSlider.setPosition(px, barY);
+if (this.car) {
+  this.ttHud.progress01 = this._computeLapProgress01(this.car.x, this.car.y);
+  const { barX, barW, barY } = this.ttHud.bar;
+  const px = barX + this.ttHud.progress01 * barW;
+  this.ttHud.barSlider.setPosition(px, barY);
+
+  // Minimap dot
+  if (this.minimap?.dot && this.minimap?.points?.length) {
+    const idx = this._ttProg?.idx ?? 0;
+    const p = this.minimap.points[idx] || this.minimap.points[0];
+    if (p) this.minimap.dot.setPosition(p.x, p.y);
   }
+}
 }
     // Guardas duras: si create() no terminó, no reventamos el loop.
     if (!this.cameras?.main) return;
