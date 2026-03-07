@@ -2583,6 +2583,7 @@ this._applyCameraIgnores = () => {
 // Minimap HUD
 this.minimap?.bg,
 this.minimap?.gfx,
+this.minimap?.flag,
 this.minimap?.dot,
     // Time Trial HUD (solo debe renderizarse en uiCam)
     this.ttHud?.timeText,
@@ -3069,11 +3070,31 @@ if (this.car) {
   const px = barX + this.ttHud.progress01 * barW;
   this.ttHud.barSlider.setPosition(px, barY);
 
-  // Minimap dot
-  if (this.minimap?.dot && this.minimap?.points?.length) {
-    const idx = this._ttProg?.idx ?? 0;
-    const p = this.minimap.points[idx] || this.minimap.points[0];
-    if (p) this.minimap.dot.setPosition(p.x, p.y);
+  // Minimap dot — movimiento continuo, preciso y suave
+  if (this.minimap?.dot && this.minimap?.points?.length >= 2) {
+    const pts = this.minimap.points;
+    const n = pts.length;
+
+    // progreso 0..1 -> posición continua sobre la polyline del minimapa
+    const raw = Phaser.Math.Clamp(this.ttHud.progress01, 0, 0.999999) * n;
+    const i0 = Math.floor(raw) % n;
+    const i1 = (i0 + 1) % n;
+    const t = raw - Math.floor(raw);
+
+    const a = pts[i0];
+    const b = pts[i1];
+
+    const tx = Phaser.Math.Linear(a.x, b.x, t);
+    const ty = Phaser.Math.Linear(a.y, b.y, t);
+
+    // suavizado extra visual
+    const curX = this.minimap.dot.x ?? tx;
+    const curY = this.minimap.dot.y ?? ty;
+
+    this.minimap.dot.setPosition(
+      Phaser.Math.Linear(curX, tx, 0.35),
+      Phaser.Math.Linear(curY, ty, 0.35)
+    );
   }
 }
 }
