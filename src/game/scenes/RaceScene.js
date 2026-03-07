@@ -899,7 +899,7 @@ if (this.trackKey === 'import:karting-tenerife-largo') {
     this.trackImage
       .setDisplaySize(this.worldW, this.worldH)
       .setScrollFactor(1)
-      .setDepth(-1000);
+      .setDepth(-110);
   } else {
     this.trackImage = null;
     try { this._diag?.('[IMPORT] track image missing in textures'); } catch (e) {}
@@ -1006,13 +1006,7 @@ rig.setDepth(30);
 this.carBody = body;
 this.carRig = rig;
 this.car = body; // compat con tu update()
-// FIX IMPORT TRACK: centrar cámara ya sobre el coche antes de construir/renderizar pista
-this.cameras.main.stopFollow();
-this.cameras.main.setScroll(0, 0);
-this.cameras.main.centerOn(this.carBody.x, this.carBody.y);
-this.cameras.main.startFollow(this.carBody, true, 0.12, 0.12);
-this.cameras.main.setZoom(this.zoom);
-this.cameras.main.roundPixels = true;
+
 // Skin runtime: si existe, sustituye la textura del sprite sin romper nada
 this.ensureCarSkinTexture(specFinal).then((texKey) => {
   if (!texKey) return;
@@ -1040,66 +1034,6 @@ geom: buildTrackRibbon({
   activeCells: new Set(),
   cullRadiusCells: 2
 };
-// ========================================
-// IMPORT TRACK: render plano sin chunks/masks
-// ========================================
-this._flatImportTrackGfx = null;
-
-if (typeof this.trackKey === 'string' && this.trackKey.startsWith('import:')) {
-  this._flatImportTrackGfx = this.add.graphics().setDepth(10).setScrollFactor(1);
-
-  const cellSize = this.track?.geom?.cellSize || 400;
-
-  const toXY = (pt) => {
-    if (!pt) return { x: NaN, y: NaN };
-    if (typeof pt.x === 'number' && typeof pt.y === 'number') return { x: pt.x, y: pt.y };
-    if (Array.isArray(pt) && pt.length >= 2) return { x: pt[0], y: pt[1] };
-    return { x: NaN, y: NaN };
-  };
-
-  this._flatImportTrackGfx.clear();
-  this._flatImportTrackGfx.fillStyle(0x2b2234, 1);
-
-  for (const [cellKey, cell] of this.track.geom.cells.entries()) {
-    if (!cell?.polys?.length) continue;
-
-    const [cx, cy] = cellKey.split(',').map(Number);
-    const oxCell = cx * cellSize;
-    const oyCell = cy * cellSize;
-
-    for (const poly of cell.polys) {
-      if (!poly || poly.length < 3) continue;
-
-      const p0 = toXY(poly[0]);
-      if (!Number.isFinite(p0.x) || !Number.isFinite(p0.y)) continue;
-
-      const looksWorld =
-        (p0.x > cellSize * 1.5) || (p0.y > cellSize * 1.5) ||
-        (p0.x < -cellSize * 0.5) || (p0.y < -cellSize * 0.5);
-
-      const x0 = looksWorld ? p0.x : (p0.x + oxCell);
-      const y0 = looksWorld ? p0.y : (p0.y + oyCell);
-
-      this._flatImportTrackGfx.beginPath();
-      this._flatImportTrackGfx.moveTo(x0, y0);
-
-      for (let i = 1; i < poly.length; i++) {
-        const p = toXY(poly[i]);
-        if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) continue;
-
-        const x = looksWorld ? p.x : (p.x + oxCell);
-        const y = looksWorld ? p.y : (p.y + oyCell);
-
-        this._flatImportTrackGfx.lineTo(x, y);
-      }
-
-      this._flatImportTrackGfx.closePath();
-      this._flatImportTrackGfx.fillPath();
-    }
-  }
-
-  this.uiCam?.ignore?.(this._flatImportTrackGfx);
-}
     // TT: métricas de centerline (progreso por distancia, corrige óvalo)
 this._initTTCenterlineMetrics();
 // ===============================
@@ -3384,6 +3318,7 @@ if (steeringInput) {
   body.velocity.x = fx * vF + rx * vL2;
   body.velocity.y = fy * vF + ry * vL2;
 }
+
 // === Track culling render (solo celdas cercanas) ===
 // IMPORTANTE: si aquí explota, no debe tumbar el update entero.
 try {
