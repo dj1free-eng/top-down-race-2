@@ -824,53 +824,48 @@ if (this._onResizeTouchControls) {
   this._diagLines = null;
   this._diag = null;
 };
-this.events.once(Phaser.Scenes.Events.SHUTDOWN, this._onShutdownRaceScene, this);// ========================================
-// ========================================
-// IMPORT TRACK: carga dinámica JSON + imagen + restart
+this.events.once(Phaser.Scenes.Events.SHUTDOWN, this._onShutdownRaceScene, this);// ========================================// ========================================
+// IMPORT TRACK: carga dinámica JSON + imagen + 1 solo restart
 // ========================================
 if (typeof this.trackKey === 'string' && this.trackKey.startsWith('import:')) {
   const slug = this.trackKey.slice('import:'.length).trim();
 
-  // keys de cache
   const jsonKey = `trackjson:${slug}`;
   const imgKey = `trackimg:${slug}`;
 
-  // 1) JSON del track
-  if (!this.cache.json.exists(jsonKey)) {
-    try { this._diag?.(`[IMPORT] loading json ${slug}...`); } catch (e) {}
+  const needJson = !this.cache.json.exists(jsonKey);
+  const needImg =
+    (slug === 'karting-tenerife-largo') &&
+    !this.textures.exists(imgKey);
 
-    const url = `tracks/${slug}/track.json`;
-    this.load.json(jsonKey, url);
+  if (needJson || needImg) {
+    try {
+      this._diag?.(`[IMPORT] preload ${slug} json:${needJson ? 'Y' : 'N'} img:${needImg ? 'Y' : 'N'}`);
+    } catch (e) {}
+
+    if (needJson) {
+      this.load.json(jsonKey, `tracks/${slug}/track.json`);
+    }
+
+    if (needImg) {
+      this.load.image(imgKey, 'assets/tracks/karting-tenerife-completo.png');
+    }
 
     this.load.once('complete', () => {
-      try { this._diag?.(`[IMPORT] json loaded ${slug} ✓`); } catch (e) {}
+      try { this._diag?.(`[IMPORT] preload complete ${slug} ✓`); } catch (e) {}
       this.scene.restart({ trackKey: `import:${slug}` });
     });
 
     this.load.once('loaderror', (file) => {
-      try { this._diag?.(`[IMPORT] json ERROR: ${file?.key || 'unknown'}`); } catch (e) {}
-      this.scene.restart({ trackKey: 'track02' });
-    });
+      try { this._diag?.(`[IMPORT] preload ERROR: ${file?.key || 'unknown'}`); } catch (e) {}
 
-    this.load.start();
-    return;
-  }
-
-  // 2) Imagen del track (solo para Tenerife largo por ahora)
-  if (slug === 'karting-tenerife-largo' && !this.textures.exists(imgKey)) {
-    try { this._diag?.(`[IMPORT] loading image ${slug}...`); } catch (e) {}
-
-    this.load.image(imgKey, 'assets/tracks/karting-tenerife-completo.png');
-
-    this.load.once('complete', () => {
-      try { this._diag?.(`[IMPORT] image loaded ${slug} ✓`); } catch (e) {}
-      this.scene.restart({ trackKey: `import:${slug}` });
-    });
-
-    this.load.once('loaderror', (file) => {
-      try { this._diag?.(`[IMPORT] image ERROR: ${file?.key || 'unknown'}`); } catch (e) {}
-      // Si falla la imagen, seguimos sin imagen pero con el track funcional
-      this.scene.restart({ trackKey: `import:${slug}` });
+      // Si falla el JSON, fallback seguro
+      if (needJson) {
+        this.scene.restart({ trackKey: 'track02' });
+      } else {
+        // Si solo falla la imagen, seguimos con la pista importada
+        this.scene.restart({ trackKey: `import:${slug}` });
+      }
     });
 
     this.load.start();
