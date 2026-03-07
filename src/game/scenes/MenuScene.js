@@ -494,12 +494,12 @@ bigPlayBtn.on('pointerup', () => {
 
   try {
     localStorage.setItem('tdr2:carId', this.selectedCarId);
-    localStorage.setItem('tdr2:trackKey', this.selectedTrackKey);
+    localStorage.setItem('tdr2:trackKey', 'import:karting-tenerife-largo');
   } catch {}
-localStorage.setItem('tdr2:trackKey','import:karting-tenerife-largo');
+
   this.scene.start('race', {
     carId: this.selectedCarId,
-    trackKey: this.selectedTrackKey
+    trackKey: 'import:karting-tenerife-largo'
   });
 });
 
