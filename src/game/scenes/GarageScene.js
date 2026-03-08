@@ -124,18 +124,25 @@ this._rebuild();
       strokeThickness: 5
     }).setOrigin(1, 0);
 
-    const back = this.add.text(16, 16, '⬅', {
-      fontFamily: 'system-ui',
-      fontSize: '28px',
-      color: '#fff',
-      stroke: '#091a42',
-      strokeThickness: 7
-    }).setOrigin(0, 0).setInteractive({ useHandCursor: true });
+    const backHit = this.add.rectangle(12, 12, 64, 64, 0x000000, 0.001)
+  .setOrigin(0, 0)
+  .setDepth(10000)
+  .setInteractive({ useHandCursor: true });
 
-    back.on('pointerdown', () => {
-      if (this._mode === 'admin') this.scene.start('admin-hub');
-      else this.scene.start('menu');
-    });
+const back = this.add.text(16, 16, '⬅', {
+  fontFamily: 'system-ui',
+  fontSize: '28px',
+  color: '#fff',
+  stroke: '#091a42',
+  strokeThickness: 7
+})
+  .setOrigin(0, 0)
+  .setDepth(10001);
+
+backHit.on('pointerdown', () => {
+  if (this._mode === 'admin') this.scene.start('admin-hub');
+  else this.scene.start('menu');
+});
 
     // =========================
     // Layout general
