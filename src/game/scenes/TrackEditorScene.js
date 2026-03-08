@@ -581,9 +581,11 @@ this._gOverlay = this.add.graphics().setDepth(12); // ✅ overlay encima
 
     this.input.on('pointermove', (p) => {
       if (!this._isDrawing) return;
-      if (this._drawRect && !this._drawRect.contains(p.worldX, p.worldY)) return;
 
-      this._pushPointIfFar(p.worldX, p.worldY);
+      const wp = this._screenToEditorWorld(p);
+      if (this._drawRect && !this._drawRect.contains(wp.x, wp.y)) return;
+
+      this._pushPointIfFar(wp.x, wp.y);
       this._lastValidation = null;
       this._rebuildClean();
       this._redraw();
