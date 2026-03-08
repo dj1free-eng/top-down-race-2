@@ -560,19 +560,27 @@ hit.on('pointerupoutside', () => {
     });
 const selectedThumb = this._thumbItems[this._selectedIndex];
 if (selectedThumb?.item && selectedThumb?.bg && this._thumbViewport) {
-  const itemCenter = selectedThumb.item.y + (selectedThumb.bg.height * 0.5);
-  const viewCenter = this._thumbViewport.height * 0.5;
+  const itemCenterY = selectedThumb.item.y + (selectedThumb.bg.height * 0.5);
+  const viewportCenterY = this._thumbViewport.height * 0.5;
 
-  const targetScroll = -(itemCenter - viewCenter);
+  const targetScrollY = viewportCenterY - itemCenterY;
+  const clampedTarget = Phaser.Math.Clamp(targetScrollY, this._thumbMinScroll, 0);
+
+  // MUY IMPORTANTE: cortar cualquier inercia previa
+  this._scrollVelocity = 0;
+  this._thumbPointerActive = false;
+  this._isDraggingThumbs = false;
 
   this.tweens.killTweensOf(this);
 
   this.tweens.add({
     targets: this,
-    _thumbScrollY: Phaser.Math.Clamp(targetScroll, this._thumbMinScroll, 0),
-    duration: 240,
+    _thumbScrollY: clampedTarget,
+    duration: 260,
     ease: 'Cubic.easeOut',
-    onUpdate: () => this._applyThumbScroll()
+    onUpdate: () => {
+      this._applyThumbScroll();
+    }
   });
 }
     const spec = selected.spec;
