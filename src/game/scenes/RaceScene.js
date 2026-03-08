@@ -516,14 +516,26 @@ init(data) {
 const incomingTrack = data?.trackKey;
 const savedTrack = localStorage.getItem('tdr2:trackKey');
 
-// TEMP: built-ins sí, imports no
-const isBuiltIn = (k) => (k === 'track01' || k === 'track02' || k === 'track03');
-const pick = (k) => isBuiltIn(k) ? k : null;
+const isBuiltIn = (k) => (
+  k === 'track01' ||
+  k === 'track02' ||
+  k === 'track03'
+);
+
+const isImport = (k) => (
+  typeof k === 'string' &&
+  k.startsWith('import:') &&
+  k.slice('import:'.length).trim().length > 0
+);
+
+const pick = (k) => (isBuiltIn(k) || isImport(k)) ? k : null;
 
 this.trackKey =
-  incomingTrack ||
-  savedTrack ||
+  pick(incomingTrack) ||
+  pick(savedTrack) ||
   'track02';
+
+localStorage.setItem('tdr2:trackKey', this.trackKey);
 localStorage.setItem('tdr2:trackKey', this.trackKey);
   // ========================================
   // Time Trial: histórico de vueltas (por pista) — máx 500
