@@ -799,8 +799,19 @@ _dbg(msg) {
     // Logs en pantalla (mata-logs friendly)
     try { this._dbg(String(msg)); } catch {}
   }
-  create() {
+create() {
     super.create()
+
+// -------------------------------------------------
+// RESET DURO DE CÁMARA PRINCIPAL
+// -------------------------------------------------
+try {
+  const cam = this.cameras.main;
+  cam.stopFollow();
+  cam.setZoom(1);
+  cam.setScroll(0, 0);
+  cam.setBounds(0, 0, 1000, 1000);
+} catch (e) {}
 // ===============================
 // DEV DIAG overlay (iPhone-safe)
 // ===============================
@@ -914,6 +925,14 @@ if (this._onResizeTouchControls) {
   this.car = null;
 
   try { this.cameras?.main?.stopFollow(); } catch (e) {}
+   try {
+    const cam = this.cameras?.main;
+    if (cam) {
+      cam.setZoom(1);
+      cam.setScroll(0, 0);
+      cam.setBounds(0, 0, 1000, 1000);
+    }
+  } catch (e) {}
   // FIX 2ª carga: destruir cámaras extra (uiCam y otras) y children heredados
   try {
     const extraCams = this.cameras?.cameras?.slice(1) || [];
