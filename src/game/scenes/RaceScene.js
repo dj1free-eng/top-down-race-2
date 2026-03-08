@@ -999,7 +999,7 @@ const spec = this.baseSpec || CAR_SPECS.stock;
 
     this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
     this.cameras.main.setBounds(0, 0, this.worldW, this.worldH);
-}
+
     // Producción: asegurar que NO hay debug gráfico de físicas (si se creó en algún momento)
 this.physics.world.drawDebug = false;
 
