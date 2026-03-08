@@ -128,8 +128,8 @@ const carIds = Object.keys(CAR_SPECS).filter(id =>
   }
 
 _createCard(x, y, w, h, carId, spec) {
-
   const card = this.add.container(x, y);
+  this._list.add(card);
 
   const raritySlug = (spec.rarity || 'comun')
     .toLowerCase()
@@ -143,47 +143,65 @@ _createCard(x, y, w, h, carId, spec) {
   const url = `assets/cars/runtime/${fileName}`;
   const texKey = `card_${carId}`;
 
-  this.load.image(texKey, url);
-
-  this.load.once(Phaser.Loader.Events.COMPLETE, () => {
-
+  const buildCardImage = () => {
+    if (!card.scene) return;
     if (!this.textures.exists(texKey)) return;
 
-    const img = this.add.image(w / 2, h / 2, texKey);
+    // evita duplicados si por lo que sea vuelve a entrar
+    if (card.getByName('cardImage')) return;
 
-    // Escalado proporcional (SIN deformar)
+    const img = this.add.image(w / 2, h / 2, texKey).setName('cardImage');
+
     const scale = Math.min(
-      w / img.width,
-      h / img.height
+      w / (img.width || 1),
+      h / (img.height || 1)
     );
-
     img.setScale(scale);
 
-    card.add(img);
-
-    // Interacción
     img.setInteractive({ useHandCursor: true });
     img.on('pointerdown', () => {
-  this.cameras.main.flash(80, 255, 255, 255);
+      this.cameras.main.flash(80, 255, 255, 255);
 
-  if (this._mode === 'admin') {
-    this.scene.start('car-editor', { carId });
-  } else {
-	// PLAYER MODE: al tocar un coche, lo seleccionamos y volvemos al menú.
-	// (El menú ya lee el coche activo desde localStorage: tdr2:carId)
-	try {
-	  localStorage.setItem('tdr2:carId', carId);
-	} catch (e) {
-	  // si localStorage falla por cualquier motivo, seguimos igualmente
-	}
-	this.scene.start('menu');
+      if (this._mode === 'admin') {
+        this.scene.start('car-editor', { carId });
+      } else {
+        try {
+          localStorage.setItem('tdr2:carId', carId);
+        } catch (e) {}
+        this.scene.start('menu');
+      }
+    });
+
+    card.add(img);
+  };
+
+  // Si ya está cargada, construir al instante
+  if (this.textures.exists(texKey)) {
+    buildCardImage();
+    return;
   }
-});
 
-  });
+  const onFileOk = (key) => {
+    if (key !== texKey) return;
+    cleanup();
+    buildCardImage();
+  };
 
-  this.load.start();
+  const onFileErr = (file) => {
+    if (!file || file.key !== texKey) return;
+    cleanup();
+  };
 
-  this._list.add(card);
+  const cleanup = () => {
+    this.load.off(`filecomplete-image-${texKey}`, onFileOk);
+    this.load.off(Phaser.Loader.Events.LOAD_ERROR, onFileErr);
+  };
+
+  this.load.once(`filecomplete-image-${texKey}`, onFileOk);
+  this.load.on(Phaser.Loader.Events.LOAD_ERROR, onFileErr);
+
+  this.load.image(texKey, url);
+
+  if (!this.load.isLoading()) this.load.start();
 }
 }
