@@ -544,10 +544,12 @@ this._gOverlay = this.add.graphics().setDepth(12); // ✅ overlay encima
     // --- Input táctil ---
     this.input.addPointer(1);
 
-    this.input.on('pointerdown', (p) => {
+        this.input.on('pointerdown', (p) => {
       if (!this._drawMode) return;
 
-      if (this._drawRect && !this._drawRect.contains(p.worldX, p.worldY)) {
+      const wp = this._screenToEditorWorld(p);
+
+      if (this._drawRect && !this._drawRect.contains(wp.x, wp.y)) {
         this._isDrawing = false;
         return;
       }
@@ -555,17 +557,17 @@ this._gOverlay = this.add.graphics().setDepth(12); // ✅ overlay encima
       this._isDrawing = true;
 
       if (this._rawPoints.length === 0) {
-        this._pushPointIfFar(p.worldX, p.worldY);
+        this._pushPointIfFar(wp.x, wp.y);
       } else {
         const last = this._rawPoints[this._rawPoints.length - 1];
-        const dx = p.worldX - last.x;
-        const dy = p.worldY - last.y;
+        const dx = wp.x - last.x;
+        const dy = wp.y - last.y;
         const d2 = dx * dx + dy * dy;
 
         if (d2 > (this._minSampleDist * this._minSampleDist) * 4) {
-          this._rawPoints.push({ x: p.worldX, y: p.worldY });
+          this._rawPoints.push({ x: wp.x, y: wp.y });
         } else {
-          this._pushPointIfFar(p.worldX, p.worldY);
+          this._pushPointIfFar(wp.x, wp.y);
         }
       }
 
