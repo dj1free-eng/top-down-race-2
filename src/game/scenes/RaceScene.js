@@ -966,32 +966,21 @@ if (this._onResizeTouchControls) {
   this._diag = null;
 };
 this.events.once(Phaser.Scenes.Events.SHUTDOWN, this._onShutdownRaceScene, this);
-// ========================================// ========================================
-// IMPORT TRACK: carga dinámica JSON + imagen + 1 solo restart
+// ========================================
+// IMPORT TRACK: carga dinámica SOLO JSON + 1 restart
 // ========================================
 if (typeof this.trackKey === 'string' && this.trackKey.startsWith('import:')) {
   const slug = this.trackKey.slice('import:'.length).trim();
-
   const jsonKey = `trackjson:${slug}`;
-  const imgKey = `trackimg:${slug}`;
 
   const needJson = !this.cache.json.exists(jsonKey);
-  const needImg =
-    (slug === 'karting-tenerife-largo') &&
-    !this.textures.exists(imgKey);
 
-  if (needJson || needImg) {
+  if (needJson) {
     try {
-      this._diag?.(`[IMPORT] preload ${slug} json:${needJson ? 'Y' : 'N'} img:${needImg ? 'Y' : 'N'}`);
+      this._diag?.(`[IMPORT] preload ${slug} json:Y`);
     } catch (e) {}
 
-    if (needJson) {
-      this.load.json(jsonKey, `tracks/${slug}/track.json`);
-    }
-
-    if (needImg) {
-      this.load.image(imgKey, 'assets/tracks/karting-tenerife-completo.png');
-    }
+    this.load.json(jsonKey, `tracks/${slug}/track.json`);
 
     this.load.once('complete', () => {
       try { this._diag?.(`[IMPORT] preload complete ${slug} ✓`); } catch (e) {}
@@ -1000,14 +989,7 @@ if (typeof this.trackKey === 'string' && this.trackKey.startsWith('import:')) {
 
     this.load.once('loaderror', (file) => {
       try { this._diag?.(`[IMPORT] preload ERROR: ${file?.key || 'unknown'}`); } catch (e) {}
-
-      // Si falla el JSON, fallback seguro
-      if (needJson) {
-        this.scene.restart({ trackKey: 'track02' });
-      } else {
-        // Si solo falla la imagen, seguimos con la pista importada
-        this.scene.restart({ trackKey: `import:${slug}` });
-      }
+      this.scene.restart({ trackKey: 'track02' });
     });
 
     this.load.start();
@@ -1023,28 +1005,6 @@ const spec = this.baseSpec || CAR_SPECS.stock;
 
     this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
     this.cameras.main.setBounds(0, 0, this.worldW, this.worldH);
-
-// =========================
-// Track image background (solo import Tenerife largo por ahora)
-// =========================
-if (this.trackKey === 'import:karting-tenerife-largo') {
-  const imgKey = 'trackimg:karting-tenerife-largo';
-
-  if (this.textures.exists(imgKey)) {
-    this.trackImage = this.add.image(
-      Math.floor(this.worldW / 2),
-      Math.floor(this.worldH / 2),
-      imgKey
-    );
-
-    this.trackImage
-      .setDisplaySize(this.worldW, this.worldH)
-      .setScrollFactor(1)
-      .setDepth(-110);
-  } else {
-    this.trackImage = null;
-    try { this._diag?.('[IMPORT] track image missing in textures'); } catch (e) {}
-  }
 }
     // Producción: asegurar que NO hay debug gráfico de físicas (si se creó en algún momento)
 this.physics.world.drawDebug = false;
@@ -1209,33 +1169,27 @@ this.time.delayedCall(500, () => {
 // 3) Fondo del mundo: OFF + GRASS BAND
 // =========================
 
-if (this.trackKey !== 'import:karting-tenerife-largo') {
-  // OFF: cubre todo el mundo (arena / tierra)
-  this.bgOff = this.add.tileSprite(
-    0, 0,
-    this.worldW,
-    this.worldH,
-    'off'
-  )
-    .setOrigin(0, 0)
-    .setScrollFactor(1)
-    .setDepth(-100);
+// OFF: cubre todo el mundo (arena / tierra)
+this.bgOff = this.add.tileSprite(
+  0, 0,
+  this.worldW,
+  this.worldH,
+  'off'
+)
+  .setOrigin(0, 0)
+  .setScrollFactor(1)
+  .setDepth(-100);
 
-  // GRASS: se verá SOLO donde exista la banda GRASS
-  this.bgGrass = this.add.tileSprite(
-    0, 0,
-    this.worldW,
-    this.worldH,
-    'grass'
-  )
-    .setOrigin(0, 0)
-    .setScrollFactor(1)
-    .setDepth(-90);
-} else {
-  this.bgOff = null;
-  this.bgGrass = null;
-}
-
+// GRASS: se verá SOLO donde exista la banda GRASS
+this.bgGrass = this.add.tileSprite(
+  0, 0,
+  this.worldW,
+  this.worldH,
+  'grass'
+)
+  .setOrigin(0, 0)
+  .setScrollFactor(1)
+  .setDepth(-90);
 
 // ===============================
 // GRASS MASK (solo afecta a bgGrass)
