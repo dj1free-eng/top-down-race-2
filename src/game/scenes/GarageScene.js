@@ -30,7 +30,8 @@ this._thumbScrollY = 0;
 this._thumbMinScroll = 0;
 this._thumbViewport = null;
 this._thumbListTopY = 0;
-
+this._thumbPointerActive = false;
+this._thumbPointerStartY = 0;
     this._hero = null;
 this._uiRefs = {};
 
@@ -218,18 +219,31 @@ this._onGarageWheel = (_p, _g, _dx, dy) => {
 // scroll touch con inercia
 this._onGaragePointerDown = (p) => {
   if (!this._thumbViewport || !Phaser.Geom.Rectangle.Contains(this._thumbViewport, p.x, p.y)) {
+    this._thumbPointerActive = false;
     this._isDraggingThumbs = false;
     return;
   }
 
+  this._thumbPointerActive = true;
+  this._thumbPointerStartY = p.y;
+
   this._dragStartY = p.y;
   this._dragStartScroll = this._thumbScrollY;
   this._scrollVelocity = 0;
-  this._isDraggingThumbs = true;
+  this._isDraggingThumbs = false; // 👈 todavía NO es drag
 };
 
 this._onGaragePointerMove = (p) => {
-  if (!p.isDown || !this._isDraggingThumbs) return;
+  if (!p.isDown || !this._thumbPointerActive) return;
+
+  const rawDelta = p.y - this._thumbPointerStartY;
+
+  // solo consideramos drag real al superar un umbral
+  if (!this._isDraggingThumbs && Math.abs(rawDelta) > 10) {
+    this._isDraggingThumbs = true;
+  }
+
+  if (!this._isDraggingThumbs) return;
 
   const delta = p.y - this._dragStartY;
   const next = this._dragStartScroll + delta;
@@ -239,6 +253,7 @@ this._onGaragePointerMove = (p) => {
 };
 
 this._onGaragePointerUp = () => {
+  this._thumbPointerActive = false;
   this._isDraggingThumbs = false;
 };
 
@@ -350,7 +365,7 @@ hit.on('pointerdown', (p) => {
 
 hit.on('pointermove', (p) => {
   if (!pressArmed) return;
-  if (Math.abs(p.y - pressStartY) > 8 || this._isDraggingThumbs) {
+  if (Math.abs(p.y - pressStartY) > 10) {
     dragged = true;
   }
 });
