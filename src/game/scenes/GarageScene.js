@@ -30,7 +30,16 @@ export class GarageScene extends BaseScene {
     this._thumbMinScroll = 0;
 
     this._hero = null;
-    this._uiRefs = {};
+this._uiRefs = {};
+
+// Scroll premium
+this._dragStartY = 0;
+this._dragStartScroll = 0;
+this._scrollVelocity = 0;
+this._isDraggingThumbs = false;
+
+// FX premium
+this._heroPulseTween = null;
   }
 
   init(data) {
@@ -53,12 +62,17 @@ export class GarageScene extends BaseScene {
     this._selectedIndex = idx >= 0 ? idx : 0;
 
     this.scale.on('resize', this._rebuild, this);
-    this._rebuild();
+this.events.on('update', this._updateGarage, this);
+this._rebuild();
   }
 
   shutdown() {
-    this.scale.off('resize', this._rebuild, this);
-  }
+  this.scale.off('resize', this._rebuild, this);
+  this.events.off('update', this._updateGarage, this);
+
+  try { this._heroPulseTween?.remove(); } catch (e) {}
+  this._heroPulseTween = null;
+}
 
   _rebuild() {
     try { this.children.removeAll(true); } catch (e) {}
@@ -185,22 +199,46 @@ export class GarageScene extends BaseScene {
     this._thumbMinScroll = Math.min(0, listH - contentInnerH);
     this._applyThumbScroll();
 
-    // scroll mouse
-    this.input.on('wheel', (_p, _g, _dx, dy) => {
-      this._setThumbScroll(this._thumbScrollY - dy * 0.7);
-    });
+// reset listeners para no duplicarlos al reconstruir UI
+this.input.off('wheel', this._onGarageWheel, this);
+this.input.off('pointerdown', this._onGaragePointerDown, this);
+this.input.off('pointermove', this._onGaragePointerMove, this);
+this.input.off('pointerup', this._onGaragePointerUp, this);
+this.input.off('pointerupoutside', this._onGaragePointerUp, this);
 
-    // scroll touch
-    this.input.on('pointerdown', (p) => {
-      this._dragStartY = p.y;
-      this._dragStartScroll = this._thumbScrollY;
-    });
+// scroll mouse
+this._onGarageWheel = (_p, _g, _dx, dy) => {
+  this._scrollVelocity = 0;
+  this._setThumbScroll(this._thumbScrollY - dy * 0.7);
+};
 
-    this.input.on('pointermove', (p) => {
-      if (!p.isDown) return;
-      const delta = p.y - this._dragStartY;
-      this._setThumbScroll(this._dragStartScroll + delta);
-    });
+// scroll touch con inercia
+this._onGaragePointerDown = (p) => {
+  this._dragStartY = p.y;
+  this._dragStartScroll = this._thumbScrollY;
+  this._scrollVelocity = 0;
+  this._isDraggingThumbs = true;
+};
+
+this._onGaragePointerMove = (p) => {
+  if (!p.isDown || !this._isDraggingThumbs) return;
+
+  const delta = p.y - this._dragStartY;
+  const next = this._dragStartScroll + delta;
+
+  this._scrollVelocity = p.velocity.y * 0.085;
+  this._setThumbScroll(next);
+};
+
+this._onGaragePointerUp = () => {
+  this._isDraggingThumbs = false;
+};
+
+this.input.on('wheel', this._onGarageWheel, this);
+this.input.on('pointerdown', this._onGaragePointerDown, this);
+this.input.on('pointermove', this._onGaragePointerMove, this);
+this.input.on('pointerup', this._onGaragePointerUp, this);
+this.input.on('pointerupoutside', this._onGaragePointerUp, this);
 
     // =========================
     // Panel derecho: hero
@@ -233,7 +271,18 @@ export class GarageScene extends BaseScene {
     const realTop = (this._thumbList._topBaseY ?? this._thumbList.y);
     this._thumbList.y = realTop + this._thumbScrollY;
   }
+  _updateGarage(_time, delta) {
+    if (this._isDraggingThumbs) return;
+    if (Math.abs(this._scrollVelocity) < 0.02) return;
 
+    this._setThumbScroll(this._thumbScrollY + this._scrollVelocity * (delta / 16.666));
+    this._scrollVelocity *= 0.92;
+
+    // freno extra al llegar a extremos
+    if (this._thumbScrollY >= 0 || this._thumbScrollY <= this._thumbMinScroll) {
+      this._scrollVelocity *= 0.75;
+    }
+  }
   _createThumbItem(x, y, w, h, carId, spec, index) {
     const item = this.add.container(x, y);
     this._thumbList.add(item);
@@ -465,29 +514,79 @@ export class GarageScene extends BaseScene {
       t.bg.setStrokeStyle(2, isSel ? 0x2bff88 : 0xb7c0ff, isSel ? 0.65 : 0.18);
       t.accent.setFillStyle(isSel ? 0x2bff88 : 0x2b7bff, isSel ? 0.95 : 0.70);
     });
+const selectedThumb = this._thumbItems[this._selectedIndex];
+if (selectedThumb?.item) {
+  const itemTop = selectedThumb.item.y;
+  const itemBottom = itemTop + selectedThumb.bg.height;
+  const viewTop = -this._thumbScrollY;
+  const viewH = Math.max(120, this.scale.height - 72 - 18 - 58);
+  const viewBottom = viewTop + viewH;
 
+  if (itemTop < viewTop + 8) {
+    this._setThumbScroll(-(itemTop - 8));
+  } else if (itemBottom > viewBottom - 8) {
+    this._setThumbScroll(-(itemBottom - viewH + 8));
+  }
+}
     const spec = selected.spec;
     const heroCard = this._uiRefs.heroCard;
     const texKey = `card_${selected.id}`;
 
-    this._ensureCardTexture(selected.id, spec, (loadedKey) => {
-      if (!heroCard?.scene) return;
-      if (!this.textures.exists(loadedKey)) return;
+this._ensureCardTexture(selected.id, spec, (loadedKey) => {
+  if (!heroCard?.scene) return;
+  if (!this.textures.exists(loadedKey)) return;
 
-      heroCard.setTexture(loadedKey).setVisible(true);
+  const { width, height } = this.scale;
+  const isLandscape = width >= height;
+  const heroMaxW = isLandscape ? width * 0.28 : width * 0.50;
+  const heroMaxH = isLandscape ? height * 0.58 : height * 0.34;
 
-      const { width, height } = this.scale;
-      const isLandscape = width >= height;
-      const heroMaxW = isLandscape ? width * 0.28 : width * 0.50;
-      const heroMaxH = isLandscape ? height * 0.58 : height * 0.34;
+  const applyHeroTexture = () => {
+    heroCard.setTexture(loadedKey).setVisible(true);
 
-      const s = Math.min(
-        heroMaxW / (heroCard.width || 1),
-        heroMaxH / (heroCard.height || 1)
-      );
-      heroCard.setScale(s);
+    const s = Math.min(
+      heroMaxW / (heroCard.width || 1),
+      heroMaxH / (heroCard.height || 1)
+    );
+
+    heroCard.setScale(s * 0.92);
+    heroCard.setAlpha(0);
+
+    this.tweens.add({
+      targets: heroCard,
+      scale: s,
+      alpha: 1,
+      duration: 180,
+      ease: 'Cubic.easeOut'
     });
 
+    try { this._heroPulseTween?.remove(); } catch (e) {}
+    this._heroPulseTween = this.tweens.add({
+      targets: heroCard,
+      scaleX: heroCard.scaleX * 1.018,
+      scaleY: heroCard.scaleY * 1.018,
+      duration: 900,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+  };
+
+  if (!heroCard.visible) {
+    applyHeroTexture();
+    return;
+  }
+
+  this.tweens.add({
+    targets: heroCard,
+    alpha: 0,
+    scaleX: heroCard.scaleX * 0.96,
+    scaleY: heroCard.scaleY * 0.96,
+    duration: 110,
+    ease: 'Quad.easeIn',
+    onComplete: applyHeroTexture
+  });
+});
     this._uiRefs.title.setText((spec.name || selected.id).toUpperCase());
     this._uiRefs.brand.setText(String(spec.brand || 'MARCA DESCONOCIDA').toUpperCase());
     this._uiRefs.meta.setText(
