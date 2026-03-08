@@ -80,7 +80,37 @@ export class TrackEditorScene extends BaseScene {
     backHit.on('pointerdown', () => {
       this.scene.start('admin-hub');
     });
+    const makeMiniBtn = (x, y, label, onClick) => {
+      const r = this.add.rectangle(x, y, 40, 40, 0xffffff, 0.18)
+        .setOrigin(0)
+        .setStrokeStyle(2, 0xffffff, 0.45)
+        .setInteractive({ useHandCursor: true })
+        .setDepth(200);
 
+      const t = this.add.text(x + 20, y + 20, label, {
+        fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+        fontSize: '20px',
+        color: '#ffffff',
+        fontStyle: 'bold'
+      }).setOrigin(0.5).setDepth(201);
+
+      r.on('pointerdown', () => onClick?.());
+      return { r, t };
+    };
+
+    const zoomBtnY = backY;
+    const zoomPlusX = backX + backSize + 10;
+    const zoomMinusX = zoomPlusX + 48;
+
+    this._ui.zoomPlusBtn = makeMiniBtn(zoomPlusX, zoomBtnY, '+', () => {
+      this._editZoom = Phaser.Math.Clamp(this._editZoom * 1.2, this._editZoomMin, this._editZoomMax);
+      if (this._editCam) this._editCam.setZoom(this._editZoom);
+    });
+
+    this._ui.zoomMinusBtn = makeMiniBtn(zoomMinusX, zoomBtnY, '−', () => {
+      this._editZoom = Phaser.Math.Clamp(this._editZoom / 1.2, this._editZoomMin, this._editZoomMax);
+      if (this._editCam) this._editCam.setZoom(this._editZoom);
+    });
     // --- Layout pro (Canvas 3:2 + Sidebar) ---
     const pad = isNarrow ? 12 : 16;
     const gap = isNarrow ? 10 : 14;
