@@ -283,7 +283,27 @@ this.input.on('pointerupoutside', this._onGaragePointerUp, this);
 
 _applyThumbScroll() {
   if (!this._thumbList) return;
+
   this._thumbList.y = this._thumbListTopY + this._thumbScrollY;
+
+  // IMPORTANTÍSIMO:
+  // la máscara visual NO bloquea input, así que activamos
+  // solo las cards visibles dentro del viewport
+  if (!this._thumbViewport) return;
+
+  const viewTop = this._thumbViewport.y;
+  const viewBottom = this._thumbViewport.y + this._thumbViewport.height;
+
+  for (const t of this._thumbItems) {
+    if (!t?.item || !t?.bg || !t?.hit) continue;
+
+    const itemTop = this._thumbList.y + t.item.y;
+    const itemBottom = itemTop + t.bg.height;
+
+    const visible = itemBottom > viewTop && itemTop < viewBottom;
+
+    t.hit.setInteractive(visible ? { useHandCursor: true } : false);
+  }
 }
   
   _updateGarage(_time, delta) {
@@ -390,7 +410,7 @@ hit.on('pointerupoutside', () => {
 
     item.add(hit);
 
-    return { item, bg, accent, name, meta, cardImg, carId, spec, index };
+return { item, bg, accent, name, meta, cardImg, hit, carId, spec, index };
   }
 
   _buildHeroPanel(x, y, w, h) {
