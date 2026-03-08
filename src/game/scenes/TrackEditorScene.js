@@ -147,9 +147,7 @@ export class TrackEditorScene extends BaseScene {
     this._editCam.setScroll(0, 0);
     this._editCam.setRoundPixels(true);
 // La cámara principal NO debe renderizar el mundo del editor
-this.cameras.main.ignore([
-  canvasPanel
-]); 
+
     // Panel visual del “lienzo”
     const canvasPanel = this.add.graphics().setDepth(5);
     canvasPanel.fillStyle(0xffffff, 0.14);
