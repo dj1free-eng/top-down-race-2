@@ -24,10 +24,12 @@ export class GarageScene extends BaseScene {
     this._cars = [];
     this._selectedIndex = 0;
 
-    this._thumbList = null;
-    this._thumbItems = [];
-    this._thumbScrollY = 0;
-    this._thumbMinScroll = 0;
+this._thumbList = null;
+this._thumbItems = [];
+this._thumbScrollY = 0;
+this._thumbMinScroll = 0;
+this._thumbViewport = null;
+this._thumbListTopY = 0;
 
     this._hero = null;
 this._uiRefs = {};
@@ -174,7 +176,8 @@ this._rebuild();
     const listY = contentY + 46;
     const listW = leftW - 24;
     const listH = contentH - 58;
-
+    this._thumbViewport = new Phaser.Geom.Rectangle(listX, listY, listW, listH);
+    this._thumbListTopY = listY;
     const maskGfx = this.make.graphics({ x: 0, y: 0, add: false });
     maskGfx.fillStyle(0xffffff);
     maskGfx.fillRect(listX, listY, listW, listH);
@@ -214,6 +217,11 @@ this._onGarageWheel = (_p, _g, _dx, dy) => {
 
 // scroll touch con inercia
 this._onGaragePointerDown = (p) => {
+  if (!this._thumbViewport || !Phaser.Geom.Rectangle.Contains(this._thumbViewport, p.x, p.y)) {
+    this._isDraggingThumbs = false;
+    return;
+  }
+
   this._dragStartY = p.y;
   this._dragStartScroll = this._thumbScrollY;
   this._scrollVelocity = 0;
@@ -226,7 +234,6 @@ this._onGaragePointerMove = (p) => {
   const delta = p.y - this._dragStartY;
   const next = this._dragStartScroll + delta;
 
-  // más sensibilidad e inercia más visible
   this._scrollVelocity = p.velocity.y * 0.16;
   this._setThumbScroll(next);
 };
@@ -259,19 +266,11 @@ this.input.on('pointerupoutside', this._onGaragePointerUp, this);
     this._applyThumbScroll();
   }
 
-  _applyThumbScroll() {
-    if (!this._thumbList) return;
-    const baseY = this._thumbList.y >= 0 ? this._thumbList.y : 0;
-    // La y inicial real la fijamos en _rebuild y aquí solo aplicamos offset
-    const maskTop = this._thumbList.mask?.geometryMask?.graphicsGeometry?.y;
-    // sin inventar offsets raros: simplemente base visual listY quedó ya en container
-    this._thumbList.y = (this.scale.height >= 0 ? this._thumbList.y : 0);
-    const listY = this._thumbList.list.length ? this._thumbList.list[0].parentContainer.y : this._thumbList.y;
-    this._thumbList.y = (this._thumbList.y - this._thumbList.y) + (this._thumbList.y || 0);
-    // forma estable:
-    const realTop = (this._thumbList._topBaseY ?? this._thumbList.y);
-    this._thumbList.y = realTop + this._thumbScrollY;
-  }
+_applyThumbScroll() {
+  if (!this._thumbList) return;
+  this._thumbList.y = this._thumbListTopY + this._thumbScrollY;
+}
+  
   _updateGarage(_time, delta) {
     if (this._isDraggingThumbs) return;
 if (Math.abs(this._scrollVelocity) < 0.01) return;
@@ -289,9 +288,6 @@ if (this._thumbScrollY >= 0 || this._thumbScrollY <= this._thumbMinScroll) {
   _createThumbItem(x, y, w, h, carId, spec, index) {
     const item = this.add.container(x, y);
     this._thumbList.add(item);
-
-    // guardamos topBaseY una sola vez
-    if (this._thumbList._topBaseY == null) this._thumbList._topBaseY = this._thumbList.y;
 
     const selected = index === this._selectedIndex;
 
@@ -342,7 +338,7 @@ if (this._thumbScrollY >= 0 || this._thumbScrollY <= this._thumbMinScroll) {
       .setOrigin(0)
       .setInteractive({ useHandCursor: true });
 
-    let pressArmed = false;
+let pressArmed = false;
 let pressStartY = 0;
 let dragged = false;
 
@@ -354,7 +350,7 @@ hit.on('pointerdown', (p) => {
 
 hit.on('pointermove', (p) => {
   if (!pressArmed) return;
-  if (Math.abs(p.y - pressStartY) > 10) {
+  if (Math.abs(p.y - pressStartY) > 8 || this._isDraggingThumbs) {
     dragged = true;
   }
 });
@@ -363,7 +359,7 @@ hit.on('pointerup', () => {
   if (!pressArmed) return;
   pressArmed = false;
 
-  if (dragged) return;
+  if (dragged || this._isDraggingThumbs) return;
 
   this._selectedIndex = index;
   this._refreshSelection();
@@ -548,16 +544,18 @@ hit.on('pointerupoutside', () => {
       t.accent.setFillStyle(isSel ? 0x2bff88 : 0x2b7bff, isSel ? 0.95 : 0.70);
     });
 const selectedThumb = this._thumbItems[this._selectedIndex];
-if (selectedThumb?.item && selectedThumb?.bg) {
-  const itemCenter = selectedThumb.item.y + selectedThumb.bg.height * 0.5;
-  const viewH = Math.max(120, this.scale.height - 72 - 18 - 58);
+if (selectedThumb?.item && selectedThumb?.bg && this._thumbViewport) {
+  const itemCenter = selectedThumb.item.y + (selectedThumb.bg.height * 0.5);
+  const viewCenter = this._thumbViewport.height * 0.5;
 
-  const targetScroll = -(itemCenter - viewH * 0.5);
+  const targetScroll = -(itemCenter - viewCenter);
+
+  this.tweens.killTweensOf(this);
 
   this.tweens.add({
     targets: this,
     _thumbScrollY: Phaser.Math.Clamp(targetScroll, this._thumbMinScroll, 0),
-    duration: 220,
+    duration: 240,
     ease: 'Cubic.easeOut',
     onUpdate: () => this._applyThumbScroll()
   });
