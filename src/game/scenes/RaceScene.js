@@ -976,19 +976,13 @@ if (typeof this.trackKey === 'string' && this.trackKey.startsWith('import:')) {
   const needJson = !this.cache.json.exists(jsonKey);
 
   if (needJson) {
-    try {
-      this._diag?.(`[IMPORT] preload ${slug} json:Y`);
-    } catch (e) {}
-
     this.load.json(jsonKey, `tracks/${slug}/track.json`);
 
     this.load.once('complete', () => {
-      try { this._diag?.(`[IMPORT] preload complete ${slug} ✓`); } catch (e) {}
       this.scene.restart({ trackKey: `import:${slug}` });
     });
 
-    this.load.once('loaderror', (file) => {
-      try { this._diag?.(`[IMPORT] preload ERROR: ${file?.key || 'unknown'}`); } catch (e) {}
+    this.load.once('loaderror', () => {
       this.scene.restart({ trackKey: 'track02' });
     });
 
@@ -1169,7 +1163,7 @@ this.time.delayedCall(500, () => {
 // 3) Fondo del mundo: OFF + GRASS BAND
 // =========================
 
-// OFF: cubre todo el mundo (arena / tierra)
+// // OFF: cubre todo el mundo (arena / tierra)
 this.bgOff = this.add.tileSprite(
   0, 0,
   this.worldW,
