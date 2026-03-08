@@ -457,7 +457,7 @@ makeImgBtn(xFactory, 'btn_factory', midW, () => {
 
 // TRACKS
 makeImgBtn(xTracks, 'btn_tracks', sideW, () => {
-  this._openOverlay('tracks');
+  this.scene.start('TrackGarageScene', { mode: 'player' });
 });
 
 // =========================
