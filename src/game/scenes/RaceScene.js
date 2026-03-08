@@ -1134,7 +1134,7 @@ this.ensureCarSkinTexture(specFinal).then((texKey) => {
   if (this.minimap?.car?.scene) {
     this.minimap.car.setTexture(texKey);
 
-    const targetW = 12;
+    const targetW = 20;
     const sw = this.minimap.car.width || 1;
     const sh = this.minimap.car.height || 1;
     const s = Math.min(targetW / sw, 8 / sh);
@@ -1852,7 +1852,7 @@ const mmCar = this.add.sprite(
 
 // tamaño premium pequeño pero legible
 {
-  const targetW = 12;
+  const targetW = 20;
   const sw = mmCar.width || 1;
   const sh = mmCar.height || 1;
   const s = Math.min(targetW / sw, 8 / sh);
@@ -3003,7 +3003,8 @@ this.uiMenuBtn.on('pointerdown', (p, lx, ly, e) => {
   // 👇 AQUÍ VA EL PUNTO B (ESTO ES LO QUE AÑADES)
   // =================================================
 
-  // 🔎 Detecta y apaga cualquier objeto con textura missing
+
+    // 🔎 Detecta y apaga cualquier objeto con textura missing
   this._hideMissingTextures();
 
   // Re-chequeo por si algo aparece tras resize / UI
