@@ -261,7 +261,8 @@ trackFileInput.addEventListener('change', (e) => {
           img.setScale(scale);
           img.setAlpha(0.42);
 
-          this._bgImage = img;
+this._bgImage = img;
+this.cameras.main.ignore(this._bgImage);
         };
 
         htmlImg.onerror = () => {
