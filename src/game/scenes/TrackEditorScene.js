@@ -25,7 +25,16 @@ export class TrackEditorScene extends BaseScene {
     this._trackWidth = 160;
     this._trackWidthMin = 80;
     this._trackWidthMax = 260;
-
+     // Cámara de edición (zoom/pan sobre el lienzo)
+    this._editCam = null;
+    this._editZoom = 1;
+    this._editZoomMin = 0.6;
+    this._editZoomMax = 3.5;
+    this._editPanning = false;
+    this._editPinching = false;
+    this._pinchStartDist = 0;
+    this._pinchStartZoom = 1;
+    this._panLastMid = null;
     this._ui.widthSlider = null;
     this._ui.widthValue = null;
     this._ui.validateBtn = null;
@@ -102,7 +111,11 @@ export class TrackEditorScene extends BaseScene {
     const drawY = Math.floor(canvasY + (canvasMaxH - drawH) / 2);
 
     this._drawRect = new Phaser.Geom.Rectangle(drawX, drawY, drawW, drawH);
-
+    // Cámara dedicada al editor (de momento solo la creamos)
+    this._editCam = this.cameras.add(0, 0, width, height);
+    this._editCam.setZoom(this._editZoom || 1);
+    this._editCam.setScroll(0, 0);
+    this._editCam.setRoundPixels(true);
     // Panel visual del “lienzo”
     const canvasPanel = this.add.graphics().setDepth(5);
     canvasPanel.fillStyle(0xffffff, 0.14);
@@ -512,7 +525,20 @@ this._gRaw = this.add.graphics().setDepth(10);
 this._gClean = this.add.graphics().setDepth(11);
 this._gMask = this.add.graphics().setDepth(11.5);
 this._gOverlay = this.add.graphics().setDepth(12); // ✅ overlay encima
+    // Cámara dedicada al editor (solo canvas y dibujo)
+    this._editCam = this.cameras.add(0, 0, width, height);
+    this._editCam.setZoom(this._editZoom);
+    this._editCam.setScroll(0, 0);
+    this._editCam.setRoundPixels(true);
 
+    // La cámara principal NO debe renderizar el mundo editable
+    this.cameras.main.ignore([
+      this._bgImage,
+      this._gRaw,
+      this._gClean,
+      this._gMask,
+      this._gOverlay
+    ].filter(Boolean));
 
     
     // --- Input táctil ---
@@ -592,7 +618,12 @@ this.input.on('pointerupoutside', () => {
   }
 });
   }
-
+  _screenToEditorWorld(pointer) {
+    if (!this._editCam) {
+      return { x: pointer.worldX, y: pointer.worldY };
+    }
+    return this._editCam.getWorldPoint(pointer.x, pointer.y);
+  }
   _pushPointIfFar(x, y) {
     const n = this._rawPoints.length;
     if (n === 0) {
