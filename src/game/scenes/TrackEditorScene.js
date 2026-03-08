@@ -557,22 +557,27 @@ this._gRaw = this.add.graphics().setDepth(10);
 this._gClean = this.add.graphics().setDepth(11);
 this._gMask = this.add.graphics().setDepth(11.5);
 this._gOverlay = this.add.graphics().setDepth(12); // ✅ overlay encima
-    // Cámara dedicada al editor (solo canvas y dibujo)
-    this._editCam = this.cameras.add(0, 0, width, height);
-    this._editCam.setZoom(this._editZoom);
-    this._editCam.setScroll(0, 0);
-    this._editCam.setRoundPixels(true);
 
-    // La cámara principal NO debe renderizar el mundo editable
-    this.cameras.main.ignore([
-      this._bgImage,
-      this._gRaw,
-      this._gClean,
-      this._gMask,
-      this._gOverlay
-    ].filter(Boolean));
+// Cámara dedicada al editor (solo canvas y dibujo)
+this._editCam = this.cameras.add(0, 0, width, height);
+this._editCam.setZoom(this._editZoom);
+this._editCam.setScroll(0, 0);
+this._editCam.setRoundPixels(true);
 
-    
+// Separación de cámaras
+this.cameras.main.ignore([
+  canvasPanel,
+  this._gRaw,
+  this._gClean,
+  this._gMask,
+  this._gOverlay
+]);
+
+this._editCam.ignore([
+  backHit,
+  backG,
+  sidePanel
+]);
     // --- Input táctil ---
     this.input.addPointer(1);
 
