@@ -226,7 +226,8 @@ this._onGaragePointerMove = (p) => {
   const delta = p.y - this._dragStartY;
   const next = this._dragStartScroll + delta;
 
-  this._scrollVelocity = p.velocity.y * 0.085;
+  // más sensibilidad e inercia más visible
+  this._scrollVelocity = p.velocity.y * 0.16;
   this._setThumbScroll(next);
 };
 
@@ -273,15 +274,17 @@ this.input.on('pointerupoutside', this._onGaragePointerUp, this);
   }
   _updateGarage(_time, delta) {
     if (this._isDraggingThumbs) return;
-    if (Math.abs(this._scrollVelocity) < 0.02) return;
+if (Math.abs(this._scrollVelocity) < 0.01) return;
 
-    this._setThumbScroll(this._thumbScrollY + this._scrollVelocity * (delta / 16.666));
-    this._scrollVelocity *= 0.92;
+this._setThumbScroll(this._thumbScrollY + this._scrollVelocity * (delta / 16.666));
 
-    // freno extra al llegar a extremos
-    if (this._thumbScrollY >= 0 || this._thumbScrollY <= this._thumbMinScroll) {
-      this._scrollVelocity *= 0.75;
-    }
+// más deslizamiento, menos frenazo
+this._scrollVelocity *= 0.95;
+
+// freno extra solo al chocar con extremos
+if (this._thumbScrollY >= 0 || this._thumbScrollY <= this._thumbMinScroll) {
+  this._scrollVelocity *= 0.82;
+}
   }
   _createThumbItem(x, y, w, h, carId, spec, index) {
     const item = this.add.container(x, y);
@@ -339,10 +342,40 @@ this.input.on('pointerupoutside', this._onGaragePointerUp, this);
       .setOrigin(0)
       .setInteractive({ useHandCursor: true });
 
-    hit.on('pointerdown', () => {
-      this._selectedIndex = index;
-      this._refreshSelection();
-    });
+    let pressArmed = false;
+let pressStartY = 0;
+let dragged = false;
+
+hit.on('pointerdown', (p) => {
+  pressArmed = true;
+  dragged = false;
+  pressStartY = p.y;
+});
+
+hit.on('pointermove', (p) => {
+  if (!pressArmed) return;
+  if (Math.abs(p.y - pressStartY) > 10) {
+    dragged = true;
+  }
+});
+
+hit.on('pointerup', () => {
+  if (!pressArmed) return;
+  pressArmed = false;
+
+  if (dragged) return;
+
+  this._selectedIndex = index;
+  this._refreshSelection();
+});
+
+hit.on('pointerout', () => {
+  pressArmed = false;
+});
+
+hit.on('pointerupoutside', () => {
+  pressArmed = false;
+});
 
     item.add(hit);
 
@@ -515,18 +548,19 @@ this.input.on('pointerupoutside', this._onGaragePointerUp, this);
       t.accent.setFillStyle(isSel ? 0x2bff88 : 0x2b7bff, isSel ? 0.95 : 0.70);
     });
 const selectedThumb = this._thumbItems[this._selectedIndex];
-if (selectedThumb?.item) {
-  const itemTop = selectedThumb.item.y;
-  const itemBottom = itemTop + selectedThumb.bg.height;
-  const viewTop = -this._thumbScrollY;
+if (selectedThumb?.item && selectedThumb?.bg) {
+  const itemCenter = selectedThumb.item.y + selectedThumb.bg.height * 0.5;
   const viewH = Math.max(120, this.scale.height - 72 - 18 - 58);
-  const viewBottom = viewTop + viewH;
 
-  if (itemTop < viewTop + 8) {
-    this._setThumbScroll(-(itemTop - 8));
-  } else if (itemBottom > viewBottom - 8) {
-    this._setThumbScroll(-(itemBottom - viewH + 8));
-  }
+  const targetScroll = -(itemCenter - viewH * 0.5);
+
+  this.tweens.add({
+    targets: this,
+    _thumbScrollY: Phaser.Math.Clamp(targetScroll, this._thumbMinScroll, 0),
+    duration: 220,
+    ease: 'Cubic.easeOut',
+    onUpdate: () => this._applyThumbScroll()
+  });
 }
     const spec = selected.spec;
     const heroCard = this._uiRefs.heroCard;
