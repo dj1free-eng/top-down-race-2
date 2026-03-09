@@ -580,6 +580,14 @@ this._editCam.ignore([
   backG,
   sidePanel
 ]);
+        const isPointerInCanvasView = (pointer) => {
+      return (
+        pointer.x >= drawX &&
+        pointer.x <= drawX + drawW &&
+        pointer.y >= drawY &&
+        pointer.y <= drawY + drawH
+      );
+    };
     // --- Input táctil ---
     this.input.addPointer(1);
 
@@ -592,12 +600,12 @@ this._editCam.ignore([
         return;
       }
 
-      const wp = this._screenToEditorWorld(p);
-
-      if (this._drawRect && !this._drawRect.contains(wp.x, wp.y)) {
+            if (!isPointerInCanvasView(p)) {
         this._isDrawing = false;
         return;
       }
+
+      const wp = this._screenToEditorWorld(p);
 
       this._isDrawing = true;
 
@@ -675,8 +683,9 @@ this._editCam.ignore([
 
       if (!this._isDrawing) return;
 
+            if (!isPointerInCanvasView(p)) return;
+
       const wp = this._screenToEditorWorld(p);
-      if (this._drawRect && !this._drawRect.contains(wp.x, wp.y)) return;
 
       this._pushPointIfFar(wp.x, wp.y);
       this._lastValidation = null;
