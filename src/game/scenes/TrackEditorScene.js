@@ -627,15 +627,21 @@ this._editCam.ignore([
     this.input.on('pointermove', (p) => {
       const downPointers = this.input.manager.pointers.filter(pp => pp.isDown);
 
-      // Pan con 2 dedos
+      // Pan + pinch zoom con 2 dedos
       if (downPointers.length >= 2) {
         this._isDrawing = false;
 
         const p1 = downPointers[0];
         const p2 = downPointers[1];
+
         const midX = (p1.x + p2.x) * 0.5;
         const midY = (p1.y + p2.y) * 0.5;
 
+        const dxp = p2.x - p1.x;
+        const dyp = p2.y - p1.y;
+        const dist = Math.sqrt(dxp * dxp + dyp * dyp);
+
+        // PAN
         if (this._panLastMid) {
           const dx = midX - this._panLastMid.x;
           const dy = midY - this._panLastMid.y;
@@ -646,11 +652,26 @@ this._editCam.ignore([
           }
         }
 
+        // PINCH ZOOM
+        if (this._pinchLastDist > 0 && this._editCam) {
+          const ratio = dist / this._pinchLastDist;
+          const nextZoom = Phaser.Math.Clamp(
+            this._editCam.zoom * ratio,
+            this._editZoomMin,
+            this._editZoomMax
+          );
+
+          this._editZoom = nextZoom;
+          this._editCam.setZoom(this._editZoom);
+        }
+
         this._panLastMid = { x: midX, y: midY };
+        this._pinchLastDist = dist;
         return;
       }
 
       this._panLastMid = null;
+      this._pinchLastDist = 0;
 
       if (!this._isDrawing) return;
 
@@ -667,6 +688,7 @@ this._editCam.ignore([
 this.input.on('pointerup', () => {
   this._isDrawing = false;
   this._panLastMid = null;
+    this._pinchLastDist = 0;
   // Snap-to-close al soltar el dedo
   if (this._drawMode) {
     const didSnap = this._snapCloseIfNear();
@@ -682,6 +704,7 @@ this.input.on('pointerup', () => {
 this.input.on('pointerupoutside', () => {
   this._isDrawing = false;
   this._panLastMid = null;
+    this._pinchLastDist = 0;
   // Snap-to-close también si suelta fuera
   if (this._drawMode) {
     const didSnap = this._snapCloseIfNear();
