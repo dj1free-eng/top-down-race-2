@@ -583,8 +583,14 @@ this._editCam.ignore([
     // --- Input táctil ---
     this.input.addPointer(1);
 
-        this.input.on('pointerdown', (p) => {
+            this.input.on('pointerdown', (p) => {
       if (!this._drawMode) return;
+
+      const activeTouches = this.input.manager.pointers.filter(pp => pp.isDown).length;
+      if (activeTouches > 1) {
+        this._isDrawing = false;
+        return;
+      }
 
       const wp = this._screenToEditorWorld(p);
 
@@ -618,8 +624,14 @@ this._editCam.ignore([
       this._refreshStats();
     });
 
-    this.input.on('pointermove', (p) => {
+        this.input.on('pointermove', (p) => {
       if (!this._isDrawing) return;
+
+      const activeTouches = this.input.manager.pointers.filter(pp => pp.isDown).length;
+      if (activeTouches > 1) {
+        this._isDrawing = false;
+        return;
+      }
 
       const wp = this._screenToEditorWorld(p);
       if (this._drawRect && !this._drawRect.contains(wp.x, wp.y)) return;
