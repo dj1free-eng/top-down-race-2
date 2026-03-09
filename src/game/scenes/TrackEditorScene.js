@@ -155,12 +155,12 @@ export class TrackEditorScene extends BaseScene {
     canvasPanel.lineStyle(isNarrow ? 2 : 3, 0xffffff, 0.55);
     canvasPanel.strokeRoundedRect(drawX, drawY, drawW, drawH, round);
 
-    this.add.text(drawX + 14, drawY + 10, 'ZONA DE DIBUJO (3:2)', {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: isNarrow ? '11px' : '12px',
-      color: '#ffffff',
-      fontStyle: 'bold'
-    }).setAlpha(0.85).setDepth(6);
+const canvasLabel = this.add.text(drawX + 14, drawY + 10, 'ZONA DE DIBUJO (3:2)', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: isNarrow ? '11px' : '12px',
+  color: '#ffffff',
+  fontStyle: 'bold'
+}).setAlpha(0.85).setDepth(6);
 
     // Sidebar visual
     const sidePanel = this.add.graphics().setDepth(50);
@@ -568,6 +568,7 @@ this._editCam.centerOn(drawX + drawW / 2, drawY + drawH / 2);
 // Separación de cámaras
 this.cameras.main.ignore([
   canvasPanel,
+  canvasLabel,
   this._gRaw,
   this._gClean,
   this._gMask,
