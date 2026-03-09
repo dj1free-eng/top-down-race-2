@@ -3066,6 +3066,17 @@ try { this.cameras.main.ignore(this._touchDbg); } catch (e) {}
     }
   });
 }
+      // La cámara de edición solo debe renderizar el lienzo y sus capas
+    this._editCam.ignore(
+      this.children.list.filter(obj =>
+        obj !== canvasPanel &&
+        obj !== this._bgImage &&
+        obj !== this._gRaw &&
+        obj !== this._gClean &&
+        obj !== this._gMask &&
+        obj !== this._gOverlay
+      )
+    );
 }
 
   buildUpgradesUI() {
