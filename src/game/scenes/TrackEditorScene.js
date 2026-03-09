@@ -261,8 +261,15 @@ trackFileInput.addEventListener('change', (e) => {
           img.setScale(scale);
           img.setAlpha(0.42);
 
-this._bgImage = img;
-this.cameras.main.ignore(this._bgImage);
+          this._bgImage = img;
+
+          // La imagen de referencia solo debe verla la cámara de edición
+          this.cameras.main.ignore(this._bgImage);
+
+          // Si por algún motivo quedó ignorada por editCam, la rehabilitamos
+          if (this._editCam) {
+            try { this._editCam.removeIgnore(this._bgImage); } catch (e) {}
+          }
         };
 
         htmlImg.onerror = () => {
@@ -725,17 +732,6 @@ this.input.on('pointerupoutside', () => {
     }
   }
 });
-          // La cámara de edición solo debe renderizar el lienzo y sus capas
-    this._editCam.ignore(
-      this.children.list.filter(obj =>
-        obj !== canvasPanel &&
-        obj !== this._bgImage &&
-        obj !== this._gRaw &&
-        obj !== this._gClean &&
-        obj !== this._gMask &&
-        obj !== this._gOverlay
-      )
-    );
   }
   _screenToEditorWorld(pointer) {
     if (!this._editCam) {
