@@ -39,7 +39,7 @@ export class TrackEditorScene extends BaseScene {
     this._ui.widthValue = null;
     this._ui.validateBtn = null;
     this._ui.report = null;
-
+    this._panLastMid = null;
     // ✅ último reporte de validación (para overlay)
     this._lastValidation = null;
   }
@@ -624,14 +624,35 @@ this._editCam.ignore([
       this._refreshStats();
     });
 
-        this.input.on('pointermove', (p) => {
-      if (!this._isDrawing) return;
+    this.input.on('pointermove', (p) => {
+      const downPointers = this.input.manager.pointers.filter(pp => pp.isDown);
 
-      const activeTouches = this.input.manager.pointers.filter(pp => pp.isDown).length;
-      if (activeTouches > 1) {
+      // Pan con 2 dedos
+      if (downPointers.length >= 2) {
         this._isDrawing = false;
+
+        const p1 = downPointers[0];
+        const p2 = downPointers[1];
+        const midX = (p1.x + p2.x) * 0.5;
+        const midY = (p1.y + p2.y) * 0.5;
+
+        if (this._panLastMid) {
+          const dx = midX - this._panLastMid.x;
+          const dy = midY - this._panLastMid.y;
+
+          if (this._editCam) {
+            this._editCam.scrollX -= dx / this._editCam.zoom;
+            this._editCam.scrollY -= dy / this._editCam.zoom;
+          }
+        }
+
+        this._panLastMid = { x: midX, y: midY };
         return;
       }
+
+      this._panLastMid = null;
+
+      if (!this._isDrawing) return;
 
       const wp = this._screenToEditorWorld(p);
       if (this._drawRect && !this._drawRect.contains(wp.x, wp.y)) return;
@@ -645,7 +666,7 @@ this._editCam.ignore([
 
 this.input.on('pointerup', () => {
   this._isDrawing = false;
-
+  this._panLastMid = null;
   // Snap-to-close al soltar el dedo
   if (this._drawMode) {
     const didSnap = this._snapCloseIfNear();
@@ -660,7 +681,7 @@ this.input.on('pointerup', () => {
 
 this.input.on('pointerupoutside', () => {
   this._isDrawing = false;
-
+  this._panLastMid = null;
   // Snap-to-close también si suelta fuera
   if (this._drawMode) {
     const didSnap = this._snapCloseIfNear();
