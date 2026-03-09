@@ -559,11 +559,11 @@ this._gClean = this.add.graphics().setDepth(11);
 this._gMask = this.add.graphics().setDepth(11.5);
 this._gOverlay = this.add.graphics().setDepth(12); // ✅ overlay encima
 
-// Cámara dedicada al editor (solo canvas y dibujo)
-this._editCam = this.cameras.add(0, 0, width, height);
+// Cámara dedicada al editor (solo dentro del canvas)
+this._editCam = this.cameras.add(drawX, drawY, drawW, drawH);
 this._editCam.setZoom(this._editZoom);
-this._editCam.setScroll(0, 0);
 this._editCam.setRoundPixels(true);
+this._editCam.centerOn(drawX + drawW / 2, drawY + drawH / 2);
 
 // Separación de cámaras
 this.cameras.main.ignore([
