@@ -733,8 +733,6 @@ this.input.on('pointerupoutside', () => {
 });
         // --- Sync final de cámaras ---
     const editorWorldObjs = [
-      canvasPanel,
-      canvasLabel,
       this._bgImage,
       this._gRaw,
       this._gClean,
@@ -742,10 +740,10 @@ this.input.on('pointerupoutside', () => {
       this._gOverlay
     ].filter(Boolean);
 
-    // La cámara principal NO pinta el mundo editable
+    // La cámara principal NO pinta solo el contenido editable real
     this.cameras.main.ignore(editorWorldObjs);
 
-    // La cámara del editor ignora TODO lo demás (UI, títulos, sidebar, botones, etc.)
+    // La cámara del editor ignora TODO lo demás
     const editorUiObjs = this.children.list.filter(obj => !editorWorldObjs.includes(obj));
     this._editCam.ignore(editorUiObjs);
   }
