@@ -266,7 +266,6 @@ trackFileInput.addEventListener('change', (e) => {
           // La imagen de referencia solo debe verla la cámara de edición
           this.cameras.main.ignore(this._bgImage);
 
-          // Si por algún motivo quedó ignorada por editCam, la rehabilitamos
           if (this._editCam) {
             try { this._editCam.removeIgnore(this._bgImage); } catch (e) {}
           }
@@ -732,6 +731,23 @@ this.input.on('pointerupoutside', () => {
     }
   }
 });
+        // --- Sync final de cámaras ---
+    const editorWorldObjs = [
+      canvasPanel,
+      canvasLabel,
+      this._bgImage,
+      this._gRaw,
+      this._gClean,
+      this._gMask,
+      this._gOverlay
+    ].filter(Boolean);
+
+    // La cámara principal NO pinta el mundo editable
+    this.cameras.main.ignore(editorWorldObjs);
+
+    // La cámara del editor ignora TODO lo demás (UI, títulos, sidebar, botones, etc.)
+    const editorUiObjs = this.children.list.filter(obj => !editorWorldObjs.includes(obj));
+    this._editCam.ignore(editorUiObjs);
   }
   _screenToEditorWorld(pointer) {
     if (!this._editCam) {
