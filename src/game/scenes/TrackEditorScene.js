@@ -20,7 +20,7 @@ export class TrackEditorScene extends BaseScene {
     this._selectedNode = -1;
     this._selectedHandle = null; // 'in' | 'out' | null
     this._draggingNode = false;
-
+    this._pendingTap = null;
     // Cámara de edición
     this._editCam = null;
     this._editZoom = 1;
@@ -525,64 +525,83 @@ export class TrackEditorScene extends BaseScene {
     // =================================================
     this.input.addPointer(2);
 
-        this.input.on('pointerdown', (p) => {
-      const activeTouches = this.input.manager.pointers.filter(pp => pp.isDown).length;
-      if (activeTouches > 1) {
-        this._draggingNode = false;
-        this._selectedHandle = null;
-        return;
-      }
+this.input.on('pointerdown', (p) => {
 
-      if (!isPointerInCanvasView(p)) {
-        this._draggingNode = false;
-        this._selectedHandle = null;
-        return;
-      }
+  const activeTouches = this.input.manager.pointers.filter(pp => pp.isDown).length;
 
-      const wp = this._screenToEditorWorld(p);
+  // Si hay más de un dedo → cancelar cualquier tap pendiente
+  if (activeTouches > 1) {
+    if (this._pendingTap) {
+      this._pendingTap.remove(false);
+      this._pendingTap = null;
+    }
+    this._draggingNode = false;
+    this._selectedHandle = null;
+    return;
+  }
 
-      const hitHandle = this._findHitHandle(wp.x, wp.y, 14);
-      if (hitHandle) {
-        this._selectedNode = hitHandle.nodeIndex;
-        this._selectedHandle = hitHandle.handle;
-        this._draggingNode = true;
-        this._redraw();
-        this._refreshStats();
-        return;
-      }
+  if (!isPointerInCanvasView(p)) {
+    return;
+  }
 
-      const hitNode = this._findHitNode(wp.x, wp.y, 18);
-      if (hitNode >= 0) {
-        this._selectedNode = hitNode;
-        this._selectedHandle = null;
-        this._draggingNode = true;
-      } else {
-        const handleLen = 36;
+  const wp = this._screenToEditorWorld(p);
 
-        this._nodes.push({
-          x: wp.x,
-          y: wp.y,
-          inX: wp.x - handleLen,
-          inY: wp.y,
-          outX: wp.x + handleLen,
-          outY: wp.y,
-          mode: 'mirrored'
-        });
+  // Esperamos un poco antes de actuar
+  this._pendingTap = this.time.delayedCall(120, () => {
 
-        this._selectedNode = this._nodes.length - 1;
-        this._selectedHandle = null;
-        this._draggingNode = true;
-      }
+    const hitHandle = this._findHitHandle(wp.x, wp.y, 14);
+
+    if (hitHandle) {
+      this._selectedNode = hitHandle.nodeIndex;
+      this._selectedHandle = hitHandle.handle;
+      this._draggingNode = true;
 
       this._redraw();
       this._refreshStats();
-    });
+      return;
+    }
+
+    const hitNode = this._findHitNode(wp.x, wp.y, 18);
+
+    if (hitNode >= 0) {
+      this._selectedNode = hitNode;
+      this._selectedHandle = null;
+      this._draggingNode = true;
+    }
+    else {
+
+      const handleLen = 36;
+
+      this._nodes.push({
+        x: wp.x,
+        y: wp.y,
+        inX: wp.x - handleLen,
+        inY: wp.y,
+        outX: wp.x + handleLen,
+        outY: wp.y,
+        mode: 'mirrored'
+      });
+
+      this._selectedNode = this._nodes.length - 1;
+      this._selectedHandle = null;
+      this._draggingNode = true;
+    }
+
+    this._redraw();
+    this._refreshStats();
+
+  });
+});
 
     this.input.on('pointermove', (p) => {
       const downPointers = this.input.manager.pointers.filter(pp => pp.isDown);
 
       // Pan + pinch zoom con 2 dedos
       if (downPointers.length >= 2) {
+      if (this._pendingTap) {
+  this._pendingTap.remove(false);
+  this._pendingTap = null;
+} 
         this._draggingNode = false;
 
         const p1 = downPointers[0];
