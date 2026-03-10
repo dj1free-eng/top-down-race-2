@@ -569,20 +569,42 @@ this.input.on('pointerdown', (p) => {
       this._draggingNode = true;
     }
     else {
+      const hitSeg = this._findHitSegmentPoint(wp.x, wp.y, 16, 24);
 
-      const handleLen = 36;
+      if (hitSeg) {
+        const rawLen = Math.sqrt(hitSeg.tx * hitSeg.tx + hitSeg.ty * hitSeg.ty);
+        const nx = rawLen > 0.0001 ? hitSeg.tx / rawLen : 1;
+        const ny = rawLen > 0.0001 ? hitSeg.ty / rawLen : 0;
+        const handleLen = 36;
 
-      this._nodes.push({
-        x: wp.x,
-        y: wp.y,
-        inX: wp.x - handleLen,
-        inY: wp.y,
-        outX: wp.x + handleLen,
-        outY: wp.y,
-        mode: 'mirrored'
-      });
+        const newNode = {
+          x: hitSeg.x,
+          y: hitSeg.y,
+          inX: hitSeg.x - nx * handleLen,
+          inY: hitSeg.y - ny * handleLen,
+          outX: hitSeg.x + nx * handleLen,
+          outY: hitSeg.y + ny * handleLen,
+          mode: 'mirrored'
+        };
 
-      this._selectedNode = this._nodes.length - 1;
+        this._nodes.splice(hitSeg.insertIndex, 0, newNode);
+        this._selectedNode = hitSeg.insertIndex;
+      } else {
+        const handleLen = 36;
+
+        this._nodes.push({
+          x: wp.x,
+          y: wp.y,
+          inX: wp.x - handleLen,
+          inY: wp.y,
+          outX: wp.x + handleLen,
+          outY: wp.y,
+          mode: 'mirrored'
+        });
+
+        this._selectedNode = this._nodes.length - 1;
+      }
+
       this._selectedHandle = null;
       this._draggingNode = true;
     }
@@ -734,6 +756,80 @@ this.input.on('pointerdown', (p) => {
     }
 
     return null;
+  }
+    _findHitSegmentPoint(x, y, radius = 16, samplesPerSegment = 24) {
+    if (this._nodes.length < 2) return null;
+
+    const r2 = radius * radius;
+    let best = null;
+
+    const pointSegDistSq = (px, py, ax, ay, bx, by) => {
+      const abx = bx - ax;
+      const aby = by - ay;
+      const apx = px - ax;
+      const apy = py - ay;
+      const abLen2 = abx * abx + aby * aby;
+
+      let t = 0;
+      if (abLen2 > 0.000001) {
+        t = Phaser.Math.Clamp((apx * abx + apy * aby) / abLen2, 0, 1);
+      }
+
+      const qx = ax + abx * t;
+      const qy = ay + aby * t;
+      const dx = px - qx;
+      const dy = py - qy;
+
+      return {
+        distSq: dx * dx + dy * dy,
+        qx,
+        qy,
+        tx: abx,
+        ty: aby
+      };
+    };
+
+    const sampleCurve = (a, b) => {
+      const curve = new Phaser.Curves.CubicBezier(
+        new Phaser.Math.Vector2(a.x, a.y),
+        new Phaser.Math.Vector2(a.outX ?? a.x, a.outY ?? a.y),
+        new Phaser.Math.Vector2(b.inX ?? b.x, b.inY ?? b.y),
+        new Phaser.Math.Vector2(b.x, b.y)
+      );
+      return curve.getPoints(samplesPerSegment);
+    };
+
+    const testBezierSegment = (a, b, insertIndex) => {
+      const pts = sampleCurve(a, b);
+      for (let k = 0; k < pts.length - 1; k++) {
+        const p0 = pts[k];
+        const p1 = pts[k + 1];
+
+        const hit = pointSegDistSq(x, y, p0.x, p0.y, p1.x, p1.y);
+        if (hit.distSq > r2) continue;
+
+        if (!best || hit.distSq < best.distSq) {
+          best = {
+            distSq: hit.distSq,
+            insertIndex,
+            x: hit.qx,
+            y: hit.qy,
+            tx: hit.tx,
+            ty: hit.ty
+          };
+        }
+      }
+    };
+
+    for (let i = 0; i < this._nodes.length - 1; i++) {
+      testBezierSegment(this._nodes[i], this._nodes[i + 1], i + 1);
+    }
+
+    if (this._closed && this._nodes.length > 2) {
+      testBezierSegment(this._nodes[this._nodes.length - 1], this._nodes[0], this._nodes.length);
+    }
+
+    return best;
   }
   _refreshStats() {
     if (!this._ui?.stats) return;
