@@ -543,7 +543,18 @@ export class TrackEditorScene extends BaseScene {
         this._selectedNode = hitNode;
         this._draggingNode = true;
       } else {
-        this._nodes.push({ x: wp.x, y: wp.y });
+        const handleLen = 36;
+
+        this._nodes.push({
+          x: wp.x,
+          y: wp.y,
+          inX: wp.x - handleLen,
+          inY: wp.y,
+          outX: wp.x + handleLen,
+          outY: wp.y,
+          mode: 'mirrored'
+        });
+
         this._selectedNode = this._nodes.length - 1;
         this._draggingNode = true;
       }
@@ -720,10 +731,34 @@ export class TrackEditorScene extends BaseScene {
     }
 
     // Nodos
-    for (let i = 0; i < this._nodes.length; i++) {
+        for (let i = 0; i < this._nodes.length; i++) {
       const n = this._nodes[i];
       const selected = i === this._selectedNode;
 
+      const inX = n.inX ?? n.x;
+      const inY = n.inY ?? n.y;
+      const outX = n.outX ?? n.x;
+      const outY = n.outY ?? n.y;
+
+      // líneas de tangente
+      this._gNodes.lineStyle(2, 0xffffff, selected ? 0.45 : 0.22);
+      this._gNodes.beginPath();
+      this._gNodes.moveTo(n.x, n.y);
+      this._gNodes.lineTo(inX, inY);
+      this._gNodes.moveTo(n.x, n.y);
+      this._gNodes.lineTo(outX, outY);
+      this._gNodes.strokePath();
+
+      // handles
+      this._gNodes.fillStyle(0x7fdcff, selected ? 0.95 : 0.65);
+      this._gNodes.fillCircle(inX, inY, 4);
+      this._gNodes.fillCircle(outX, outY, 4);
+
+      this._gNodes.lineStyle(1.5, 0x0b1020, 0.75);
+      this._gNodes.strokeCircle(inX, inY, 4);
+      this._gNodes.strokeCircle(outX, outY, 4);
+
+      // anchor
       this._gNodes.fillStyle(selected ? 0x3dff7a : 0xffffff, 0.95);
       this._gNodes.fillCircle(n.x, n.y, selected ? 8 : 6);
 
@@ -745,9 +780,14 @@ export class TrackEditorScene extends BaseScene {
       version: 1,
       closed: this._closed,
       trackWidth: this._trackWidth,
-      nodes: this._nodes.map(n => ({
+            nodes: this._nodes.map(n => ({
         x: Math.round(n.x * 10) / 10,
-        y: Math.round(n.y * 10) / 10
+        y: Math.round(n.y * 10) / 10,
+        inX: Math.round((n.inX ?? n.x) * 10) / 10,
+        inY: Math.round((n.inY ?? n.y) * 10) / 10,
+        outX: Math.round((n.outX ?? n.x) * 10) / 10,
+        outY: Math.round((n.outY ?? n.y) * 10) / 10,
+        mode: n.mode || 'mirrored'
       }))
     };
 
