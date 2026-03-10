@@ -777,17 +777,50 @@ export class TrackEditorScene extends BaseScene {
       }
       this._gPreview.strokePath();
 
-      // Línea guía fina
-      this._gBezier.lineStyle(3, 0xffffff, 0.9);
-      this._gBezier.beginPath();
-      this._gBezier.moveTo(this._nodes[0].x, this._nodes[0].y);
-      for (let i = 1; i < this._nodes.length; i++) {
-        this._gBezier.lineTo(this._nodes[i].x, this._nodes[i].y);
-      }
-      if (this._closed) {
-        this._gBezier.lineTo(this._nodes[0].x, this._nodes[0].y);
-      }
-      this._gBezier.strokePath();
+// Curva Bézier real
+this._gBezier.lineStyle(3, 0xffffff, 0.95);
+this._gBezier.beginPath();
+
+const n0 = this._nodes[0];
+this._gBezier.moveTo(n0.x, n0.y);
+
+for (let i = 0; i < this._nodes.length - 1; i++) {
+
+  const a = this._nodes[i];
+  const b = this._nodes[i + 1];
+
+  const c1x = a.outX ?? a.x;
+  const c1y = a.outY ?? a.y;
+
+  const c2x = b.inX ?? b.x;
+  const c2y = b.inY ?? b.y;
+
+  this._gBezier.bezierCurveTo(
+    c1x, c1y,
+    c2x, c2y,
+    b.x, b.y
+  );
+}
+
+if (this._closed && this._nodes.length > 2) {
+
+  const a = this._nodes[this._nodes.length - 1];
+  const b = this._nodes[0];
+
+  const c1x = a.outX ?? a.x;
+  const c1y = a.outY ?? a.y;
+
+  const c2x = b.inX ?? b.x;
+  const c2y = b.inY ?? b.y;
+
+  this._gBezier.bezierCurveTo(
+    c1x, c1y,
+    c2x, c2y,
+    b.x, b.y
+  );
+}
+
+this._gBezier.strokePath();
     }
 
     // Nodos
