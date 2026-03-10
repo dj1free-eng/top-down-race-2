@@ -927,7 +927,7 @@ if (this._nodes.length >= 2) {
         outX: Math.round((n.outX ?? n.x) * 10) / 10,
         outY: Math.round((n.outY ?? n.y) * 10) / 10,
         mode: n.mode || 'mirrored'
-      }))
+      })),
       centerline: this._generateCenterline()
     };
 
