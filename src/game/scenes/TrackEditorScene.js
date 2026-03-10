@@ -658,23 +658,33 @@ this.input.on('pointerdown', (p) => {
       const n = this._nodes[this._selectedNode];
 
       if (this._selectedHandle === 'in') {
-        n.inX = wp.x;
-        n.inY = wp.y;
-      } else if (this._selectedHandle === 'out') {
-        n.outX = wp.x;
-        n.outY = wp.y;
-      } else {
-        const dx = wp.x - n.x;
-        const dy = wp.y - n.y;
+  n.inX = wp.x;
+  n.inY = wp.y;
 
-        n.x = wp.x;
-        n.y = wp.y;
+  if ((n.mode || 'mirrored') === 'mirrored') {
+    n.outX = n.x + (n.x - n.inX);
+    n.outY = n.y + (n.y - n.inY);
+  }
+} else if (this._selectedHandle === 'out') {
+  n.outX = wp.x;
+  n.outY = wp.y;
 
-        n.inX += dx;
-        n.inY += dy;
-        n.outX += dx;
-        n.outY += dy;
-      }
+  if ((n.mode || 'mirrored') === 'mirrored') {
+    n.inX = n.x + (n.x - n.outX);
+    n.inY = n.y + (n.y - n.outY);
+  }
+} else {
+  const dx = wp.x - n.x;
+  const dy = wp.y - n.y;
+
+  n.x = wp.x;
+  n.y = wp.y;
+
+  n.inX += dx;
+  n.inY += dy;
+  n.outX += dx;
+  n.outY += dy;
+}
 
       this._redraw();
       this._refreshStats();
