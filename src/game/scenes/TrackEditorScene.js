@@ -928,12 +928,63 @@ if (this._nodes.length >= 2) {
         outY: Math.round((n.outY ?? n.y) * 10) / 10,
         mode: n.mode || 'mirrored'
       }))
+      centerline: this._generateCenterline()
     };
 
     this._downloadJson(`bezier_draft_${Date.now()}.json`, data);
     this._ui.report?.setText('✅ Draft Bézier exportado');
   }
+_generateCenterline(samplesPerSegment = 24) {
 
+  const centerline = [];
+
+  const sampleCurve = (a, b) => {
+
+    const curve = new Phaser.Curves.CubicBezier(
+      new Phaser.Math.Vector2(a.x, a.y),
+      new Phaser.Math.Vector2(a.outX ?? a.x, a.outY ?? a.y),
+      new Phaser.Math.Vector2(b.inX ?? b.x, b.inY ?? b.y),
+      new Phaser.Math.Vector2(b.x, b.y)
+    );
+
+    return curve.getPoints(samplesPerSegment);
+  };
+
+  for (let i = 0; i < this._nodes.length - 1; i++) {
+
+    const a = this._nodes[i];
+    const b = this._nodes[i + 1];
+
+    const pts = sampleCurve(a, b);
+
+    for (let p of pts) {
+      centerline.push({
+        x: Math.round(p.x * 10) / 10,
+        y: Math.round(p.y * 10) / 10
+      });
+    }
+
+  }
+
+  if (this._closed && this._nodes.length > 2) {
+
+    const a = this._nodes[this._nodes.length - 1];
+    const b = this._nodes[0];
+
+    const pts = sampleCurve(a, b);
+
+    for (let p of pts) {
+      centerline.push({
+        x: Math.round(p.x * 10) / 10,
+        y: Math.round(p.y * 10) / 10
+      });
+    }
+
+  }
+
+  return centerline;
+
+}
   _downloadJson(filename, data) {
     try {
       const json = JSON.stringify(data, null, 2);
