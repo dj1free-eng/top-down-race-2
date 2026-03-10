@@ -882,6 +882,63 @@ this.input.on('pointerdown', (p) => {
     this._selectedHandle = null;
     this._draggingNode = true;
   }
+    _syncOppositeHandleByMode(n, movedHandle) {
+    const mode = n.mode || 'mirrored';
+    if (mode === 'free') return;
+
+    const dxIn = (n.inX ?? n.x) - n.x;
+    const dyIn = (n.inY ?? n.y) - n.y;
+    const dxOut = (n.outX ?? n.x) - n.x;
+    const dyOut = (n.outY ?? n.y) - n.y;
+
+    if (movedHandle === 'in') {
+      const lenIn = Math.sqrt(dxIn * dxIn + dyIn * dyIn);
+
+      if (lenIn <= 0.0001) {
+        if (mode === 'mirrored') {
+          n.outX = n.x;
+          n.outY = n.y;
+        }
+        return;
+      }
+
+      const ux = dxIn / lenIn;
+      const uy = dyIn / lenIn;
+
+      if (mode === 'mirrored') {
+        n.outX = n.x - ux * lenIn;
+        n.outY = n.y - uy * lenIn;
+      } else if (mode === 'aligned') {
+        const lenOut = Math.sqrt(dxOut * dxOut + dyOut * dyOut);
+        n.outX = n.x - ux * lenOut;
+        n.outY = n.y - uy * lenOut;
+      }
+    }
+
+    if (movedHandle === 'out') {
+      const lenOut = Math.sqrt(dxOut * dxOut + dyOut * dyOut);
+
+      if (lenOut <= 0.0001) {
+        if (mode === 'mirrored') {
+          n.inX = n.x;
+          n.inY = n.y;
+        }
+        return;
+      }
+
+      const ux = dxOut / lenOut;
+      const uy = dyOut / lenOut;
+
+      if (mode === 'mirrored') {
+        n.inX = n.x - ux * lenOut;
+        n.inY = n.y - uy * lenOut;
+      } else if (mode === 'aligned') {
+        const lenIn = Math.sqrt(dxIn * dxIn + dyIn * dyIn);
+        n.inX = n.x - ux * lenIn;
+        n.inY = n.y - uy * lenIn;
+      }
+    }
+  }
   _refreshStats() {
     if (!this._ui?.stats) return;
     this._ui.stats.setText(
