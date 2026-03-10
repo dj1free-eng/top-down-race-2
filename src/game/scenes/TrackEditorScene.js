@@ -572,23 +572,7 @@ this.input.on('pointerdown', (p) => {
       const hitSeg = this._findHitSegmentPoint(wp.x, wp.y, 16, 24);
 
       if (hitSeg) {
-        const rawLen = Math.sqrt(hitSeg.tx * hitSeg.tx + hitSeg.ty * hitSeg.ty);
-        const nx = rawLen > 0.0001 ? hitSeg.tx / rawLen : 1;
-        const ny = rawLen > 0.0001 ? hitSeg.ty / rawLen : 0;
-        const handleLen = 36;
-
-        const newNode = {
-          x: hitSeg.x,
-          y: hitSeg.y,
-          inX: hitSeg.x - nx * handleLen,
-          inY: hitSeg.y - ny * handleLen,
-          outX: hitSeg.x + nx * handleLen,
-          outY: hitSeg.y + ny * handleLen,
-          mode: 'mirrored'
-        };
-
-        this._nodes.splice(hitSeg.insertIndex, 0, newNode);
-        this._selectedNode = hitSeg.insertIndex;
+        this._insertNodeOnBezierSegment(hitSeg);
       } else {
         const handleLen = 36;
 
@@ -757,7 +741,7 @@ this.input.on('pointerdown', (p) => {
 
     return null;
   }
-    _findHitSegmentPoint(x, y, radius = 16, samplesPerSegment = 24) {
+  _findHitSegmentPoint(x, y, radius = 16, samplesPerSegment = 24) {
     if (this._nodes.length < 2) return null;
 
     const r2 = radius * radius;
@@ -770,13 +754,13 @@ this.input.on('pointerdown', (p) => {
       const apy = py - ay;
       const abLen2 = abx * abx + aby * aby;
 
-      let t = 0;
+      let tLine = 0;
       if (abLen2 > 0.000001) {
-        t = Phaser.Math.Clamp((apx * abx + apy * aby) / abLen2, 0, 1);
+        tLine = Phaser.Math.Clamp((apx * abx + apy * aby) / abLen2, 0, 1);
       }
 
-      const qx = ax + abx * t;
-      const qy = ay + aby * t;
+      const qx = ax + abx * tLine;
+      const qy = ay + aby * tLine;
       const dx = px - qx;
       const dy = py - qy;
 
@@ -784,8 +768,7 @@ this.input.on('pointerdown', (p) => {
         distSq: dx * dx + dy * dy,
         qx,
         qy,
-        tx: abx,
-        ty: aby
+        tLine
       };
     };
 
@@ -799,8 +782,10 @@ this.input.on('pointerdown', (p) => {
       return curve.getPoints(samplesPerSegment);
     };
 
-    const testBezierSegment = (a, b, insertIndex) => {
+    const testBezierSegment = (a, b, aIndex, bIndex, insertIndex) => {
       const pts = sampleCurve(a, b);
+      const divisions = Math.max(1, pts.length - 1);
+
       for (let k = 0; k < pts.length - 1; k++) {
         const p0 = pts[k];
         const p1 = pts[k + 1];
@@ -808,28 +793,84 @@ this.input.on('pointerdown', (p) => {
         const hit = pointSegDistSq(x, y, p0.x, p0.y, p1.x, p1.y);
         if (hit.distSq > r2) continue;
 
+        const curveT = Phaser.Math.Clamp((k + hit.tLine) / divisions, 0, 1);
+
         if (!best || hit.distSq < best.distSq) {
           best = {
             distSq: hit.distSq,
             insertIndex,
-            x: hit.qx,
-            y: hit.qy,
-            tx: hit.tx,
-            ty: hit.ty
+            aIndex,
+            bIndex,
+            curveT
           };
         }
       }
     };
 
     for (let i = 0; i < this._nodes.length - 1; i++) {
-      testBezierSegment(this._nodes[i], this._nodes[i + 1], i + 1);
+      testBezierSegment(this._nodes[i], this._nodes[i + 1], i, i + 1, i + 1);
     }
 
     if (this._closed && this._nodes.length > 2) {
-      testBezierSegment(this._nodes[this._nodes.length - 1], this._nodes[0], this._nodes.length);
+      testBezierSegment(
+        this._nodes[this._nodes.length - 1],
+        this._nodes[0],
+        this._nodes.length - 1,
+        0,
+        this._nodes.length
+      );
     }
 
     return best;
+  }
+    _insertNodeOnBezierSegment(hitSeg) {
+    if (!hitSeg) return;
+
+    const a = this._nodes[hitSeg.aIndex];
+    const b = this._nodes[hitSeg.bIndex];
+    if (!a || !b) return;
+
+    const t = Phaser.Math.Clamp(hitSeg.curveT ?? 0.5, 0.0001, 0.9999);
+
+    const lerpPoint = (p0, p1, tt) => ({
+      x: p0.x + (p1.x - p0.x) * tt,
+      y: p0.y + (p1.y - p0.y) * tt
+    });
+
+    const p0 = { x: a.x, y: a.y };
+    const p1 = { x: a.outX ?? a.x, y: a.outY ?? a.y };
+    const p2 = { x: b.inX ?? b.x, y: b.inY ?? b.y };
+    const p3 = { x: b.x, y: b.y };
+
+    const q0 = lerpPoint(p0, p1, t);
+    const q1 = lerpPoint(p1, p2, t);
+    const q2 = lerpPoint(p2, p3, t);
+
+    const r0 = lerpPoint(q0, q1, t);
+    const r1 = lerpPoint(q1, q2, t);
+
+    const s = lerpPoint(r0, r1, t);
+
+    a.outX = q0.x;
+    a.outY = q0.y;
+
+    b.inX = q2.x;
+    b.inY = q2.y;
+
+    const newNode = {
+      x: s.x,
+      y: s.y,
+      inX: r0.x,
+      inY: r0.y,
+      outX: r1.x,
+      outY: r1.y,
+      mode: 'mirrored'
+    };
+
+    this._nodes.splice(hitSeg.insertIndex, 0, newNode);
+    this._selectedNode = hitSeg.insertIndex;
+    this._selectedHandle = null;
+    this._draggingNode = true;
   }
   _refreshStats() {
     if (!this._ui?.stats) return;
