@@ -928,7 +928,7 @@ if (this._nodes.length >= 2) {
         outY: Math.round((n.outY ?? n.y) * 10) / 10,
         mode: n.mode || 'mirrored'
       })),
-      centerline: this._generateCenterline()
+centerline: this._generateCenterline(24)
     };
 
     this._downloadJson(`bezier_draft_${Date.now()}.json`, data);
