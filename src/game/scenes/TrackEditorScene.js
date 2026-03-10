@@ -141,12 +141,6 @@ export class TrackEditorScene extends BaseScene {
     const drawY = Math.floor(canvasY + (canvasMaxH - drawH) / 2);
 
     this._drawRect = new Phaser.Geom.Rectangle(drawX, drawY, drawW, drawH);
-    // Cámara dedicada al editor (de momento solo la creamos)
-    this._editCam = this.cameras.add(0, 0, width, height);
-    this._editCam.setZoom(this._editZoom || 1);
-    this._editCam.setScroll(0, 0);
-    this._editCam.setRoundPixels(true);
-// La cámara principal NO debe renderizar el mundo del editor
 
     // Panel visual del “lienzo”
     const canvasPanel = this.add.graphics().setDepth(5);
@@ -568,10 +562,10 @@ this._gOverlay = this.add.graphics().setDepth(12); // ✅ overlay encima
 // Cámara dedicada al editor (solo canvas y dibujo)
 this._editCam = this.cameras.add(drawX, drawY, drawW, drawH);
 this._editCam.setZoom(this._editZoom);
+this._editCam.setScroll(0, 0);
 this._editCam.setRoundPixels(true);
-this._editCam.centerOn(drawX + drawW / 2, drawY + drawH / 2);
 
-// Separación de cámaras
+// Separación base de cámaras
 this.cameras.main.ignore([
   canvasPanel,
   canvasLabel,
@@ -579,12 +573,6 @@ this.cameras.main.ignore([
   this._gClean,
   this._gMask,
   this._gOverlay
-]);
-
-this._editCam.ignore([
-  backHit,
-  backG,
-  sidePanel
 ]);
         const isPointerInCanvasView = (pointer) => {
       return (
