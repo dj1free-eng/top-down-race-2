@@ -777,50 +777,45 @@ export class TrackEditorScene extends BaseScene {
       }
       this._gPreview.strokePath();
 
-// Curva Bézier real
-this._gBezier.lineStyle(3, 0xffffff, 0.95);
-this._gBezier.beginPath();
+    // Curva Bézier real (muestreada en puntos)
+    this._gBezier.lineStyle(3, 0xffffff, 0.95);
+    this._gBezier.beginPath();
 
-const n0 = this._nodes[0];
-this._gBezier.moveTo(n0.x, n0.y);
+    const sampleCurve = (a, b, steps = 24) => {
+      const curve = new Phaser.Curves.CubicBezier(
+        new Phaser.Math.Vector2(a.x, a.y),
+        new Phaser.Math.Vector2(a.outX ?? a.x, a.outY ?? a.y),
+        new Phaser.Math.Vector2(b.inX ?? b.x, b.inY ?? b.y),
+        new Phaser.Math.Vector2(b.x, b.y)
+      );
 
-for (let i = 0; i < this._nodes.length - 1; i++) {
+      return curve.getPoints(steps);
+    };
 
-  const a = this._nodes[i];
-  const b = this._nodes[i + 1];
+    const first = this._nodes[0];
+    this._gBezier.moveTo(first.x, first.y);
 
-  const c1x = a.outX ?? a.x;
-  const c1y = a.outY ?? a.y;
+    for (let i = 0; i < this._nodes.length - 1; i++) {
+      const a = this._nodes[i];
+      const b = this._nodes[i + 1];
+      const pts = sampleCurve(a, b, 24);
 
-  const c2x = b.inX ?? b.x;
-  const c2y = b.inY ?? b.y;
+      for (let k = 1; k < pts.length; k++) {
+        this._gBezier.lineTo(pts[k].x, pts[k].y);
+      }
+    }
 
-  this._gBezier.bezierCurveTo(
-    c1x, c1y,
-    c2x, c2y,
-    b.x, b.y
-  );
-}
+    if (this._closed && this._nodes.length > 2) {
+      const a = this._nodes[this._nodes.length - 1];
+      const b = this._nodes[0];
+      const pts = sampleCurve(a, b, 24);
 
-if (this._closed && this._nodes.length > 2) {
+      for (let k = 1; k < pts.length; k++) {
+        this._gBezier.lineTo(pts[k].x, pts[k].y);
+      }
+    }
 
-  const a = this._nodes[this._nodes.length - 1];
-  const b = this._nodes[0];
-
-  const c1x = a.outX ?? a.x;
-  const c1y = a.outY ?? a.y;
-
-  const c2x = b.inX ?? b.x;
-  const c2y = b.inY ?? b.y;
-
-  this._gBezier.bezierCurveTo(
-    c1x, c1y,
-    c2x, c2y,
-    b.x, b.y
-  );
-}
-
-this._gBezier.strokePath();
+    this._gBezier.strokePath();
     }
 
     // Nodos
