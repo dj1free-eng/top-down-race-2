@@ -764,18 +764,50 @@ export class TrackEditorScene extends BaseScene {
     this._gNodes.clear();
 
     if (this._nodes.length >= 2) {
-      // Preview ancho pista
-      const previewPx = Math.max(6, Math.min(40, Math.round(this._trackWidth / 6)));
-      this._gPreview.lineStyle(previewPx, 0xfff000, 0.18);
-      this._gPreview.beginPath();
-      this._gPreview.moveTo(this._nodes[0].x, this._nodes[0].y);
-      for (let i = 1; i < this._nodes.length; i++) {
-        this._gPreview.lineTo(this._nodes[i].x, this._nodes[i].y);
-      }
-      if (this._closed) {
-        this._gPreview.lineTo(this._nodes[0].x, this._nodes[0].y);
-      }
-      this._gPreview.strokePath();
+// Preview ancho pista siguiendo la Bézier
+if (this._nodes.length >= 2) {
+
+  const previewPx = Math.max(6, Math.min(40, Math.round(this._trackWidth / 6)));
+
+  this._gPreview.lineStyle(previewPx, 0xfff000, 0.18);
+  this._gPreview.beginPath();
+
+  const sampleCurve = (a, b, steps = 24) => {
+    const curve = new Phaser.Curves.CubicBezier(
+      new Phaser.Math.Vector2(a.x, a.y),
+      new Phaser.Math.Vector2(a.outX ?? a.x, a.outY ?? a.y),
+      new Phaser.Math.Vector2(b.inX ?? b.x, b.inY ?? b.y),
+      new Phaser.Math.Vector2(b.x, b.y)
+    );
+
+    return curve.getPoints(steps);
+  };
+
+  const first = this._nodes[0];
+  this._gPreview.moveTo(first.x, first.y);
+
+  for (let i = 0; i < this._nodes.length - 1; i++) {
+    const a = this._nodes[i];
+    const b = this._nodes[i + 1];
+    const pts = sampleCurve(a, b, 24);
+
+    for (let k = 1; k < pts.length; k++) {
+      this._gPreview.lineTo(pts[k].x, pts[k].y);
+    }
+  }
+
+  if (this._closed && this._nodes.length > 2) {
+    const a = this._nodes[this._nodes.length - 1];
+    const b = this._nodes[0];
+    const pts = sampleCurve(a, b, 24);
+
+    for (let k = 1; k < pts.length; k++) {
+      this._gPreview.lineTo(pts[k].x, pts[k].y);
+    }
+  }
+
+  this._gPreview.strokePath();
+}
 
     // Curva Bézier real (muestreada en puntos)
     this._gBezier.lineStyle(3, 0xffffff, 0.95);
