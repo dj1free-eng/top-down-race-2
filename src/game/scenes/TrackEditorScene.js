@@ -567,8 +567,6 @@ this._editCam.setRoundPixels(true);
 
 // Separación base de cámaras
 this.cameras.main.ignore([
-  canvasPanel,
-  canvasLabel,
   this._gRaw,
   this._gClean,
   this._gMask,
