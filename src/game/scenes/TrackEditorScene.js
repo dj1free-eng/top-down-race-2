@@ -18,6 +18,7 @@ export class TrackEditorScene extends BaseScene {
     this._nodes = [];               // [{ x, y }]
     this._closed = false;
     this._selectedNode = -1;
+    this._selectedHandle = null; // 'in' | 'out' | null
     this._draggingNode = false;
 
     // Cámara de edición
@@ -524,23 +525,36 @@ export class TrackEditorScene extends BaseScene {
     // =================================================
     this.input.addPointer(2);
 
-    this.input.on('pointerdown', (p) => {
+        this.input.on('pointerdown', (p) => {
       const activeTouches = this.input.manager.pointers.filter(pp => pp.isDown).length;
       if (activeTouches > 1) {
         this._draggingNode = false;
+        this._selectedHandle = null;
         return;
       }
 
       if (!isPointerInCanvasView(p)) {
         this._draggingNode = false;
+        this._selectedHandle = null;
         return;
       }
 
       const wp = this._screenToEditorWorld(p);
-      const hitNode = this._findHitNode(wp.x, wp.y, 18);
 
+      const hitHandle = this._findHitHandle(wp.x, wp.y, 14);
+      if (hitHandle) {
+        this._selectedNode = hitHandle.nodeIndex;
+        this._selectedHandle = hitHandle.handle;
+        this._draggingNode = true;
+        this._redraw();
+        this._refreshStats();
+        return;
+      }
+
+      const hitNode = this._findHitNode(wp.x, wp.y, 18);
       if (hitNode >= 0) {
         this._selectedNode = hitNode;
+        this._selectedHandle = null;
         this._draggingNode = true;
       } else {
         const handleLen = 36;
@@ -556,6 +570,7 @@ export class TrackEditorScene extends BaseScene {
         });
 
         this._selectedNode = this._nodes.length - 1;
+        this._selectedHandle = null;
         this._draggingNode = true;
       }
 
@@ -615,21 +630,41 @@ export class TrackEditorScene extends BaseScene {
       if (this._selectedNode < 0 || this._selectedNode >= this._nodes.length) return;
 
       const wp = this._screenToEditorWorld(p);
-      this._nodes[this._selectedNode].x = wp.x;
-      this._nodes[this._selectedNode].y = wp.y;
+      const n = this._nodes[this._selectedNode];
+
+      if (this._selectedHandle === 'in') {
+        n.inX = wp.x;
+        n.inY = wp.y;
+      } else if (this._selectedHandle === 'out') {
+        n.outX = wp.x;
+        n.outY = wp.y;
+      } else {
+        const dx = wp.x - n.x;
+        const dy = wp.y - n.y;
+
+        n.x = wp.x;
+        n.y = wp.y;
+
+        n.inX += dx;
+        n.inY += dy;
+        n.outX += dx;
+        n.outY += dy;
+      }
 
       this._redraw();
       this._refreshStats();
     });
 
-    this.input.on('pointerup', () => {
+        this.input.on('pointerup', () => {
       this._draggingNode = false;
+      this._selectedHandle = null;
       this._panLastMid = null;
       this._pinchLastDist = 0;
     });
 
-    this.input.on('pointerupoutside', () => {
+        this.input.on('pointerupoutside', () => {
       this._draggingNode = false;
+      this._selectedHandle = null;
       this._panLastMid = null;
       this._pinchLastDist = 0;
     });
@@ -655,7 +690,32 @@ export class TrackEditorScene extends BaseScene {
     }
     return -1;
   }
+  _findHitHandle(x, y, radius = 14) {
+    const r2 = radius * radius;
 
+    for (let i = this._nodes.length - 1; i >= 0; i--) {
+      const n = this._nodes[i];
+
+      const inX = n.inX ?? n.x;
+      const inY = n.inY ?? n.y;
+      const outX = n.outX ?? n.x;
+      const outY = n.outY ?? n.y;
+
+      let dx = x - inX;
+      let dy = y - inY;
+      if ((dx * dx + dy * dy) <= r2) {
+        return { nodeIndex: i, handle: 'in' };
+      }
+
+      dx = x - outX;
+      dy = y - outY;
+      if ((dx * dx + dy * dy) <= r2) {
+        return { nodeIndex: i, handle: 'out' };
+      }
+    }
+
+    return null;
+  }
   _refreshStats() {
     if (!this._ui?.stats) return;
     this._ui.stats.setText(
