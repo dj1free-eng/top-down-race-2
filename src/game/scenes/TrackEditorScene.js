@@ -18,6 +18,7 @@ export class TrackEditorScene extends BaseScene {
     this._nodes = [];               // [{ x, y }]
     this._closed = false;
     this._selectedNode = -1;
+    this._lastTapTime = 0;
     this._selectedHandle = null; // 'in' | 'out' | null
     this._draggingNode = false;
     this._pendingTap = null;
@@ -564,10 +565,26 @@ this.input.on('pointerdown', (p) => {
     const hitNode = this._findHitNode(wp.x, wp.y, 18);
 
     if (hitNode >= 0) {
-      this._selectedNode = hitNode;
-      this._selectedHandle = null;
-      this._draggingNode = true;
-    }
+
+  const now = this.time.now;
+
+  if (this._selectedNode === hitNode && now - this._lastTapTime < 300) {
+
+    this._cycleNodeMode(hitNode);
+    this._redraw();
+    this._refreshStats();
+
+  } else {
+
+    this._selectedNode = hitNode;
+    this._selectedHandle = null;
+    this._draggingNode = true;
+
+  }
+
+  this._lastTapTime = now;
+
+}
     else {
       const hitSeg = this._findHitSegmentPoint(wp.x, wp.y, 16, 24);
 
@@ -939,6 +956,24 @@ this.input.on('pointerdown', (p) => {
       }
     }
   }
+  _cycleNodeMode(nodeIndex) {
+
+  const n = this._nodes[nodeIndex];
+  if (!n) return;
+
+  const mode = n.mode || 'mirrored';
+
+  if (mode === 'mirrored') {
+    n.mode = 'aligned';
+  }
+  else if (mode === 'aligned') {
+    n.mode = 'free';
+  }
+  else {
+    n.mode = 'mirrored';
+  }
+
+}
   _refreshStats() {
     if (!this._ui?.stats) return;
     this._ui.stats.setText(
