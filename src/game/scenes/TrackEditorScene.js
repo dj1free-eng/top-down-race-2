@@ -221,12 +221,13 @@ export class TrackEditorScene extends BaseScene {
     document.body.appendChild(trackFileInput);
 
     const syncEditorCameras = () => {
-      const editorWorldObjs = [
-        this._bgImage,
-        this._gBezier,
-        this._gNodes,
-        this._gPreview
-      ].filter(Boolean);
+const editorWorldObjs = [
+  this._bgImage,
+  this._gBezier,
+  this._gNodes,
+  this._gPreview,
+  this._gCenterline
+].filter(Boolean);
 
       this.cameras.main.ignore(editorWorldObjs);
 
