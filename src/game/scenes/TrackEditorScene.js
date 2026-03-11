@@ -1173,57 +1173,148 @@ centerline: this._generateCenterline(24)
     this._downloadJson(`bezier_draft_${Date.now()}.json`, data);
     this._ui.report?.setText('✅ Draft Bézier exportado');
   }
-_generateCenterline(samplesPerSegment = 24) {
-
-  const centerline = [];
-
-  const sampleCurve = (a, b) => {
-
-    const curve = new Phaser.Curves.CubicBezier(
-      new Phaser.Math.Vector2(a.x, a.y),
-      new Phaser.Math.Vector2(a.outX ?? a.x, a.outY ?? a.y),
-      new Phaser.Math.Vector2(b.inX ?? b.x, b.inY ?? b.y),
-      new Phaser.Math.Vector2(b.x, b.y)
-    );
-
-    return curve.getPoints(samplesPerSegment);
-  };
-
-  for (let i = 0; i < this._nodes.length - 1; i++) {
-
-    const a = this._nodes[i];
-    const b = this._nodes[i + 1];
-
-    const pts = sampleCurve(a, b);
-
-    for (let p of pts) {
-      centerline.push({
-        x: Math.round(p.x * 10) / 10,
-        y: Math.round(p.y * 10) / 10
-      });
+    _resamplePolyline(points, spacing = 24, closed = false) {
+    if (!Array.isArray(points) || points.length === 0) return [];
+    if (points.length === 1) {
+      return [{ x: Math.round(points[0].x * 10) / 10, y: Math.round(points[0].y * 10) / 10 }];
     }
 
-  }
+    const dist = (a, b) => {
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      return Math.sqrt(dx * dx + dy * dy);
+    };
 
-  if (this._closed && this._nodes.length > 2) {
+    const lerpPoint = (a, b, t) => ({
+      x: a.x + (b.x - a.x) * t,
+      y: a.y + (b.y - a.y) * t
+    });
 
-    const a = this._nodes[this._nodes.length - 1];
-    const b = this._nodes[0];
+    const source = points.map(p => ({ x: p.x, y: p.y }));
 
-    const pts = sampleCurve(a, b);
+    if (closed) {
+      const first = source[0];
+      const last = source[source.length - 1];
+      const dx = first.x - last.x;
+      const dy = first.y - last.y;
+      const samePoint = (dx * dx + dy * dy) < 0.0001;
 
-    for (let p of pts) {
-      centerline.push({
-        x: Math.round(p.x * 10) / 10,
-        y: Math.round(p.y * 10) / 10
-      });
+      if (!samePoint) {
+        source.push({ x: first.x, y: first.y });
+      }
     }
 
+    const out = [];
+    let prev = { x: source[0].x, y: source[0].y };
+    out.push({ x: prev.x, y: prev.y });
+
+    let carry = 0;
+
+    for (let i = 1; i < source.length; i++) {
+      let segStart = { x: prev.x, y: prev.y };
+      const segEnd = source[i];
+
+      let segLen = dist(segStart, segEnd);
+      if (segLen <= 0.000001) {
+        prev = segEnd;
+        continue;
+      }
+
+      while (carry + segLen >= spacing) {
+        const need = spacing - carry;
+        const t = need / segLen;
+        const p = lerpPoint(segStart, segEnd, t);
+
+        out.push({ x: p.x, y: p.y });
+
+        segStart = p;
+        segLen = dist(segStart, segEnd);
+        carry = 0;
+      }
+
+      carry += segLen;
+      prev = segEnd;
+    }
+
+    if (!closed) {
+      const lastSrc = source[source.length - 1];
+      const lastOut = out[out.length - 1];
+      const dx = lastSrc.x - lastOut.x;
+      const dy = lastSrc.y - lastOut.y;
+
+      if ((dx * dx + dy * dy) > 0.0001) {
+        out.push({ x: lastSrc.x, y: lastSrc.y });
+      }
+    } else if (out.length > 1) {
+      const first = out[0];
+      const last = out[out.length - 1];
+      const dx = first.x - last.x;
+      const dy = first.y - last.y;
+
+      if ((dx * dx + dy * dy) < 0.0001) {
+        out.pop();
+      }
+    }
+
+    return out.map(p => ({
+      x: Math.round(p.x * 10) / 10,
+      y: Math.round(p.y * 10) / 10
+    }));
   }
+  _generateCenterline(samplesPerSegment = 24) {
+    const rawPoints = [];
 
-  return centerline;
+    const sampleCurve = (a, b) => {
+      const curve = new Phaser.Curves.CubicBezier(
+        new Phaser.Math.Vector2(a.x, a.y),
+        new Phaser.Math.Vector2(a.outX ?? a.x, a.outY ?? a.y),
+        new Phaser.Math.Vector2(b.inX ?? b.x, b.inY ?? b.y),
+        new Phaser.Math.Vector2(b.x, b.y)
+      );
 
-}
+      return curve.getPoints(samplesPerSegment);
+    };
+
+    for (let i = 0; i < this._nodes.length - 1; i++) {
+      const a = this._nodes[i];
+      const b = this._nodes[i + 1];
+      const pts = sampleCurve(a, b);
+
+      for (let k = 0; k < pts.length; k++) {
+        const p = pts[k];
+
+        if (rawPoints.length > 0) {
+          const last = rawPoints[rawPoints.length - 1];
+          const dx = p.x - last.x;
+          const dy = p.y - last.y;
+          if ((dx * dx + dy * dy) < 0.0001) continue;
+        }
+
+        rawPoints.push({ x: p.x, y: p.y });
+      }
+    }
+
+    if (this._closed && this._nodes.length > 2) {
+      const a = this._nodes[this._nodes.length - 1];
+      const b = this._nodes[0];
+      const pts = sampleCurve(a, b);
+
+      for (let k = 0; k < pts.length; k++) {
+        const p = pts[k];
+
+        if (rawPoints.length > 0) {
+          const last = rawPoints[rawPoints.length - 1];
+          const dx = p.x - last.x;
+          const dy = p.y - last.y;
+          if ((dx * dx + dy * dy) < 0.0001) continue;
+        }
+
+        rawPoints.push({ x: p.x, y: p.y });
+      }
+    }
+
+    return this._resamplePolyline(rawPoints, 24, this._closed);
+  }
   _downloadJson(filename, data) {
     try {
       const json = JSON.stringify(data, null, 2);
