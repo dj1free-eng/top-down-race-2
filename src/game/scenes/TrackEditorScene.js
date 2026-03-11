@@ -503,7 +503,7 @@ export class TrackEditorScene extends BaseScene {
     this._gPreview = this.add.graphics().setDepth(10);
     this._gBezier = this.add.graphics().setDepth(11);
     this._gNodes = this.add.graphics().setDepth(12);
-
+    this._gCenterline = this.add.graphics().setDepth(9);
     // Cámara dedicada al editor
     this._editCam = this.cameras.add(drawX, drawY, drawW, drawH);
     this._editCam.setZoom(this._editZoom);
@@ -1017,10 +1017,10 @@ this.input.on('pointerdown', (p) => {
   }
 
   _redraw() {
-    this._gPreview.clear();
-    this._gBezier.clear();
-    this._gNodes.clear();
-
+this._gPreview.clear();
+this._gBezier.clear();
+this._gNodes.clear();
+this._gCenterline.clear();
     if (this._nodes.length >= 2) {
 // Preview ancho pista siguiendo la Bézier
 if (this._nodes.length >= 2) {
@@ -1107,7 +1107,14 @@ if (this._nodes.length >= 2) {
 
     this._gBezier.strokePath();
     }
+    // DEBUG: mostrar centerline remuestreado
+    const cl = this._generateCenterline(24);
 
+    this._gCenterline.fillStyle(0xff3b3b, 0.9);
+
+    for (let p of cl) {
+      this._gCenterline.fillCircle(p.x, p.y, 2);
+    }
     // Nodos
         for (let i = 0; i < this._nodes.length; i++) {
       const n = this._nodes[i];
