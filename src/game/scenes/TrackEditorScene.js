@@ -450,10 +450,16 @@ export class TrackEditorScene extends BaseScene {
 
     this._ui.widthSlider = { knob, sliderX, sliderW, trackY, sliderH };
 
-    const setWidthFromPointer = (px) => {
+        const setWidthFromPointer = (px) => {
       const t = Phaser.Math.Clamp((px - sliderX) / sliderW, 0, 1);
       const v = Math.round(this._trackWidthMin + t * (this._trackWidthMax - this._trackWidthMin));
-      this._trackWidth = v;
+
+      if (this._selectedNode >= 0 && this._selectedNode < this._nodes.length) {
+        this._nodes[this._selectedNode].width = v;
+      } else {
+        this._trackWidth = v;
+      }
+
       this._ui.widthValue.setText(`${v}px`);
       this._positionWidthKnob();
       this._redraw();
