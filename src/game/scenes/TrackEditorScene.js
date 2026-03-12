@@ -1070,29 +1070,57 @@ const newNode = {
           const dy = ti[i + 1].y - ti[i].y;
           const segLen = Math.sqrt(dx * dx + dy * dy);
 
-          const bandIndex = Math.floor(accumLen / curbSegmentLen);
-          const isRed = bandIndex % 2 === 0;
-          const color = isRed ? 0xff3b3b : 0xffffff;
+          // Detectar si este tramo gira lo suficiente como para merecer piano
+          let drawCurb = true;
 
-          this._gCurbs.fillStyle(color, 1);
+          if (i > 0 && i < ti.length - 2) {
+            const ax = ti[i].x - ti[i - 1].x;
+            const ay = ti[i].y - ti[i - 1].y;
+            const bx = ti[i + 1].x - ti[i].x;
+            const by = ti[i + 1].y - ti[i].y;
 
-          // Piano interior
-          this._gCurbs.beginPath();
-          this._gCurbs.moveTo(ti[i].x, ti[i].y);
-          this._gCurbs.lineTo(ti[i + 1].x, ti[i + 1].y);
-          this._gCurbs.lineTo(ci[i + 1].x, ci[i + 1].y);
-          this._gCurbs.lineTo(ci[i].x, ci[i].y);
-          this._gCurbs.closePath();
-          this._gCurbs.fillPath();
+            const al = Math.sqrt(ax * ax + ay * ay);
+            const bl = Math.sqrt(bx * bx + by * by);
 
-          // Piano exterior
-          this._gCurbs.beginPath();
-          this._gCurbs.moveTo(to[i].x, to[i].y);
-          this._gCurbs.lineTo(to[i + 1].x, to[i + 1].y);
-          this._gCurbs.lineTo(co[i + 1].x, co[i + 1].y);
-          this._gCurbs.lineTo(co[i].x, co[i].y);
-          this._gCurbs.closePath();
-          this._gCurbs.fillPath();
+            if (al > 0.0001 && bl > 0.0001) {
+              const anx = ax / al;
+              const any = ay / al;
+              const bnx = bx / bl;
+              const bny = by / bl;
+
+              const dot = Phaser.Math.Clamp((anx * bnx) + (any * bny), -1, 1);
+              const angle = Math.acos(dot); // radianes
+
+              // Menos de ~10 grados = tramo casi recto = no pintar piano
+              drawCurb = angle > 0.17;
+            }
+          }
+
+          if (drawCurb) {
+            const bandIndex = Math.floor(accumLen / curbSegmentLen);
+            const isRed = bandIndex % 2 === 0;
+            const color = isRed ? 0xff3b3b : 0xffffff;
+
+            this._gCurbs.fillStyle(color, 1);
+
+            // Piano interior
+            this._gCurbs.beginPath();
+            this._gCurbs.moveTo(ti[i].x, ti[i].y);
+            this._gCurbs.lineTo(ti[i + 1].x, ti[i + 1].y);
+            this._gCurbs.lineTo(ci[i + 1].x, ci[i + 1].y);
+            this._gCurbs.lineTo(ci[i].x, ci[i].y);
+            this._gCurbs.closePath();
+            this._gCurbs.fillPath();
+
+            // Piano exterior
+            this._gCurbs.beginPath();
+            this._gCurbs.moveTo(to[i].x, to[i].y);
+            this._gCurbs.lineTo(to[i + 1].x, to[i + 1].y);
+            this._gCurbs.lineTo(co[i + 1].x, co[i + 1].y);
+            this._gCurbs.lineTo(co[i].x, co[i].y);
+            this._gCurbs.closePath();
+            this._gCurbs.fillPath();
+          }
 
           accumLen += segLen;
         }
