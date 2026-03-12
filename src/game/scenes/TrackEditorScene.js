@@ -1497,21 +1497,29 @@ _generateCenterline(samplesPerSegment = 20, spacing = 24){
     const curbWidth = 8;
     const runoffWidth = 24;
 
-    const trackStrip = this._buildTrackStrip(cl, this._trackWidth, this._closed);
-    const curbStrip = this._buildTrackStrip(cl, this._trackWidth + (curbWidth * 2), this._closed);
-    const runoffStrip = this._buildTrackStrip(
-      cl,
-      this._trackWidth + ((curbWidth + runoffWidth) * 2),
-      this._closed
-    );
+    const withExtraWidth = (points, extraPerSide = 0) => {
+      return points.map(p => ({
+        x: p.x,
+        y: p.y,
+        width: (p.width ?? this._trackWidth) + (extraPerSide * 2)
+      }));
+    };
+
+    const trackCL = withExtraWidth(cl, 0);
+    const curbCL = withExtraWidth(cl, curbWidth);
+    const runoffCL = withExtraWidth(cl, curbWidth + runoffWidth);
+
+    const trackStrip = this._buildTrackStrip(trackCL, this._trackWidth, this._closed);
+    const curbStrip = this._buildTrackStrip(curbCL, this._trackWidth, this._closed);
+    const runoffStrip = this._buildTrackStrip(runoffCL, this._trackWidth, this._closed);
 
     return {
-            centerline: cl.map(p => ({
+      centerline: cl.map(p => ({
         x: Math.round(p.x * 10) / 10,
         y: Math.round(p.y * 10) / 10,
         width: Math.round((p.width ?? this._trackWidth) * 10) / 10
       })),
-            trackInner: trackStrip.right,
+      trackInner: trackStrip.right,
       trackOuter: trackStrip.left,
       curbInner: curbStrip.right,
       curbOuter: curbStrip.left,
@@ -1519,7 +1527,6 @@ _generateCenterline(samplesPerSegment = 20, spacing = 24){
       runoffOuter: runoffStrip.left
     };
   }
-
   _drawPolyline(g, points, closed = false) {
     if (!g || !Array.isArray(points) || points.length < 2) return;
 
