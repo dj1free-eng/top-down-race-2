@@ -1127,11 +1127,14 @@ export class TrackEditorScene extends BaseScene {
   }
 
   _exportBezierDraft() {
+    const centerline = this._generateCenterline(24);
+
     const data = {
       type: 'track-editor-bezier-draft',
-      version: 1,
+      version: 2,
       closed: this._closed,
       trackWidth: this._trackWidth,
+
       nodes: this._nodes.map(n => ({
         x: Math.round(n.x * 10) / 10,
         y: Math.round(n.y * 10) / 10,
@@ -1141,13 +1144,33 @@ export class TrackEditorScene extends BaseScene {
         outY: Math.round((n.outY ?? n.y) * 10) / 10,
         mode: n.mode || 'mirrored'
       })),
-      centerline: this._generateCenterline(24)
+
+      centerline,
+
+      curbs: {
+        enabled: true,
+        width: 12,
+        sides: {
+          left: true,
+          right: true
+        },
+        style: 'red-white'
+      },
+
+      runoff: {
+        enabled: true,
+        width: 36,
+        sides: {
+          left: true,
+          right: true
+        },
+        surface: 'asphalt'
+      }
     };
 
     this._downloadJson(`bezier_draft_${Date.now()}.json`, data);
     this._ui.report?.setText('✅ Draft Bézier exportado');
   }
-
   _resamplePolyline(points, spacing = 24, closed = false) {
     if (!Array.isArray(points) || points.length === 0) return [];
     if (points.length === 1) {
