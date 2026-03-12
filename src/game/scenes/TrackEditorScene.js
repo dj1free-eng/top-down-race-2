@@ -1432,30 +1432,28 @@ export class TrackEditorScene extends BaseScene {
       };
     }
 
-    const halfTrack = this._trackWidth * 0.5;
     const curbWidth = 8;
     const runoffWidth = 24;
 
-    const trackInner = this._buildOffsetEdge(cl, -halfTrack, this._closed, 2.2);
-    const trackOuter = this._buildOffsetEdge(cl, halfTrack, this._closed, 2.2);
-
-    const curbInner = this._buildOffsetEdge(cl, -(halfTrack + curbWidth), this._closed, 2.2);
-    const curbOuter = this._buildOffsetEdge(cl, halfTrack + curbWidth, this._closed, 2.2);
-
-    const runoffInner = this._buildOffsetEdge(cl, -(halfTrack + curbWidth + runoffWidth), this._closed, 2.2);
-    const runoffOuter = this._buildOffsetEdge(cl, halfTrack + curbWidth + runoffWidth, this._closed, 2.2);
+    const trackStrip = this._buildTrackStrip(cl, this._trackWidth, this._closed);
+    const curbStrip = this._buildTrackStrip(cl, this._trackWidth + (curbWidth * 2), this._closed);
+    const runoffStrip = this._buildTrackStrip(
+      cl,
+      this._trackWidth + ((curbWidth + runoffWidth) * 2),
+      this._closed
+    );
 
     return {
       centerline: cl.map(p => ({
         x: Math.round(p.x * 10) / 10,
         y: Math.round(p.y * 10) / 10
       })),
-      trackInner,
-      trackOuter,
-      curbInner,
-      curbOuter,
-      runoffInner,
-      runoffOuter
+      trackInner: trackStrip.left,
+      trackOuter: trackStrip.right,
+      curbInner: curbStrip.left,
+      curbOuter: curbStrip.right,
+      runoffInner: runoffStrip.left,
+      runoffOuter: runoffStrip.right
     };
   }
 
