@@ -1486,15 +1486,16 @@ const newNode = {
       closed: this._closed,
       trackWidth: this._trackWidth,
 
-      nodes: this._nodes.map(n => ({
-        x: Math.round(n.x * 10) / 10,
-        y: Math.round(n.y * 10) / 10,
-        inX: Math.round((n.inX ?? n.x) * 10) / 10,
-        inY: Math.round((n.inY ?? n.y) * 10) / 10,
-        outX: Math.round((n.outX ?? n.x) * 10) / 10,
-        outY: Math.round((n.outY ?? n.y) * 10) / 10,
-        mode: n.mode || 'mirrored'
-      })),
+nodes: this._nodes.map(n => ({
+  x: Math.round(n.x * 10) / 10,
+  y: Math.round(n.y * 10) / 10,
+  inX: Math.round((n.inX ?? n.x) * 10) / 10,
+  inY: Math.round((n.inY ?? n.y) * 10) / 10,
+  outX: Math.round((n.outX ?? n.x) * 10) / 10,
+  outY: Math.round((n.outY ?? n.y) * 10) / 10,
+  mode: n.mode || 'mirrored',
+  width: Math.round((n.width ?? this._trackWidth) * 10) / 10
+}))
 
       geometry: {
         centerline: geom.centerline,
