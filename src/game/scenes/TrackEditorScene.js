@@ -901,7 +901,7 @@ const newNode = {
     this._selectedHandle = null;
     this._draggingNode = true;
     this._positionWidthKnob();
-
+  }
   _syncOppositeHandleByMode(n, movedHandle) {
     const mode = n.mode || 'mirrored';
     if (mode === 'free') return;
