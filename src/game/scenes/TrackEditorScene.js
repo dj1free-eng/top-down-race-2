@@ -1014,10 +1014,27 @@ export class TrackEditorScene extends BaseScene {
 
     if (previewCenterline.length >= 2) {
       const geom = this._generateTrackGeometry(previewCenterline);
+this._gPreview.fillStyle(0x2f343a, 0.95);
+this._gPreview.beginPath();
 
-      this._gPreview.lineStyle(this._trackWidth, 0x2f343a, 0.95);
-      this._drawPolyline(this._gPreview, previewCenterline, this._closed);
+const outer = geom.trackOuter;
+const inner = geom.trackInner;
 
+if (outer.length > 1 && inner.length > 1) {
+
+  this._gPreview.moveTo(outer[0].x, outer[0].y);
+
+  for (let i = 1; i < outer.length; i++) {
+    this._gPreview.lineTo(outer[i].x, outer[i].y);
+  }
+
+  for (let i = inner.length - 1; i >= 0; i--) {
+    this._gPreview.lineTo(inner[i].x, inner[i].y);
+  }
+
+  this._gPreview.closePath();
+  this._gPreview.fillPath();
+}
       this._gEdges.lineStyle(2, 0xf4f4f4, 0.95);
       this._drawPolyline(this._gEdges, geom.trackInner, this._closed);
       this._drawPolyline(this._gEdges, geom.trackOuter, this._closed);
