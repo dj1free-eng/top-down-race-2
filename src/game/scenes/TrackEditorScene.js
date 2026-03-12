@@ -588,15 +588,16 @@ export class TrackEditorScene extends BaseScene {
           } else {
             const handleLen = 36;
 
-            this._nodes.push({
-              x: wp.x,
-              y: wp.y,
-              inX: wp.x - handleLen,
-              inY: wp.y,
-              outX: wp.x + handleLen,
-              outY: wp.y,
-              mode: 'mirrored'
-            });
+this._nodes.push({
+  x: wp.x,
+  y: wp.y,
+  inX: wp.x - handleLen,
+  inY: wp.y,
+  outX: wp.x + handleLen,
+  outY: wp.y,
+  mode: 'mirrored',
+  width: this._trackWidth
+});
 
             this._selectedNode = this._nodes.length - 1;
             this._selectedHandle = null;
