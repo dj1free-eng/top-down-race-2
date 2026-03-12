@@ -873,15 +873,16 @@ this._nodes.push({
     b.inX = q2.x;
     b.inY = q2.y;
 
-    const newNode = {
-      x: s.x,
-      y: s.y,
-      inX: r0.x,
-      inY: r0.y,
-      outX: r1.x,
-      outY: r1.y,
-      mode: 'mirrored'
-    };
+const newNode = {
+  x: s.x,
+  y: s.y,
+  inX: r0.x,
+  inY: r0.y,
+  outX: r1.x,
+  outY: r1.y,
+  mode: 'mirrored',
+  width: this._trackWidth
+};
 
     this._nodes.splice(hitSeg.insertIndex, 0, newNode);
     this._selectedNode = hitSeg.insertIndex;
