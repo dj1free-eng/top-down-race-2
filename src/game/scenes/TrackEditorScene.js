@@ -36,10 +36,13 @@ export class TrackEditorScene extends BaseScene {
     this._bgImageKey = null;
 
     // Gráficos editor
+        // Gráficos editor
     this._gBezier = null;
     this._gNodes = null;
     this._gPreview = null;
     this._gCenterline = null;
+    this._gRunoff = null;
+    this._gCurbs = null;
   }
 
   create() {
@@ -503,7 +506,9 @@ export class TrackEditorScene extends BaseScene {
     // =================================================
     // Layers editor
     // =================================================
+    this._gRunoff = this.add.graphics().setDepth(8.5);
     this._gPreview = this.add.graphics().setDepth(10);
+    this._gCurbs = this.add.graphics().setDepth(10.5);
     this._gBezier = this.add.graphics().setDepth(11);
     this._gCenterline = this.add.graphics().setDepth(11.5);
     this._gNodes = this.add.graphics().setDepth(12);
@@ -1000,7 +1005,9 @@ export class TrackEditorScene extends BaseScene {
   }
 
   _redraw() {
+        this._gRunoff.clear();
     this._gPreview.clear();
+    this._gCurbs.clear();
     this._gBezier.clear();
     this._gNodes.clear();
     this._gCenterline.clear();
@@ -1078,10 +1085,36 @@ export class TrackEditorScene extends BaseScene {
       this._gBezier.strokePath();
     }
 
-    // DEBUG: mostrar centerline remuestreado
+    // DEBUG / PREVIEW: centerline + pianos + escapatorias
     const cl = this._generateCenterline(24);
-    this._gCenterline.fillStyle(0xff3b3b, 1);
 
+    const halfTrack = this._trackWidth * 0.5;
+    const curbWidth = 12;
+    const runoffWidth = 36;
+
+    const leftTrackEdge = this._buildOffsetPolyline(cl, -halfTrack, this._closed);
+    const rightTrackEdge = this._buildOffsetPolyline(cl, halfTrack, this._closed);
+
+    const leftCurbOuter = this._buildOffsetPolyline(cl, -(halfTrack + curbWidth), this._closed);
+    const rightCurbOuter = this._buildOffsetPolyline(cl, halfTrack + curbWidth, this._closed);
+
+    const leftRunoffOuter = this._buildOffsetPolyline(cl, -(halfTrack + curbWidth + runoffWidth), this._closed);
+    const rightRunoffOuter = this._buildOffsetPolyline(cl, halfTrack + curbWidth + runoffWidth, this._closed);
+
+    // Escapatorias
+    this._gRunoff.lineStyle(runoffWidth, 0x6f767d, 0.28);
+    this._drawPolyline(this._gRunoff, leftRunoffOuter, this._closed);
+    this._drawPolyline(this._gRunoff, rightRunoffOuter, this._closed);
+
+    // Pianos
+    this._gCurbs.lineStyle(curbWidth, 0xd7263d, 0.95);
+    this._drawPolyline(this._gCurbs, leftCurbOuter, this._closed);
+
+    this._gCurbs.lineStyle(curbWidth, 0xf7f7f7, 0.95);
+    this._drawPolyline(this._gCurbs, rightCurbOuter, this._closed);
+
+    // Centerline debug
+    this._gCenterline.fillStyle(0xff3b3b, 1);
     for (const p of cl) {
       this._gCenterline.fillCircle(p.x, p.y, 3);
     }
@@ -1396,7 +1429,62 @@ export class TrackEditorScene extends BaseScene {
     const resampled = this._resamplePolyline(rawPoints, 24, this._closed);
     return this._simplifyPolylineRDP(resampled, 2, this._closed);
   }
+  _buildOffsetPolyline(points, offset = 0, closed = false) {
+    if (!Array.isArray(points) || points.length < 2) return [];
 
+    const out = [];
+    const count = points.length;
+
+    const getPoint = (idx) => {
+      if (closed) {
+        const wrapped = (idx + count) % count;
+        return points[wrapped];
+      }
+      return points[Math.max(0, Math.min(count - 1, idx))];
+    };
+
+    for (let i = 0; i < count; i++) {
+      const pPrev = getPoint(i - 1);
+      const pNext = getPoint(i + 1);
+      const p = points[i];
+
+      const tx = pNext.x - pPrev.x;
+      const ty = pNext.y - pPrev.y;
+      const len = Math.sqrt(tx * tx + ty * ty);
+
+      if (len <= 0.0001) {
+        out.push({ x: p.x, y: p.y });
+        continue;
+      }
+
+      const nx = -ty / len;
+      const ny = tx / len;
+
+      out.push({
+        x: Math.round((p.x + nx * offset) * 10) / 10,
+        y: Math.round((p.y + ny * offset) * 10) / 10
+      });
+    }
+
+    return out;
+  }
+
+  _drawPolyline(g, points, closed = false) {
+    if (!g || !Array.isArray(points) || points.length < 2) return;
+
+    g.beginPath();
+    g.moveTo(points[0].x, points[0].y);
+
+    for (let i = 1; i < points.length; i++) {
+      g.lineTo(points[i].x, points[i].y);
+    }
+
+    if (closed) {
+      g.lineTo(points[0].x, points[0].y);
+    }
+
+    g.strokePath();
+  }
   _downloadJson(filename, data) {
     try {
       const json = JSON.stringify(data, null, 2);
