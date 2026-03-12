@@ -1482,9 +1482,10 @@ const newNode = {
     );
 
     return {
-      centerline: cl.map(p => ({
+            centerline: cl.map(p => ({
         x: Math.round(p.x * 10) / 10,
-        y: Math.round(p.y * 10) / 10
+        y: Math.round(p.y * 10) / 10,
+        width: Math.round((p.width ?? this._trackWidth) * 10) / 10
       })),
             trackInner: trackStrip.right,
       trackOuter: trackStrip.left,
