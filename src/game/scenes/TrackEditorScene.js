@@ -1597,7 +1597,10 @@ _generateCenterline(samplesPerSegment = 20, spacing = 24){
       type: 'track-editor-bezier-draft',
       version: 3,
       closed: this._closed,
-      trackWidth: this._trackWidth,
+            trackWidth: Math.round((
+        this._nodes.reduce((acc, n) => acc + (n.width ?? this._trackWidth), 0) /
+        Math.max(1, this._nodes.length)
+      ) * 10) / 10,
 
 nodes: this._nodes.map(n => ({
   x: Math.round(n.x * 10) / 10,
