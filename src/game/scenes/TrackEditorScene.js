@@ -1448,12 +1448,12 @@ export class TrackEditorScene extends BaseScene {
         x: Math.round(p.x * 10) / 10,
         y: Math.round(p.y * 10) / 10
       })),
-      trackInner: trackStrip.left,
-      trackOuter: trackStrip.right,
-      curbInner: curbStrip.left,
-      curbOuter: curbStrip.right,
-      runoffInner: runoffStrip.left,
-      runoffOuter: runoffStrip.right
+            trackInner: trackStrip.right,
+      trackOuter: trackStrip.left,
+      curbInner: curbStrip.right,
+      curbOuter: curbStrip.left,
+      runoffInner: runoffStrip.right,
+      runoffOuter: runoffStrip.left
     };
   }
 
