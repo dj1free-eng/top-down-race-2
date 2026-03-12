@@ -1207,8 +1207,7 @@ centerline: this._generateCenterline(24)
       const dy = first.y - last.y;
       const samePoint = (dx * dx + dy * dy) < 0.0001;
 
-      if (!samePoint) {
-        source.push({ x: first.x, y: first.y });
+      if .first.y });
       }
     }
 
@@ -1269,63 +1268,9 @@ centerline: this._generateCenterline(24)
       y: Math.round(p.y * 10) / 10
     }));
   }
-  _generateCenterline(samplesPerSegment = 24) {
-    const rawPoints = [];
-
-    const sampleCurve = (a, b) => {
-      const curve = new Phaser.Curves.CubicBezier(
-        new Phaser.Math.Vector2(a.x, a.y),
-        new Phaser.Math.Vector2(a.outX ?? a.x, a.outY ?? a.y),
-        new Phaser.Math.Vector2(b.inX ?? b.x, b.inY ?? b.y),
-        new Phaser.Math.Vector2(b.x, b.y)
-      );
-
-      return curve.getPoints(samplesPerSegment);
-    };
-
-    for (let i = 0; i < this._nodes.length - 1; i++) {
-      const a = this._nodes[i];
-      const b = this._nodes[i + 1];
-      const pts = sampleCurve(a, b);
-
-      for (let k = 0; k < pts.length; k++) {
-        const p = pts[k];
-
-        if (rawPoints.length > 0) {
-          const last = rawPoints[rawPoints.length - 1];
-          const dx = p.x - last.x;
-          const dy = p.y - last.y;
-          if ((dx * dx + dy * dy) < 0.0001) continue;
-        }
-
-        rawPoints.push({ x: p.x, y: p.y });
-      }
-    }
-
-    if (this._closed && this._nodes.length > 2) {
-      const a = this._nodes[this._nodes.length - 1];
-      const b = this._nodes[0];
-      const pts = sampleCurve(a, b);
-
-      for (let k = 0; k < pts.length; k++) {
-        const p = pts[k];
-
-        if (rawPoints.length > 0) {
-          const last = rawPoints[rawPoints.length - 1];
-          const dx = p.x - last.x;
-          const dy = p.y - last.y;
-          if ((dx * dx + dy * dy) < 0.0001) continue;
-        }
-
-        rawPoints.push({ x: p.x, y: p.y });
-      }
-    }
-
-    return this._resamplePolyline(rawPoints, 24, this._closed);
-  }
   _downloadJson(filename, data) {
     try {
-      const json = JSON.stringify(data, null, 2);
+    la  const json = JSON.stringify(data, null, 2);
       const blob = new Blob([json], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
 
