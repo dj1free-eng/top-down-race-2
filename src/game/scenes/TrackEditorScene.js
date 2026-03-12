@@ -36,10 +36,11 @@ export class TrackEditorScene extends BaseScene {
     this._bgImageKey = null;
 
     // Gráficos editor
-    this._gBezier = null;
+        this._gBezier = null;
     this._gNodes = null;
     this._gPreview = null;
     this._gCenterline = null;
+    this._gCurbs = null;
     this._gEdges = null;
   }
 
@@ -516,8 +517,9 @@ export class TrackEditorScene extends BaseScene {
     // =================================================
     // Layers editor
     // =================================================
-    this._gPreview = this.add.graphics().setDepth(10);
+        this._gPreview = this.add.graphics().setDepth(10);
     this._gBezier = this.add.graphics().setDepth(11);
+    this._gCurbs = this.add.graphics().setDepth(11.12);
     this._gEdges = this.add.graphics().setDepth(11.25);
     this._gCenterline = this.add.graphics().setDepth(11.5);
     this._gNodes = this.add.graphics().setDepth(12);
@@ -1030,6 +1032,7 @@ const newNode = {
   _redraw() {
     this._gPreview.clear();
     this._gBezier.clear();
+    this._gCurbs.clear();
     this._gEdges.clear();
     this._gCenterline.clear();
     this._gNodes.clear();
@@ -1038,6 +1041,7 @@ const newNode = {
 
     if (previewCenterline.length >= 2) {
       const strip = this._buildTrackStrip(previewCenterline, this._trackWidth, this._closed);
+      const geom = this._generateTrackGeometry(previewCenterline);
 
       if (strip.quads.length > 0) {
         this._gPreview.fillStyle(0x2f343a, 0.95);
@@ -1050,6 +1054,46 @@ const newNode = {
           this._gPreview.lineTo(q.d.x, q.d.y);
           this._gPreview.closePath();
           this._gPreview.fillPath();
+        }
+
+        let accumLen = 0;
+        const curbSegmentLen = 14;
+
+        const ti = geom.trackInner;
+        const to = geom.trackOuter;
+        const ci = geom.curbInner;
+        const co = geom.curbOuter;
+
+        for (let i = 0; i < ti.length - 1; i++) {
+          const dx = ti[i + 1].x - ti[i].x;
+          const dy = ti[i + 1].y - ti[i].y;
+          const segLen = Math.sqrt(dx * dx + dy * dy);
+
+          const bandIndex = Math.floor(accumLen / curbSegmentLen);
+          const isRed = bandIndex % 2 === 0;
+          const color = isRed ? 0xff3b3b : 0xffffff;
+
+          this._gCurbs.fillStyle(color, 1);
+
+          // Piano interior
+          this._gCurbs.beginPath();
+          this._gCurbs.moveTo(ti[i].x, ti[i].y);
+          this._gCurbs.lineTo(ti[i + 1].x, ti[i + 1].y);
+          this._gCurbs.lineTo(ci[i + 1].x, ci[i + 1].y);
+          this._gCurbs.lineTo(ci[i].x, ci[i].y);
+          this._gCurbs.closePath();
+          this._gCurbs.fillPath();
+
+          // Piano exterior
+          this._gCurbs.beginPath();
+          this._gCurbs.moveTo(to[i].x, to[i].y);
+          this._gCurbs.lineTo(to[i + 1].x, to[i + 1].y);
+          this._gCurbs.lineTo(co[i + 1].x, co[i + 1].y);
+          this._gCurbs.lineTo(co[i].x, co[i].y);
+          this._gCurbs.closePath();
+          this._gCurbs.fillPath();
+
+          accumLen += segLen;
         }
 
         this._gEdges.lineStyle(2, 0xf4f4f4, 0.95);
