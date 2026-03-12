@@ -1120,10 +1120,15 @@ const newNode = {
     }
   }
 
-  _resamplePolyline(points, spacing = 12, closed = false) {
+  _resamplePolyline(points, spacing = 24, closed = false) {
     if (!Array.isArray(points) || points.length === 0) return [];
+
     if (points.length === 1) {
-      return [{ x: Math.round(points[0].x * 10) / 10, y: Math.round(points[0].y * 10) / 10 }];
+      return [{
+        x: Math.round(points[0].x * 10) / 10,
+        y: Math.round(points[0].y * 10) / 10,
+        width: Math.round((points[0].width ?? this._trackWidth) * 10) / 10
+      }];
     }
 
     const dist = (a, b) => {
@@ -1134,10 +1139,15 @@ const newNode = {
 
     const lerpPoint = (a, b, t) => ({
       x: a.x + (b.x - a.x) * t,
-      y: a.y + (b.y - a.y) * t
+      y: a.y + (b.y - a.y) * t,
+      width: (a.width ?? this._trackWidth) + ((b.width ?? this._trackWidth) - (a.width ?? this._trackWidth)) * t
     });
 
-    const source = points.map(p => ({ x: p.x, y: p.y }));
+    const source = points.map(p => ({
+      x: p.x,
+      y: p.y,
+      width: p.width ?? this._trackWidth
+    }));
 
     if (closed) {
       const first = source[0];
@@ -1147,21 +1157,39 @@ const newNode = {
       const samePoint = (dx * dx + dy * dy) < 0.0001;
 
       if (!samePoint) {
-        source.push({ x: first.x, y: first.y });
+        source.push({
+          x: first.x,
+          y: first.y,
+          width: first.width
+        });
       }
     }
 
     const out = [];
-    let prev = { x: source[0].x, y: source[0].y };
-    out.push({ x: prev.x, y: prev.y });
+    let prev = {
+      x: source[0].x,
+      y: source[0].y,
+      width: source[0].width
+    };
+
+    out.push({
+      x: prev.x,
+      y: prev.y,
+      width: prev.width
+    });
 
     let carry = 0;
 
     for (let i = 1; i < source.length; i++) {
-      let segStart = { x: prev.x, y: prev.y };
-      const segEnd = source[i];
+      let segStart = {
+        x: prev.x,
+        y: prev.y,
+        width: prev.width
+      };
 
+      const segEnd = source[i];
       let segLen = dist(segStart, segEnd);
+
       if (segLen <= 0.000001) {
         prev = segEnd;
         continue;
@@ -1172,7 +1200,11 @@ const newNode = {
         const t = need / segLen;
         const p = lerpPoint(segStart, segEnd, t);
 
-        out.push({ x: p.x, y: p.y });
+        out.push({
+          x: p.x,
+          y: p.y,
+          width: p.width
+        });
 
         segStart = p;
         segLen = dist(segStart, segEnd);
@@ -1190,7 +1222,11 @@ const newNode = {
       const dy = lastSrc.y - lastOut.y;
 
       if ((dx * dx + dy * dy) > 0.0001) {
-        out.push({ x: lastSrc.x, y: lastSrc.y });
+        out.push({
+          x: lastSrc.x,
+          y: lastSrc.y,
+          width: lastSrc.width
+        });
       }
     } else if (out.length > 1) {
       const first = out[0];
@@ -1205,12 +1241,16 @@ const newNode = {
 
     return out.map(p => ({
       x: Math.round(p.x * 10) / 10,
-      y: Math.round(p.y * 10) / 10
+      y: Math.round(p.y * 10) / 10,
+      width: Math.round((p.width ?? this._trackWidth) * 10) / 10
     }));
   }
-
-  _generateCenterline(samplesPerSegment = 32, spacing = 12) {
+  _generateCenterline(samplesPerSegment = 32, spacing = 10) {
     const rawPoints = [];
+
+    if (!Array.isArray(this._nodes) || this._nodes.length < 2) {
+      return rawPoints;
+    }
 
     const sampleCurve = (a, b) => {
       const curve = new Phaser.Curves.CubicBezier(
@@ -1223,13 +1263,16 @@ const newNode = {
       return curve.getPoints(samplesPerSegment);
     };
 
-    for (let i = 0; i < this._nodes.length - 1; i++) {
-      const a = this._nodes[i];
-      const b = this._nodes[i + 1];
+    const pushSampledSegment = (a, b) => {
       const pts = sampleCurve(a, b);
+      const aWidth = Number.isFinite(a.width) ? a.width : this._trackWidth;
+      const bWidth = Number.isFinite(b.width) ? b.width : this._trackWidth;
+      const lastIndex = Math.max(1, pts.length - 1);
 
       for (let k = 0; k < pts.length; k++) {
         const p = pts[k];
+        const t = k / lastIndex;
+        const width = Phaser.Math.Linear(aWidth, bWidth, t);
 
         if (rawPoints.length > 0) {
           const last = rawPoints[rawPoints.length - 1];
@@ -1238,27 +1281,20 @@ const newNode = {
           if ((dx * dx + dy * dy) < 0.0001) continue;
         }
 
-        rawPoints.push({ x: p.x, y: p.y });
+        rawPoints.push({
+          x: p.x,
+          y: p.y,
+          width
+        });
       }
+    };
+
+    for (let i = 0; i < this._nodes.length - 1; i++) {
+      pushSampledSegment(this._nodes[i], this._nodes[i + 1]);
     }
 
     if (this._closed && this._nodes.length > 2) {
-      const a = this._nodes[this._nodes.length - 1];
-      const b = this._nodes[0];
-      const pts = sampleCurve(a, b);
-
-      for (let k = 0; k < pts.length; k++) {
-        const p = pts[k];
-
-        if (rawPoints.length > 0) {
-          const last = rawPoints[rawPoints.length - 1];
-          const dx = p.x - last.x;
-          const dy = p.y - last.y;
-          if ((dx * dx + dy * dy) < 0.0001) continue;
-        }
-
-        rawPoints.push({ x: p.x, y: p.y });
-      }
+      pushSampledSegment(this._nodes[this._nodes.length - 1], this._nodes[0]);
     }
 
     return this._resamplePolyline(rawPoints, spacing, this._closed);
