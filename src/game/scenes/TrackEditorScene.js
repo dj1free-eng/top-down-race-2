@@ -14,15 +14,14 @@ export class TrackEditorScene extends BaseScene {
     this._trackWidthMin = 80;
     this._trackWidthMax = 260;
 
-    // Editor Bézier / nodos
-    this._nodes = [];
+    // Editor Bézier / nodos (fase 1)
+    this._nodes = [];               // [{ x, y }]
     this._closed = false;
     this._selectedNode = -1;
     this._lastTapTime = 0;
     this._selectedHandle = null; // 'in' | 'out' | null
     this._draggingNode = false;
     this._pendingTap = null;
-
     // Cámara de edición
     this._editCam = null;
     this._editZoom = 1;
@@ -36,13 +35,9 @@ export class TrackEditorScene extends BaseScene {
     this._bgImageKey = null;
 
     // Gráficos editor
-        // Gráficos editor
     this._gBezier = null;
     this._gNodes = null;
     this._gPreview = null;
-    this._gCenterline = null;
-    this._gRunoff = null;
-    this._gCurbs = null;
   }
 
   create() {
@@ -158,7 +153,7 @@ export class TrackEditorScene extends BaseScene {
     canvasPanel.lineStyle(isNarrow ? 2 : 3, 0xffffff, 0.55);
     canvasPanel.strokeRoundedRect(drawX, drawY, drawW, drawH, round);
 
-    this.add.text(drawX + 14, drawY + 10, 'EDITOR BÉZIER · FASE 1', {
+    const canvasLabel = this.add.text(drawX + 14, drawY + 10, 'EDITOR BÉZIER · FASE 1', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
       fontSize: isNarrow ? '11px' : '12px',
       color: '#ffffff',
@@ -228,12 +223,9 @@ export class TrackEditorScene extends BaseScene {
     const syncEditorCameras = () => {
       const editorWorldObjs = [
         this._bgImage,
-        this._gRunoff,
         this._gBezier,
         this._gNodes,
-        this._gPreview,
-        this._gCurbs,
-        this._gCenterline
+        this._gPreview
       ].filter(Boolean);
 
       this.cameras.main.ignore(editorWorldObjs);
@@ -508,13 +500,10 @@ export class TrackEditorScene extends BaseScene {
     // =================================================
     // Layers editor
     // =================================================
-    this._gRunoff = this.add.graphics().setDepth(8.5);
     this._gPreview = this.add.graphics().setDepth(10);
-    this._gCurbs = this.add.graphics().setDepth(10.5);
     this._gBezier = this.add.graphics().setDepth(11);
-    this._gCenterline = this.add.graphics().setDepth(11.5);
     this._gNodes = this.add.graphics().setDepth(12);
-
+    this._gCenterline = this.add.graphics().setDepth(9);
     // Cámara dedicada al editor
     this._editCam = this.cameras.add(drawX, drawY, drawW, drawH);
     this._editCam.setZoom(this._editZoom);
@@ -537,90 +526,105 @@ export class TrackEditorScene extends BaseScene {
     // =================================================
     this.input.addPointer(2);
 
-    this.input.on('pointerdown', (p) => {
-      const activeTouches = this.input.manager.pointers.filter(pp => pp.isDown).length;
+this.input.on('pointerdown', (p) => {
 
-      if (activeTouches > 1) {
-        if (this._pendingTap) {
-          this._pendingTap.remove(false);
-          this._pendingTap = null;
-        }
-        this._draggingNode = false;
-        this._selectedHandle = null;
-        return;
+  const activeTouches = this.input.manager.pointers.filter(pp => pp.isDown).length;
+
+  // Si hay más de un dedo → cancelar cualquier tap pendiente
+  if (activeTouches > 1) {
+    if (this._pendingTap) {
+      this._pendingTap.remove(false);
+      this._pendingTap = null;
+    }
+    this._draggingNode = false;
+    this._selectedHandle = null;
+    return;
+  }
+
+  if (!isPointerInCanvasView(p)) {
+    return;
+  }
+
+  const wp = this._screenToEditorWorld(p);
+
+  // Esperamos un poco antes de actuar
+  this._pendingTap = this.time.delayedCall(120, () => {
+
+    const hitHandle = this._findHitHandle(wp.x, wp.y, 14);
+
+    if (hitHandle) {
+      this._selectedNode = hitHandle.nodeIndex;
+      this._selectedHandle = hitHandle.handle;
+      this._draggingNode = true;
+
+      this._redraw();
+      this._refreshStats();
+      return;
+    }
+
+    const hitNode = this._findHitNode(wp.x, wp.y, 18);
+
+    if (hitNode >= 0) {
+
+  const now = this.time.now;
+
+  if (this._selectedNode === hitNode && now - this._lastTapTime < 300) {
+
+    this._cycleNodeMode(hitNode);
+    this._redraw();
+    this._refreshStats();
+
+  } else {
+
+    this._selectedNode = hitNode;
+    this._selectedHandle = null;
+    this._draggingNode = true;
+
+  }
+
+  this._lastTapTime = now;
+
+}
+    else {
+      const hitSeg = this._findHitSegmentPoint(wp.x, wp.y, 16, 24);
+
+      if (hitSeg) {
+        this._insertNodeOnBezierSegment(hitSeg);
+      } else {
+        const handleLen = 36;
+
+        this._nodes.push({
+          x: wp.x,
+          y: wp.y,
+          inX: wp.x - handleLen,
+          inY: wp.y,
+          outX: wp.x + handleLen,
+          outY: wp.y,
+          mode: 'mirrored'
+        });
+
+        this._selectedNode = this._nodes.length - 1;
       }
 
-      if (!isPointerInCanvasView(p)) return;
+      this._selectedHandle = null;
+      this._draggingNode = true;
+    }
 
-      const wp = this._screenToEditorWorld(p);
+    this._redraw();
+    this._refreshStats();
 
-      this._pendingTap = this.time.delayedCall(120, () => {
-        const hitHandle = this._findHitHandle(wp.x, wp.y, 14);
-
-        if (hitHandle) {
-          this._selectedNode = hitHandle.nodeIndex;
-          this._selectedHandle = hitHandle.handle;
-          this._draggingNode = true;
-
-          this._redraw();
-          this._refreshStats();
-          return;
-        }
-
-        const hitNode = this._findHitNode(wp.x, wp.y, 18);
-
-        if (hitNode >= 0) {
-          const now = this.time.now;
-
-          if (this._selectedNode === hitNode && now - this._lastTapTime < 300) {
-            this._cycleNodeMode(hitNode);
-            this._redraw();
-            this._refreshStats();
-          } else {
-            this._selectedNode = hitNode;
-            this._selectedHandle = null;
-            this._draggingNode = true;
-          }
-
-          this._lastTapTime = now;
-        } else {
-          const hitSeg = this._findHitSegmentPoint(wp.x, wp.y, 16, 24);
-
-          if (hitSeg) {
-            this._insertNodeOnBezierSegment(hitSeg);
-          } else {
-            const handleLen = 36;
-
-            this._nodes.push({
-              x: wp.x,
-              y: wp.y,
-              inX: wp.x - handleLen,
-              inY: wp.y,
-              outX: wp.x + handleLen,
-              outY: wp.y,
-              mode: 'mirrored'
-            });
-
-            this._selectedNode = this._nodes.length - 1;
-            this._selectedHandle = null;
-            this._draggingNode = true;
-          }
-        }
-
-        this._redraw();
-        this._refreshStats();
-      });
-    });
+  });
+});
 
     this.input.on('pointermove', (p) => {
       const downPointers = this.input.manager.pointers.filter(pp => pp.isDown);
 
+      // Pan + pinch zoom con 2 dedos
       if (downPointers.length >= 2) {
-        if (this._pendingTap) {
-          this._pendingTap.remove(false);
-          this._pendingTap = null;
-        }
-
+      if (this._pendingTap) {
+  this._pendingTap.remove(false);
+  this._pendingTap = null;
+} 
         this._draggingNode = false;
 
         const p1 = downPointers[0];
@@ -671,38 +675,46 @@ export class TrackEditorScene extends BaseScene {
       const n = this._nodes[this._selectedNode];
 
       if (this._selectedHandle === 'in') {
-        n.inX = wp.x;
-        n.inY = wp.y;
-        this._syncOppositeHandleByMode(n, 'in');
-      } else if (this._selectedHandle === 'out') {
-        n.outX = wp.x;
-        n.outY = wp.y;
-        this._syncOppositeHandleByMode(n, 'out');
-      } else {
-        const dx = wp.x - n.x;
-        const dy = wp.y - n.y;
+  n.inX = wp.x;
+  n.inY = wp.y;
 
-        n.x = wp.x;
-        n.y = wp.y;
+  if ((n.mode || 'mirrored') === 'mirrored') {
+    n.outX = n.x + (n.x - n.inX);
+    n.outY = n.y + (n.y - n.inY);
+  }
+} else if (this._selectedHandle === 'out') {
+  n.outX = wp.x;
+  n.outY = wp.y;
 
-        n.inX += dx;
-        n.inY += dy;
-        n.outX += dx;
-        n.outY += dy;
-      }
+  if ((n.mode || 'mirrored') === 'mirrored') {
+    n.inX = n.x + (n.x - n.outX);
+    n.inY = n.y + (n.y - n.outY);
+  }
+} else {
+  const dx = wp.x - n.x;
+  const dy = wp.y - n.y;
+
+  n.x = wp.x;
+  n.y = wp.y;
+
+  n.inX += dx;
+  n.inY += dy;
+  n.outX += dx;
+  n.outY += dy;
+}
 
       this._redraw();
       this._refreshStats();
     });
 
-    this.input.on('pointerup', () => {
+        this.input.on('pointerup', () => {
       this._draggingNode = false;
       this._selectedHandle = null;
       this._panLastMid = null;
       this._pinchLastDist = 0;
     });
 
-    this.input.on('pointerupoutside', () => {
+        this.input.on('pointerupoutside', () => {
       this._draggingNode = false;
       this._selectedHandle = null;
       this._panLastMid = null;
@@ -730,7 +742,6 @@ export class TrackEditorScene extends BaseScene {
     }
     return -1;
   }
-
   _findHitHandle(x, y, radius = 14) {
     const r2 = radius * radius;
 
@@ -757,7 +768,6 @@ export class TrackEditorScene extends BaseScene {
 
     return null;
   }
-
   _findHitSegmentPoint(x, y, radius = 16, samplesPerSegment = 24) {
     if (this._nodes.length < 2) return null;
 
@@ -840,8 +850,7 @@ export class TrackEditorScene extends BaseScene {
 
     return best;
   }
-
-  _insertNodeOnBezierSegment(hitSeg) {
+    _insertNodeOnBezierSegment(hitSeg) {
     if (!hitSeg) return;
 
     const a = this._nodes[hitSeg.aIndex];
@@ -890,8 +899,7 @@ export class TrackEditorScene extends BaseScene {
     this._selectedHandle = null;
     this._draggingNode = true;
   }
-
-  _syncOppositeHandleByMode(n, movedHandle) {
+    _syncOppositeHandleByMode(n, movedHandle) {
     const mode = n.mode || 'mirrored';
     if (mode === 'free') return;
 
@@ -948,22 +956,24 @@ export class TrackEditorScene extends BaseScene {
       }
     }
   }
-
   _cycleNodeMode(nodeIndex) {
-    const n = this._nodes[nodeIndex];
-    if (!n) return;
 
-    const mode = n.mode || 'mirrored';
+  const n = this._nodes[nodeIndex];
+  if (!n) return;
 
-    if (mode === 'mirrored') {
-      n.mode = 'aligned';
-    } else if (mode === 'aligned') {
-      n.mode = 'free';
-    } else {
-      n.mode = 'mirrored';
-    }
+  const mode = n.mode || 'mirrored';
+
+  if (mode === 'mirrored') {
+    n.mode = 'aligned';
+  }
+  else if (mode === 'aligned') {
+    n.mode = 'free';
+  }
+  else {
+    n.mode = 'mirrored';
   }
 
+}
   _refreshStats() {
     if (!this._ui?.stats) return;
     this._ui.stats.setText(
@@ -1007,111 +1017,106 @@ export class TrackEditorScene extends BaseScene {
   }
 
   _redraw() {
-        this._gRunoff.clear();
-    this._gPreview.clear();
-    this._gCurbs.clear();
-    this._gBezier.clear();
-    this._gNodes.clear();
-    this._gCenterline.clear();
-
+this._gPreview.clear();
+this._gBezier.clear();
+this._gNodes.clear();
+this._gCenterline.clear();
     if (this._nodes.length >= 2) {
-      const sampleCurve = (a, b, steps = 24) => {
-        const curve = new Phaser.Curves.CubicBezier(
-          new Phaser.Math.Vector2(a.x, a.y),
-          new Phaser.Math.Vector2(a.outX ?? a.x, a.outY ?? a.y),
-          new Phaser.Math.Vector2(b.inX ?? b.x, b.inY ?? b.y),
-          new Phaser.Math.Vector2(b.x, b.y)
-        );
+// Preview ancho pista siguiendo la Bézier
+if (this._nodes.length >= 2) {
 
-        return curve.getPoints(steps);
-      };
+  const previewPx = Math.max(6, Math.min(40, Math.round(this._trackWidth / 6)));
 
-      // Preview ancho pista siguiendo la Bézier
-      const previewPx = this._trackWidth;
+  this._gPreview.lineStyle(previewPx, 0xfff000, 0.18);
+  this._gPreview.beginPath();
 
-      this._gPreview.lineStyle(previewPx, 0x2f343a, 0.95);
-      this._gPreview.beginPath();
+  const sampleCurve = (a, b, steps = 24) => {
+    const curve = new Phaser.Curves.CubicBezier(
+      new Phaser.Math.Vector2(a.x, a.y),
+      new Phaser.Math.Vector2(a.outX ?? a.x, a.outY ?? a.y),
+      new Phaser.Math.Vector2(b.inX ?? b.x, b.inY ?? b.y),
+      new Phaser.Math.Vector2(b.x, b.y)
+    );
 
-      const firstPreview = this._nodes[0];
-      this._gPreview.moveTo(firstPreview.x, firstPreview.y);
+    return curve.getPoints(steps);
+  };
 
-      for (let i = 0; i < this._nodes.length - 1; i++) {
-        const a = this._nodes[i];
-        const b = this._nodes[i + 1];
-        const pts = sampleCurve(a, b, 24);
+  const first = this._nodes[0];
+  this._gPreview.moveTo(first.x, first.y);
 
-        for (let k = 1; k < pts.length; k++) {
-          this._gPreview.lineTo(pts[k].x, pts[k].y);
-        }
+  for (let i = 0; i < this._nodes.length - 1; i++) {
+    const a = this._nodes[i];
+    const b = this._nodes[i + 1];
+    const pts = sampleCurve(a, b, 24);
+
+    for (let k = 1; k < pts.length; k++) {
+      this._gPreview.lineTo(pts[k].x, pts[k].y);
+    }
+  }
+
+  if (this._closed && this._nodes.length > 2) {
+    const a = this._nodes[this._nodes.length - 1];
+    const b = this._nodes[0];
+    const pts = sampleCurve(a, b, 24);
+
+    for (let k = 1; k < pts.length; k++) {
+      this._gPreview.lineTo(pts[k].x, pts[k].y);
+    }
+  }
+
+  this._gPreview.strokePath();
+}
+
+    // Curva Bézier real (muestreada en puntos)
+    this._gBezier.lineStyle(3, 0xffffff, 0.95);
+    this._gBezier.beginPath();
+
+    const sampleCurve = (a, b, steps = 24) => {
+      const curve = new Phaser.Curves.CubicBezier(
+        new Phaser.Math.Vector2(a.x, a.y),
+        new Phaser.Math.Vector2(a.outX ?? a.x, a.outY ?? a.y),
+        new Phaser.Math.Vector2(b.inX ?? b.x, b.inY ?? b.y),
+        new Phaser.Math.Vector2(b.x, b.y)
+      );
+
+      return curve.getPoints(steps);
+    };
+
+    const first = this._nodes[0];
+    this._gBezier.moveTo(first.x, first.y);
+
+    for (let i = 0; i < this._nodes.length - 1; i++) {
+      const a = this._nodes[i];
+      const b = this._nodes[i + 1];
+      const pts = sampleCurve(a, b, 24);
+
+      for (let k = 1; k < pts.length; k++) {
+        this._gBezier.lineTo(pts[k].x, pts[k].y);
       }
-
-      if (this._closed && this._nodes.length > 2) {
-        const a = this._nodes[this._nodes.length - 1];
-        const b = this._nodes[0];
-        const pts = sampleCurve(a, b, 24);
-
-        for (let k = 1; k < pts.length; k++) {
-          this._gPreview.lineTo(pts[k].x, pts[k].y);
-        }
-      }
-
-      this._gPreview.strokePath();
-
-      // Curva Bézier real
-      this._gBezier.lineStyle(3, 0xffffff, 0.95);
-      this._gBezier.beginPath();
-
-      const firstBezier = this._nodes[0];
-      this._gBezier.moveTo(firstBezier.x, firstBezier.y);
-
-      for (let i = 0; i < this._nodes.length - 1; i++) {
-        const a = this._nodes[i];
-        const b = this._nodes[i + 1];
-        const pts = sampleCurve(a, b, 24);
-
-        for (let k = 1; k < pts.length; k++) {
-          this._gBezier.lineTo(pts[k].x, pts[k].y);
-        }
-      }
-
-      if (this._closed && this._nodes.length > 2) {
-        const a = this._nodes[this._nodes.length - 1];
-        const b = this._nodes[0];
-        const pts = sampleCurve(a, b, 24);
-
-        for (let k = 1; k < pts.length; k++) {
-          this._gBezier.lineTo(pts[k].x, pts[k].y);
-        }
-      }
-
-      this._gBezier.strokePath();
     }
 
-    // DEBUG / PREVIEW: centerline + pianos pegados al borde de pista
+    if (this._closed && this._nodes.length > 2) {
+      const a = this._nodes[this._nodes.length - 1];
+      const b = this._nodes[0];
+      const pts = sampleCurve(a, b, 24);
+
+      for (let k = 1; k < pts.length; k++) {
+        this._gBezier.lineTo(pts[k].x, pts[k].y);
+      }
+    }
+
+    this._gBezier.strokePath();
+    }
+    // DEBUG: mostrar centerline remuestreado
     const cl = this._generateCenterline(24);
 
-    const halfTrack = this._trackWidth * 0.5;
-    const curbWidth = 8;
+    this._gCenterline.fillStyle(0xff3b3b, 0.9);
 
-    const leftTrackEdge = this._buildOffsetPolyline(cl, -halfTrack, this._closed);
-    const rightTrackEdge = this._buildOffsetPolyline(cl, halfTrack, this._closed);
-
-    // Quitamos de momento la escapatoria visual
-    // y dibujamos solo pianos finos pegados al borde real de la pista
-    this._gCurbs.lineStyle(curbWidth, 0xd7263d, 0.95);
-    this._drawPolyline(this._gCurbs, leftTrackEdge, this._closed);
-
-    this._gCurbs.lineStyle(curbWidth, 0xf7f7f7, 0.95);
-    this._drawPolyline(this._gCurbs, rightTrackEdge, this._closed);
-
-    // Centerline debug
-    this._gCenterline.fillStyle(0xff3b3b, 1);
-    for (const p of cl) {
-      this._gCenterline.fillCircle(p.x, p.y, 3);
+    for (let p of cl) {
+      this._gCenterline.fillCircle(p.x, p.y, 2);
     }
-
     // Nodos
-    for (let i = 0; i < this._nodes.length; i++) {
+        for (let i = 0; i < this._nodes.length; i++) {
       const n = this._nodes[i];
       const selected = i === this._selectedNode;
 
@@ -1120,6 +1125,7 @@ export class TrackEditorScene extends BaseScene {
       const outX = n.outX ?? n.x;
       const outY = n.outY ?? n.y;
 
+      // líneas de tangente
       this._gNodes.lineStyle(2, 0xffffff, selected ? 0.45 : 0.22);
       this._gNodes.beginPath();
       this._gNodes.moveTo(n.x, n.y);
@@ -1128,6 +1134,7 @@ export class TrackEditorScene extends BaseScene {
       this._gNodes.lineTo(outX, outY);
       this._gNodes.strokePath();
 
+      // handles
       this._gNodes.fillStyle(0x7fdcff, selected ? 0.95 : 0.65);
       this._gNodes.fillCircle(inX, inY, 4);
       this._gNodes.fillCircle(outX, outY, 4);
@@ -1136,6 +1143,7 @@ export class TrackEditorScene extends BaseScene {
       this._gNodes.strokeCircle(inX, inY, 4);
       this._gNodes.strokeCircle(outX, outY, 4);
 
+      // anchor
       this._gNodes.fillStyle(selected ? 0x3dff7a : 0xffffff, 0.95);
       this._gNodes.fillCircle(n.x, n.y, selected ? 8 : 6);
 
@@ -1143,6 +1151,7 @@ export class TrackEditorScene extends BaseScene {
       this._gNodes.strokeCircle(n.x, n.y, selected ? 8 : 6);
     }
 
+    // Marca de cierre visual
     if (this._closed && this._nodes.length >= 3) {
       const a = this._nodes[0];
       this._gNodes.lineStyle(2, 0x3dff7a, 0.8);
@@ -1151,15 +1160,12 @@ export class TrackEditorScene extends BaseScene {
   }
 
   _exportBezierDraft() {
-    const centerline = this._generateCenterline(24);
-
     const data = {
       type: 'track-editor-bezier-draft',
-      version: 2,
+      version: 1,
       closed: this._closed,
       trackWidth: this._trackWidth,
-
-      nodes: this._nodes.map(n => ({
+            nodes: this._nodes.map(n => ({
         x: Math.round(n.x * 10) / 10,
         y: Math.round(n.y * 10) / 10,
         inX: Math.round((n.inX ?? n.x) * 10) / 10,
@@ -1168,34 +1174,13 @@ export class TrackEditorScene extends BaseScene {
         outY: Math.round((n.outY ?? n.y) * 10) / 10,
         mode: n.mode || 'mirrored'
       })),
-
-      centerline,
-
-      curbs: {
-        enabled: true,
-        width: 12,
-        sides: {
-          left: true,
-          right: true
-        },
-        style: 'red-white'
-      },
-
-      runoff: {
-        enabled: true,
-        width: 36,
-        sides: {
-          left: true,
-          right: true
-        },
-        surface: 'asphalt'
-      }
+centerline: this._generateCenterline(24)
     };
 
     this._downloadJson(`bezier_draft_${Date.now()}.json`, data);
     this._ui.report?.setText('✅ Draft Bézier exportado');
   }
-  _resamplePolyline(points, spacing = 24, closed = false) {
+    _resamplePolyline(points, spacing = 24, closed = false) {
     if (!Array.isArray(points) || points.length === 0) return [];
     if (points.length === 1) {
       return [{ x: Math.round(points[0].x * 10) / 10, y: Math.round(points[0].y * 10) / 10 }];
@@ -1283,88 +1268,6 @@ export class TrackEditorScene extends BaseScene {
       y: Math.round(p.y * 10) / 10
     }));
   }
-
-  _simplifyPolylineRDP(points, epsilon = 2, closed = false) {
-    if (!Array.isArray(points) || points.length <= 2) {
-      return Array.isArray(points) ? points.slice() : [];
-    }
-
-    const distPointToSegment = (p, a, b) => {
-      const abx = b.x - a.x;
-      const aby = b.y - a.y;
-      const apx = p.x - a.x;
-      const apy = p.y - a.y;
-      const abLen2 = abx * abx + aby * aby;
-
-      let t = 0;
-      if (abLen2 > 0.000001) {
-        t = Phaser.Math.Clamp((apx * abx + apy * aby) / abLen2, 0, 1);
-      }
-
-      const qx = a.x + abx * t;
-      const qy = a.y + aby * t;
-      const dx = p.x - qx;
-      const dy = p.y - qy;
-      return Math.sqrt(dx * dx + dy * dy);
-    };
-
-    const rdp = (arr) => {
-      if (arr.length <= 2) return arr.slice();
-
-      let maxDist = -1;
-      let index = -1;
-
-      const first = arr[0];
-      const last = arr[arr.length - 1];
-
-      for (let i = 1; i < arr.length - 1; i++) {
-        const d = distPointToSegment(arr[i], first, last);
-        if (d > maxDist) {
-          maxDist = d;
-          index = i;
-        }
-      }
-
-      if (maxDist > epsilon && index > 0) {
-        const left = rdp(arr.slice(0, index + 1));
-        const right = rdp(arr.slice(index));
-        return left.slice(0, -1).concat(right);
-      }
-
-      return [first, last];
-    };
-
-    if (!closed) {
-      return rdp(points).map(p => ({
-        x: Math.round(p.x * 10) / 10,
-        y: Math.round(p.y * 10) / 10
-      }));
-    }
-
-    const openPoints = points.slice();
-    if (openPoints.length >= 2) {
-      openPoints.push({ x: openPoints[0].x, y: openPoints[0].y });
-    }
-
-    const simplified = rdp(openPoints);
-
-    if (simplified.length > 1) {
-      const first = simplified[0];
-      const last = simplified[simplified.length - 1];
-      const dx = first.x - last.x;
-      const dy = first.y - last.y;
-
-      if ((dx * dx + dy * dy) < 0.0001) {
-        simplified.pop();
-      }
-    }
-
-    return simplified.map(p => ({
-      x: Math.round(p.x * 10) / 10,
-      y: Math.round(p.y * 10) / 10
-    }));
-  }
-
   _generateCenterline(samplesPerSegment = 24) {
     const rawPoints = [];
 
@@ -1417,60 +1320,7 @@ export class TrackEditorScene extends BaseScene {
       }
     }
 
-    const resampled = this._resamplePolyline(rawPoints, 12, this._closed);
-    return resampled;
-  }
-_buildOffsetPolyline(points, offset = 0, closed = false) {
-  if (!Array.isArray(points) || points.length < 2) return [];
-
-  const out = [];
-  const count = points.length;
-
-  const getPoint = (i) => {
-    if (closed) return points[(i + count) % count];
-    return points[Math.max(0, Math.min(count - 1, i))];
-  };
-
-  for (let i = 0; i < count; i++) {
-
-    const p0 = getPoint(i);
-    const p1 = getPoint(i + 1);
-
-    const dx = p1.x - p0.x;
-    const dy = p1.y - p0.y;
-
-    const len = Math.sqrt(dx * dx + dy * dy);
-    if (len < 0.0001) {
-      out.push({ x: p0.x, y: p0.y });
-      continue;
-    }
-
-    const nx = -dy / len;
-    const ny = dx / len;
-
-    out.push({
-      x: Math.round((p0.x + nx * offset) * 10) / 10,
-      y: Math.round((p0.y + ny * offset) * 10) / 10
-    });
-  }
-
-  return out;
-}
-  _drawPolyline(g, points, closed = false) {
-    if (!g || !Array.isArray(points) || points.length < 2) return;
-
-    g.beginPath();
-    g.moveTo(points[0].x, points[0].y);
-
-    for (let i = 1; i < points.length; i++) {
-      g.lineTo(points[i].x, points[i].y);
-    }
-
-    if (closed) {
-      g.lineTo(points[0].x, points[0].y);
-    }
-
-    g.strokePath();
+    return this._resamplePolyline(rawPoints, 24, this._closed);
   }
   _downloadJson(filename, data) {
     try {
