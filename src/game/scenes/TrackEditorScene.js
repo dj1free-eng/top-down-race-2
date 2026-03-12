@@ -450,7 +450,7 @@ export class TrackEditorScene extends BaseScene {
 
     this._ui.widthSlider = { knob, sliderX, sliderW, trackY, sliderH };
 
-        const setWidthFromPointer = (px) => {
+            const setWidthFromPointer = (px) => {
       const t = Phaser.Math.Clamp((px - sliderX) / sliderW, 0, 1);
       const v = Math.round(this._trackWidthMin + t * (this._trackWidthMax - this._trackWidthMin));
 
@@ -458,6 +458,10 @@ export class TrackEditorScene extends BaseScene {
         this._nodes[this._selectedNode].width = v;
       } else {
         this._trackWidth = v;
+
+        for (let i = 0; i < this._nodes.length; i++) {
+          this._nodes[i].width = v;
+        }
       }
 
       this._ui.widthValue.setText(`${v}px`);
@@ -583,6 +587,7 @@ export class TrackEditorScene extends BaseScene {
             this._selectedNode = hitNode;
             this._selectedHandle = null;
             this._draggingNode = true;
+            this._positionWidthKnob();
           }
 
           this._lastTapTime = now;
@@ -605,9 +610,10 @@ this._nodes.push({
   width: this._trackWidth
 });
 
-            this._selectedNode = this._nodes.length - 1;
+                        this._selectedNode = this._nodes.length - 1;
             this._selectedHandle = null;
             this._draggingNode = true;
+            this._positionWidthKnob();
           }
         }
 
@@ -894,7 +900,7 @@ const newNode = {
     this._selectedNode = hitSeg.insertIndex;
     this._selectedHandle = null;
     this._draggingNode = true;
-  }
+    this._positionWidthKnob();
 
   _syncOppositeHandleByMode(n, movedHandle) {
     const mode = n.mode || 'mirrored';
