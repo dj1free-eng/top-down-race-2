@@ -11,7 +11,7 @@ export class TrackEditorScene extends BaseScene {
     this._uiTopH = 110;
 
     this._trackWidth = 160;
-    this._trackWidthMin = 80;
+    this._trackWidthMin = 40;
     this._trackWidthMax = 260;
 
     // Editor Bézier / nodos
