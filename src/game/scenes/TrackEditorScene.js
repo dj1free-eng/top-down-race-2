@@ -1267,7 +1267,70 @@ if (outer.length > 1 && inner.length > 1) {
 
     return this._resamplePolyline(rawPoints, spacing, this._closed);
   }
+  _buildTrackStrip(points, width, closed = false) {
+    if (!Array.isArray(points) || points.length < 2) {
+      return { left: [], right: [], quads: [] };
+    }
 
+    const half = width * 0.5;
+    const count = points.length;
+
+    const get = (i) => {
+      if (closed) return points[(i + count) % count];
+      return points[Math.max(0, Math.min(count - 1, i))];
+    };
+
+    const left = [];
+    const right = [];
+
+    for (let i = 0; i < count; i++) {
+      const pPrev = get(i - 1);
+      const pCurr = get(i);
+      const pNext = get(i + 1);
+
+      let tx = pNext.x - pPrev.x;
+      let ty = pNext.y - pPrev.y;
+
+      const tl = Math.sqrt(tx * tx + ty * ty);
+      if (tl <= 0.000001) {
+        tx = 1;
+        ty = 0;
+      } else {
+        tx /= tl;
+        ty /= tl;
+      }
+
+      const nx = -ty;
+      const ny = tx;
+
+      left.push({
+        x: Math.round((pCurr.x - nx * half) * 10) / 10,
+        y: Math.round((pCurr.y - ny * half) * 10) / 10
+      });
+
+      right.push({
+        x: Math.round((pCurr.x + nx * half) * 10) / 10,
+        y: Math.round((pCurr.y + ny * half) * 10) / 10
+      });
+    }
+
+    const quads = [];
+    const segCount = closed ? count : count - 1;
+
+    for (let i = 0; i < segCount; i++) {
+      const i0 = i;
+      const i1 = (i + 1) % count;
+
+      quads.push({
+        a: left[i0],
+        b: right[i0],
+        c: right[i1],
+        d: left[i1]
+      });
+    }
+
+    return { left, right, quads };
+  }
   _computeSegmentNormal(a, b) {
     const dx = b.x - a.x;
     const dy = b.y - a.y;
