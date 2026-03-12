@@ -34,6 +34,8 @@ export class TrackEditorScene extends BaseScene {
     // Imagen de referencia
     this._bgImage = null;
     this._bgImageKey = null;
+    this._bgImageBaseScale = 1;
+    this._bgImageUserScale = 1;
 
     // Gráficos editor
         this._gBezier = null;
