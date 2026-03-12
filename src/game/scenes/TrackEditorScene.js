@@ -504,7 +504,7 @@ const editorWorldObjs = [
     this._gPreview = this.add.graphics().setDepth(10);
     this._gBezier = this.add.graphics().setDepth(11);
     this._gNodes = this.add.graphics().setDepth(12);
-    this._gCenterline = this.add.graphics().setDepth(9);
+this._gCenterline = this.add.graphics().setDepth(11.5);
     // Cámara dedicada al editor
     this._editCam = this.cameras.add(drawX, drawY, drawW, drawH);
     this._editCam.setZoom(this._editZoom);
@@ -1111,10 +1111,10 @@ if (this._nodes.length >= 2) {
     // DEBUG: mostrar centerline remuestreado
     const cl = this._generateCenterline(24);
 
-    this._gCenterline.fillStyle(0xff3b3b, 0.9);
+this._gCenterline.fillStyle(0xff3b3b, 1);
 
     for (let p of cl) {
-      this._gCenterline.fillCircle(p.x, p.y, 2);
+this._gCenterline.fillCircle(p.x, p.y, 3);
     }
     // Nodos
         for (let i = 0; i < this._nodes.length; i++) {
