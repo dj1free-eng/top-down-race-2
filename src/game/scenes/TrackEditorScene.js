@@ -1245,7 +1245,7 @@ const newNode = {
       width: Math.round((p.width ?? this._trackWidth) * 10) / 10
     }));
   }
-_generateCenterline(samplesPerSegment = 20, spacing = 24)
+_generateCenterline(samplesPerSegment = 20, spacing = 24){
     const rawPoints = [];
 
     if (!Array.isArray(this._nodes) || this._nodes.length < 2) {
