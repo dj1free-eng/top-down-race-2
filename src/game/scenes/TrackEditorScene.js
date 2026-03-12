@@ -1329,7 +1329,7 @@ export class TrackEditorScene extends BaseScene {
         const dx = join.x - p.x;
         const dy = join.y - p.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        const maxJoin = Math.max(8, Math.abs(offset) * joinLimit);
+        const maxJoin = Math.max(6, Math.abs(offset) * 1.6);
         if (!Number.isFinite(dist) || dist > maxJoin) {
           join = fallback();
         }
