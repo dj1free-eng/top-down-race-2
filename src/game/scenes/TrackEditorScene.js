@@ -1431,46 +1431,42 @@ export class TrackEditorScene extends BaseScene {
     const resampled = this._resamplePolyline(rawPoints, 24, this._closed);
     return this._simplifyPolylineRDP(resampled, 2, this._closed);
   }
-  _buildOffsetPolyline(points, offset = 0, closed = false) {
-    if (!Array.isArray(points) || points.length < 2) return [];
+_buildOffsetPolyline(points, offset = 0, closed = false) {
+  if (!Array.isArray(points) || points.length < 2) return [];
 
-    const out = [];
-    const count = points.length;
+  const out = [];
+  const count = points.length;
 
-    const getPoint = (idx) => {
-      if (closed) {
-        const wrapped = (idx + count) % count;
-        return points[wrapped];
-      }
-      return points[Math.max(0, Math.min(count - 1, idx))];
-    };
+  const getPoint = (i) => {
+    if (closed) return points[(i + count) % count];
+    return points[Math.max(0, Math.min(count - 1, i))];
+  };
 
-    for (let i = 0; i < count; i++) {
-      const pPrev = getPoint(i - 1);
-      const pNext = getPoint(i + 1);
-      const p = points[i];
+  for (let i = 0; i < count; i++) {
 
-      const tx = pNext.x - pPrev.x;
-      const ty = pNext.y - pPrev.y;
-      const len = Math.sqrt(tx * tx + ty * ty);
+    const p0 = getPoint(i);
+    const p1 = getPoint(i + 1);
 
-      if (len <= 0.0001) {
-        out.push({ x: p.x, y: p.y });
-        continue;
-      }
+    const dx = p1.x - p0.x;
+    const dy = p1.y - p0.y;
 
-      const nx = -ty / len;
-      const ny = tx / len;
-
-      out.push({
-        x: Math.round((p.x + nx * offset) * 10) / 10,
-        y: Math.round((p.y + ny * offset) * 10) / 10
-      });
+    const len = Math.sqrt(dx * dx + dy * dy);
+    if (len < 0.0001) {
+      out.push({ x: p0.x, y: p0.y });
+      continue;
     }
 
-    return out;
+    const nx = -dy / len;
+    const ny = dx / len;
+
+    out.push({
+      x: Math.round((p0.x + nx * offset) * 10) / 10,
+      y: Math.round((p0.y + ny * offset) * 10) / 10
+    });
   }
 
+  return out;
+}
   _drawPolyline(g, points, closed = false) {
     if (!g || !Array.isArray(points) || points.length < 2) return;
 
