@@ -1027,9 +1027,9 @@ export class TrackEditorScene extends BaseScene {
       };
 
       // Preview ancho pista siguiendo la Bézier
-      const previewPx = Math.max(6, Math.min(40, Math.round(this._trackWidth / 6)));
+      const previewPx = this._trackWidth;
 
-      this._gPreview.lineStyle(previewPx, 0xfff000, 0.18);
+      this._gPreview.lineStyle(previewPx, 0x2f343a, 0.95);
       this._gPreview.beginPath();
 
       const firstPreview = this._nodes[0];
