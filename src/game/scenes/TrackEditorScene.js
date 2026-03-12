@@ -1013,31 +1013,25 @@ export class TrackEditorScene extends BaseScene {
     const previewCenterline = this._generateCenterline(32, 10);
 
     if (previewCenterline.length >= 2) {
-      const geom = this._generateTrackGeometry(previewCenterline);
-this._gPreview.fillStyle(0x2f343a, 0.95);
-this._gPreview.beginPath();
+      const strip = this._buildTrackStrip(previewCenterline, this._trackWidth, this._closed);
 
-const outer = geom.trackOuter;
-const inner = geom.trackInner;
+      if (strip.quads.length > 0) {
+        this._gPreview.fillStyle(0x2f343a, 0.95);
 
-if (outer.length > 1 && inner.length > 1) {
+        for (const q of strip.quads) {
+          this._gPreview.beginPath();
+          this._gPreview.moveTo(q.a.x, q.a.y);
+          this._gPreview.lineTo(q.b.x, q.b.y);
+          this._gPreview.lineTo(q.c.x, q.c.y);
+          this._gPreview.lineTo(q.d.x, q.d.y);
+          this._gPreview.closePath();
+          this._gPreview.fillPath();
+        }
 
-  this._gPreview.moveTo(outer[0].x, outer[0].y);
-
-  for (let i = 1; i < outer.length; i++) {
-    this._gPreview.lineTo(outer[i].x, outer[i].y);
-  }
-
-  for (let i = inner.length - 1; i >= 0; i--) {
-    this._gPreview.lineTo(inner[i].x, inner[i].y);
-  }
-
-  this._gPreview.closePath();
-  this._gPreview.fillPath();
-}
-      this._gEdges.lineStyle(2, 0xf4f4f4, 0.95);
-      this._drawPolyline(this._gEdges, geom.trackInner, this._closed);
-      this._drawPolyline(this._gEdges, geom.trackOuter, this._closed);
+        this._gEdges.lineStyle(2, 0xf4f4f4, 0.95);
+        this._drawPolyline(this._gEdges, strip.left, this._closed);
+        this._drawPolyline(this._gEdges, strip.right, this._closed);
+      }
 
       this._gCenterline.fillStyle(0xff4a4a, 0.95);
       for (const p of previewCenterline) {
