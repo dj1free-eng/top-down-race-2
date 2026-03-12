@@ -978,15 +978,25 @@ const newNode = {
 
   _positionWidthKnob() {
     if (!this._ui?.widthSlider) return;
+
     const { knob, sliderX, sliderW, trackY, sliderH } = this._ui.widthSlider;
 
-    const t = (this._trackWidth - this._trackWidthMin) / (this._trackWidthMax - this._trackWidthMin);
+    let currentWidth = this._trackWidth;
+
+    if (this._selectedNode >= 0 && this._selectedNode < this._nodes.length) {
+      currentWidth = this._nodes[this._selectedNode].width ?? this._trackWidth;
+    }
+
+    const t = (currentWidth - this._trackWidthMin) / (this._trackWidthMax - this._trackWidthMin);
     const x = Math.floor(sliderX + Phaser.Math.Clamp(t, 0, 1) * sliderW);
     const y = Math.floor(trackY + sliderH / 2);
 
     knob.setPosition(x, y);
-  }
 
+    if (this._ui?.widthValue) {
+      this._ui.widthValue.setText(`${Math.round(currentWidth)}px`);
+    }
+  }
   _setReport(rep) {
     if (!this._ui?.report) return;
 
