@@ -1091,7 +1091,7 @@ export class TrackEditorScene extends BaseScene {
     const cl = this._generateCenterline(24);
 
     const halfTrack = this._trackWidth * 0.5;
-    const curbWidth = 12;
+    const curbWidth = 8;
 
     const leftTrackEdge = this._buildOffsetPolyline(cl, -halfTrack, this._closed);
     const rightTrackEdge = this._buildOffsetPolyline(cl, halfTrack, this._closed);
@@ -1417,8 +1417,8 @@ export class TrackEditorScene extends BaseScene {
       }
     }
 
-    const resampled = this._resamplePolyline(rawPoints, 24, this._closed);
-    return this._simplifyPolylineRDP(resampled, 2, this._closed);
+    const resampled = this._resamplePolyline(rawPoints, 12, this._closed);
+    return resampled;
   }
 _buildOffsetPolyline(points, offset = 0, closed = false) {
   if (!Array.isArray(points) || points.length < 2) return [];
