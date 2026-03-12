@@ -1531,7 +1531,7 @@ nodes: this._nodes.map(n => ({
   outY: Math.round((n.outY ?? n.y) * 10) / 10,
   mode: n.mode || 'mirrored',
   width: Math.round((n.width ?? this._trackWidth) * 10) / 10
-}))
+})),
 
       geometry: {
         centerline: geom.centerline,
