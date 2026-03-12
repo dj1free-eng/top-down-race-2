@@ -1315,15 +1315,14 @@ export class TrackEditorScene extends BaseScene {
       let join = this._lineIntersection(a1, a2, b1, b2);
 
       const fallback = () => {
-        const nx = n0.x + n1.x;
-        const ny = n0.y + n1.y;
-        const nl = Math.sqrt(nx * nx + ny * ny);
-        if (nl <= 0.000001) {
-          return { x: p.x + n1.x * offset, y: p.y + n1.y * offset };
-        }
-        return { x: p.x + (nx / nl) * offset, y: p.y + (ny / nl) * offset };
-      };
+        const p0 = { x: pCurr.x + n0.x * offset, y: pCurr.y + n0.y * offset };
+        const p1 = { x: pCurr.x + n1.x * offset, y: pCurr.y + n1.y * offset };
 
+        return {
+          x: (p0.x + p1.x) * 0.5,
+          y: (p0.y + p1.y) * 0.5
+        };
+      };
       if (!join) {
         join = fallback();
       } else {
