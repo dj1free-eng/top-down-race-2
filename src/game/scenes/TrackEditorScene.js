@@ -1010,28 +1010,27 @@ export class TrackEditorScene extends BaseScene {
     this._gCenterline.clear();
     this._gNodes.clear();
 
-    const previewCenterline = this._generateCenterline(32, 10);
+    const previewCenterline = this._generateCenterline(40, 8);
 
     if (previewCenterline.length >= 2) {
       const geom = this._generateTrackGeometry(previewCenterline);
 
-      // Asfalto real
-      this._gPreview.lineStyle(this._trackWidth, 0x2f343a, 0.95);
-      this._drawPolyline(this._gPreview, previewCenterline, this._closed);
+      if (geom.trackInner.length >= 2 && geom.trackOuter.length >= 2) {
+        this._fillBand(this._gPreview, geom.trackOuter, geom.trackInner, 0x2f343a, 0.96);
 
-      // Bordes de pista
-      this._gEdges.lineStyle(2, 0xf4f4f4, 0.95);
-      this._drawPolyline(this._gEdges, geom.trackInner, this._closed);
-      this._drawPolyline(this._gEdges, geom.trackOuter, this._closed);
+        this._gEdges.lineStyle(3, 0xf0f0f0, 0.95);
+        this._drawPolyline(this._gEdges, geom.trackInner, this._closed);
+        this._drawPolyline(this._gEdges, geom.trackOuter, this._closed);
+      }
 
       // Curva Bézier de edición
-      this._gBezier.lineStyle(3, 0xffffff, 0.9);
+      this._gBezier.lineStyle(2.5, 0xffffff, 0.8);
       this._gBezier.beginPath();
 
       const first = this._nodes[0];
       this._gBezier.moveTo(first.x, first.y);
 
-      const sampleCurve = (a, b, steps = 28) => {
+      const sampleCurve = (a, b, steps = 32) => {
         const curve = new Phaser.Curves.CubicBezier(
           new Phaser.Math.Vector2(a.x, a.y),
           new Phaser.Math.Vector2(a.outX ?? a.x, a.outY ?? a.y),
@@ -1044,7 +1043,7 @@ export class TrackEditorScene extends BaseScene {
       for (let i = 0; i < this._nodes.length - 1; i++) {
         const a = this._nodes[i];
         const b = this._nodes[i + 1];
-        const pts = sampleCurve(a, b, 28);
+        const pts = sampleCurve(a, b, 32);
 
         for (let k = 1; k < pts.length; k++) {
           this._gBezier.lineTo(pts[k].x, pts[k].y);
@@ -1054,7 +1053,7 @@ export class TrackEditorScene extends BaseScene {
       if (this._closed && this._nodes.length > 2) {
         const a = this._nodes[this._nodes.length - 1];
         const b = this._nodes[0];
-        const pts = sampleCurve(a, b, 28);
+        const pts = sampleCurve(a, b, 32);
 
         for (let k = 1; k < pts.length; k++) {
           this._gBezier.lineTo(pts[k].x, pts[k].y);
@@ -1066,7 +1065,7 @@ export class TrackEditorScene extends BaseScene {
       // Centerline debug
       this._gCenterline.fillStyle(0xff4a4a, 0.95);
       for (const p of previewCenterline) {
-        this._gCenterline.fillCircle(p.x, p.y, 2.5);
+        this._gCenterline.fillCircle(p.x, p.y, 2.2);
       }
     }
 
@@ -1110,7 +1109,7 @@ export class TrackEditorScene extends BaseScene {
     }
   }
 
-  _resamplePolyline(points, spacing = 12, closed = false) {
+  _resamplePolyline(points, spacing = 8, closed = false) {
     if (!Array.isArray(points) || points.length === 0) return [];
     if (points.length === 1) {
       return [{ x: Math.round(points[0].x * 10) / 10, y: Math.round(points[0].y * 10) / 10 }];
@@ -1199,7 +1198,7 @@ export class TrackEditorScene extends BaseScene {
     }));
   }
 
-  _generateCenterline(samplesPerSegment = 32, spacing = 12) {
+  _generateCenterline(samplesPerSegment = 40, spacing = 8) {
     const rawPoints = [];
 
     const sampleCurve = (a, b) => {
@@ -1254,52 +1253,131 @@ export class TrackEditorScene extends BaseScene {
     return this._resamplePolyline(rawPoints, spacing, this._closed);
   }
 
-  _computeNormals(points, closed = false) {
+  _segmentNormal(a, b) {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const len = Math.sqrt(dx * dx + dy * dy);
+
+    if (len <= 0.000001) {
+      return { x: 0, y: 0 };
+    }
+
+    return {
+      x: -dy / len,
+      y: dx / len
+    };
+  }
+
+  _lineIntersection(a1, a2, b1, b2) {
+    const x1 = a1.x;
+    const y1 = a1.y;
+    const x2 = a2.x;
+    const y2 = a2.y;
+    const x3 = b1.x;
+    const y3 = b1.y;
+    const x4 = b2.x;
+    const y4 = b2.y;
+
+    const den = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+    if (Math.abs(den) < 0.000001) return null;
+
+    const px =
+      ((x1 * y2 - y1 * x2) * (x3 - x4) - (x1 - x2) * (x3 * y4 - y3 * x4)) / den;
+    const py =
+      ((x1 * y2 - y1 * x2) * (y3 - y4) - (y1 - y2) * (x3 * y4 - y3 * x4)) / den;
+
+    return { x: px, y: py };
+  }
+
+  _generateOffsetContour(points, offset = 0, closed = false) {
     if (!Array.isArray(points) || points.length < 2) return [];
 
-    const normals = [];
+    const out = [];
     const count = points.length;
 
-    const getPoint = (idx) => {
-      if (closed) return points[(idx + count) % count];
-      return points[Math.max(0, Math.min(count - 1, idx))];
+    const getPoint = (i) => {
+      if (closed) return points[(i + count) % count];
+      return points[Math.max(0, Math.min(count - 1, i))];
     };
 
     for (let i = 0; i < count; i++) {
-      const prev = getPoint(i - 1);
-      const next = getPoint(i + 1);
+      const p = points[i];
 
-      let tx = next.x - prev.x;
-      let ty = next.y - prev.y;
-      let len = Math.sqrt(tx * tx + ty * ty);
-
-      if (len <= 0.000001) {
-        tx = 1;
-        ty = 0;
-        len = 1;
+      if (!closed && i === 0) {
+        const pNext = points[i + 1];
+        const n = this._segmentNormal(p, pNext);
+        out.push({
+          x: Math.round((p.x + n.x * offset) * 10) / 10,
+          y: Math.round((p.y + n.y * offset) * 10) / 10
+        });
+        continue;
       }
 
-      const nx = -ty / len;
-      const ny = tx / len;
+      if (!closed && i === count - 1) {
+        const pPrev = points[i - 1];
+        const n = this._segmentNormal(pPrev, p);
+        out.push({
+          x: Math.round((p.x + n.x * offset) * 10) / 10,
+          y: Math.round((p.y + n.y * offset) * 10) / 10
+        });
+        continue;
+      }
 
-      normals.push({ x: nx, y: ny });
-    }
+      const pPrev = getPoint(i - 1);
+      const pNext = getPoint(i + 1);
 
-    return normals;
-  }
+      const nPrev = this._segmentNormal(pPrev, p);
+      const nNext = this._segmentNormal(p, pNext);
 
-  _offsetPolyline(points, normals, offset = 0) {
-    if (!Array.isArray(points) || !Array.isArray(normals) || points.length !== normals.length) {
-      return [];
-    }
+      const a1 = { x: pPrev.x + nPrev.x * offset, y: pPrev.y + nPrev.y * offset };
+      const a2 = { x: p.x + nPrev.x * offset, y: p.y + nPrev.y * offset };
 
-    const out = [];
-    for (let i = 0; i < points.length; i++) {
+      const b1 = { x: p.x + nNext.x * offset, y: p.y + nNext.y * offset };
+      const b2 = { x: pNext.x + nNext.x * offset, y: pNext.y + nNext.y * offset };
+
+      let q = this._lineIntersection(a1, a2, b1, b2);
+
+      if (!q) {
+        const ax = nPrev.x + nNext.x;
+        const ay = nPrev.y + nNext.y;
+        const alen = Math.sqrt(ax * ax + ay * ay);
+
+        if (alen > 0.000001) {
+          q = {
+            x: p.x + (ax / alen) * offset,
+            y: p.y + (ay / alen) * offset
+          };
+        } else {
+          q = { x: p.x + nPrev.x * offset, y: p.y + nPrev.y * offset };
+        }
+      }
+
+      const mdx = q.x - p.x;
+      const mdy = q.y - p.y;
+      const miterLen = Math.sqrt(mdx * mdx + mdy * mdy);
+      const maxMiter = Math.max(24, Math.abs(offset) * 2.5);
+
+      if (miterLen > maxMiter) {
+        const ax = nPrev.x + nNext.x;
+        const ay = nPrev.y + nNext.y;
+        const alen = Math.sqrt(ax * ax + ay * ay);
+
+        if (alen > 0.000001) {
+          q = {
+            x: p.x + (ax / alen) * offset,
+            y: p.y + (ay / alen) * offset
+          };
+        } else {
+          q = { x: p.x + nPrev.x * offset, y: p.y + nPrev.y * offset };
+        }
+      }
+
       out.push({
-        x: Math.round((points[i].x + normals[i].x * offset) * 10) / 10,
-        y: Math.round((points[i].y + normals[i].y * offset) * 10) / 10
+        x: Math.round(q.x * 10) / 10,
+        y: Math.round(q.y * 10) / 10
       });
     }
+
     return out;
   }
 
@@ -1308,7 +1386,6 @@ export class TrackEditorScene extends BaseScene {
     if (cl.length < 2) {
       return {
         centerline: [],
-        normals: [],
         trackInner: [],
         trackOuter: [],
         curbInner: [],
@@ -1318,29 +1395,23 @@ export class TrackEditorScene extends BaseScene {
       };
     }
 
-    const normals = this._computeNormals(cl, this._closed);
-
     const halfTrack = this._trackWidth * 0.5;
     const curbWidth = 8;
     const runoffWidth = 24;
 
-    const trackInner = this._offsetPolyline(cl, normals, -halfTrack);
-    const trackOuter = this._offsetPolyline(cl, normals, halfTrack);
+    const trackInner = this._generateOffsetContour(cl, -halfTrack, this._closed);
+    const trackOuter = this._generateOffsetContour(cl, halfTrack, this._closed);
 
-    const curbInner = this._offsetPolyline(cl, normals, -(halfTrack + curbWidth));
-    const curbOuter = this._offsetPolyline(cl, normals, halfTrack + curbWidth);
+    const curbInner = this._generateOffsetContour(cl, -(halfTrack + curbWidth), this._closed);
+    const curbOuter = this._generateOffsetContour(cl, halfTrack + curbWidth, this._closed);
 
-    const runoffInner = this._offsetPolyline(cl, normals, -(halfTrack + curbWidth + runoffWidth));
-    const runoffOuter = this._offsetPolyline(cl, normals, halfTrack + curbWidth + runoffWidth);
+    const runoffInner = this._generateOffsetContour(cl, -(halfTrack + curbWidth + runoffWidth), this._closed);
+    const runoffOuter = this._generateOffsetContour(cl, halfTrack + curbWidth + runoffWidth, this._closed);
 
     return {
       centerline: cl.map(p => ({
         x: Math.round(p.x * 10) / 10,
         y: Math.round(p.y * 10) / 10
-      })),
-      normals: normals.map(n => ({
-        x: Math.round(n.x * 10000) / 10000,
-        y: Math.round(n.y * 10000) / 10000
       })),
       trackInner,
       trackOuter,
@@ -1368,13 +1439,33 @@ export class TrackEditorScene extends BaseScene {
     g.strokePath();
   }
 
+  _fillBand(g, outer, inner, color = 0xffffff, alpha = 1) {
+    if (!g || !Array.isArray(outer) || !Array.isArray(inner)) return;
+    if (outer.length < 2 || inner.length < 2) return;
+
+    g.fillStyle(color, alpha);
+    g.beginPath();
+
+    g.moveTo(outer[0].x, outer[0].y);
+    for (let i = 1; i < outer.length; i++) {
+      g.lineTo(outer[i].x, outer[i].y);
+    }
+
+    for (let i = inner.length - 1; i >= 0; i--) {
+      g.lineTo(inner[i].x, inner[i].y);
+    }
+
+    g.closePath();
+    g.fillPath();
+  }
+
   _exportBezierDraft() {
-    const centerline = this._generateCenterline(32, 10);
+    const centerline = this._generateCenterline(40, 8);
     const geom = this._generateTrackGeometry(centerline);
 
     const data = {
       type: 'track-editor-bezier-draft',
-      version: 3,
+      version: 4,
       closed: this._closed,
       trackWidth: this._trackWidth,
 
@@ -1390,7 +1481,6 @@ export class TrackEditorScene extends BaseScene {
 
       geometry: {
         centerline: geom.centerline,
-        normals: geom.normals,
         trackInner: geom.trackInner,
         trackOuter: geom.trackOuter,
         curbInner: geom.curbInner,
