@@ -1304,7 +1304,6 @@ _generateCenterline(samplesPerSegment = 20, spacing = 24){
       return { left: [], right: [], quads: [] };
     }
 
-    const half = width * 0.5;
     const count = points.length;
 
     const get = (i) => {
@@ -1334,6 +1333,9 @@ _generateCenterline(samplesPerSegment = 20, spacing = 24){
 
       const nx = -ty;
       const ny = tx;
+
+      const localWidth = Number.isFinite(pCurr.width) ? pCurr.width : width;
+      const half = localWidth * 0.5;
 
       left.push({
         x: Math.round((pCurr.x - nx * half) * 10) / 10,
