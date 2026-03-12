@@ -1087,33 +1087,22 @@ export class TrackEditorScene extends BaseScene {
       this._gBezier.strokePath();
     }
 
-    // DEBUG / PREVIEW: centerline + pianos + escapatorias
+    // DEBUG / PREVIEW: centerline + pianos pegados al borde de pista
     const cl = this._generateCenterline(24);
 
     const halfTrack = this._trackWidth * 0.5;
     const curbWidth = 12;
-    const runoffWidth = 36;
 
     const leftTrackEdge = this._buildOffsetPolyline(cl, -halfTrack, this._closed);
     const rightTrackEdge = this._buildOffsetPolyline(cl, halfTrack, this._closed);
 
-    const leftCurbOuter = this._buildOffsetPolyline(cl, -(halfTrack + curbWidth), this._closed);
-    const rightCurbOuter = this._buildOffsetPolyline(cl, halfTrack + curbWidth, this._closed);
-
-    const leftRunoffOuter = this._buildOffsetPolyline(cl, -(halfTrack + curbWidth + runoffWidth), this._closed);
-    const rightRunoffOuter = this._buildOffsetPolyline(cl, halfTrack + curbWidth + runoffWidth, this._closed);
-
-    // Escapatorias
-    this._gRunoff.lineStyle(runoffWidth, 0x6f767d, 0.28);
-    this._drawPolyline(this._gRunoff, leftRunoffOuter, this._closed);
-    this._drawPolyline(this._gRunoff, rightRunoffOuter, this._closed);
-
-    // Pianos
+    // Quitamos de momento la escapatoria visual
+    // y dibujamos solo pianos finos pegados al borde real de la pista
     this._gCurbs.lineStyle(curbWidth, 0xd7263d, 0.95);
-    this._drawPolyline(this._gCurbs, leftCurbOuter, this._closed);
+    this._drawPolyline(this._gCurbs, leftTrackEdge, this._closed);
 
     this._gCurbs.lineStyle(curbWidth, 0xf7f7f7, 0.95);
-    this._drawPolyline(this._gCurbs, rightCurbOuter, this._closed);
+    this._drawPolyline(this._gCurbs, rightTrackEdge, this._closed);
 
     // Centerline debug
     this._gCenterline.fillStyle(0xff3b3b, 1);
