@@ -1,6 +1,3 @@
-import { makeTrack01Oval } from './library/ovalo/track01_oval.js';
-import { makeTrack02Technical } from './library/tecnico/track02_technical.js';
-import { makeTrack03Drift } from './library/drift/track03_drift.js';
 
 export const TRACK_REGISTRY = {
   track01: makeTrack01Oval,
