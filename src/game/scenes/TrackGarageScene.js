@@ -770,11 +770,7 @@ export class TrackGarageScene extends BaseScene {
     }
 
     const lengthPx = estimateTrackLength(selected.centerline);
-    const lapsHint =
-      selected.key === 'track01' ? 'Rápido y fluido'
-      : selected.key === 'track02' ? 'Trazada técnica'
-      : selected.key === 'track03' ? 'Control lateral'
-      : 'Circuito real';
+    const lapsHint = 'Circuito creado con el editor';
 
     this._uiRefs.title.setText(selected.name.toUpperCase());
     this._uiRefs.brand.setText(String(selected.brand || 'TDR').toUpperCase());
