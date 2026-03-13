@@ -52,7 +52,7 @@ this.selectedTrackKey = 'track01';
       this.selectedCarId = isPlayableCarId(savedCar) ? savedCar : fallbackCar;
       localStorage.setItem('tdr2:carId', this.selectedCarId);
 
-      this.selectedTrackKey = localStorage.getItem('tdr2:trackKey') || 'track02';
+this.selectedTrackKey = localStorage.getItem('tdr2:trackKey') || 'track01';
     } catch {
       this.selectedCarId = getFirstPlayableCarId();
     }
@@ -492,7 +492,7 @@ bigPlayBtn.on('pointerup', () => {
   if (!armedPlay) return;
   armedPlay = false;
 
-  const selectedTrackKey = this.selectedTrackKey || 'track02';
+  const selectedTrackKey = this.selectedTrackKey || 'track01';
 
   try {
     localStorage.setItem('tdr2:carId', this.selectedCarId);
@@ -657,33 +657,20 @@ bigPlayBtn.on('pointerupoutside', () => {
     ov.add(tip);
   }
 
-  _renderTracks(x, y, w, h) {
-    const ov = this._overlay;
-    if (!ov) return;
+_renderTracks(x, y, w, h) {
+  const ov = this._overlay;
+  if (!ov) return;
 
-    const pad = 16;
+  const pad = 16;
 
-    const tracks = [
-      {
-        key: 'track01',
-        title: 'Track 01 — Óvalo de velocidad',
-        desc: 'Curvas largas, pista ancha.\nPara aprender a ir rápido sin morir.',
-        tag: 'SPEED'
-      },
-      {
-        key: 'track02',
-        title: 'Track 02 — Técnico',
-        desc: 'Chicane + horquilla + enlazadas.\nAquí se ve quién frena… y quién reza.',
-        tag: 'TECH'
-      },
-      {
-        key: 'track03',
-        title: 'Track 03 — Drift Test',
-        desc: 'Pista ancha y enlazada.\nHecha para derrapar y encadenar.',
-        tag: 'DRIFT'
-      }
-    ];
-
+  const tracks = [
+    {
+      key: 'track01',
+      title: 'Track 01 — Custom',
+      desc: 'Circuito creado con el editor.\nPrimer circuito del nuevo sistema.',
+      tag: 'CUSTOM'
+    }
+  ];
     const info = this.add.text(x + pad, y + pad, 'Elige circuito:', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
       fontSize: '13px',
@@ -968,10 +955,8 @@ _brandSlug(brand) {
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '');
 }
-  _trackTitle(key) {
-    if (key === 'track01') return 'Óvalo';
-    if (key === 'track02') return 'Técnico';
-    if (key === 'track03') return 'Drift';
-    return key || '—';
-  }
+_trackTitle(key) {
+  if (key === 'track01') return 'Custom Track';
+  return key || '—';
+}
 }
