@@ -39,9 +39,9 @@ function makeTenerifePreview() {
 }
 
 function buildTrackCatalog() {
-  const t01 = makeTrack01Oval();
-  const t02 = makeTrack02Technical();
-  const t03 = makeTrack03Drift();
+const t01 = createTrack('track01');
+const t02 = createTrack('track02');
+const t03 = createTrack('track03');
   const tf = makeTenerifePreview();
 
   return [
