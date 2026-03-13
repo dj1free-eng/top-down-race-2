@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-
+import { createTrack } from '../tracks/trackRegistry.js';
 import { buildTrackRibbon } from '../tracks/TrackBuilder.js';
 import { CAR_SPECS } from '../cars/carSpecs.js';
 import { resolveCarParams } from '../cars/resolveCarParams.js';
@@ -4586,10 +4586,10 @@ if (state.stickX === 0 && state.stickY === 0) {
     return state;
   }
   _resolveTrackMeta(trackKey) {
-    // 1) Tracks "built-in" (procedurales actuales)
-    if (trackKey === 'track01') return makeTrack01Oval();
-    if (trackKey === 'track02') return makeTrack02Technical();
-    if (trackKey === 'track03') return makeTrack03Drift();
+    // 1) Tracks built-in desde registry
+    if (trackKey === 'track01' || trackKey === 'track02' || trackKey === 'track03') {
+      return createTrack(trackKey);
+    }
 
     // 2) Tracks importados: "import:<slug>"
     if (typeof trackKey === 'string' && trackKey.startsWith('import:')) {
@@ -4599,15 +4599,15 @@ if (state.stickX === 0 && state.stickY === 0) {
       const jsonKey = `trackjson:${slug}`;
       const data = this.cache?.json?.get?.(jsonKey);
 
-      // Si por lo que sea no está, fallback seguro (la carga dinámica lo trae antes)
-      if (!data || typeof data !== 'object') return makeTrack02Technical();
+      // Si por lo que sea no está, fallback seguro
+      if (!data || typeof data !== 'object') return createTrack('track02');
 
       // Convertir JSON -> meta compatible con tu pipeline
       return this._metaFromImportJson(slug, data);
     }
 
     // 3) fallback seguro
-    return makeTrack02Technical();
+    return createTrack('track02');
   }
     _metaFromImportJson(slug, j) {
     // Formato esperado del JSON (mínimo):
