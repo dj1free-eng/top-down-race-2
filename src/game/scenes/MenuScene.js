@@ -23,7 +23,7 @@ export class MenuScene extends BaseScene {
 
     // Persistencia (mínima y segura)
     this.selectedCarId = getFirstPlayableCarId();
-    this.selectedTrackKey = 'track02';
+this.selectedTrackKey = 'track01';
 
     // Overlays
     this._overlay = null;
