@@ -1,8 +1,6 @@
 import Phaser from 'phaser';
 import { BaseScene } from './BaseScene.js';
-import { makeTrack01Oval } from '../tracks/track01_oval.js';
-import { makeTrack02Technical } from '../tracks/track02_technical.js';
-import { makeTrack03Drift } from '../tracks/track03_drift.js';
+import { createTrack } from '../tracks/trackRegistry.js';
 
 function clamp(n, a, b) {
   return Math.max(a, Math.min(b, n));
