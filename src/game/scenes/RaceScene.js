@@ -4590,7 +4590,15 @@ if (state.stickX === 0 && state.stickY === 0) {
     if (trackKey === 'track01' || trackKey === 'track02' || trackKey === 'track03') {
       return createTrack(trackKey);
     }
+// Tracks desde library/<trackKey>/track.json
+if (typeof trackKey === 'string' && !trackKey.startsWith('import:')) {
+  const jsonKey = `trackjson:${trackKey}`;
+  const data = this.cache?.json?.get?.(jsonKey);
 
+  if (data && typeof data === 'object') {
+    return this._metaFromImportJson(trackKey, data);
+  }
+}
     // 2) Tracks importados: "import:<slug>"
     if (typeof trackKey === 'string' && trackKey.startsWith('import:')) {
       const slug = trackKey.slice('import:'.length).trim();
