@@ -276,13 +276,18 @@ export class TrackEditorScene extends BaseScene {
             key
           ).setDepth(7);
 
-          const scale = Math.min(
-            this._drawRect.width / Math.max(1, htmlImg.width),
-            this._drawRect.height / Math.max(1, htmlImg.height)
-          );
+const scale = Math.min(
+  this._drawRect.width / Math.max(1, htmlImg.width),
+  this._drawRect.height / Math.max(1, htmlImg.height)
+);
 
-          img.setScale(scale);
-          img.setAlpha(0.42);
+// Guardamos la escala base
+this._bgImageBaseScale = scale;
+
+// Aplicamos escala base × escala usuario
+img.setScale(this._bgImageBaseScale * this._bgImageUserScale);
+
+img.setAlpha(0.42);
 
           this._bgImage = img;
           syncEditorCameras();
