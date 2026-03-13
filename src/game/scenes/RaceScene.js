@@ -4586,10 +4586,6 @@ if (state.stickX === 0 && state.stickY === 0) {
     return state;
   }
   _resolveTrackMeta(trackKey) {
-    // 1) Tracks built-in desde registry
-    if (trackKey === 'track01' || trackKey === 'track02' || trackKey === 'track03') {
-      return createTrack(trackKey);
-    }
 // Tracks desde library/<trackKey>/track.json
 if (typeof trackKey === 'string' && !trackKey.startsWith('import:')) {
   const jsonKey = `trackjson:${trackKey}`;
@@ -4607,15 +4603,15 @@ if (typeof trackKey === 'string' && !trackKey.startsWith('import:')) {
       const jsonKey = `trackjson:${slug}`;
       const data = this.cache?.json?.get?.(jsonKey);
 
-      // Si por lo que sea no está, fallback seguro
-      if (!data || typeof data !== 'object') return createTrack('track02');
+      // Si por lo que sea no está, no cargamos pista
+      if (!data || typeof data !== 'object') return null;
 
       // Convertir JSON -> meta compatible con tu pipeline
       return this._metaFromImportJson(slug, data);
     }
 
-    // 3) fallback seguro
-    return createTrack('track02');
+    // 3) fallback
+    return null;
   }
     _metaFromImportJson(slug, j) {
     // Formato esperado del JSON (mínimo):
