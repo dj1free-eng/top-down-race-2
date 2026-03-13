@@ -740,8 +740,6 @@ _renderTracks(x, y, w, h) {
     const rightX = x + pad * 2 + cardW;
 
     ov.add(makeCard(leftX, topY, tracks[0]));
-    ov.add(makeCard(rightX, topY, tracks[1]));
-    ov.add(makeCard(leftX, topY + cardH + 14, tracks[2]));
 
     const tip = this.add.text(x + pad, y + h - 26, 'Tip: el circuito elegido se usa al pulsar PLAY.', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
