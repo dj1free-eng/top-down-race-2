@@ -1704,25 +1704,27 @@ _generateCenterline(samplesPerSegment = 20, spacing = 24){
     const centerline = this._generateCenterline(32, 10);
     const geom = this._generateTrackGeometry(centerline);
 
+    const avgTrackWidth = Math.round((
+      this._nodes.reduce((acc, n) => acc + (n.width ?? this._trackWidth), 0) /
+      Math.max(1, this._nodes.length)
+    ) * 10) / 10;
+
     const data = {
       type: 'track-editor-bezier-draft',
       version: 3,
       closed: this._closed,
-            trackWidth: Math.round((
-        this._nodes.reduce((acc, n) => acc + (n.width ?? this._trackWidth), 0) /
-        Math.max(1, this._nodes.length)
-      ) * 10) / 10,
+      trackWidth: avgTrackWidth,
 
-nodes: this._nodes.map(n => ({
-  x: Math.round(n.x * 10) / 10,
-  y: Math.round(n.y * 10) / 10,
-  inX: Math.round((n.inX ?? n.x) * 10) / 10,
-  inY: Math.round((n.inY ?? n.y) * 10) / 10,
-  outX: Math.round((n.outX ?? n.x) * 10) / 10,
-  outY: Math.round((n.outY ?? n.y) * 10) / 10,
-  mode: n.mode || 'mirrored',
-  width: Math.round((n.width ?? this._trackWidth) * 10) / 10
-})),
+      nodes: this._nodes.map(n => ({
+        x: Math.round(n.x * 10) / 10,
+        y: Math.round(n.y * 10) / 10,
+        inX: Math.round((n.inX ?? n.x) * 10) / 10,
+        inY: Math.round((n.inY ?? n.y) * 10) / 10,
+        outX: Math.round((n.outX ?? n.x) * 10) / 10,
+        outY: Math.round((n.outY ?? n.y) * 10) / 10,
+        mode: n.mode || 'mirrored',
+        width: Math.round((n.width ?? this._trackWidth) * 10) / 10
+      })),
 
       geometry: {
         centerline: geom.centerline,
@@ -1749,8 +1751,73 @@ nodes: this._nodes.map(n => ({
       }
     };
 
-    this._downloadJson(`bezier_draft_${Date.now()}.json`, data);
-    this._ui.report?.setText('✅ Draft exportado con geometría final');
+    // =========================
+    // EXPORT listo para el juego
+    // =========================
+    const allPts = [
+      ...(geom.runoffInner || []),
+      ...(geom.runoffOuter || []),
+      ...(geom.trackInner || []),
+      ...(geom.trackOuter || []),
+      ...(geom.centerline || [])
+    ].filter(p => p && Number.isFinite(p.x) && Number.isFinite(p.y));
+
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    for (const p of allPts) {
+      if (p.x < minX) minX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y > maxY) maxY = p.y;
+    }
+
+    const pad = 300;
+
+    if (!Number.isFinite(minX)) minX = 0;
+    if (!Number.isFinite(minY)) minY = 0;
+    if (!Number.isFinite(maxX)) maxX = 1000;
+    if (!Number.isFinite(maxY)) maxY = 1000;
+
+    const offsetX = pad - minX;
+    const offsetY = pad - minY;
+
+    const shiftedCenterline = (geom.centerline || []).map(p => ({
+      x: Math.round((p.x + offsetX) * 10) / 10,
+      y: Math.round((p.y + offsetY) * 10) / 10,
+      width: Math.round(((p.width ?? avgTrackWidth)) * 10) / 10
+    }));
+
+    const first = shiftedCenterline[0] || { x: pad, y: pad, width: avgTrackWidth };
+    const second = shiftedCenterline[1] || first;
+
+    const startAngle = Math.atan2(second.y - first.y, second.x - first.x);
+
+    const gameData = {
+      name: `Imported Track ${Date.now()}`,
+      worldW: Math.max(2000, Math.ceil((maxX - minX) + pad * 2)),
+      worldH: Math.max(2000, Math.ceil((maxY - minY) + pad * 2)),
+      trackWidth: avgTrackWidth,
+      grassMargin: 120,
+      sampleStepPx: 12,
+      cellSize: 400,
+      shoulderPx: 10,
+      start: {
+        x: Math.round(first.x * 10) / 10,
+        y: Math.round(first.y * 10) / 10,
+        r: Math.round(startAngle * 1000) / 1000
+      },
+      centerline: shiftedCenterline
+    };
+
+    const stamp = Date.now();
+
+    this._downloadJson(`bezier_draft_${stamp}.json`, data);
+    this._downloadJson(`track_${stamp}.json`, gameData);
+
+    this._ui.report?.setText('✅ Exportados draft + JSON jugable');
   }
 
   _downloadJson(filename, data) {
