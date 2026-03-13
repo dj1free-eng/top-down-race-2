@@ -3750,12 +3750,8 @@ for (const poly of cellData.polys) {
   const p0 = getXY(poly[0]);
   if (!Number.isFinite(p0.x) || !Number.isFinite(p0.y)) continue;
 
-  const looksWorld =
-    (p0.x > cellSize * 1.5) || (p0.y > cellSize * 1.5) ||
-    (p0.x < -cellSize * 0.5) || (p0.y < -cellSize * 0.5);
-
-  const x0 = looksWorld ? (p0.x - px) : p0.x;
-const y0 = looksWorld ? (p0.y - py) : p0.y;
+  const x0 = p0.x - px;
+  const y0 = p0.y - py;
 
   maskG.beginPath();
   maskG.moveTo(x0, y0);
@@ -3764,8 +3760,8 @@ const y0 = looksWorld ? (p0.y - py) : p0.y;
     const pi = getXY(poly[i]);
     if (!Number.isFinite(pi.x) || !Number.isFinite(pi.y)) continue;
 
-    const lx = looksWorld ? (pi.x - px) : pi.x;
-const ly = looksWorld ? (pi.y - py) : pi.y;
+    const lx = pi.x - px;
+    const ly = pi.y - py;
     maskG.lineTo(lx, ly);
   }
 
