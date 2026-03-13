@@ -20,6 +20,7 @@ this.load.image(
 this.load.image('logo', 'assets/logo.webp');
 //Imagenes de MenuScene
 this.load.json('car_overrides', 'community/car-overrides.json');
+this.load.json('trackjson:track01', 'tracks/library/track01/track.json');
 this.load.image('menu_bg', 'assets/ui/menu_bg.webp');
 this.load.image('panel_event', 'assets/ui/panel_event.webp');
 this.load.image('btn_play', 'assets/ui/btn_play.webp');
