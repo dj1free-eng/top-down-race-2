@@ -1,9 +1,29 @@
 // src/game/tracks/TrackBuilder.js
 // TrackBuilder: centerline -> ribbon (polígono) con suavizado + muestreo y culling por celdas
 
+function ptX(p) {
+  if (Array.isArray(p)) return Number(p[0]) || 0;
+  return Number(p?.x) || 0;
+}
+
+function ptY(p) {
+  if (Array.isArray(p)) return Number(p[1]) || 0;
+  return Number(p?.y) || 0;
+}
+
+function ptWidth(p, fallbackWidth = 80) {
+  if (Array.isArray(p)) return fallbackWidth;
+  const w = Number(p?.width);
+  return Number.isFinite(w) ? w : fallbackWidth;
+}
+
+function makePt(x, y, width) {
+  return { x, y, width };
+}
+
 function dist(a, b) {
-  const dx = a[0] - b[0];
-  const dy = a[1] - b[1];
+  const dx = ptX(a) - ptX(b);
+  const dy = ptY(a) - ptY(b);
   return Math.sqrt(dx * dx + dy * dy);
 }
 
@@ -14,86 +34,108 @@ function normalize(x, y) {
 }
 
 // Catmull-Rom CENTRÍPETA (reduce overshoot / auto-cruces) para t en [0,1]
-function catmullRom(p0, p1, p2, p3, t) {
-  const alpha = 0.5; // centripetal
+// Devuelve {x,y,width}
+function catmullRom(p0, p1, p2, p3, t, fallbackWidth = 80) {
+  const alpha = 0.5;
   const eps = 1e-6;
 
-  const d01 = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]);
-  const d12 = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]);
-  const d23 = Math.hypot(p3[0] - p2[0], p3[1] - p2[1]);
+  const x0 = ptX(p0), y0 = ptY(p0);
+  const x1 = ptX(p1), y1 = ptY(p1);
+  const x2 = ptX(p2), y2 = ptY(p2);
+  const x3 = ptX(p3), y3 = ptY(p3);
+
+  const d01 = Math.hypot(x1 - x0, y1 - y0);
+  const d12 = Math.hypot(x2 - x1, y2 - y1);
+  const d23 = Math.hypot(x3 - x2, y3 - y2);
 
   const t0 = 0;
   const t1 = t0 + Math.pow(Math.max(d01, eps), alpha);
   const t2 = t1 + Math.pow(Math.max(d12, eps), alpha);
   const t3 = t2 + Math.pow(Math.max(d23, eps), alpha);
 
-  // mapear [0,1] a [t1,t2]
   const tt = t1 + (t2 - t1) * t;
 
-  const lerp = (a, b, ta, tb) => {
+  const lerp = (ax, ay, bx, by, ta, tb) => {
     const denom = (tb - ta) || eps;
     const w = (tt - ta) / denom;
-    return [a[0] + (b[0] - a[0]) * w, a[1] + (b[1] - a[1]) * w];
+    return [ax + (bx - ax) * w, ay + (by - ay) * w];
   };
 
-  const A1 = lerp(p0, p1, t0, t1);
-  const A2 = lerp(p1, p2, t1, t2);
-  const A3 = lerp(p2, p3, t2, t3);
+  const A1 = lerp(x0, y0, x1, y1, t0, t1);
+  const A2 = lerp(x1, y1, x2, y2, t1, t2);
+  const A3 = lerp(x2, y2, x3, y3, t2, t3);
 
   const B1 = (() => {
     const denom = (t2 - t0) || eps;
     const w = (tt - t0) / denom;
-    return [A1[0] + (A2[0] - A1[0]) * w, A1[1] + (A2[1] - A1[1]) * w];
+    return [
+      A1[0] + (A2[0] - A1[0]) * w,
+      A1[1] + (A2[1] - A1[1]) * w
+    ];
   })();
 
   const B2 = (() => {
     const denom = (t3 - t1) || eps;
     const w = (tt - t1) / denom;
-    return [A2[0] + (A3[0] - A2[0]) * w, A2[1] + (A3[1] - A2[1]) * w];
+    return [
+      A2[0] + (A3[0] - A2[0]) * w,
+      A2[1] + (A3[1] - A2[1]) * w
+    ];
   })();
 
   const C = (() => {
     const denom = (t2 - t1) || eps;
     const w = (tt - t1) / denom;
-    return [B1[0] + (B2[0] - B1[0]) * w, B1[1] + (B2[1] - B1[1]) * w];
+    return [
+      B1[0] + (B2[0] - B1[0]) * w,
+      B1[1] + (B2[1] - B1[1]) * w
+    ];
   })();
 
-  return C;
+  const w1 = ptWidth(p1, fallbackWidth);
+  const w2 = ptWidth(p2, fallbackWidth);
+  const width = w1 + (w2 - w1) * t;
+
+  return makePt(C[0], C[1], width);
 }
 
 // Remuestreo a paso fijo (10–20 px típico)
-function resample(points, stepPx) {
+// Conserva width interpolado
+function resample(points, stepPx, fallbackWidth = 80) {
   const out = [];
   if (points.length < 2) return out;
 
-  out.push(points[0]);
+  out.push(makePt(ptX(points[0]), ptY(points[0]), ptWidth(points[0], fallbackWidth)));
+
   let acc = 0;
-  let prev = points[0];
+  let prev = makePt(ptX(points[0]), ptY(points[0]), ptWidth(points[0], fallbackWidth));
 
   for (let i = 1; i < points.length; i++) {
-    const cur = points[i];
+    const cur = makePt(ptX(points[i]), ptY(points[i]), ptWidth(points[i], fallbackWidth));
     let segLen = dist(prev, cur);
     if (segLen < 1e-6) continue;
 
-    // avanzamos sobre el segmento poniendo puntos cada stepPx
     while (acc + segLen >= stepPx) {
       const t = (stepPx - acc) / segLen;
-      const x = prev[0] + (cur[0] - prev[0]) * t;
-      const y = prev[1] + (cur[1] - prev[1]) * t;
-      out.push([x, y]);
 
-      // el nuevo "prev" es el punto insertado
-      prev = [x, y];
+      const x = prev.x + (cur.x - prev.x) * t;
+      const y = prev.y + (cur.y - prev.y) * t;
+      const width = prev.width + (cur.width - prev.width) * t;
+
+      const inserted = makePt(x, y, width);
+      out.push(inserted);
+
+      prev = inserted;
       segLen = dist(prev, cur);
       acc = 0;
     }
+
     acc += segLen;
     prev = cur;
   }
 
   return out;
 }
-
 function boundsOfPoly(poly) {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const p of poly) {
@@ -116,11 +158,21 @@ export function buildTrackRibbon({
   sampleStepPx = 12,
   cellSize = 400
 }) {
-  // Normaliza input: acepta [{x,y}] o [[x,y]]
+  // Normaliza input: acepta [[x,y]] o [{x,y,width}]
+  const fallbackWidth = Number(trackWidth) || 80;
+
   const src = (centerline || []).map((p) => {
-    if (Array.isArray(p)) return p;
-    if (p && typeof p.x === 'number' && typeof p.y === 'number') return [p.x, p.y];
-    return [NaN, NaN];
+    if (Array.isArray(p) && p.length >= 2) {
+      return makePt(Number(p[0]), Number(p[1]), fallbackWidth);
+    }
+    if (p && typeof p.x === 'number' && typeof p.y === 'number') {
+      return makePt(
+        Number(p.x),
+        Number(p.y),
+        Number.isFinite(Number(p.width)) ? Number(p.width) : fallbackWidth
+      );
+    }
+    return makePt(NaN, NaN, fallbackWidth);
   });
 
   // 1) Suavizado Catmull-Rom -> nube densa
@@ -147,13 +199,13 @@ export function buildTrackRibbon({
 
     for (let s = 0; s < SUB; s++) {
       const t = s / SUB;
-      dense.push(catmullRom(p0, p1, p2, p3, t));
+      dense.push(catmullRom(p0, p1, p2, p3, t, fallbackWidth));
     }
   }
-  if (closed) dense.push(dense[0]);
+  if (closed) dense.push(makePt(dense[0].x, dense[0].y, dense[0].width));
 
   // 2) Remuestreo a paso fijo (10–20px)
-  const cl = resample(dense, sampleStepPx);
+  const cl = resample(dense, sampleStepPx, fallbackWidth);
   if (cl.length < 8) {
     return { center: cl, left: [], right: [], cells: new Map(), cellSize };
   }
@@ -162,8 +214,7 @@ export function buildTrackRibbon({
 // porque el postproceso estaba introduciendo puntas y cruces raros.
 
 // 3) Bordes por normal (con miter-limit para curvas cerradas)
-const half = trackWidth * 0.5;
-const halfGrass = half + Math.max(0, grassMargin); // <-- NUEVO
+const baseGrassMargin = Math.max(0, grassMargin);
 
 const left = [];
 const right = [];
@@ -180,11 +231,17 @@ for (let i = 0; i < cl.length; i++) {
   const p = cl[i];
   const pNext = cl[(i + 1) % cl.length];
 
+  const px = p.x;
+  const py = p.y;
+
   // Segmentos
-  const v0x = p[0] - pPrev[0];
-  const v0y = p[1] - pPrev[1];
-  const v1x = pNext[0] - p[0];
-  const v1y = pNext[1] - p[1];
+  const v0x = p.x - pPrev.x;
+  const v0y = p.y - pPrev.y;
+  const v1x = pNext.x - p.x;
+  const v1y = pNext.y - p.y;
+
+  const half = (Number.isFinite(Number(p.width)) ? Number(p.width) : fallbackWidth) * 0.5;
+  const halfGrass = half + baseGrassMargin;
 
   // Normales de cada segmento (izquierda)
   let [n0x, n0y] = normalize(-v0y, v0x);
@@ -240,15 +297,15 @@ for (let i = 0; i < cl.length; i++) {
   const oxT = dirX * scaleT;
   const oyT = dirY * scaleT;
 
-  left.push([p[0] + oxT, p[1] + oyT]);
-  right.push([p[0] - oxT, p[1] - oyT]);
+    left.push([px + oxT, py + oyT]);
+  right.push([px - oxT, py - oyT]);
 
   // GRASS offsets
   const oxG = dirX * scaleG;
   const oyG = dirY * scaleG;
 
-  grassLeft.push([p[0] + oxG, p[1] + oyG]);
-  grassRight.push([p[0] - oxG, p[1] - oyG]);
+  grassLeft.push([px + oxG, py + oyG]);
+  grassRight.push([px - oxG, py - oyG]);
 }
   // 4) Ribbon en segmentos (quad -> 2 tri) y asignación a celdas
   // Guardamos polys como arrays de {x,y}
