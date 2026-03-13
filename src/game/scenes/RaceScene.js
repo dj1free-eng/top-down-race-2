@@ -4638,12 +4638,29 @@ if (state.stickX === 0 && state.stickY === 0) {
       r: num(j.start?.r, 0)
     };
 
-    // centerline: acepta [[x,y],...] o [{x,y},...]
+   // centerline: acepta [[x,y],...] o [{x,y,width},...]
     const rawCL = Array.isArray(j.centerline) ? j.centerline : [];
+    const fallbackWidth = Number(j.trackWidth) || 80;
+
     const centerline = rawCL.map((p) => {
       if (!p) return null;
-      if (Array.isArray(p) && p.length >= 2) return [Number(p[0]), Number(p[1])];
-      if (typeof p.x === 'number' && typeof p.y === 'number') return [p.x, p.y];
+
+      if (Array.isArray(p) && p.length >= 2) {
+        return {
+          x: Number(p[0]),
+          y: Number(p[1]),
+          width: fallbackWidth
+        };
+      }
+
+      if (typeof p.x === 'number' && typeof p.y === 'number') {
+        return {
+          x: Number(p.x),
+          y: Number(p.y),
+          width: Number.isFinite(Number(p.width)) ? Number(p.width) : fallbackWidth
+        };
+      }
+
       return null;
     }).filter(Boolean);
 // finishLine opcional del JSON original
