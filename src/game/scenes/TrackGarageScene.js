@@ -39,52 +39,21 @@ function makeTenerifePreview() {
 }
 
 function buildTrackCatalog() {
-const t01 = createTrack('track01');
-const t02 = createTrack('track02');
-const t03 = createTrack('track03');
-  const tf = makeTenerifePreview();
-
   return [
     {
       key: 'track01',
-      name: 'ÓVALO',
-      brand: 'TDR',
-      category: 'Velocidad',
-      difficulty: 'Fácil',
-      lengthLabel: 'Corta',
-      trackWidth: t01.trackWidth,
-      worldW: t01.worldW,
-      worldH: t01.worldH,
-      centerline: t01.centerline
-    },
-    {
-      key: 'track02',
-      name: 'TÉCNICO',
-      brand: 'TDR',
-      category: 'Grip',
+      name: 'TRACK 01',
+      brand: 'CUSTOM',
+      category: 'Nuevo',
       difficulty: 'Media',
       lengthLabel: 'Media',
-      trackWidth: t02.trackWidth,
-      worldW: t02.worldW,
-      worldH: t02.worldH,
-      centerline: t02.centerline
-    },
-    {
-      key: 'track03',
-      name: 'DRIFT',
-      brand: 'TDR',
-      category: 'Drift',
-      difficulty: 'Alta',
-      lengthLabel: 'Media',
-      trackWidth: t03.trackWidth,
-      worldW: t03.worldW,
-      worldH: t03.worldH,
-      centerline: t03.centerline
-    },
-    tf
+      trackWidth: 40,
+      worldW: 8000,
+      worldH: 5000,
+      centerline: [[0, 0]]
+    }
   ];
 }
-
 function estimateTrackLength(centerline) {
   const pts = normPts(centerline);
   if (pts.length < 2) return 0;
