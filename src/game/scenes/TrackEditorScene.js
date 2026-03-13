@@ -36,6 +36,8 @@ export class TrackEditorScene extends BaseScene {
     this._bgImageKey = null;
     this._bgImageBaseScale = 1;
     this._bgImageUserScale = 1;
+    this._bgImageUserScaleMin = 0.5;
+    this._bgImageUserScaleMax = 2.5;
 
     // Gráficos editor
         this._gBezier = null;
@@ -417,6 +419,80 @@ img.setAlpha(0.42);
     imgHit.on('pointermove', p => { if (p.isDown) setImgOpacity(p.worldX); });
 
     y += S(26);
+
+    // =================================================
+    // Escala imagen
+    // =================================================
+    this.add.text(sideX + 18, y, 'ESCALA IMG', {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: `${S(12)}px`,
+      color: '#ffffff',
+      fontStyle: 'bold'
+    }).setAlpha(0.9).setDepth(61);
+
+    const imgScaleValue = this.add.text(sideX + 18, y + S(16), `${this._bgImageUserScale.toFixed(2)}x`, {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: `${S(12)}px`,
+      color: '#ffffff'
+    }).setAlpha(0.85).setDepth(61);
+
+    const imgScaleSliderW = btnW;
+    const imgScaleSliderH = S(12);
+    const imgScaleSliderX = btnX;
+    const imgScaleTrackY = y + S(38);
+
+    this.add.rectangle(imgScaleSliderX, imgScaleTrackY, imgScaleSliderW, imgScaleSliderH, 0xffffff, 0.18)
+      .setOrigin(0)
+      .setStrokeStyle(2, 0xffffff, 0.35)
+      .setDepth(61);
+
+    const imgScaleKnob = this.add.circle(0, imgScaleTrackY + imgScaleSliderH / 2, S(13), 0xffffff, 0.55)
+      .setStrokeStyle(3, 0xffffff, 0.85)
+      .setDepth(62)
+      .setInteractive({ useHandCursor: true });
+
+    const imgScaleHit = this.add.rectangle(
+      imgScaleSliderX,
+      imgScaleTrackY - S(10),
+      imgScaleSliderW,
+      imgScaleSliderH + S(20),
+      0x000000,
+      0
+    )
+      .setOrigin(0)
+      .setInteractive()
+      .setDepth(63);
+
+    const updateImgScaleKnob = () => {
+      const t = (this._bgImageUserScale - this._bgImageUserScaleMin) /
+        (this._bgImageUserScaleMax - this._bgImageUserScaleMin);
+
+      imgScaleKnob.x = imgScaleSliderX + Phaser.Math.Clamp(t, 0, 1) * imgScaleSliderW;
+      imgScaleValue.setText(`${this._bgImageUserScale.toFixed(2)}x`);
+    };
+
+    const setImgScaleFromPointer = (px) => {
+      const t = Phaser.Math.Clamp((px - imgScaleSliderX) / imgScaleSliderW, 0, 1);
+
+      this._bgImageUserScale =
+        this._bgImageUserScaleMin +
+        t * (this._bgImageUserScaleMax - this._bgImageUserScaleMin);
+
+      if (this._bgImage) {
+        this._bgImage.setScale(this._bgImageBaseScale * this._bgImageUserScale);
+      }
+
+      updateImgScaleKnob();
+    };
+
+    imgScaleHit.on('pointerdown', p => setImgScaleFromPointer(p.worldX));
+    imgScaleHit.on('pointermove', p => { if (p.isDown) setImgScaleFromPointer(p.worldX); });
+    imgScaleKnob.on('pointerdown', p => setImgScaleFromPointer(p.worldX));
+    imgScaleKnob.on('pointermove', p => { if (p.isDown) setImgScaleFromPointer(p.worldX); });
+
+    updateImgScaleKnob();
+
+    y += S(52);
 
     // =================================================
     // Slider ancho pista
