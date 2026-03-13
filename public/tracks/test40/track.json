@@ -1,0 +1,18 @@
+{
+  "name": "Test 40px",
+  "worldW": 8000,
+  "worldH": 5000,
+  "trackWidth": 40,
+  "grassMargin": 120,
+  "sampleStepPx": 12,
+  "cellSize": 400,
+  "shoulderPx": 10,
+
+  "start": {
+    "x": 0,
+    "y": 0,
+    "r": 0
+  },
+
+  "centerline": []
+}
