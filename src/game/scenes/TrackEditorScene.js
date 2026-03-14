@@ -366,7 +366,7 @@ img.setAlpha(0.42);
 
     y += btnH2 + colGap;
 
-    this._ui.clearImgBtn = makeSideBtn(col1, y, btnW2, btnH2, 'BORRAR IMG', () => {
+        this._ui.clearImgBtn = makeSideBtn(col1, y, btnW2, btnH2, 'BORRAR IMG', () => {
       if (!this._bgImage) return;
       this._bgImage.destroy();
       this._bgImage = null;
@@ -375,11 +375,16 @@ img.setAlpha(0.42);
       this._redraw();
     });
 
-    this._ui.validateBtn = makeSideBtn(col2, y, btnW2, btnH2, 'VALIDAR', () => {
-      const rep = this._validateBezierDraft();
-      this._setReport(rep);
+    this._ui.finishBtn = makeSideBtn(col2, y, btnW2, btnH2, 'META', () => {
+      this._finishEditMode = !this._finishEditMode;
+      this._finishFirstPoint = null;
+      this._ui.finishBtn.t.setText(this._finishEditMode ? 'META ON' : 'META');
+      this._ui.report?.setText(
+        this._finishEditMode
+          ? 'Modo meta: toca 2 puntos para colocarla'
+          : 'Modo meta desactivado'
+      );
     });
-
     y += btnH2 + S(14);
 
     // =================================================
