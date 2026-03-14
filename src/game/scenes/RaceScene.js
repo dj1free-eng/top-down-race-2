@@ -4,7 +4,6 @@ import { buildTrackRibbon } from '../tracks/TrackBuilder.js';
 import { CAR_SPECS } from '../cars/carSpecs.js';
 import { resolveCarParams } from '../cars/resolveCarParams.js';
 import { BaseScene } from './BaseScene.js';
-import { buildTrackRibbon } from '../tracks/TrackBuilder.js';
 function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
 function wrapPi(a) {
   while (a > Math.PI) a -= Math.PI * 2;
