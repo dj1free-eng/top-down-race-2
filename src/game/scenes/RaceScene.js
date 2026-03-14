@@ -1128,13 +1128,13 @@ this.ensureCarSkinTexture(specFinal).then((texKey) => {
 // 5) Track ribbon (geom + culling state)
 this.track = {
   meta: t01,
-geom: buildTrackRibbon({
-  centerline: t01.centerline,
-  trackWidth: t01.trackWidth,
-  grassMargin: t01.grassMargin ?? 220, // punto de ataque: ancho banda GRASS (px por lado)
-  sampleStepPx: t01.sampleStepPx ?? 22,
-  cellSize: t01.cellSize ?? 400
-}),
+  geom: buildTrackRibbon({
+    centerline: t01.centerline,
+    trackWidth: t01.trackWidth,
+    grassMargin: t01.grassMargin ?? 220,
+    sampleStepPx: t01.sampleStepPx ?? 22,
+    cellSize: t01.cellSize ?? 400
+  }),
   gfxByCell: new Map(),
   activeCells: new Set(),
   cullRadiusCells: 2
