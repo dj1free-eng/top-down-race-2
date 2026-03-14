@@ -1885,4 +1885,40 @@ _generateCenterline(samplesPerSegment = 20, spacing = 24){
       this._ui.report?.setText('❌ Error exportando JSON');
     }
   }
+  _drawFinishLine() {
+  if (!this._finishLine || !this._gFinish) return;
+
+  const g = this._gFinish;
+  g.clear();
+
+  const a = this._finishLine.a;
+  const b = this._finishLine.b;
+
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len = Math.hypot(dx, dy);
+  if (len === 0) return;
+
+  const nx = dx / len;
+  const ny = dy / len;
+
+  const squares = Math.max(6, Math.floor(len / 8));
+  const step = len / squares;
+
+  for (let i = 0; i < squares; i++) {
+    const x1 = a.x + nx * step * i;
+    const y1 = a.y + ny * step * i;
+
+    const x2 = a.x + nx * step * (i + 1);
+    const y2 = a.y + ny * step * (i + 1);
+
+    const color = i % 2 === 0 ? 0xffffff : 0x000000;
+
+    g.lineStyle(6, color, 1);
+    g.beginPath();
+    g.moveTo(x1, y1);
+    g.lineTo(x2, y2);
+    g.strokePath();
+  }
+}
 }
