@@ -4582,6 +4582,20 @@ if (state.stickX === 0 && state.stickY === 0) {
     return state;
   }
   _resolveTrackMeta(trackKey) {
+    // 1) Tracks importados: "import:<slug>"
+    if (typeof trackKey === 'string' && trackKey.startsWith('import:')) {
+      const slug = trackKey.slice('import:'.length).trim();
+      const jsonKey = `trackjson:${slug}`;
+      const data = this.cache?.json?.get?.(jsonKey);
+
+      if (data && typeof data === 'object') {
+        return this._metaFromImportJson(slug, data);
+      }
+
+      console.warn('[RaceScene] import track sin JSON en cache:', trackKey);
+    }
+
+    // 2) Tracks del registry normal
     if (typeof trackKey === 'string' && trackKey.trim()) {
       try {
         return createTrack(trackKey.trim());
@@ -4590,6 +4604,7 @@ if (state.stickX === 0 && state.stickY === 0) {
       }
     }
 
+    // 3) fallback seguro
     try {
       return createTrack('track01');
     } catch (e) {
