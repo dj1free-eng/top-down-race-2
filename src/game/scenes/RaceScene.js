@@ -4683,8 +4683,8 @@ if (havePts) {
   let bestD2 = Infinity;
 
   for (let k = 0; k < pts.length; k++) {
-    const dx = pts[k][0] - start.x;
-    const dy = pts[k][1] - start.y;
+  const dx = pts[k].x - start.x;
+  const dy = pts[k].y - start.y;
     const d2 = dx * dx + dy * dy;
     if (d2 < bestD2) {
       bestD2 = d2;
@@ -4697,14 +4697,16 @@ const im1 = (bestI - 1 + pts.length) % pts.length;
 const ip1 = (bestI + 1) % pts.length;
 
 // Vector hacia delante (best -> next)
-const fx = pts[ip1][0] - pts[bestI][0];
-const fy = pts[ip1][1] - pts[bestI][1];
+const fx = pts[ip1].x - pts[bestI].x;
+const fy = pts[ip1].y - pts[bestI].y;
 const fLen = Math.hypot(fx, fy) || 1;
-
 // Vector hacia atrás (prev -> best)
-const bx = pts[bestI][0] - pts[im1][0];
-const by = pts[bestI][1] - pts[im1][1];
+const bx = pts[bestI].x - pts[im1].x;
+const by = pts[bestI].y - pts[im1].y;
 const bLen = Math.hypot(bx, by) || 1;
+
+
+
 
 // Si el tramo "atrás" es muchísimo más largo que el "adelante", el wrap está metiendo un salto.
 // En ese caso usamos SOLO el forward, que es el tramo real local.
@@ -4733,7 +4735,7 @@ const ty = ty0 / tLen;
   // 4) FINISH LINE:
   // Si no viene en JSON, la generamos cruzando la pista en el punto bestI
   if (!hasJsonFinish) {
-    const mid = { x: pts[bestI][0], y: pts[bestI][1] };
+const mid = { x: pts[bestI].x, y: pts[bestI].y };
 
     // perpendicular a la tangente
     const px = -ty;
