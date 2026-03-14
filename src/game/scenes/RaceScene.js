@@ -991,8 +991,24 @@ if (typeof this.trackKey === 'string' && this.trackKey.startsWith('import:')) {
 const meta = this._resolveTrackMeta(this.trackKey);
 const t01 = meta;
 
+// Reconstrucción mínima del track runtime a partir del JSON/meta
+const geom = buildTrackRibbon({
+  centerline: t01.centerline || [],
+  trackWidth: t01.trackWidth,
+  grassMargin: t01.grassMargin ?? 0,
+  sampleStepPx: t01.sampleStepPx ?? 12,
+  cellSize: t01.cellSize ?? 400
+});
+this.track = {
+  meta: t01,
+  geom,
+  gfxByCell: new Map(),
+  activeCells: new Set(),
+  cullRadiusCells: 2
+};
+
 const spec = this.baseSpec || CAR_SPECS.stock;
-this.worldW = t01.worldW;
+  this.worldW = t01.worldW;
 this.worldH = t01.worldH;
 
     this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
