@@ -4761,4 +4761,3 @@ const fl = j.finishLine || j.finish || j.__autoFinishLine || null;
       finish: finishLine
     };
   }
-  }
