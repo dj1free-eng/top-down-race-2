@@ -1796,22 +1796,57 @@ _generateCenterline(samplesPerSegment = 20, spacing = 24){
     const startAngle = Math.atan2(second.y - first.y, second.x - first.x);
 
     const gameData = {
-      name: `Imported Track ${Date.now()}`,
-      worldW: Math.max(2000, Math.ceil((maxX - minX) + pad * 2)),
-      worldH: Math.max(2000, Math.ceil((maxY - minY) + pad * 2)),
-      trackWidth: avgTrackWidth,
-      grassMargin: 120,
-      sampleStepPx: 12,
-      cellSize: 400,
-      shoulderPx: 10,
-      start: {
-        x: Math.round(first.x * 10) / 10,
-        y: Math.round(first.y * 10) / 10,
-        r: Math.round(startAngle * 1000) / 1000
-      },
-      centerline: shiftedCenterline
-    };
+  name: `Imported Track ${Date.now()}`,
 
+  worldW: Math.max(2000, Math.ceil((maxX - minX) + pad * 2)),
+  worldH: Math.max(2000, Math.ceil((maxY - minY) + pad * 2)),
+
+  trackWidth: avgTrackWidth,
+  grassMargin: 120,
+  sampleStepPx: 12,
+  cellSize: 400,
+  shoulderPx: 10,
+
+  start: {
+    x: Math.round(first.x * 10) / 10,
+    y: Math.round(first.y * 10) / 10,
+    r: Math.round(startAngle * 1000) / 1000
+  },
+
+  centerline: shiftedCenterline,
+
+  geometry: {
+    trackInner: geom.trackInner.map(p => ({
+      x: Math.round((p.x + offsetX) * 10) / 10,
+      y: Math.round((p.y + offsetY) * 10) / 10
+    })),
+
+    trackOuter: geom.trackOuter.map(p => ({
+      x: Math.round((p.x + offsetX) * 10) / 10,
+      y: Math.round((p.y + offsetY) * 10) / 10
+    })),
+
+    curbInner: geom.curbInner.map(p => ({
+      x: Math.round((p.x + offsetX) * 10) / 10,
+      y: Math.round((p.y + offsetY) * 10) / 10
+    })),
+
+    curbOuter: geom.curbOuter.map(p => ({
+      x: Math.round((p.x + offsetX) * 10) / 10,
+      y: Math.round((p.y + offsetY) * 10) / 10
+    })),
+
+    runoffInner: geom.runoffInner.map(p => ({
+      x: Math.round((p.x + offsetX) * 10) / 10,
+      y: Math.round((p.y + offsetY) * 10) / 10
+    })),
+
+    runoffOuter: geom.runoffOuter.map(p => ({
+      x: Math.round((p.x + offsetX) * 10) / 10,
+      y: Math.round((p.y + offsetY) * 10) / 10
+    }))
+  }
+};
     const stamp = Date.now();
 
     this._downloadJson(`bezier_draft_${stamp}.json`, data);
