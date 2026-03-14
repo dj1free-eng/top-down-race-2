@@ -659,6 +659,25 @@ img.setAlpha(0.42);
 
       const wp = this._screenToEditorWorld(p);
 
+      // Modo edición de meta: 2 toques = línea de meta
+      if (this._finishEditMode) {
+        if (!this._finishFirstPoint) {
+          this._finishFirstPoint = { x: wp.x, y: wp.y };
+          this._ui.report?.setText('Meta: elige el segundo punto');
+        } else {
+          this._finishLine = {
+            a: { x: this._finishFirstPoint.x, y: this._finishFirstPoint.y },
+            b: { x: wp.x, y: wp.y }
+          };
+          this._finishFirstPoint = null;
+          this._finishEditMode = false;
+          if (this._ui.finishBtn) this._ui.finishBtn.t.setText('META');
+          this._ui.report?.setText('✅ Meta colocada');
+          this._redraw();
+        }
+        return;
+      }
+
       this._pendingTap = this.time.delayedCall(120, () => {
         const hitHandle = this._findHitHandle(wp.x, wp.y, 14);
 
@@ -1130,6 +1149,7 @@ const newNode = {
     this._gBezier.clear();
     this._gCurbs.clear();
     this._gEdges.clear();
+    this._gFinish.clear();
     this._gCenterline.clear();
     this._gNodes.clear();
 
@@ -1307,7 +1327,9 @@ const newNode = {
       const a = this._nodes[0];
       this._gNodes.lineStyle(2, 0x3dff7a, 0.8);
       this._gNodes.strokeCircle(a.x, a.y, 14);
+      
     }
+        this._drawFinishLine();
   }
 
   _resamplePolyline(points, spacing = 24, closed = false) {
