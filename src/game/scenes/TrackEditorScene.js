@@ -23,6 +23,11 @@ export class TrackEditorScene extends BaseScene {
     this._draggingNode = false;
     this._pendingTap = null;
 
+    // Meta manual
+    this._finishLine = null; // { a:{x,y}, b:{x,y} } | null
+    this._finishEditMode = false;
+    this._finishFirstPoint = null;
+
     // Cámara de edición
     this._editCam = null;
     this._editZoom = 1;
@@ -42,10 +47,11 @@ export class TrackEditorScene extends BaseScene {
     // Gráficos editor
         this._gBezier = null;
     this._gNodes = null;
-    this._gPreview = null;
+        this._gPreview = null;
     this._gCenterline = null;
     this._gCurbs = null;
     this._gEdges = null;
+    this._gFinish = null;
   }
 
   create() {
@@ -601,10 +607,11 @@ img.setAlpha(0.42);
     // =================================================
     // Layers editor
     // =================================================
-        this._gPreview = this.add.graphics().setDepth(10);
+    this._gPreview = this.add.graphics().setDepth(10);
     this._gBezier = this.add.graphics().setDepth(11);
     this._gCurbs = this.add.graphics().setDepth(11.12);
     this._gEdges = this.add.graphics().setDepth(11.25);
+    this._gFinish = this.add.graphics().setDepth(11.35);
     this._gCenterline = this.add.graphics().setDepth(11.5);
     this._gNodes = this.add.graphics().setDepth(12);
 
