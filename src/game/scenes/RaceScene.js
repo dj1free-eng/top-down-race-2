@@ -4104,8 +4104,8 @@ if (this.speedHud?.clockText?.scene) {
 // SPEED HUD
 if (this.speedHudText) {
   const k = Math.max(0, Math.round(kmh));
-  this.speedHudText.setText(String(
-    if (this.hud?.setText) {
+  this.speedHudText.setText(String(k));
+}
       const lapNow = (this.timing?.started && this.timing.lapStart != null)
         ? (performance.now() - this.timing.lapStart)
         : null;
