@@ -1782,7 +1782,18 @@ _generateCenterline(samplesPerSegment = 20, spacing = 24){
         width: 24,
         sides: { inner: true, outer: true },
         surface: 'asphalt'
-      }
+      },
+
+      finishLine: this._finishLine ? {
+        a: {
+          x: Math.round(this._finishLine.a.x * 10) / 10,
+          y: Math.round(this._finishLine.a.y * 10) / 10
+        },
+        b: {
+          x: Math.round(this._finishLine.b.x * 10) / 10,
+          y: Math.round(this._finishLine.b.y * 10) / 10
+        }
+      } : null
     };
 
     // =========================
@@ -1879,7 +1890,18 @@ _generateCenterline(samplesPerSegment = 20, spacing = 24){
       x: Math.round((p.x + offsetX) * 10) / 10,
       y: Math.round((p.y + offsetY) * 10) / 10
     }))
-  }
+  },
+
+  finishLine: this._finishLine ? {
+    a: {
+      x: Math.round((this._finishLine.a.x + offsetX) * 10) / 10,
+      y: Math.round((this._finishLine.a.y + offsetY) * 10) / 10
+    },
+    b: {
+      x: Math.round((this._finishLine.b.x + offsetX) * 10) / 10,
+      y: Math.round((this._finishLine.b.y + offsetY) * 10) / 10
+    }
+  } : null
 };
     const stamp = Date.now();
 
