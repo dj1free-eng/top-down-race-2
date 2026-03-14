@@ -989,11 +989,11 @@ if (typeof this.trackKey === 'string' && this.trackKey.startsWith('import:')) {
 }
 // 1) Track meta primero (define world real)
 const meta = this._resolveTrackMeta(this.trackKey);
-const t01 = buildTrackRibbon(meta);
+const t01 = meta;
 
 const spec = this.baseSpec || CAR_SPECS.stock;
-    this.worldW = t01.worldW;
-    this.worldH = t01.worldH;
+this.worldW = t01.worldW;
+this.worldH = t01.worldH;
 
     this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
     this.cameras.main.setBounds(0, 0, this.worldW, this.worldH);
