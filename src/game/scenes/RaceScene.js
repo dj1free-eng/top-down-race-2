@@ -4,7 +4,7 @@ import { buildTrackRibbon } from '../tracks/TrackBuilder.js';
 import { CAR_SPECS } from '../cars/carSpecs.js';
 import { resolveCarParams } from '../cars/resolveCarParams.js';
 import { BaseScene } from './BaseScene.js';
-import { TrackBuilder } from '../tracks/TrackBuilder.js';
+import { buildTrackRibbon } from '../tracks/TrackBuilder.js';
 function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
 function wrapPi(a) {
   while (a > Math.PI) a -= Math.PI * 2;
@@ -990,9 +990,7 @@ if (typeof this.trackKey === 'string' && this.trackKey.startsWith('import:')) {
 }
 // 1) Track meta primero (define world real)
 const meta = this._resolveTrackMeta(this.trackKey);
-
-// construir circuito real desde meta
-const t01 = TrackBuilder.build(meta);
+const t01 = buildTrackRibbon(meta);
 
 const spec = this.baseSpec || CAR_SPECS.stock;
     this.worldW = t01.worldW;
