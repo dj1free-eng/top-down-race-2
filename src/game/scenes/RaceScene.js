@@ -1125,20 +1125,21 @@ this.ensureCarSkinTexture(specFinal).then((texKey) => {
   }
 });
 
-// 5) Track ribbon (geom + culling state)
-this.track = {
-  meta: t01,
-  geom: buildTrackRibbon({
-    centerline: t01.centerline,
-    trackWidth: t01.trackWidth,
-    grassMargin: t01.grassMargin ?? 220,
-    sampleStepPx: t01.sampleStepPx ?? 22,
-    cellSize: t01.cellSize ?? 400
-  }),
-  gfxByCell: new Map(),
-  activeCells: new Set(),
-  cullRadiusCells: 2
-};
+// 5b) DEBUG VISUAL: dibujar finishLine del JSON importado
+if (t01?.finishLine?.a && t01?.finishLine?.b) {
+  this.finishLineDebug?.destroy?.();
+
+  const g = this.add.graphics();
+  g.lineStyle(6, 0xffffff, 1);
+  g.beginPath();
+  g.moveTo(t01.finishLine.a.x, t01.finishLine.a.y);
+  g.lineTo(t01.finishLine.b.x, t01.finishLine.b.y);
+  g.strokePath();
+  g.setDepth(20);
+
+  this.finishLineDebug = g;
+  this.uiCam?.ignore?.(g);
+}
     // TT: métricas de centerline (progreso por distancia, corrige óvalo)
 this._initTTCenterlineMetrics();
 // ===============================
