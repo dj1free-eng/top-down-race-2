@@ -4106,21 +4106,24 @@ if (this.speedHudText) {
   const k = Math.max(0, Math.round(kmh));
   this.speedHudText.setText(String(k));
 }
-      const lapNow = (this.timing?.started && this.timing.lapStart != null)
-        ? (performance.now() - this.timing.lapStart)
-        : null;
 
-      this.hud.setText(
-        `LAP ${this.lapCount || 0}\n` +
-        `NOW  ${fmtTime(lapNow)}\n` +
-        `S1   ${fmtTime(this.timing?.s1)}\n` +
-        `S2   ${fmtTime(this.timing?.s2)}\n` +
-        `LAST ${fmtTime(this.timing?.lastLap)}\n` +
-        `BEST ${fmtTime(this.timing?.bestLap)}`
-      );
+if (this.hud?.setText) {
+  const lapNow = (this.timing?.started && this.timing.lapStart != null)
+    ? (performance.now() - this.timing.lapStart)
+    : null;
 
-      if (this._fitHud) this._fitHud();
-    }
+  this.hud.setText(
+    `LAP ${this.lapCount || 0}\n` +
+    `NOW  ${fmtTime(lapNow)}\n` +
+    `S1   ${fmtTime(this.timing?.s1)}\n` +
+    `S2   ${fmtTime(this.timing?.s2)}\n` +
+    `LAST ${fmtTime(this.timing?.lastLap)}\n` +
+    `BEST ${fmtTime(this.timing?.bestLap)}`
+  );
+
+  if (this._fitHud) this._fitHud();
+}
+
 // DEV HUD info (derecha) — COMPACTO para móvil
 if (DEV_TOOLS && this.devInfo && this._devVisible) {
   const cp = (this._cpState || 0);
@@ -4134,14 +4137,11 @@ if (DEV_TOOLS && this.devInfo && this._devVisible) {
   const cx = this.carBody ? Math.round(this.carBody.x) : 0;
   const cy = this.carBody ? Math.round(this.carBody.y) : 0;
 
-  // ✅ Datos clave para calibrar velocímetro
   const rawPx = (this.carBody?.body?.velocity)
     ? Math.hypot(this.carBody.body.velocity.x, this.carBody.body.velocity.y)
     : (this.carBody?.body?.speed ?? 0);
 
   const maxFwdPx = (this.carParams?.maxFwd ?? 0);
-
-  // 0.10 = factor del juego para UI km/h
   const kmhNow = rawPx * 0.10;
 
   this.devInfo.setText(
@@ -4153,12 +4153,13 @@ if (DEV_TOOLS && this.devInfo && this._devVisible) {
     `MaxFwd: ${maxFwdPx.toFixed(0)} px/s  (${(maxFwdPx * 0.10).toFixed(0)} km/h)`
   );
 }
-    // Sincronizar rig visual con body físico
-    if (this.carRig && this.carBody) {
-      this.carRig.x = this.carBody.x;
-      this.carRig.y = this.carBody.y;
-this.carRig.rotation = this.carBody.rotation + (this._carVisualRotOffset || 0);
-    }
+
+// Sincronizar rig visual con body físico
+if (this.carRig && this.carBody) {
+  this.carRig.x = this.carBody.x;
+  this.carRig.y = this.carBody.y;
+  this.carRig.rotation = this.carBody.rotation + (this._carVisualRotOffset || 0);
+}
 
 
   }
