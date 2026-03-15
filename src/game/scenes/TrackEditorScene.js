@@ -1681,10 +1681,15 @@ _generateCenterline(samplesPerSegment = 20, spacing = 24){
         curbInner: [],
         curbOuter: [],
         runoffInner: [],
-        runoffOuter: []
+        runoffOuter: [],
+        lineOuterInner: [],
+        lineOuterOuter: [],
+        lineInnerInner: [],
+        lineInnerOuter: []
       };
     }
 
+    const lineWidth = 4;
     const curbWidth = 8;
     const runoffWidth = 24;
 
@@ -1697,10 +1702,23 @@ _generateCenterline(samplesPerSegment = 20, spacing = 24){
     };
 
     const trackCL = withExtraWidth(cl, 0);
+
+    // Banda blanca exterior: pegada al borde exterior del track
+    const lineOuterInnerCL = withExtraWidth(cl, 0);
+    const lineOuterOuterCL = withExtraWidth(cl, lineWidth);
+
+    // Banda blanca interior: pegada al borde interior del track
+    const lineInnerOuterCL = withExtraWidth(cl, 0);
+    const lineInnerInnerCL = withExtraWidth(cl, -lineWidth);
+
     const curbCL = withExtraWidth(cl, curbWidth);
     const runoffCL = withExtraWidth(cl, curbWidth + runoffWidth);
 
     const trackStrip = this._buildTrackStrip(trackCL, this._trackWidth, this._closed);
+    const lineOuterInnerStrip = this._buildTrackStrip(lineOuterInnerCL, this._trackWidth, this._closed);
+    const lineOuterOuterStrip = this._buildTrackStrip(lineOuterOuterCL, this._trackWidth, this._closed);
+    const lineInnerOuterStrip = this._buildTrackStrip(lineInnerOuterCL, this._trackWidth, this._closed);
+    const lineInnerInnerStrip = this._buildTrackStrip(lineInnerInnerCL, this._trackWidth, this._closed);
     const curbStrip = this._buildTrackStrip(curbCL, this._trackWidth, this._closed);
     const runoffStrip = this._buildTrackStrip(runoffCL, this._trackWidth, this._closed);
 
@@ -1712,6 +1730,12 @@ _generateCenterline(samplesPerSegment = 20, spacing = 24){
       })),
       trackInner: trackStrip.right,
       trackOuter: trackStrip.left,
+
+      lineOuterInner: lineOuterInnerStrip.left,
+      lineOuterOuter: lineOuterOuterStrip.left,
+      lineInnerInner: lineInnerInnerStrip.right,
+      lineInnerOuter: lineInnerOuterStrip.right,
+
       curbInner: curbStrip.right,
       curbOuter: curbStrip.left,
       runoffInner: runoffStrip.right,
