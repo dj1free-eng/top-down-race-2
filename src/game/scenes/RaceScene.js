@@ -1435,10 +1435,13 @@ if (
   }
 }
 
-// Línea blanca encima del arcén
-this._borderLeft = drawPolylineClosed(leftInset, 4, 0xf2f2f2, 0.8);
-this._borderRight = drawPolylineClosed(rightInset, 4, 0xf2f2f2, 0.8);
+// Línea blanca usando la geometría exportada por TrackEditor cuando exista.
+// Así evitamos artefactos del ribbon reconstruido en runtime.
+const borderOuterPts = Array.isArray(exportedGeom?.trackOuter) ? exportedGeom.trackOuter : this.track.geom.left;
+const borderInnerPts = Array.isArray(exportedGeom?.trackInner) ? exportedGeom.trackInner : this.track.geom.right;
 
+this._borderLeft = drawPolylineClosed(borderOuterPts, 4, 0xf2f2f2, 0.8);
+this._borderRight = drawPolylineClosed(borderInnerPts, 4, 0xf2f2f2, 0.8);
 // UI camera no debe renderizar bordes
 this.uiCam?.ignore?.(this._shoulderLeft);
 this.uiCam?.ignore?.(this._shoulderRight);
