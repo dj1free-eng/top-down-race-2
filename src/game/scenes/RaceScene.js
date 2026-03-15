@@ -1357,11 +1357,10 @@ const drawStripedBand = (innerPts, outerPts, colorA, colorB, segmentLen = 14) =>
 // ================================
 const halfW = (this.track?.meta?.trackWidth ?? 300) * 0.5;
 
-// En tracks importados estrechos (ej. width=40), un shoulderPx fijo de 28
-// colapsa el inset hacia el centro y rompe visualmente bordes/arcenes.
-// Lo limitamos a un % razonable del semiancho real.
+// Arcén visual mucho más fino.
+// Antes quedaba desproporcionado en tracks grandes exportados desde el editor.
 const rawShoulderPx = this.track?.meta?.shoulderPx ?? 28;
-const shoulderPx = Math.min(rawShoulderPx, halfW * 0.35);
+const shoulderPx = Math.max(4, Math.min(rawShoulderPx, halfW * 0.10, 10));
 
 const tInset = Math.max(0, Math.min(1, shoulderPx / Math.max(1, halfW)));
 
