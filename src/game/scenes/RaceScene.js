@@ -1293,6 +1293,63 @@ const drawShoulderBand = (outerPts, innerPts, color, alpha) => {
 
   return g;
 };
+
+const drawStripedBand = (innerPts, outerPts, colorA, colorB, segmentLen = 14) => {
+  const g = this.add.graphics();
+  g.setDepth(11.5); // por encima del asfalto / arcén, por debajo de la línea blanca
+  g.setScrollFactor(1);
+
+  if (!innerPts || !outerPts) return g;
+  if (innerPts.length < 2 || outerPts.length < 2) return g;
+  if (innerPts.length !== outerPts.length) return g;
+
+  const getXY = (pt) => {
+    if (!pt) return { x: NaN, y: NaN };
+    if (Array.isArray(pt)) return { x: pt[0], y: pt[1] };
+    return { x: pt.x, y: pt.y };
+  };
+
+  let accumLen = 0;
+
+  for (let i = 0; i < innerPts.length; i++) {
+    const ni = (i + 1) % innerPts.length;
+
+    const a0 = getXY(innerPts[i]);
+    const a1 = getXY(innerPts[ni]);
+    const b1 = getXY(outerPts[ni]);
+    const b0 = getXY(outerPts[i]);
+
+    if (
+      !Number.isFinite(a0.x) || !Number.isFinite(a0.y) ||
+      !Number.isFinite(a1.x) || !Number.isFinite(a1.y) ||
+      !Number.isFinite(b0.x) || !Number.isFinite(b0.y) ||
+      !Number.isFinite(b1.x) || !Number.isFinite(b1.y)
+    ) {
+      continue;
+    }
+
+    const dx = a1.x - a0.x;
+    const dy = a1.y - a0.y;
+    const len = Math.hypot(dx, dy);
+
+    const bandIndex = Math.floor(accumLen / segmentLen);
+    const color = (bandIndex % 2 === 0) ? colorA : colorB;
+
+    g.fillStyle(color, 1);
+    g.beginPath();
+    g.moveTo(a0.x, a0.y);
+    g.lineTo(a1.x, a1.y);
+    g.lineTo(b1.x, b1.y);
+    g.lineTo(b0.x, b0.y);
+    g.closePath();
+    g.fillPath();
+
+    accumLen += len;
+  }
+
+  return g;
+};
+
 // Borde exterior e interior del ribbon
 // ================================
 // Líneas del borde: INSET dentro del asfalto (arcén visual antes del césped)
@@ -1302,18 +1359,24 @@ const halfW = (this.track?.meta?.trackWidth ?? 300) * 0.5;
 const shoulderPx = this.track?.meta?.shoulderPx ?? 28;
 const tInset = Math.max(0, Math.min(1, shoulderPx / Math.max(1, halfW)));
 
-const centerPts = this.track.geom.center; // [[x,y], ...]
+const centerPts = this.track.geom.center; // [{x,y,width}, ...]
 const insetTowardCenter = (edgePts) => {
   if (!edgePts || !centerPts || edgePts.length !== centerPts.length) return edgePts;
   const out = new Array(edgePts.length);
+
   for (let i = 0; i < edgePts.length; i++) {
     const e = edgePts[i];
     const c = centerPts[i];
+
+    const cx = Array.isArray(c) ? c[0] : c?.x;
+    const cy = Array.isArray(c) ? c[1] : c?.y;
+
     out[i] = [
-      e[0] + (c[0] - e[0]) * tInset,
-      e[1] + (c[1] - e[1]) * tInset
+      e[0] + (cx - e[0]) * tInset,
+      e[1] + (cy - e[1]) * tInset
     ];
   }
+
   return out;
 };
 
@@ -1324,6 +1387,42 @@ const rightInset = insetTowardCenter(this.track.geom.right);
 this._shoulderLeft = drawShoulderBand(this.track.geom.left, leftInset, 0xc9b07a, 0.18);
 this._shoulderRight = drawShoulderBand(this.track.geom.right, rightInset, 0xc9b07a, 0.18);
 
+// Curbs exportados por TrackEditor (si existen)
+const exportedGeom = this.track?.meta?.geometry;
+const exportedCurbs = this.track?.meta?.curbs;
+
+this._curbOuter = null;
+this._curbInner = null;
+
+if (
+  exportedCurbs?.enabled &&
+  exportedGeom &&
+  Array.isArray(exportedGeom.trackOuter) &&
+  Array.isArray(exportedGeom.curbOuter) &&
+  Array.isArray(exportedGeom.trackInner) &&
+  Array.isArray(exportedGeom.curbInner)
+) {
+  if (exportedCurbs?.sides?.outer !== false) {
+    this._curbOuter = drawStripedBand(
+      exportedGeom.trackOuter,
+      exportedGeom.curbOuter,
+      0xd92f2f,
+      0xf2f2f2,
+      14
+    );
+  }
+
+  if (exportedCurbs?.sides?.inner !== false) {
+    this._curbInner = drawStripedBand(
+      exportedGeom.trackInner,
+      exportedGeom.curbInner,
+      0xd92f2f,
+      0xf2f2f2,
+      14
+    );
+  }
+}
+
 // Línea blanca encima del arcén
 this._borderLeft = drawPolylineClosed(leftInset, 4, 0xf2f2f2, 0.8);
 this._borderRight = drawPolylineClosed(rightInset, 4, 0xf2f2f2, 0.8);
@@ -1331,6 +1430,8 @@ this._borderRight = drawPolylineClosed(rightInset, 4, 0xf2f2f2, 0.8);
 // UI camera no debe renderizar bordes
 this.uiCam?.ignore?.(this._shoulderLeft);
 this.uiCam?.ignore?.(this._shoulderRight);
+this.uiCam?.ignore?.(this._curbOuter);
+this.uiCam?.ignore?.(this._curbInner);
 this.uiCam?.ignore?.(this._borderLeft);
 this.uiCam?.ignore?.(this._borderRight);
 this._isOnTrack = (x, y) => isPointOnTrackWorld(x, y, this.track?.geom);
