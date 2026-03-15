@@ -1391,18 +1391,24 @@ this._shoulderRight = drawShoulderBand(this.track.geom.right, rightInset, 0xc9b0
 const exportedGeom = this.track?.meta?.geometry;
 const exportedCurbs = this.track?.meta?.curbs;
 
+// Compatibilidad:
+// - si el JSON trae curbs.enabled, lo respetamos
+// - si NO trae bloque curbs pero sí trae geometry.curb*, dibujamos igual
+const curbsEnabled = exportedCurbs ? (exportedCurbs.enabled !== false) : true;
+const curbSides = exportedCurbs?.sides || { inner: true, outer: true };
+
 this._curbOuter = null;
 this._curbInner = null;
 
 if (
-  exportedCurbs?.enabled &&
+  curbsEnabled &&
   exportedGeom &&
   Array.isArray(exportedGeom.trackOuter) &&
   Array.isArray(exportedGeom.curbOuter) &&
   Array.isArray(exportedGeom.trackInner) &&
   Array.isArray(exportedGeom.curbInner)
 ) {
-  if (exportedCurbs?.sides?.outer !== false) {
+  if (curbSides.outer !== false) {
     this._curbOuter = drawStripedBand(
       exportedGeom.trackOuter,
       exportedGeom.curbOuter,
@@ -1412,7 +1418,7 @@ if (
     );
   }
 
-  if (exportedCurbs?.sides?.inner !== false) {
+  if (curbSides.inner !== false) {
     this._curbInner = drawStripedBand(
       exportedGeom.trackInner,
       exportedGeom.curbInner,
