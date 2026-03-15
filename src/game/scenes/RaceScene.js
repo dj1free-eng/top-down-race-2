@@ -1356,7 +1356,13 @@ const drawStripedBand = (innerPts, outerPts, colorA, colorB, segmentLen = 14) =>
 // - Sigue siendo TRACK físicamente (solo cambiamos dónde pintamos la línea)
 // ================================
 const halfW = (this.track?.meta?.trackWidth ?? 300) * 0.5;
-const shoulderPx = this.track?.meta?.shoulderPx ?? 28;
+
+// En tracks importados estrechos (ej. width=40), un shoulderPx fijo de 28
+// colapsa el inset hacia el centro y rompe visualmente bordes/arcenes.
+// Lo limitamos a un % razonable del semiancho real.
+const rawShoulderPx = this.track?.meta?.shoulderPx ?? 28;
+const shoulderPx = Math.min(rawShoulderPx, halfW * 0.35);
+
 const tInset = Math.max(0, Math.min(1, shoulderPx / Math.max(1, halfW)));
 
 const centerPts = this.track.geom.center; // [{x,y,width}, ...]
