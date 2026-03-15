@@ -4791,6 +4791,11 @@ const fl = j.finishLine || j.finish || j.__autoFinishLine || null;
       start,
       centerline,
 
+      // datos exportados por TrackEditor que RaceScene debe conservar
+      geometry: (j.geometry && typeof j.geometry === 'object') ? j.geometry : null,
+      curbs: (j.curbs && typeof j.curbs === 'object') ? j.curbs : null,
+      runoff: (j.runoff && typeof j.runoff === 'object') ? j.runoff : null,
+
       // compat con tu código: finishLine o finish
       finishLine,
       finish: finishLine
