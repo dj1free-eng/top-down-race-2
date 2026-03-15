@@ -1800,6 +1800,8 @@ _generateCenterline(samplesPerSegment = 20, spacing = 24){
     // =========================
     // EXPORT listo para el juego
     // =========================
+    const EXPORT_SCALE = 4;
+
     const allPts = [
       ...(geom.runoffInner || []),
       ...(geom.runoffOuter || []),
@@ -1814,10 +1816,13 @@ _generateCenterline(samplesPerSegment = 20, spacing = 24){
     let maxY = -Infinity;
 
     for (const p of allPts) {
-      if (p.x < minX) minX = p.x;
-      if (p.y < minY) minY = p.y;
-      if (p.x > maxX) maxX = p.x;
-      if (p.y > maxY) maxY = p.y;
+      const sx = p.x * EXPORT_SCALE;
+      const sy = p.y * EXPORT_SCALE;
+
+      if (sx < minX) minX = sx;
+      if (sy < minY) minY = sy;
+      if (sx > maxX) maxX = sx;
+      if (sy > maxY) maxY = sy;
     }
 
     const pad = 300;
@@ -1831,79 +1836,97 @@ _generateCenterline(samplesPerSegment = 20, spacing = 24){
     const offsetY = pad - minY;
 
     const shiftedCenterline = (geom.centerline || []).map(p => ({
-      x: Math.round((p.x + offsetX) * 10) / 10,
-      y: Math.round((p.y + offsetY) * 10) / 10,
-      width: Math.round(((p.width ?? avgTrackWidth)) * 10) / 10
+      x: Math.round(((p.x * EXPORT_SCALE) + offsetX) * 10) / 10,
+      y: Math.round(((p.y * EXPORT_SCALE) + offsetY) * 10) / 10,
+      width: Math.round(((p.width ?? avgTrackWidth) * EXPORT_SCALE) * 10) / 10
     }));
 
-    const first = shiftedCenterline[0] || { x: pad, y: pad, width: avgTrackWidth };
+    const first = shiftedCenterline[0] || {
+      x: pad,
+      y: pad,
+      width: avgTrackWidth * EXPORT_SCALE
+    };
     const second = shiftedCenterline[1] || first;
 
     const startAngle = Math.atan2(second.y - first.y, second.x - first.x);
 
     const gameData = {
-  name: `Imported Track ${Date.now()}`,
+      name: `Imported Track ${Date.now()}`,
 
-  worldW: Math.max(2000, Math.ceil((maxX - minX) + pad * 2)),
-  worldH: Math.max(2000, Math.ceil((maxY - minY) + pad * 2)),
+      worldW: Math.max(2000, Math.ceil((maxX - minX) + pad * 2)),
+      worldH: Math.max(2000, Math.ceil((maxY - minY) + pad * 2)),
 
-  trackWidth: avgTrackWidth,
-  grassMargin: 120,
-  sampleStepPx: 12,
-  cellSize: 400,
-  shoulderPx: 10,
+      trackWidth: Math.round((avgTrackWidth * EXPORT_SCALE) * 10) / 10,
+      grassMargin: 120 * EXPORT_SCALE,
+      sampleStepPx: 12,
+      cellSize: 400,
+      shoulderPx: 10 * EXPORT_SCALE,
 
-  start: {
-    x: Math.round(first.x * 10) / 10,
-    y: Math.round(first.y * 10) / 10,
-    r: Math.round(startAngle * 1000) / 1000
-  },
+      start: {
+        x: Math.round(first.x * 10) / 10,
+        y: Math.round(first.y * 10) / 10,
+        r: Math.round(startAngle * 1000) / 1000
+      },
 
-  centerline: shiftedCenterline,
+      centerline: shiftedCenterline,
 
-  geometry: {
-    trackInner: geom.trackInner.map(p => ({
-      x: Math.round((p.x + offsetX) * 10) / 10,
-      y: Math.round((p.y + offsetY) * 10) / 10
-    })),
+      geometry: {
+        trackInner: geom.trackInner.map(p => ({
+          x: Math.round(((p.x * EXPORT_SCALE) + offsetX) * 10) / 10,
+          y: Math.round(((p.y * EXPORT_SCALE) + offsetY) * 10) / 10
+        })),
 
-    trackOuter: geom.trackOuter.map(p => ({
-      x: Math.round((p.x + offsetX) * 10) / 10,
-      y: Math.round((p.y + offsetY) * 10) / 10
-    })),
+        trackOuter: geom.trackOuter.map(p => ({
+          x: Math.round(((p.x * EXPORT_SCALE) + offsetX) * 10) / 10,
+          y: Math.round(((p.y * EXPORT_SCALE) + offsetY) * 10) / 10
+        })),
 
-    curbInner: geom.curbInner.map(p => ({
-      x: Math.round((p.x + offsetX) * 10) / 10,
-      y: Math.round((p.y + offsetY) * 10) / 10
-    })),
+        curbInner: geom.curbInner.map(p => ({
+          x: Math.round(((p.x * EXPORT_SCALE) + offsetX) * 10) / 10,
+          y: Math.round(((p.y * EXPORT_SCALE) + offsetY) * 10) / 10
+        })),
 
-    curbOuter: geom.curbOuter.map(p => ({
-      x: Math.round((p.x + offsetX) * 10) / 10,
-      y: Math.round((p.y + offsetY) * 10) / 10
-    })),
+        curbOuter: geom.curbOuter.map(p => ({
+          x: Math.round(((p.x * EXPORT_SCALE) + offsetX) * 10) / 10,
+          y: Math.round(((p.y * EXPORT_SCALE) + offsetY) * 10) / 10
+        })),
 
-    runoffInner: geom.runoffInner.map(p => ({
-      x: Math.round((p.x + offsetX) * 10) / 10,
-      y: Math.round((p.y + offsetY) * 10) / 10
-    })),
+        runoffInner: geom.runoffInner.map(p => ({
+          x: Math.round(((p.x * EXPORT_SCALE) + offsetX) * 10) / 10,
+          y: Math.round(((p.y * EXPORT_SCALE) + offsetY) * 10) / 10
+        })),
 
-    runoffOuter: geom.runoffOuter.map(p => ({
-      x: Math.round((p.x + offsetX) * 10) / 10,
-      y: Math.round((p.y + offsetY) * 10) / 10
-    }))
-  },
+        runoffOuter: geom.runoffOuter.map(p => ({
+          x: Math.round(((p.x * EXPORT_SCALE) + offsetX) * 10) / 10,
+          y: Math.round(((p.y * EXPORT_SCALE) + offsetY) * 10) / 10
+        }))
+      },
 
-  finishLine: this._finishLine ? {
-    a: {
-      x: Math.round((this._finishLine.a.x + offsetX) * 10) / 10,
-      y: Math.round((this._finishLine.a.y + offsetY) * 10) / 10
-    },
-    b: {
-      x: Math.round((this._finishLine.b.x + offsetX) * 10) / 10,
-      y: Math.round((this._finishLine.b.y + offsetY) * 10) / 10
-    }
-  } : null
-};
+      curbs: {
+        enabled: true,
+        width: 8 * EXPORT_SCALE,
+        sides: { inner: true, outer: true },
+        style: 'red-white'
+      },
+
+      runoff: {
+        enabled: true,
+        width: 24 * EXPORT_SCALE,
+        sides: { inner: true, outer: true },
+        surface: 'asphalt'
+      },
+
+      finishLine: this._finishLine ? {
+        a: {
+          x: Math.round((((this._finishLine.a.x) * EXPORT_SCALE) + offsetX) * 10) / 10,
+          y: Math.round((((this._finishLine.a.y) * EXPORT_SCALE) + offsetY) * 10) / 10
+        },
+        b: {
+          x: Math.round((((this._finishLine.b.x) * EXPORT_SCALE) + offsetX) * 10) / 10,
+          y: Math.round((((this._finishLine.b.y) * EXPORT_SCALE) + offsetY) * 10) / 10
+        }
+      } : null
+    };
     const stamp = Date.now();
 
     this._downloadJson(`bezier_draft_${stamp}.json`, data);
