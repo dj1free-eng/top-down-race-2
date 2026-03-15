@@ -1388,9 +1388,10 @@ const insetTowardCenter = (edgePts) => {
 const leftInset = insetTowardCenter(this.track.geom.left);
 const rightInset = insetTowardCenter(this.track.geom.right);
 
-// Arcén visual entre borde exterior e inset
-this._shoulderLeft = drawShoulderBand(this.track.geom.left, leftInset, 0xc9b07a, 0.18);
-this._shoulderRight = drawShoulderBand(this.track.geom.right, rightInset, 0xc9b07a, 0.18);
+// Arcén visual desactivado temporalmente.
+// El sistema de inset genera cruces en curvas cerradas.
+this._shoulderLeft = null;
+this._shoulderRight = null;
 
 // Curbs exportados por TrackEditor (si existen)
 const exportedGeom = this.track?.meta?.geometry;
