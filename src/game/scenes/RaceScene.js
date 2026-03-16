@@ -4764,9 +4764,8 @@ if (state.stickX === 0 && state.stickY === 0) {
     });
 
     return state;
-  }
-  _resolveTrackMeta(trackKey) {
-    // 1) Tracks importados: "import:<slug>"
+  }  _resolveTrackMeta(trackKey) {
+    // 1) Tracks importados explícitos: "import:<slug>"
     if (typeof trackKey === 'string' && trackKey.startsWith('import:')) {
       const slug = trackKey.slice('import:'.length).trim();
       const jsonKey = `trackjson:${slug}`;
@@ -4779,7 +4778,16 @@ if (state.stickX === 0 && state.stickY === 0) {
       console.warn('[RaceScene] import track sin JSON en cache:', trackKey);
     }
 
-    // 2) Tracks del registry normal
+    // 2) Caso especial: track01 puede venir desde track.json externo
+    // si existe en cache como "trackjson:track01", lo usamos antes que el registry.
+    if (typeof trackKey === 'string' && trackKey.trim() === 'track01') {
+      const cachedTrack01 = this.cache?.json?.get?.('trackjson:track01');
+      if (cachedTrack01 && typeof cachedTrack01 === 'object') {
+        return this._metaFromImportJson('track01', cachedTrack01);
+      }
+    }
+
+    // 3) Tracks del registry normal
     if (typeof trackKey === 'string' && trackKey.trim()) {
       try {
         return createTrack(trackKey.trim());
@@ -4788,7 +4796,7 @@ if (state.stickX === 0 && state.stickY === 0) {
       }
     }
 
-    // 3) fallback seguro
+    // 4) fallback seguro
     try {
       return createTrack('track01');
     } catch (e) {
