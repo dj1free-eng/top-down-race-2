@@ -1,4 +1,4 @@
-export default class TrackStudioScene extends Phaser.Scene {
+export class TrackStudioScene extends BaseScene
 
   constructor() {
     super('TrackStudioScene');
