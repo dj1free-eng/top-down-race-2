@@ -232,6 +232,7 @@ export class TrackStudioScene extends BaseScene {
         this._editCam.scrollX = anchor.worldX - (localX / this._editCam.zoom);
         this._editCam.scrollY = anchor.worldY - (localY / this._editCam.zoom);
         return;
+      }
 
       this._panLastMid = null;
       this._pinchLastDist = 0;
