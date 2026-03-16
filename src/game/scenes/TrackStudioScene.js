@@ -144,12 +144,81 @@ export class TrackStudioScene extends BaseScene {
     this._editCam.setZoom(0.28);
     this._editCam.setRoundPixels(true);
 
-    // La cámara principal no debe renderizar el mundo de edición
+     // La cámara principal no debe renderizar el mundo de edición
     this.cameras.main.ignore([this._gridGfx, centerMark]);
 
     // La cámara de edición no debe renderizar la UI
     const worldObjs = [this._gridGfx, centerMark];
     const uiObjs = this.children.list.filter(obj => !worldObjs.includes(obj));
     this._editCam.ignore(uiObjs);
+
+    // =================================================
+    // Input cámara editor
+    // =================================================
+    this._isPanning = false;
+    this._panStart = null;
+    this._editZoomMin = 0.12;
+    this._editZoomMax = 2.5;
+
+    const isPointerInViewport = (pointer) => {
+      return (
+        pointer.x >= viewX &&
+        pointer.x <= viewX + viewW &&
+        pointer.y >= viewY &&
+        pointer.y <= viewY + viewH
+      );
+    };
+
+    this.input.on('pointerdown', (pointer) => {
+      if (!isPointerInViewport(pointer)) return;
+
+      this._isPanning = true;
+      this._panStart = {
+        x: pointer.x,
+        y: pointer.y,
+        scrollX: this._editCam.scrollX,
+        scrollY: this._editCam.scrollY
+      };
+    });
+
+    this.input.on('pointermove', (pointer) => {
+      if (!this._isPanning || !this._panStart) return;
+
+      const dx = pointer.x - this._panStart.x;
+      const dy = pointer.y - this._panStart.y;
+
+      this._editCam.scrollX = this._panStart.scrollX - (dx / this._editCam.zoom);
+      this._editCam.scrollY = this._panStart.scrollY - (dy / this._editCam.zoom);
+    });
+
+    this.input.on('pointerup', () => {
+      this._isPanning = false;
+      this._panStart = null;
+    });
+
+    this.input.on('pointerupoutside', () => {
+      this._isPanning = false;
+      this._panStart = null;
+    });
+
+    this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY) => {
+      if (!isPointerInViewport(pointer)) return;
+
+      const worldPointBefore = this._editCam.getWorldPoint(pointer.x, pointer.y);
+
+      const zoomFactor = deltaY > 0 ? 0.90 : 1.10;
+      const nextZoom = Phaser.Math.Clamp(
+        this._editCam.zoom * zoomFactor,
+        this._editZoomMin,
+        this._editZoomMax
+      );
+
+      this._editCam.setZoom(nextZoom);
+
+      const worldPointAfter = this._editCam.getWorldPoint(pointer.x, pointer.y);
+
+      this._editCam.scrollX += worldPointBefore.x - worldPointAfter.x;
+      this._editCam.scrollY += worldPointBefore.y - worldPointAfter.y;
+    });
   }
 }
