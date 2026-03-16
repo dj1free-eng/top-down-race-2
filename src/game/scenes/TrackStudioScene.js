@@ -279,3 +279,5 @@ export class TrackStudioScene extends BaseScene {
         this._pinchLastDist = 0;
       }
     });
+  }
+}
