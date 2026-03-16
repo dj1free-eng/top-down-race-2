@@ -1,10 +1,14 @@
-export class TrackStudioScene extends BaseScene
+import Phaser from 'phaser';
+import { BaseScene } from './BaseScene.js';
+
+export class TrackStudioScene extends BaseScene {
 
   constructor() {
     super('TrackStudioScene');
   }
 
   create() {
+    super.create();
 
     const { width, height } = this.scale;
 
@@ -41,7 +45,5 @@ export class TrackStudioScene extends BaseScene
     back.on('pointerup', () => {
       this.scene.start('menu');
     });
-
   }
-
 }
