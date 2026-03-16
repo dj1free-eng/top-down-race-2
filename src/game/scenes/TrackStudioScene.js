@@ -213,6 +213,10 @@ export class TrackStudioScene extends BaseScene {
             startDist: dist,
             startZoom: this._editCam.zoom
           };
+
+          // Reiniciar referencias para evitar salto al entrar en modo pinza
+          this._panLastMid = null;
+          this._pinchLastDist = dist;
           return;
         }
 
