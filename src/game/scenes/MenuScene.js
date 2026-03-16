@@ -492,9 +492,16 @@ bigPlayBtn.on('pointerup', () => {
   if (!armedPlay) return;
   armedPlay = false;
 
-  const selectedTrackKey = this.selectedTrackKey || 'track01';
+  let selectedTrackKey = this.selectedTrackKey || 'track01';
 
   try {
+    const liveTrackKey = localStorage.getItem('tdr2:trackKey');
+    if (liveTrackKey && liveTrackKey.trim()) {
+      selectedTrackKey = liveTrackKey.trim();
+    }
+
+    this.selectedTrackKey = selectedTrackKey;
+
     localStorage.setItem('tdr2:carId', this.selectedCarId);
     localStorage.setItem('tdr2:trackKey', selectedTrackKey);
   } catch {}
