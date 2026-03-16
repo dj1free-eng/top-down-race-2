@@ -159,9 +159,9 @@ export class TrackStudioScene extends BaseScene {
 
     this._panLastMid = null;
     this._pinchLastDist = 0;
+    this._pinchAnchor = null;
     this._editZoomMin = 0.12;
     this._editZoomMax = 2.5;
-
     const isPointerInViewport = (pointer) => {
       return (
         pointer.x >= viewX &&
@@ -203,26 +203,40 @@ export class TrackStudioScene extends BaseScene {
         const dyp = p2.y - p1.y;
         const dist = Math.sqrt(dxp * dxp + dyp * dyp);
 
-        const worldMidBefore = this._editCam.getWorldPoint(midX, midY);
+        // Primera detección de pinza: fijamos ancla
+        if (!this._pinchAnchor) {
+          const anchorWorld = this._editCam.getWorldPoint(midX, midY);
 
-        let nextZoom = this._editCam.zoom;
+          this._pinchAnchor = {
+            screenX: midX,
+            screenY: midY,
+            worldX: anchorWorld.x,
+            worldY: anchorWorld.y,
+            startDist: dist,
+            startZoom: this._editCam.zoom
+          };
 
-        if (this._pinchLastDist > 0) {
-          const ratio = dist / this._pinchLastDist;
-          nextZoom = Phaser.Math.Clamp(
-            this._editCam.zoom * ratio,
-            this._editZoomMin,
-            this._editZoomMax
-          );
+          this._panLastMid = { x: midX, y: midY };
+          this._pinchLastDist = dist;
+          return;
         }
+
+        const anchor = this._pinchAnchor;
+
+        const ratio = dist / Math.max(anchor.startDist, 0.0001);
+        const nextZoom = Phaser.Math.Clamp(
+          anchor.startZoom * ratio,
+          this._editZoomMin,
+          this._editZoomMax
+        );
 
         this._editCam.setZoom(nextZoom);
 
         this._editCam.scrollX =
-          worldMidBefore.x - ((midX - this._editCam.x) / this._editCam.zoom);
+          anchor.worldX - ((anchor.screenX - this._editCam.x) / this._editCam.zoom);
 
         this._editCam.scrollY =
-          worldMidBefore.y - ((midY - this._editCam.y) / this._editCam.zoom);
+          anchor.worldY - ((anchor.screenY - this._editCam.y) / this._editCam.zoom);
 
         this._panLastMid = { x: midX, y: midY };
         this._pinchLastDist = dist;
@@ -238,6 +252,10 @@ export class TrackStudioScene extends BaseScene {
         (p) => p.isDown && isPointerInViewport(p)
       );
 
+      if (downPointers.length < 2) {
+        this._pinchAnchor = null;
+      }
+
       if (downPointers.length === 0) {
         this._panLastMid = null;
         this._pinchLastDist = 0;
@@ -248,6 +266,10 @@ export class TrackStudioScene extends BaseScene {
       const downPointers = this.input.manager.pointers.filter(
         (p) => p.isDown && isPointerInViewport(p)
       );
+
+      if (downPointers.length < 2) {
+        this._pinchAnchor = null;
+      }
 
       if (downPointers.length === 0) {
         this._panLastMid = null;
