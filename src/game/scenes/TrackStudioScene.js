@@ -162,28 +162,31 @@ export class TrackStudioScene extends BaseScene {
           return;
         }
 
-const worldBefore = this._editCam.getWorldPoint(
-  midX - this._editCam.x,
-  midY - this._editCam.y
+const ratio = dist / this._pinchLastDist;
+
+const newZoom = Phaser.Math.Clamp(
+  this._editCam.zoom * ratio,
+  this._editZoomMin,
+  this._editZoomMax
 );
 
-        const ratio = dist / this._pinchLastDist;
+// Punto del mundo bajo los dedos antes del zoom
+const worldX =
+  this._editCam.scrollX +
+  (midX - this._editCam.x) / this._editCam.zoom;
 
-        const newZoom = Phaser.Math.Clamp(
-          this._editCam.zoom * ratio,
-          this._editZoomMin,
-          this._editZoomMax
-        );
+const worldY =
+  this._editCam.scrollY +
+  (midY - this._editCam.y) / this._editCam.zoom;
 
-        this._editCam.setZoom(newZoom);
+this._editCam.setZoom(newZoom);
 
-const worldAfter = this._editCam.getWorldPoint(
-  midX - this._editCam.x,
-  midY - this._editCam.y
-);
+// Reposicionar scroll para mantener el ancla
+this._editCam.scrollX =
+  worldX - (midX - this._editCam.x) / newZoom;
 
-        this._editCam.scrollX += worldBefore.x - worldAfter.x;
-        this._editCam.scrollY += worldBefore.y - worldAfter.y;
+this._editCam.scrollY =
+  worldY - (midY - this._editCam.y) / newZoom;
 
         this._pinchLastDist = dist;
 
