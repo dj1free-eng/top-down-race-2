@@ -47,7 +47,11 @@ makeBtn(220, 'Editar pistas', () => {
   this.scene.start('TrackEditorScene');
 });
 
-makeBtn(300, 'Salir ADMIN', () => {
+makeBtn(300, 'Track Studio', () => {
+  this.scene.start('TrackStudioScene');
+});
+
+makeBtn(380, 'Salir ADMIN', () => {
   try { localStorage.setItem('tdr2:admin', '0'); } catch {}
   this.scene.start('menu', { forcePlayer: true });
 });
