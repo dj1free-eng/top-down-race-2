@@ -316,10 +316,7 @@ export class TrackStudioScene extends BaseScene {
   }
 
   _screenToWorld(screenX, screenY) {
-    return this._editCam.getWorldPoint(
-      screenX - this._editCam.x,
-      screenY - this._editCam.y
-    );
+    return this._editCam.getWorldPoint(screenX, screenY);
   }
 
   _findNodeAt(x, y, radius = 32) {
