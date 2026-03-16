@@ -208,21 +208,15 @@ export class TrackStudioScene extends BaseScene {
           const anchorWorld = this._editCam.getWorldPoint(midX, midY);
 
           this._pinchAnchor = {
-            screenX: midX,
-            screenY: midY,
             worldX: anchorWorld.x,
             worldY: anchorWorld.y,
             startDist: dist,
             startZoom: this._editCam.zoom
           };
-
-          this._panLastMid = { x: midX, y: midY };
-          this._pinchLastDist = dist;
           return;
         }
 
         const anchor = this._pinchAnchor;
-
         const ratio = dist / Math.max(anchor.startDist, 0.0001);
         const nextZoom = Phaser.Math.Clamp(
           anchor.startZoom * ratio,
@@ -232,19 +226,12 @@ export class TrackStudioScene extends BaseScene {
 
         this._editCam.setZoom(nextZoom);
 
-        const localX = anchor.screenX - viewX;
-        const localY = anchor.screenY - viewY;
+        const localX = midX - viewX - 2;
+        const localY = midY - viewY - 2;
 
-        this._editCam.scrollX =
-          anchor.worldX - (localX / this._editCam.zoom);
-
-        this._editCam.scrollY =
-          anchor.worldY - (localY / this._editCam.zoom);
-
-        this._panLastMid = { x: midX, y: midY };
-        this._pinchLastDist = dist;
+        this._editCam.scrollX = anchor.worldX - (localX / this._editCam.zoom);
+        this._editCam.scrollY = anchor.worldY - (localY / this._editCam.zoom);
         return;
-      }
 
       this._panLastMid = null;
       this._pinchLastDist = 0;
