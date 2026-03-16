@@ -964,33 +964,44 @@ if (this._onResizeTouchControls) {
 };
 this.events.once(Phaser.Scenes.Events.SHUTDOWN, this._onShutdownRaceScene, this);
 // ========================================
-// IMPORT TRACK: recarga SIEMPRE el JSON importado
-// (evita quedarse con un circuito viejo en caché)
+// IMPORT TRACK: fetch directo sin caché
+// (diagnóstico + evita quedarnos con un JSON viejo)
 // ========================================
 if (typeof this.trackKey === 'string' && this.trackKey.startsWith('import:')) {
   const slug = this.trackKey.slice('import:'.length).trim();
   const jsonKey = `trackjson:${slug}`;
 
-  // Limpiar caché anterior de este import si existe
-  try {
-    if (this.cache?.json?.exists?.(jsonKey)) {
-      this.cache.json.remove(jsonKey);
-    }
-  } catch (e) {}
+  // Si ya hemos precargado este import en esta entrada de escena, seguimos normal
+  if (!this._importJsonReady) {
+    this._importJsonReady = false;
 
-  const bust = Date.now();
-  this.load.json(jsonKey, `tracks/${slug}/track.json?v=${bust}`);
+    const url = `tracks/${slug}/track.json?_ts=${Date.now()}`;
 
-  this.load.once('complete', () => {
-    this.scene.restart({ trackKey: `import:${slug}` });
-  });
+    fetch(url, { cache: 'no-store' })
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status} cargando ${url}`);
+        }
+        return res.json();
+      })
+      .then((data) => {
+        try {
+          if (this.cache?.json?.exists?.(jsonKey)) {
+            this.cache.json.remove(jsonKey);
+          }
+        } catch (e) {}
 
-  this.load.once('loaderror', () => {
-    this.scene.restart({ trackKey: 'track02' });
-  });
+        this.cache.json.add(jsonKey, data);
+        this._importJsonReady = true;
+        this.scene.restart({ trackKey: `import:${slug}` });
+      })
+      .catch((err) => {
+        console.error('[RaceScene] import fetch error:', err);
+        this._dbg?.(`[import ERROR] ${slug}\n${err?.message || err}`);
+      });
 
-  this.load.start();
-  return;
+    return;
+  }
 }
 // 1) Track meta primero (define world real)
 const meta = this._resolveTrackMeta(this.trackKey);
