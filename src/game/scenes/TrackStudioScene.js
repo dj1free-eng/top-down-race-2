@@ -7,14 +7,11 @@ export class TrackStudioScene extends BaseScene {
     super('TrackStudioScene');
   }
 
-    create() {
+  create() {
     super.create();
 
     const { width, height } = this.scale;
 
-    // =================================================
-    // Layout base
-    // =================================================
     const topBarH = 70;
     const leftBarW = 86;
     const rightPanelW = 320;
@@ -25,31 +22,16 @@ export class TrackStudioScene extends BaseScene {
     const viewW = width - leftBarW - rightPanelW;
     const viewH = height - topBarH - bottomPad;
 
-    // =================================================
-    // Fondo UI general
-    // =================================================
     this.cameras.main.setBackgroundColor('#0b1020');
 
-    // Top bar
-    this.add.rectangle(0, 0, width, topBarH, 0x101626)
-      .setOrigin(0);
+    this.add.rectangle(0, 0, width, topBarH, 0x101626).setOrigin(0);
+    this.add.rectangle(0, topBarH, leftBarW, height - topBarH, 0x0f1422).setOrigin(0);
+    this.add.rectangle(width - rightPanelW, topBarH, rightPanelW, height - topBarH, 0x0f1422).setOrigin(0);
 
-    // Toolbar izquierda
-    this.add.rectangle(0, topBarH, leftBarW, height - topBarH, 0x0f1422)
-      .setOrigin(0);
-
-    // Panel derecho
-    this.add.rectangle(width - rightPanelW, topBarH, rightPanelW, height - topBarH, 0x0f1422)
-      .setOrigin(0);
-
-    // Viewport panel
     this.add.rectangle(viewX, viewY, viewW, viewH, 0x0a0d16)
       .setOrigin(0)
       .setStrokeStyle(2, 0x26324a, 0.9);
 
-    // =================================================
-    // Títulos UI
-    // =================================================
     this.add.text(24, 22, 'TRACK STUDIO', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
       fontSize: '28px',
@@ -64,9 +46,6 @@ export class TrackStudioScene extends BaseScene {
       fontStyle: 'bold'
     });
 
-    // =================================================
-    // Botón volver
-    // =================================================
     const back = this.add.text(width - 110, 22, 'VOLVER', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
       fontSize: '20px',
@@ -81,195 +60,141 @@ export class TrackStudioScene extends BaseScene {
       this.scene.start('admin-hub');
     });
 
-    // =================================================
-    // Mundo de edición
-    // =================================================
     this._editorWorldW = 4000;
     this._editorWorldH = 4000;
 
-    this._gridGfx = this.add.graphics();
-    this._gridGfx.setDepth(1);
+    this._gridGfx = this.add.graphics().setDepth(1);
 
-    // Grid principal
     this._gridGfx.lineStyle(1, 0x1f2c44, 0.7);
 
     for (let x = 0; x <= this._editorWorldW; x += 100) {
-      this._gridGfx.beginPath();
-      this._gridGfx.moveTo(x, 0);
-      this._gridGfx.lineTo(x, this._editorWorldH);
-      this._gridGfx.strokePath();
+      this._gridGfx.lineBetween(x, 0, x, this._editorWorldH);
     }
 
     for (let y = 0; y <= this._editorWorldH; y += 100) {
-      this._gridGfx.beginPath();
-      this._gridGfx.moveTo(0, y);
-      this._gridGfx.lineTo(this._editorWorldW, y);
-      this._gridGfx.strokePath();
+      this._gridGfx.lineBetween(0, y, this._editorWorldW, y);
     }
 
-    // Grid grueso
     this._gridGfx.lineStyle(2, 0x2d3d5c, 0.9);
 
     for (let x = 0; x <= this._editorWorldW; x += 500) {
-      this._gridGfx.beginPath();
-      this._gridGfx.moveTo(x, 0);
-      this._gridGfx.lineTo(x, this._editorWorldH);
-      this._gridGfx.strokePath();
+      this._gridGfx.lineBetween(x, 0, x, this._editorWorldH);
     }
 
     for (let y = 0; y <= this._editorWorldH; y += 500) {
-      this._gridGfx.beginPath();
-      this._gridGfx.moveTo(0, y);
-      this._gridGfx.lineTo(this._editorWorldW, y);
-      this._gridGfx.strokePath();
+      this._gridGfx.lineBetween(0, y, this._editorWorldW, y);
     }
 
-    // Punto centro del mundo
     const centerMark = this.add.graphics().setDepth(2);
-    centerMark.lineStyle(3, 0x2bff88, 0.8);
-    centerMark.beginPath();
-    centerMark.moveTo(this._editorWorldW / 2 - 30, this._editorWorldH / 2);
-    centerMark.lineTo(this._editorWorldW / 2 + 30, this._editorWorldH / 2);
-    centerMark.moveTo(this._editorWorldW / 2, this._editorWorldH / 2 - 30);
-    centerMark.lineTo(this._editorWorldW / 2, this._editorWorldH / 2 + 30);
-    centerMark.strokePath();
 
-    // =================================================
-    // Cámara de edición
-    // =================================================
+    centerMark.lineStyle(3, 0x2bff88, 0.8);
+    centerMark.lineBetween(this._editorWorldW/2-30,this._editorWorldH/2,this._editorWorldW/2+30,this._editorWorldH/2);
+    centerMark.lineBetween(this._editorWorldW/2,this._editorWorldH/2-30,this._editorWorldW/2,this._editorWorldH/2+30);
+
     this._editCam = this.cameras.add(viewX + 2, viewY + 2, viewW - 4, viewH - 4);
+
     this._editCam.setBackgroundColor('#0a0d16');
     this._editCam.setBounds(0, 0, this._editorWorldW, this._editorWorldH);
     this._editCam.centerOn(this._editorWorldW / 2, this._editorWorldH / 2);
     this._editCam.setZoom(0.28);
-    this._editCam.setRoundPixels(true);
 
-    // La cámara principal no debe renderizar el mundo de edición
     this.cameras.main.ignore([this._gridGfx, centerMark]);
 
-    // La cámara de edición no debe renderizar la UI
     const worldObjs = [this._gridGfx, centerMark];
-    const uiObjs = this.children.list.filter(obj => !worldObjs.includes(obj));
+    const uiObjs = this.children.list.filter(o => !worldObjs.includes(o));
+
     this._editCam.ignore(uiObjs);
 
-    // =================================================
-    // Input táctil cámara editor (iPhone friendly)
-    // =================================================
     this.input.addPointer(2);
 
-    this._panLastMid = null;
+    this._panLast = null;
     this._pinchLastDist = 0;
-    this._pinchAnchor = null;
+
     this._editZoomMin = 0.12;
     this._editZoomMax = 2.5;
-    const isPointerInViewport = (pointer) => {
-      return (
-        pointer.x >= viewX &&
-        pointer.x <= viewX + viewW &&
-        pointer.y >= viewY &&
-        pointer.y <= viewY + viewH
-      );
-    };
+
+    const isPointerInViewport = (pointer) =>
+      pointer.x >= viewX &&
+      pointer.x <= viewX + viewW &&
+      pointer.y >= viewY &&
+      pointer.y <= viewY + viewH;
 
     this.input.on('pointermove', () => {
-      const downPointers = this.input.manager.pointers.filter(
-        (p) => p.isDown && isPointerInViewport(p)
+
+      const down = this.input.manager.pointers.filter(
+        p => p.isDown && isPointerInViewport(p)
       );
 
-      if (downPointers.length === 1) {
-        const p = downPointers[0];
+      if (down.length === 1) {
 
-        if (this._panLastMid) {
-          const dx = p.x - this._panLastMid.x;
-          const dy = p.y - this._panLastMid.y;
+        const p = down[0];
+
+        if (this._panLast) {
+          const dx = p.x - this._panLast.x;
+          const dy = p.y - this._panLast.y;
 
           this._editCam.scrollX -= dx / this._editCam.zoom;
           this._editCam.scrollY -= dy / this._editCam.zoom;
         }
 
-        this._panLastMid = { x: p.x, y: p.y };
+        this._panLast = { x:p.x, y:p.y };
         this._pinchLastDist = 0;
+
         return;
       }
 
-      if (downPointers.length >= 2) {
-        const p1 = downPointers[0];
-        const p2 = downPointers[1];
+      if (down.length >= 2) {
 
-        const midX = (p1.x + p2.x) * 0.5;
-        const midY = (p1.y + p2.y) * 0.5;
+        const p1 = down[0];
+        const p2 = down[1];
 
-        const dxp = p2.x - p1.x;
-        const dyp = p2.y - p1.y;
-        const dist = Math.sqrt(dxp * dxp + dyp * dyp);
+        const midX = (p1.x+p2.x)/2;
+        const midY = (p1.y+p2.y)/2;
 
-        // Primera detección de pinza: fijamos ancla
-        if (!this._pinchAnchor) {
-          const anchorWorld = this._editCam.getWorldPoint(midX, midY);
+        const dx = p2.x-p1.x;
+        const dy = p2.y-p1.y;
 
-          this._pinchAnchor = {
-            worldX: anchorWorld.x,
-            worldY: anchorWorld.y,
-            startDist: dist,
-            startZoom: this._editCam.zoom
-          };
+        const dist = Math.sqrt(dx*dx+dy*dy);
 
-          // Reiniciar referencias para evitar salto al entrar en modo pinza
-          this._panLastMid = null;
+        if (!this._pinchLastDist) {
           this._pinchLastDist = dist;
+          this._panLast = null;
           return;
         }
 
-        const anchor = this._pinchAnchor;
-        const ratio = dist / Math.max(anchor.startDist, 0.0001);
-        const nextZoom = Phaser.Math.Clamp(
-          anchor.startZoom * ratio,
+        const worldBefore = this._editCam.getWorldPoint(midX,midY);
+
+        const ratio = dist / this._pinchLastDist;
+
+        const newZoom = Phaser.Math.Clamp(
+          this._editCam.zoom * ratio,
           this._editZoomMin,
           this._editZoomMax
         );
 
-        this._editCam.setZoom(nextZoom);
+        this._editCam.setZoom(newZoom);
 
-        const localX = midX - viewX - 2;
-        const localY = midY - viewY - 2;
+        const worldAfter = this._editCam.getWorldPoint(midX,midY);
 
-        this._editCam.scrollX = anchor.worldX - (localX / this._editCam.zoom);
-        this._editCam.scrollY = anchor.worldY - (localY / this._editCam.zoom);
+        this._editCam.scrollX += worldBefore.x - worldAfter.x;
+        this._editCam.scrollY += worldBefore.y - worldAfter.y;
+
+        this._pinchLastDist = dist;
+
         return;
       }
 
-      this._panLastMid = null;
+      this._panLast = null;
       this._pinchLastDist = 0;
+
     });
 
-    this.input.on('pointerup', () => {
-      const downPointers = this.input.manager.pointers.filter(
-        (p) => p.isDown && isPointerInViewport(p)
-      );
+    const resetTouch = () => {
+      this._panLast = null;
+      this._pinchLastDist = 0;
+    };
 
-      if (downPointers.length < 2) {
-        this._pinchAnchor = null;
-      }
-
-      if (downPointers.length === 0) {
-        this._panLastMid = null;
-        this._pinchLastDist = 0;
-      }
-    });
-
-    this.input.on('pointerupoutside', () => {
-      const downPointers = this.input.manager.pointers.filter(
-        (p) => p.isDown && isPointerInViewport(p)
-      );
-
-      if (downPointers.length < 2) {
-        this._pinchAnchor = null;
-      }
-
-      if (downPointers.length === 0) {
-        this._panLastMid = null;
-        this._pinchLastDist = 0;
-      }
-    });
+    this.input.on('pointerup', resetTouch);
+    this.input.on('pointerupoutside', resetTouch);
   }
 }
