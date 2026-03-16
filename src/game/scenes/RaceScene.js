@@ -964,28 +964,33 @@ if (this._onResizeTouchControls) {
 };
 this.events.once(Phaser.Scenes.Events.SHUTDOWN, this._onShutdownRaceScene, this);
 // ========================================
-// IMPORT TRACK: carga dinámica SOLO JSON + 1 restart
+// IMPORT TRACK: recarga SIEMPRE el JSON importado
+// (evita quedarse con un circuito viejo en caché)
 // ========================================
 if (typeof this.trackKey === 'string' && this.trackKey.startsWith('import:')) {
   const slug = this.trackKey.slice('import:'.length).trim();
   const jsonKey = `trackjson:${slug}`;
 
-  const needJson = !this.cache.json.exists(jsonKey);
+  // Limpiar caché anterior de este import si existe
+  try {
+    if (this.cache?.json?.exists?.(jsonKey)) {
+      this.cache.json.remove(jsonKey);
+    }
+  } catch (e) {}
 
-  if (needJson) {
-    this.load.json(jsonKey, `tracks/${slug}/track.json`);
+  const bust = Date.now();
+  this.load.json(jsonKey, `tracks/${slug}/track.json?v=${bust}`);
 
-    this.load.once('complete', () => {
-      this.scene.restart({ trackKey: `import:${slug}` });
-    });
+  this.load.once('complete', () => {
+    this.scene.restart({ trackKey: `import:${slug}` });
+  });
 
-    this.load.once('loaderror', () => {
-      this.scene.restart({ trackKey: 'track02' });
-    });
+  this.load.once('loaderror', () => {
+    this.scene.restart({ trackKey: 'track02' });
+  });
 
-    this.load.start();
-    return;
-  }
+  this.load.start();
+  return;
 }
 // 1) Track meta primero (define world real)
 const meta = this._resolveTrackMeta(this.trackKey);
