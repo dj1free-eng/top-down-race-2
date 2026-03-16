@@ -163,8 +163,8 @@ export class TrackStudioScene extends BaseScene {
         }
 
 const worldBefore = this._editCam.getWorldPoint(
-  midX - this._editCam.viewport.x,
-  midY - this._editCam.viewport.y
+  midX - this._editCam.x,
+  midY - this._editCam.y
 );
 
         const ratio = dist / this._pinchLastDist;
@@ -178,8 +178,8 @@ const worldBefore = this._editCam.getWorldPoint(
         this._editCam.setZoom(newZoom);
 
 const worldAfter = this._editCam.getWorldPoint(
-  midX - this._editCam.viewport.x,
-  midY - this._editCam.viewport.y
+  midX - this._editCam.x,
+  midY - this._editCam.y
 );
 
         this._editCam.scrollX += worldBefore.x - worldAfter.x;
