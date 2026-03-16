@@ -212,22 +212,27 @@ export class TrackStudioScene extends BaseScene {
         }
 
         if (this._pinchLastDist > 0) {
-          const before = this._editCam.getWorldPoint(midX, midY);
 
-          const ratio = dist / this._pinchLastDist;
-          const nextZoom = Phaser.Math.Clamp(
-            this._editCam.zoom * ratio,
-            this._editZoomMin,
-            this._editZoomMax
-          );
+  // Punto de mundo bajo los dedos antes del zoom
+  const worldBefore = this._editCam.getWorldPoint(midX, midY);
 
-          this._editCam.setZoom(nextZoom);
+  const ratio = dist / this._pinchLastDist;
 
-          const after = this._editCam.getWorldPoint(midX, midY);
+  const nextZoom = Phaser.Math.Clamp(
+    this._editCam.zoom * ratio,
+    this._editZoomMin,
+    this._editZoomMax
+  );
 
-          this._editCam.scrollX += before.x - after.x;
-          this._editCam.scrollY += before.y - after.y;
-        }
+  this._editCam.setZoom(nextZoom);
+
+  // Punto de mundo tras cambiar zoom
+  const worldAfter = this._editCam.getWorldPoint(midX, midY);
+
+  // Ajustar scroll para mantener el mismo punto bajo los dedos
+  this._editCam.scrollX += worldBefore.x - worldAfter.x;
+  this._editCam.scrollY += worldBefore.y - worldAfter.y;
+}
 
         this._panLastMid = { x: midX, y: midY };
         this._pinchLastDist = dist;
