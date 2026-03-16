@@ -273,8 +273,20 @@ export class TrackStudioScene extends BaseScene {
         return;
       }
 
-      // Tap limpio dentro del viewport = crear nodo
-      if (this._isPointerInViewport(pointer)) {
+      // Si hubo movimiento apreciable, lo tratamos como pan y NO como tap
+      let movedTooMuch = false;
+      if (this._dragStartScreen) {
+        const dist = Phaser.Math.Distance.Between(
+          pointer.x,
+          pointer.y,
+          this._dragStartScreen.x,
+          this._dragStartScreen.y
+        );
+        movedTooMuch = dist > 10;
+      }
+
+      // Tap limpio dentro del viewport = seleccionar o crear nodo
+      if (!movedTooMuch && this._isPointerInViewport(pointer)) {
         const world = this._screenToWorld(pointer.x, pointer.y);
         const hit = this._findNodeAt(world.x, world.y, 32);
 
@@ -292,6 +304,7 @@ export class TrackStudioScene extends BaseScene {
         this._redrawEditor();
       }
 
+      this._dragStartScreen = null;
       this._panLast = null;
       this._pinchLastDist = 0;
     });
