@@ -203,36 +203,26 @@ export class TrackStudioScene extends BaseScene {
         const dyp = p2.y - p1.y;
         const dist = Math.sqrt(dxp * dxp + dyp * dyp);
 
-        if (this._panLastMid) {
-          const dx = midX - this._panLastMid.x;
-          const dy = midY - this._panLastMid.y;
+        const worldMidBefore = this._editCam.getWorldPoint(midX, midY);
 
-          this._editCam.scrollX -= dx / this._editCam.zoom;
-          this._editCam.scrollY -= dy / this._editCam.zoom;
-        }
+        let nextZoom = this._editCam.zoom;
 
         if (this._pinchLastDist > 0) {
+          const ratio = dist / this._pinchLastDist;
+          nextZoom = Phaser.Math.Clamp(
+            this._editCam.zoom * ratio,
+            this._editZoomMin,
+            this._editZoomMax
+          );
+        }
 
-  // Punto de mundo bajo los dedos antes del zoom
-  const worldBefore = this._editCam.getWorldPoint(midX, midY);
+        this._editCam.setZoom(nextZoom);
 
-  const ratio = dist / this._pinchLastDist;
+        this._editCam.scrollX =
+          worldMidBefore.x - ((midX - this._editCam.x) / this._editCam.zoom);
 
-  const nextZoom = Phaser.Math.Clamp(
-    this._editCam.zoom * ratio,
-    this._editZoomMin,
-    this._editZoomMax
-  );
-
-  this._editCam.setZoom(nextZoom);
-
-  // Punto de mundo tras cambiar zoom
-  const worldAfter = this._editCam.getWorldPoint(midX, midY);
-
-  // Ajustar scroll para mantener el mismo punto bajo los dedos
-  this._editCam.scrollX += worldBefore.x - worldAfter.x;
-  this._editCam.scrollY += worldBefore.y - worldAfter.y;
-}
+        this._editCam.scrollY =
+          worldMidBefore.y - ((midY - this._editCam.y) / this._editCam.zoom);
 
         this._panLastMid = { x: midX, y: midY };
         this._pinchLastDist = dist;
