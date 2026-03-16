@@ -1675,15 +1675,54 @@ const finish = t01.finish || t01.finishLine;
 if (finish?.a && finish?.b) {
   this.finishGfx?.destroy?.();
   this.finishGfx = this.add.graphics();
-  this.finishGfx.lineStyle(6, 0xff2d2d, 1);
-  this.finishGfx.beginPath();
-  this.finishGfx.moveTo(finish.a.x, finish.a.y);
-  this.finishGfx.lineTo(finish.b.x, finish.b.y);
-  this.finishGfx.strokePath();
+
+  const ax = finish.a.x;
+  const ay = finish.a.y;
+  const bx = finish.b.x;
+  const by = finish.b.y;
+
+  const dx = bx - ax;
+  const dy = by - ay;
+  const len = Math.hypot(dx, dy);
+
+  if (len > 0.001) {
+    const tx = dx / len;
+    const ty = dy / len;
+
+    // perpendicular a la meta
+    const px = -ty;
+    const py = tx;
+
+    // grosor visual de la banda
+    const bandHalf = 10;
+    const segments = Math.max(8, Math.floor(len / 14));
+    const step = len / segments;
+
+    for (let i = 0; i < segments; i++) {
+      const s0 = i * step;
+      const s1 = (i + 1) * step;
+
+      const x0 = ax + tx * s0;
+      const y0 = ay + ty * s0;
+      const x1 = ax + tx * s1;
+      const y1 = ay + ty * s1;
+
+      const color = (i % 2 === 0) ? 0xffffff : 0x111111;
+
+      this.finishGfx.fillStyle(color, 1);
+      this.finishGfx.beginPath();
+      this.finishGfx.moveTo(x0 + px * bandHalf, y0 + py * bandHalf);
+      this.finishGfx.lineTo(x1 + px * bandHalf, y1 + py * bandHalf);
+      this.finishGfx.lineTo(x1 - px * bandHalf, y1 - py * bandHalf);
+      this.finishGfx.lineTo(x0 - px * bandHalf, y0 - py * bandHalf);
+      this.finishGfx.closePath();
+      this.finishGfx.fillPath();
+    }
+  }
+
   this.finishGfx.setDepth(50);
   this.uiCam?.ignore?.(this.finishGfx);
 }
-
 this.cpGfx?.destroy?.();
 this.cpGfx = this.add.graphics();
 this.cpGfx.setDepth(49);
