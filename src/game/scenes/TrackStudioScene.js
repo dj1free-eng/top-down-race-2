@@ -48,7 +48,7 @@ export class TrackStudioScene extends BaseScene {
     this._editZoomMax = 2.5;
 
     this._trackWidth = 140;
-    this._trackWidthMin = 60;
+    this._trackWidthMin = 30;
     this._trackWidthMax = 260;
 
     this._isClosed = false;
@@ -98,15 +98,15 @@ export class TrackStudioScene extends BaseScene {
       wordWrap: { width: this._rightPanelW - 40 }
     });
 
-    const back = this.add.text(width - 96, 18, 'VOLVER', {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '18px',
-      color: '#ffffff',
-      backgroundColor: '#1c2540',
-      padding: { x: 16, y: 8 }
-    })
-      .setOrigin(0.5, 0)
-      .setInteractive({ useHandCursor: true });
+const back = this.add.text(width - 38, 18, '←', {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '22px',
+  color: '#ffffff',
+  backgroundColor: '#1c2540',
+  padding: { x: 12, y: 8 }
+})
+  .setOrigin(0.5, 0)
+  .setInteractive({ useHandCursor: true });
 
     back.on('pointerup', () => {
       this._destroyGuideInput();
