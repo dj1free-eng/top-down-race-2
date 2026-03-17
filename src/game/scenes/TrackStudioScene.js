@@ -32,7 +32,7 @@ export class TrackStudioScene extends BaseScene {
 
     this._nodes = [];
     this._selectedNode = -1;
-    this._selectedPart = null; // { type:'node'|'handleIn'|'handleOut', index:number }
+    this._selectedPart = null;
 
     this._draggingPart = false;
     this._dragMoved = false;
@@ -62,6 +62,15 @@ export class TrackStudioScene extends BaseScene {
     this._guideVisible = true;
     this._guideAlpha = 0.32;
     this._guideInput = null;
+
+    // nudge
+    this._nudgeSteps = [1, 5, 10];
+    this._nudgeStepIndex = 2;
+
+    // toolbar grupos
+    this._activeFlyout = null;
+    this._activeFlyoutGroup = null;
+    this._groupButtons = {};
 
     // =================================================
     // UI base
@@ -98,23 +107,13 @@ export class TrackStudioScene extends BaseScene {
       wordWrap: { width: this._rightPanelW - 40 }
     });
 
-const back = this.add.text(width - 38, 18, '←', {
-  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-  fontSize: '22px',
-  color: '#ffffff',
-  backgroundColor: '#1c2540',
-  padding: { x: 12, y: 8 }
-})
-  .setOrigin(0.5, 0)
-  .setInteractive({ useHandCursor: true });
-
-    back.on('pointerup', () => {
+    this._backBtn = this._makeIconButton(width - 44, 36, '←', () => {
       this._destroyGuideInput();
       this.scene.start('admin-hub');
-    });
+    }, '22px');
 
     // =================================================
-    // Barra izquierda: solo herramientas
+    // Barra izquierda: grupos
     // =================================================
     const leftCX = Math.floor(this._leftBarW / 2);
     let leftY = this._topBarH + 20;
@@ -126,116 +125,151 @@ const back = this.add.text(width - 38, 18, '←', {
       fontStyle: 'bold'
     }).setOrigin(0.5, 0);
 
-    leftY += 34;
+    leftY += 38;
 
-    this._loopBtn = this._makeIconButton(leftCX, leftY, '🔓', () => {
-      this._toggleClosed();
+    this._groupButtons.mode = this._makeGroupButton(leftCX, leftY, '🔓', [
+      {
+        label: '🔓',
+        action: () => {
+          this._isClosed = false;
+          this._updateLoopButton();
+          this._updatePanel();
+          this._redrawEditor();
+        }
+      },
+      {
+        label: '🔒',
+        action: () => {
+          this._isClosed = true;
+          this._updateLoopButton();
+          this._updatePanel();
+          this._redrawEditor();
+        }
+      },
+      {
+        label: '🏁',
+        action: () => this._setTool(this._tool === 'finish' ? 'edit' : 'finish')
+      },
+      {
+        label: 'CP',
+        action: () => this._setTool(this._tool === 'checkpoint' ? 'edit' : 'checkpoint')
+      }
+    ], {
+      groupName: 'mode',
+      fontSize: '16px',
+      horizontal: false
     });
 
-    leftY += 48;
+    leftY += 52;
 
-    this._finishBtn = this._makeIconButton(leftCX, leftY, '🏁', () => {
-      this._setTool(this._tool === 'finish' ? 'edit' : 'finish');
-    });
-
-    leftY += 48;
-
-    this._checkpointBtn = this._makeIconButton(leftCX, leftY, 'CP', () => {
-      this._setTool(this._tool === 'checkpoint' ? 'edit' : 'checkpoint');
-    }, '13px');
-
-    leftY += 48;
-
-    this._guideLoadBtn = this._makeIconButton(leftCX, leftY, 'IMG', () => {
-      this._openGuidePicker();
-    }, '12px');
-
-    leftY += 48;
-
-    this._guideToggleBtn = this._makeIconButton(leftCX, leftY, '👁', () => {
-      this._toggleGuideVisibility();
+    this._groupButtons.guide = this._makeGroupButton(leftCX, leftY, 'IMG', [
+      {
+        label: 'IMG',
+        action: () => this._openGuidePicker()
+      },
+      {
+        label: '👁',
+        action: () => this._toggleGuideVisibility()
+      }
+    ], {
+      groupName: 'guide',
+      fontSize: '12px',
+      horizontal: false
     });
 
     // =================================================
-    // Barra superior horizontal: acciones rápidas
+    // Barra superior
     // =================================================
     const topToolsY = 36;
-    let topX = 320;
-// =======================
-// SAVE / LOAD / NEW
-// =======================
+    let topX = 300;
 
-this._saveBtn = this._makeIconButton(topX, topToolsY, '💾', () => {
-  this._saveProject();
-}, '16px');
-topX += 50;
+    this._saveBtn = this._makeIconButton(topX, topToolsY, '💾', () => {
+      this._saveProject();
+    }, '16px');
+    topX += 44;
 
-this._loadBtn = this._makeIconButton(topX, topToolsY, '📂', () => {
-  this._loadProject();
-}, '16px');
-topX += 50;
+    this._loadBtn = this._makeIconButton(topX, topToolsY, '📂', () => {
+      this._loadProject();
+    }, '16px');
+    topX += 44;
 
-this._newBtn = this._makeIconButton(topX, topToolsY, '🆕', () => {
-  this._newProject();
-}, '14px');
-topX += 60;
-    this._zoomInBtn = this._makeIconButton(topX, topToolsY, '🔍+', () => {
-      this._applyZoomAtViewportCenter(1.15);
-    }, '13px');
+    this._newBtn = this._makeIconButton(topX, topToolsY, 'NEW', () => {
+      this._newProject();
+    }, '12px');
     topX += 52;
 
-    this._zoomOutBtn = this._makeIconButton(topX, topToolsY, '🔎-', () => {
-      this._applyZoomAtViewportCenter(1 / 1.15);
-    }, '13px');
-    topX += 52;
-
-    this._centerBtn = this._makeIconButton(topX, topToolsY, '◎', () => {
-      this._editCam.centerOn(this._editorWorldW / 2, this._editorWorldH / 2);
-      this._editCam.setZoom(0.28);
-      this._updatePanel();
+    this._groupButtons.view = this._makeGroupButton(topX, topToolsY, '🔍+', [
+      {
+        label: '🔍+',
+        action: () => this._applyZoomAtViewportCenter(1.15)
+      },
+      {
+        label: '🔎-',
+        action: () => this._applyZoomAtViewportCenter(1 / 1.15)
+      },
+      {
+        label: '◎',
+        action: () => {
+          this._editCam.centerOn(this._editorWorldW / 2, this._editorWorldH / 2);
+          this._editCam.setZoom(0.28);
+          this._updatePanel();
+        }
+      }
+    ], {
+      groupName: 'view',
+      fontSize: '12px',
+      horizontal: true
     });
-    topX += 56;
-
-    this._widthMinusBtn = this._makeIconButton(topX, topToolsY, 'W-', () => {
-      this._changeTrackWidth(-10);
-    }, '13px');
     topX += 48;
 
-    this._widthPlusBtn = this._makeIconButton(topX, topToolsY, 'W+', () => {
-      this._changeTrackWidth(10);
-    }, '13px');
+    this._groupButtons.track = this._makeGroupButton(topX, topToolsY, 'W', [
+      {
+        label: 'W-',
+        action: () => this._changeTrackWidth(-10)
+      },
+      {
+        label: 'W+',
+        action: () => this._changeTrackWidth(10)
+      }
+    ], {
+      groupName: 'track',
+      fontSize: '14px',
+      horizontal: true
+    });
     topX += 48;
 
     this._guideAlphaMinusBtn = this._makeIconButton(topX, topToolsY, 'A-', () => {
       this._changeGuideAlpha(-0.08);
     }, '13px');
-    topX += 48;
+    topX += 44;
 
     this._guideAlphaPlusBtn = this._makeIconButton(topX, topToolsY, 'A+', () => {
       this._changeGuideAlpha(0.08);
     }, '13px');
-    topX += 60;
+    topX += 52;
 
-    // =================================================
-    // Mini cruceta superior
-    // =================================================
+    this._nudgeStepBtn = this._makeIconButton(topX, topToolsY, String(this._getNudgeStep()), () => {
+      this._cycleNudgeStep();
+    }, '16px');
+    topX += 44;
+
     this._btnLeft = this._makeIconButton(topX, topToolsY, '←', () => {
-      this._nudgeSelectedNode(-10, 0);
+      this._nudgeSelectedNode(-this._getNudgeStep(), 0);
     }, '18px');
     topX += 40;
 
     this._btnUp = this._makeIconButton(topX, topToolsY, '↑', () => {
-      this._nudgeSelectedNode(0, -10);
+      this._nudgeSelectedNode(0, -this._getNudgeStep());
     }, '18px');
     topX += 40;
 
     this._btnDown = this._makeIconButton(topX, topToolsY, '↓', () => {
-      this._nudgeSelectedNode(0, 10);
+      this._nudgeSelectedNode(0, this._getNudgeStep());
     }, '18px');
     topX += 40;
 
     this._btnRight = this._makeIconButton(topX, topToolsY, '→', () => {
-      this._nudgeSelectedNode(10, 0);
+      this._nudgeSelectedNode(this._getNudgeStep(), 0);
     }, '18px');
     topX += 40;
 
@@ -316,6 +350,8 @@ topX += 60;
     this.input.addPointer(2);
 
     this.input.on('pointerdown', (pointer) => {
+      this._closeFlyout();
+
       if (!this._isPointerInViewport(pointer)) return;
 
       this._tapCandidate = true;
@@ -524,38 +560,32 @@ topX += 60;
           if (hit) {
             this._selectedNode = hit.index;
             this._selectedPart = hit;
-} else {
-  const hit = this._findControlAt(world.x, world.y);
+          } else {
+            const node = this._createNode(world.x, world.y);
 
-  if (hit) {
-    this._selectedNode = hit.index;
-    this._selectedPart = hit;
-  } else {
-    const node = this._createNode(world.x, world.y);
+            if (this._nodes.length > 0) {
+              const prev = this._nodes[this._nodes.length - 1];
+              const handleLen = 60;
 
-    if (this._nodes.length > 0) {
-      const prev = this._nodes[this._nodes.length - 1];
-      const handleLen = 60;
+              let dx = node.x - prev.x;
+              let dy = node.y - prev.y;
 
-      let dx = node.x - prev.x;
-      let dy = node.y - prev.y;
+              const len = Math.sqrt(dx * dx + dy * dy) || 1;
+              dx /= len;
+              dy /= len;
 
-      const len = Math.sqrt(dx * dx + dy * dy) || 1;
-      dx /= len;
-      dy /= len;
+              prev.handleOut.x = prev.x + dx * handleLen;
+              prev.handleOut.y = prev.y + dy * handleLen;
+            }
 
-      prev.handleOut.x = prev.x + dx * handleLen;
-      prev.handleOut.y = prev.y + dy * handleLen;
-    }
+            this._nodes.push(node);
+            this._selectedNode = this._nodes.length - 1;
+            this._selectedPart = { type: 'node', index: this._selectedNode };
+          }
 
-    this._nodes.push(node);
-    this._selectedNode = this._nodes.length - 1;
-    this._selectedPart = { type: 'node', index: this._selectedNode };
-  }
-
-  this._updatePanel();
-  this._redrawEditor();
-}
+          this._updatePanel();
+          this._redrawEditor();
+        }
       }
 
       if (stillDown === 0) {
@@ -584,7 +614,6 @@ topX += 60;
     this._updatePanel();
     this._redrawEditor();
   }
-
   // =================================================
   // Guía de fondo
   // =================================================
@@ -691,21 +720,144 @@ topX += 60;
   // =================================================
   // UI helpers
   // =================================================
-  _makeIconButton(cx, cy, label, onClick, fontSize = '22px') {
-    const bg = this.add.circle(cx, cy, 18, 0x1c2540, 1)
-      .setStrokeStyle(2, 0x3c4e7a, 0.95)
-      .setInteractive({ useHandCursor: true });
+  _makeIconButton(cx, cy, label, onClick, fontSize = '18px') {
+    return this._makeToolButton(cx, cy, 38, 38, label, onClick, { fontSize });
+  }
 
-    const txt = this.add.text(cx, cy, label, {
+  _makeToolButton(cx, cy, w, h, label, onClick, opts = {}) {
+    const fill = opts.fill ?? 0x1c2540;
+    const stroke = opts.stroke ?? 0x3c4e7a;
+    const fontSize = opts.fontSize ?? '18px';
+    const hasCorner = opts.hasCorner ?? false;
+
+    const c = this.add.container(cx, cy);
+    c.setDepth(60);
+
+    const bg = this.add.graphics();
+    bg.fillStyle(fill, 1);
+    bg.lineStyle(2, stroke, 0.95);
+    bg.fillRoundedRect(-w / 2, -h / 2, w, h, 8);
+    bg.strokeRoundedRect(-w / 2, -h / 2, w, h, 8);
+    c.add(bg);
+
+    if (hasCorner) {
+      const corner = this.add.graphics();
+      corner.lineStyle(2, 0xaec6ff, 0.95);
+      corner.beginPath();
+      corner.moveTo(-w / 2 + 6, -h / 2 + 14);
+      corner.lineTo(-w / 2 + 6, -h / 2 + 6);
+      corner.lineTo(-w / 2 + 14, -h / 2 + 6);
+      corner.strokePath();
+      c.add(corner);
+      c._corner = corner;
+    }
+
+    const txt = this.add.text(0, 0, label, {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
       fontSize,
       color: '#ffffff',
       fontStyle: 'bold'
     }).setOrigin(0.5);
+    c.add(txt);
 
-    bg.on('pointerup', onClick);
+    const zone = this.add.zone(0, 0, w, h).setInteractive({ useHandCursor: true });
+    zone.on('pointerup', (pointer) => {
+      pointer.event?.stopPropagation?.();
+      onClick();
+    });
+    c.add(zone);
 
-    return { bg, txt };
+    c._bg = bg;
+    c._txt = txt;
+    c._zone = zone;
+    c._w = w;
+    c._h = h;
+    c._fill = fill;
+    c._stroke = stroke;
+    c._hasCorner = hasCorner;
+
+    return c;
+  }
+
+  _setToolButtonStyle(btn, fill, stroke) {
+    if (!btn?._bg) return;
+
+    btn._fill = fill;
+    btn._stroke = stroke;
+
+    btn._bg.clear();
+    btn._bg.fillStyle(fill, 1);
+    btn._bg.lineStyle(2, stroke, 0.95);
+    btn._bg.fillRoundedRect(-btn._w / 2, -btn._h / 2, btn._w, btn._h, 8);
+    btn._bg.strokeRoundedRect(-btn._w / 2, -btn._h / 2, btn._w, btn._h, 8);
+  }
+
+  _makeGroupButton(cx, cy, initialLabel, items, opts = {}) {
+    const btn = this._makeToolButton(cx, cy, 40, 40, initialLabel, () => {
+      this._toggleFlyout(btn, items, opts);
+    }, {
+      fontSize: opts.fontSize ?? '18px',
+      hasCorner: true
+    });
+
+    btn._groupItems = items;
+    btn._groupName = opts.groupName || 'group';
+    btn._groupHorizontal = !!opts.horizontal;
+    return btn;
+  }
+
+  _toggleFlyout(anchorBtn, items, opts = {}) {
+    if (this._activeFlyoutGroup === anchorBtn._groupName) {
+      this._closeFlyout();
+      return;
+    }
+
+    this._closeFlyout();
+
+    const fly = this.add.container(0, 0);
+    fly.setDepth(80);
+
+    const horizontal = !!opts.horizontal;
+    const spacing = 44;
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const x = horizontal ? anchorBtn.x + (i + 1) * spacing : anchorBtn.x;
+      const y = horizontal ? anchorBtn.y : anchorBtn.y + (i + 1) * spacing;
+
+      const child = this._makeToolButton(x, y, 40, 40, item.label, () => {
+        anchorBtn._txt.setText(item.label);
+        this._closeFlyout();
+        item.action();
+      }, {
+        fontSize: opts.fontSize ?? '18px'
+      });
+
+      fly.add(child);
+    }
+
+    this._activeFlyout = fly;
+    this._activeFlyoutGroup = anchorBtn._groupName;
+  }
+
+  _closeFlyout() {
+    if (this._activeFlyout) {
+      this._activeFlyout.destroy(true);
+      this._activeFlyout = null;
+      this._activeFlyoutGroup = null;
+    }
+  }
+
+  _getNudgeStep() {
+    return this._nudgeSteps[this._nudgeStepIndex];
+  }
+
+  _cycleNudgeStep() {
+    this._nudgeStepIndex = (this._nudgeStepIndex + 1) % this._nudgeSteps.length;
+    if (this._nudgeStepBtn?._txt) {
+      this._nudgeStepBtn._txt.setText(String(this._getNudgeStep()));
+    }
+    this._updatePanel();
   }
 
   _setTool(tool) {
@@ -715,21 +867,32 @@ topX += 60;
   }
 
   _updateToolButtons() {
-    if (this._finishBtn?.bg) {
-      const activeFinish = this._tool === 'finish';
-      this._finishBtn.bg.setFillStyle(activeFinish ? 0x2b8a3e : 0x1c2540, 1);
-      this._finishBtn.bg.setStrokeStyle(2, activeFinish ? 0xa8ffb8 : 0x3c4e7a, 0.95);
+    if (this._groupButtons.mode) {
+      this._setToolButtonStyle(this._groupButtons.mode, 0x1c2540, 0x3c4e7a);
+    }
+    if (this._groupButtons.guide) {
+      this._setToolButtonStyle(this._groupButtons.guide, 0x1c2540, 0x3c4e7a);
     }
 
-    if (this._checkpointBtn?.bg) {
-      const activeCp = this._tool === 'checkpoint';
-      this._checkpointBtn.bg.setFillStyle(activeCp ? 0x235c9f : 0x1c2540, 1);
-      this._checkpointBtn.bg.setStrokeStyle(2, activeCp ? 0xaed4ff : 0x3c4e7a, 0.95);
+    if (this._tool === 'finish' && this._groupButtons.mode) {
+      this._setToolButtonStyle(this._groupButtons.mode, 0x2b8a3e, 0xa8ffb8);
+      this._groupButtons.mode._txt.setText('🏁');
+    } else if (this._tool === 'checkpoint' && this._groupButtons.mode) {
+      this._setToolButtonStyle(this._groupButtons.mode, 0x235c9f, 0xaed4ff);
+      this._groupButtons.mode._txt.setText('CP');
+    } else if (this._groupButtons.mode) {
+      this._groupButtons.mode._txt.setText(this._isClosed ? '🔒' : '🔓');
     }
 
-    if (this._guideToggleBtn?.bg) {
-      this._guideToggleBtn.bg.setFillStyle(this._guideVisible ? 0x1f4f2d : 0x1c2540, 1);
-      this._guideToggleBtn.bg.setStrokeStyle(2, this._guideVisible ? 0x8df0a8 : 0x3c4e7a, 0.95);
+    if (this._groupButtons.guide) {
+      this._groupButtons.guide._txt.setText(this._guideVisible ? '👁' : 'IMG');
+      if (this._guideVisible) {
+        this._setToolButtonStyle(this._groupButtons.guide, 0x1f4f2d, 0x8df0a8);
+      }
+    }
+
+    if (this._nudgeStepBtn?._txt) {
+      this._nudgeStepBtn._txt.setText(String(this._getNudgeStep()));
     }
   }
 
@@ -741,47 +904,48 @@ topX += 60;
   }
 
   _updateLoopButton() {
-    if (!this._loopBtn?.txt) return;
-    this._loopBtn.txt.setText(this._isClosed ? '🔒' : '🔓');
+    if (this._groupButtons?.mode && this._tool === 'edit') {
+      this._groupButtons.mode._txt.setText(this._isClosed ? '🔒' : '🔓');
+    }
   }
 
   // =================================================
   // Core editor helpers
   // =================================================
-_createNode(x, y) {
-  const handleLen = 60;
+  _createNode(x, y) {
+    const handleLen = 60;
 
-  if (!this._nodes || this._nodes.length === 0) {
+    if (!this._nodes || this._nodes.length === 0) {
+      return {
+        x,
+        y,
+        handleIn: { x: x - handleLen, y },
+        handleOut: { x: x + handleLen, y }
+      };
+    }
+
+    const prev = this._nodes[this._nodes.length - 1];
+
+    let dx = x - prev.x;
+    let dy = y - prev.y;
+
+    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+    dx /= len;
+    dy /= len;
+
     return {
       x,
       y,
-      handleIn: { x: x - handleLen, y },
-      handleOut: { x: x + handleLen, y }
+      handleIn: {
+        x: x - dx * handleLen,
+        y: y - dy * handleLen
+      },
+      handleOut: {
+        x: x + dx * handleLen,
+        y: y + dy * handleLen
+      }
     };
   }
-
-  const prev = this._nodes[this._nodes.length - 1];
-
-  let dx = x - prev.x;
-  let dy = y - prev.y;
-
-  const len = Math.sqrt(dx * dx + dy * dy) || 1;
-  dx /= len;
-  dy /= len;
-
-  return {
-    x,
-    y,
-    handleIn: {
-      x: x - dx * handleLen,
-      y: y - dy * handleLen
-    },
-    handleOut: {
-      x: x + dx * handleLen,
-      y: y + dy * handleLen
-    }
-  };
-}
 
   _applyZoomAtViewportCenter(multiplier) {
     const midX = this._editCam.x + this._editCam.width / 2;
@@ -938,46 +1102,43 @@ _createNode(x, y) {
     return pts;
   }
 
-_getBezierPoints() {
-  const count = this._nodes.length;
-  if (count < 2) return this._nodes.map((n) => ({ x: n.x, y: n.y }));
+  _getBezierPoints() {
+    const count = this._nodes.length;
+    if (count < 2) return this._nodes.map((n) => ({ x: n.x, y: n.y }));
 
-  const pts = [];
-  const segCount = this._isClosed ? count : count - 1;
+    const pts = [];
+    const segCount = this._isClosed ? count : count - 1;
 
-  for (let i = 0; i < segCount; i++) {
-    const a = this._nodes[i];
-    const b = this._nodes[(i + 1) % count];
+    for (let i = 0; i < segCount; i++) {
+      const a = this._nodes[i];
+      const b = this._nodes[(i + 1) % count];
 
-    const seg = this._sampleCubicBezier(
-      { x: a.x, y: a.y },
-      { x: a.handleOut.x, y: a.handleOut.y },
-      { x: b.handleIn.x, y: b.handleIn.y },
-      { x: b.x, y: b.y },
-      28
-    );
+      const seg = this._sampleCubicBezier(
+        { x: a.x, y: a.y },
+        { x: a.handleOut.x, y: a.handleOut.y },
+        { x: b.handleIn.x, y: b.handleIn.y },
+        { x: b.x, y: b.y },
+        28
+      );
 
-    if (i > 0) seg.shift();
-    pts.push(...seg);
-  }
-
-  // En loop cerrado, quitamos el último punto si duplica el primero.
-  // Esa duplicidad rompe la banda de asfalto en la costura.
-  if (this._isClosed && pts.length > 1) {
-    const first = pts[0];
-    const last = pts[pts.length - 1];
-
-    const dx = last.x - first.x;
-    const dy = last.y - first.y;
-    const d2 = dx * dx + dy * dy;
-
-    if (d2 < 0.0001) {
-      pts.pop();
+      if (i > 0) seg.shift();
+      pts.push(...seg);
     }
-  }
 
-  return pts;
-}
+    if (this._isClosed && pts.length > 1) {
+      const first = pts[0];
+      const last = pts[pts.length - 1];
+      const dx = last.x - first.x;
+      const dy = last.y - first.y;
+      const d2 = dx * dx + dy * dy;
+
+      if (d2 < 0.0001) {
+        pts.pop();
+      }
+    }
+
+    return pts;
+  }
 
   _buildTrackStrip(points, width) {
     if (!Array.isArray(points) || points.length < 2) {
@@ -1274,6 +1435,7 @@ _getBezierPoints() {
         `Checkpoints: ${this._checkpoints.length}\n` +
         `Guía: ${guideLoaded ? (this._guideVisible ? 'visible' : 'oculta') : 'no cargada'}\n` +
         `Alpha guía: ${this._guideAlpha.toFixed(2)}\n` +
+        `Nudge: ${this._getNudgeStep()}px\n` +
         `Zoom: ${this._editCam ? this._editCam.zoom.toFixed(2) : '0.00'}\n` +
         `Ancho: ${this._trackWidth}px`
       );
@@ -1292,6 +1454,7 @@ _getBezierPoints() {
       `Checkpoints: ${this._checkpoints.length}\n` +
       `Guía: ${guideLoaded ? (this._guideVisible ? 'visible' : 'oculta') : 'no cargada'}\n` +
       `Alpha guía: ${this._guideAlpha.toFixed(2)}\n` +
+      `Nudge: ${this._getNudgeStep()}px\n` +
       `X: ${Math.round(n.x)}\n` +
       `Y: ${Math.round(n.y)}\n` +
       `In: ${Math.round(n.handleIn.x)}, ${Math.round(n.handleIn.y)}\n` +
@@ -1301,88 +1464,90 @@ _getBezierPoints() {
       `Ancho: ${this._trackWidth}px`
     );
   }
+
   // =================================================
-// SAVE / LOAD / NEW (proyecto de trabajo)
-// =================================================
-
-_getProjectData() {
-  return {
-    version: 1,
-    nodes: this._nodes,
-    trackWidth: this._trackWidth,
-    isClosed: this._isClosed,
-    finishLine: this._finishLine,
-    checkpoints: this._checkpoints,
-    guideAlpha: this._guideAlpha,
-    guideVisible: this._guideVisible
-  };
-}
-
-_applyProjectData(data) {
-  this._nodes = data.nodes || [];
-  this._trackWidth = data.trackWidth ?? 140;
-  this._isClosed = data.isClosed ?? false;
-  this._finishLine = data.finishLine || null;
-  this._checkpoints = data.checkpoints || [];
-  this._guideAlpha = data.guideAlpha ?? 0.32;
-  this._guideVisible = data.guideVisible ?? true;
-
-  if (this._guideImage) {
-    this._guideImage.setAlpha(this._guideAlpha);
-    this._guideImage.setVisible(this._guideVisible);
+  // SAVE / LOAD / NEW
+  // =================================================
+  _getProjectData() {
+    return {
+      version: 1,
+      nodes: this._nodes,
+      trackWidth: this._trackWidth,
+      isClosed: this._isClosed,
+      finishLine: this._finishLine,
+      checkpoints: this._checkpoints,
+      guideAlpha: this._guideAlpha,
+      guideVisible: this._guideVisible,
+      nudgeStepIndex: this._nudgeStepIndex
+    };
   }
 
-  this._selectedNode = -1;
-  this._selectedPart = null;
+  _applyProjectData(data) {
+    this._nodes = data.nodes || [];
+    this._trackWidth = data.trackWidth ?? 140;
+    this._isClosed = data.isClosed ?? false;
+    this._finishLine = data.finishLine || null;
+    this._checkpoints = data.checkpoints || [];
+    this._guideAlpha = data.guideAlpha ?? 0.32;
+    this._guideVisible = data.guideVisible ?? true;
+    this._nudgeStepIndex = data.nudgeStepIndex ?? 2;
 
-  this._updateLoopButton();
-  this._updateToolButtons();
-  this._updatePanel();
-  this._redrawEditor();
-}
-
-_saveProject() {
-  try {
-    const data = this._getProjectData();
-    localStorage.setItem('trackstudio_project', JSON.stringify(data));
-
-    console.log('✅ Proyecto guardado');
-  } catch (e) {
-    console.error('❌ Error guardando proyecto', e);
-  }
-}
-
-_loadProject() {
-  try {
-    const raw = localStorage.getItem('trackstudio_project');
-    if (!raw) {
-      console.warn('⚠️ No hay proyecto guardado');
-      return;
+    if (this._guideImage) {
+      this._guideImage.setAlpha(this._guideAlpha);
+      this._guideImage.setVisible(this._guideVisible);
     }
 
-    const data = JSON.parse(raw);
-    this._applyProjectData(data);
+    this._selectedNode = -1;
+    this._selectedPart = null;
+    this._tool = 'edit';
 
-    console.log('📂 Proyecto cargado');
-  } catch (e) {
-    console.error('❌ Error cargando proyecto', e);
+    this._updateLoopButton();
+    this._updateToolButtons();
+    this._updatePanel();
+    this._redrawEditor();
   }
-}
 
-_newProject() {
-  this._nodes = [];
-  this._finishLine = null;
-  this._checkpoints = [];
-  this._isClosed = false;
-  this._trackWidth = 140;
+  _saveProject() {
+    try {
+      const data = this._getProjectData();
+      localStorage.setItem('trackstudio_project', JSON.stringify(data));
+      console.log('✅ Proyecto guardado');
+    } catch (e) {
+      console.error('❌ Error guardando proyecto', e);
+    }
+  }
 
-  this._selectedNode = -1;
-  this._selectedPart = null;
+  _loadProject() {
+    try {
+      const raw = localStorage.getItem('trackstudio_project');
+      if (!raw) {
+        console.warn('⚠️ No hay proyecto guardado');
+        return;
+      }
 
-  this._updateLoopButton();
-  this._updatePanel();
-  this._redrawEditor();
+      const data = JSON.parse(raw);
+      this._applyProjectData(data);
+      console.log('📂 Proyecto cargado');
+    } catch (e) {
+      console.error('❌ Error cargando proyecto', e);
+    }
+  }
 
-  console.log('🆕 Nuevo proyecto');
-}
+  _newProject() {
+    this._nodes = [];
+    this._finishLine = null;
+    this._checkpoints = [];
+    this._isClosed = false;
+    this._trackWidth = 140;
+    this._selectedNode = -1;
+    this._selectedPart = null;
+    this._tool = 'edit';
+
+    this._updateLoopButton();
+    this._updateToolButtons();
+    this._updatePanel();
+    this._redrawEditor();
+
+    console.log('🆕 Nuevo proyecto');
+  }
 }
