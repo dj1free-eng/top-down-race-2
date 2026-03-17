@@ -72,9 +72,9 @@ export class TrackStudioScene extends BaseScene {
 
     this._panelText = this.add.text(width - this._rightPanelW + 20, this._topBarH + 58, 'Sin nodo seleccionado', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '15px',
+      fontSize: '14px',
       color: '#ffffff',
-      lineSpacing: 8
+      lineSpacing: 2
     });
 
     const back = this.add.text(width - 96, 18, 'VOLVER', {
