@@ -94,16 +94,18 @@ export class TrackStudioScene extends BaseScene {
     // =================================================
     // Panel derecho interactivo
     // =================================================
-    const panelBaseX = width - this._rightPanelW + 24;
-    const crossCenterX = panelBaseX + 120;
-    const crossCenterY = this._topBarH + 220;
-    const crossBtnSize = 56;
+        const panelBaseX = width - this._rightPanelW + 24;
+
+    // Cruceta compacta
+    const crossCenterX = width - this._rightPanelW + 200;
+    const crossCenterY = this._topBarH + 235;
+    const crossBtnSize = 40;
     const crossGap = 8;
-    const step = crossBtnSize + crossGap;
+    const crossStep = crossBtnSize + crossGap;
 
     this._btnUp = this._makePanelButton(
       crossCenterX - crossBtnSize / 2,
-      crossCenterY - step - crossBtnSize / 2,
+      crossCenterY - crossStep - crossBtnSize / 2,
       '↑',
       () => this._nudgeSelectedNode(0, -10),
       crossBtnSize,
@@ -111,7 +113,7 @@ export class TrackStudioScene extends BaseScene {
     );
 
     this._btnLeft = this._makePanelButton(
-      crossCenterX - step - crossBtnSize / 2,
+      crossCenterX - crossStep - crossBtnSize / 2,
       crossCenterY - crossBtnSize / 2,
       '←',
       () => this._nudgeSelectedNode(-10, 0),
@@ -120,7 +122,7 @@ export class TrackStudioScene extends BaseScene {
     );
 
     this._btnRight = this._makePanelButton(
-      crossCenterX + step - crossBtnSize / 2,
+      crossCenterX + crossStep - crossBtnSize / 2,
       crossCenterY - crossBtnSize / 2,
       '→',
       () => this._nudgeSelectedNode(10, 0),
@@ -130,7 +132,7 @@ export class TrackStudioScene extends BaseScene {
 
     this._btnDown = this._makePanelButton(
       crossCenterX - crossBtnSize / 2,
-      crossCenterY + step - crossBtnSize / 2,
+      crossCenterY + crossStep - crossBtnSize / 2,
       '↓',
       () => this._nudgeSelectedNode(0, 10),
       crossBtnSize,
@@ -143,7 +145,7 @@ export class TrackStudioScene extends BaseScene {
       'BORRAR NODO',
       () => this._deleteSelectedNode(),
       260,
-      48,
+      42,
       0x5a1f2a
     );
 
@@ -426,7 +428,7 @@ export class TrackStudioScene extends BaseScene {
 
     const txt = this.add.text(x + w / 2, y + h / 2, label, {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '24px',
+      fontSize: w <= 40 ? '20px' : '18px',
       color: '#ffffff',
       fontStyle: 'bold'
     }).setOrigin(0.5);
