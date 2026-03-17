@@ -48,21 +48,14 @@ export class TrackStudioScene extends BaseScene {
     // =================================================
     this.cameras.main.setBackgroundColor('#09101d');
 
-    // top bar
     this.add.rectangle(0, 0, width, this._topBarH, 0x101626).setOrigin(0);
-
-    // left toolbar
     this.add.rectangle(0, this._topBarH, this._leftBarW, height - this._topBarH, 0x0d1422).setOrigin(0);
-
-    // right panel
     this.add.rectangle(width - this._rightPanelW, this._topBarH, this._rightPanelW, height - this._topBarH, 0x0f1422).setOrigin(0);
 
-    // viewport frame
     this.add.rectangle(this._viewX, this._viewY, this._viewW, this._viewH, 0x0a0d16)
       .setOrigin(0)
       .setStrokeStyle(2, 0x26324a, 0.95);
 
-    // title
     this.add.text(22, 18, 'TRACK STUDIO', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
       fontSize: '30px',
@@ -70,7 +63,6 @@ export class TrackStudioScene extends BaseScene {
       fontStyle: 'bold'
     });
 
-    // right title
     this._rightTitle = this.add.text(width - this._rightPanelW + 20, this._topBarH + 18, 'PROPIEDADES', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
       fontSize: '18px',
@@ -78,7 +70,6 @@ export class TrackStudioScene extends BaseScene {
       fontStyle: 'bold'
     });
 
-    // info panel
     this._panelText = this.add.text(width - this._rightPanelW + 20, this._topBarH + 58, 'Sin nodo seleccionado', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
       fontSize: '15px',
@@ -86,7 +77,6 @@ export class TrackStudioScene extends BaseScene {
       lineSpacing: 8
     });
 
-    // back
     const back = this.add.text(width - 96, 18, 'VOLVER', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
       fontSize: '18px',
@@ -107,7 +97,7 @@ export class TrackStudioScene extends BaseScene {
     const leftCX = Math.floor(this._leftBarW / 2);
     let leftY = this._topBarH + 26;
 
-    this._toolTitle = this.add.text(leftCX, leftY, 'TOOLS', {
+    this.add.text(leftCX, leftY, 'TOOLS', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
       fontSize: '12px',
       color: '#90a4d4',
@@ -143,7 +133,7 @@ export class TrackStudioScene extends BaseScene {
     const crossBoxW = Math.min(180, panelInnerW);
     const crossBoxH = 150;
     const crossBoxX = panelX + Math.floor((panelInnerW - crossBoxW) / 2);
-    const crossBoxY = this._topBarH + 300;
+    const crossBoxY = this._topBarH + 250;
 
     this.add.text(crossBoxX, crossBoxY - 26, 'AJUSTE', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
@@ -199,14 +189,15 @@ export class TrackStudioScene extends BaseScene {
       crossBtnSize
     );
 
+    // Borrar en el centro de la cruceta
     this._deleteBtn = this._makePanelButton(
-      crossBoxX,
-      crossBoxY + crossBoxH + 14,
-      '✕ BORRAR',
+      crossCenterX - crossBtnSize / 2,
+      crossCenterY - crossBtnSize / 2,
+      '🗑',
       () => this._deleteSelectedNode(),
-      crossBoxW,
-      38,
-      0x5a1f2a
+      crossBtnSize,
+      crossBtnSize,
+      0x7a1f2f
     );
 
     // =================================================
@@ -301,7 +292,6 @@ export class TrackStudioScene extends BaseScene {
         p => p.isDown && this._isPointerInViewport(p)
       );
 
-      // Arrastre de nodo con un dedo
       if (this._draggingNode && down.length === 1 && this._selectedNode >= 0) {
         const p = down[0];
 
@@ -326,7 +316,6 @@ export class TrackStudioScene extends BaseScene {
         return;
       }
 
-      // Pan con un dedo
       if (down.length === 1) {
         const p = down[0];
 
@@ -343,7 +332,6 @@ export class TrackStudioScene extends BaseScene {
         return;
       }
 
-      // Zoom con dos dedos
       if (down.length >= 2) {
         this._gestureWasMultiTouch = true;
         this._tapCandidate = false;
@@ -504,7 +492,7 @@ export class TrackStudioScene extends BaseScene {
 
     const txt = this.add.text(x + w / 2, y + h / 2, label, {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: w <= 40 ? '20px' : '16px',
+      fontSize: w <= 40 ? '18px' : '16px',
       color: '#ffffff',
       fontStyle: 'bold'
     }).setOrigin(0.5);
@@ -710,7 +698,7 @@ export class TrackStudioScene extends BaseScene {
 
   _updatePanel() {
     if (this._selectedNode < 0 || this._selectedNode >= this._nodes.length) {
-            this._panelText.setText(
+      this._panelText.setText(
         'Sin nodo seleccionado\n\n' +
         `Nodos: ${this._nodes.length}\n` +
         `Zoom: ${this._editCam ? this._editCam.zoom.toFixed(2) : '0.00'}`
@@ -724,7 +712,8 @@ export class TrackStudioScene extends BaseScene {
       `Nodo #${this._selectedNode}\n\n` +
       `X: ${Math.round(n.x)}\n` +
       `Y: ${Math.round(n.y)}\n\n` +
-      `Total nodos: ${this._nodes.length}\n` +      `Zoom: ${this._editCam ? this._editCam.zoom.toFixed(2) : '0.00'}`
+      `Total nodos: ${this._nodes.length}\n` +
+      `Zoom: ${this._editCam ? this._editCam.zoom.toFixed(2) : '0.00'}`
     );
   }
 }
