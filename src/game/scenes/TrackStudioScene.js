@@ -52,6 +52,8 @@ export class TrackStudioScene extends BaseScene {
     this._trackWidthMax = 260;
 
     this._isClosed = false;
+    this._tool = 'edit'; // 'edit' | 'finish'
+    this._finishLine = null;
 
     // =================================================
     // UI base
@@ -138,6 +140,12 @@ export class TrackStudioScene extends BaseScene {
 
     this._loopBtn = this._makeIconButton(leftCX, leftY, '🔓', () => {
       this._toggleClosed();
+    });
+
+    leftY += 56;
+
+    this._finishBtn = this._makeIconButton(leftCX, leftY, '🏁', () => {
+      this._setTool(this._tool === 'finish' ? 'edit' : 'finish');
     });
 
     // =================================================
@@ -259,6 +267,7 @@ export class TrackStudioScene extends BaseScene {
     this._trackGfx = this.add.graphics().setDepth(6);
     this._curveGfx = this.add.graphics().setDepth(7);
     this._guideGfx = this.add.graphics().setDepth(8);
+    this._finishGfx = this.add.graphics().setDepth(9);
     this._nodeGfx = this.add.graphics().setDepth(10);
 
     this._drawGrid();
@@ -299,6 +308,7 @@ export class TrackStudioScene extends BaseScene {
       this._trackGfx,
       this._curveGfx,
       this._guideGfx,
+      this._finishGfx,
       this._nodeGfx
     ]);
 
@@ -308,6 +318,7 @@ export class TrackStudioScene extends BaseScene {
       this._trackGfx,
       this._curveGfx,
       this._guideGfx,
+      this._finishGfx,
       this._nodeGfx
     ];
     const uiObjs = this.children.list.filter(o => !worldObjs.includes(o));
@@ -323,6 +334,14 @@ export class TrackStudioScene extends BaseScene {
 
       this._tapCandidate = true;
       this._gestureWasMultiTouch = false;
+
+      if (this._tool === 'finish') {
+        this._draggingPart = false;
+        this._dragMoved = false;
+        this._dragStartScreen = { x: pointer.x, y: pointer.y };
+        this._dragStartWorld = this._screenToWorld(pointer.x, pointer.y);
+        return;
+      }
 
       const world = this._screenToWorld(pointer.x, pointer.y);
       const hit = this._findControlAt(world.x, world.y);
@@ -351,7 +370,7 @@ export class TrackStudioScene extends BaseScene {
         (p) => p.isDown && this._isPointerInViewport(p)
       );
 
-      if (this._draggingPart && down.length === 1 && this._selectedPart) {
+      if (this._tool !== 'finish' && this._draggingPart && down.length === 1 && this._selectedPart) {
         const p = down[0];
 
         if (this._dragStartScreen) {
@@ -508,20 +527,25 @@ export class TrackStudioScene extends BaseScene {
         this._isPointerInViewport(pointer)
       ) {
         const world = this._screenToWorld(pointer.x, pointer.y);
-        const hit = this._findControlAt(world.x, world.y);
 
-        if (hit) {
-          this._selectedNode = hit.index;
-          this._selectedPart = hit;
+        if (this._tool === 'finish') {
+          this._placeFinishLineAt(world.x, world.y);
         } else {
-          const node = this._createNode(world.x, world.y);
-          this._nodes.push(node);
-          this._selectedNode = this._nodes.length - 1;
-          this._selectedPart = { type: 'node', index: this._selectedNode };
-        }
+          const hit = this._findControlAt(world.x, world.y);
 
-        this._updatePanel();
-        this._redrawEditor();
+          if (hit) {
+            this._selectedNode = hit.index;
+            this._selectedPart = hit;
+          } else {
+            const node = this._createNode(world.x, world.y);
+            this._nodes.push(node);
+            this._selectedNode = this._nodes.length - 1;
+            this._selectedPart = { type: 'node', index: this._selectedNode };
+          }
+
+          this._updatePanel();
+          this._redrawEditor();
+        }
       }
 
       if (stillDown === 0) {
@@ -545,6 +569,7 @@ export class TrackStudioScene extends BaseScene {
     });
 
     this._updateLoopButton();
+    this._updateToolButtons();
     this._updatePanel();
     this._redrawEditor();
   }
@@ -591,6 +616,20 @@ export class TrackStudioScene extends BaseScene {
     bg.on('pointerup', onClick);
 
     return { bg, txt };
+  }
+
+  _setTool(tool) {
+    this._tool = tool;
+    this._updateToolButtons();
+    this._updatePanel();
+  }
+
+  _updateToolButtons() {
+    if (this._finishBtn?.bg) {
+      const active = this._tool === 'finish';
+      this._finishBtn.bg.setFillStyle(active ? 0x2b8a3e : 0x1c2540, 1);
+      this._finishBtn.bg.setStrokeStyle(2, active ? 0xa8ffb8 : 0x3c4e7a, 0.95);
+    }
   }
 
   _toggleClosed() {
@@ -836,10 +875,69 @@ export class TrackStudioScene extends BaseScene {
     return { left, right };
   }
 
+  _placeFinishLineAt(worldX, worldY) {
+    const pts = this._getBezierPoints();
+    if (pts.length < 2) return;
+
+    let bestI = 0;
+    let bestD2 = Infinity;
+
+    for (let i = 0; i < pts.length; i++) {
+      const dx = pts[i].x - worldX;
+      const dy = pts[i].y - worldY;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < bestD2) {
+        bestD2 = d2;
+        bestI = i;
+      }
+    }
+
+    const prevIndex = this._isClosed
+      ? (bestI - 1 + pts.length) % pts.length
+      : Math.max(0, bestI - 1);
+
+    const nextIndex = this._isClosed
+      ? (bestI + 1) % pts.length
+      : Math.min(pts.length - 1, bestI + 1);
+
+    const pPrev = pts[prevIndex];
+    const pCurr = pts[bestI];
+    const pNext = pts[nextIndex];
+
+    let tx = pNext.x - pPrev.x;
+    let ty = pNext.y - pPrev.y;
+    const tl = Math.sqrt(tx * tx + ty * ty) || 1;
+    tx /= tl;
+    ty /= tl;
+
+    const nx = -ty;
+    const ny = tx;
+    const half = this._trackWidth * 0.5;
+
+    this._finishLine = {
+      a: {
+        x: pCurr.x - nx * half,
+        y: pCurr.y - ny * half
+      },
+      b: {
+        x: pCurr.x + nx * half,
+        y: pCurr.y + ny * half
+      },
+      normal: {
+        x: tx,
+        y: ty
+      }
+    };
+
+    this._updatePanel();
+    this._redrawEditor();
+  }
+
   _redrawEditor() {
     this._trackGfx.clear();
     this._curveGfx.clear();
     this._guideGfx.clear();
+    this._finishGfx.clear();
     this._nodeGfx.clear();
 
     const bezier = this._getBezierPoints();
@@ -891,6 +989,25 @@ export class TrackStudioScene extends BaseScene {
       }
       if (this._isClosed) this._curveGfx.closePath();
       this._curveGfx.strokePath();
+    }
+
+    // meta
+    if (this._finishLine?.a && this._finishLine?.b) {
+      this._finishGfx.lineStyle(10, 0xffffff, 0.95);
+      this._finishGfx.beginPath();
+      this._finishGfx.moveTo(this._finishLine.a.x, this._finishLine.a.y);
+      this._finishGfx.lineTo(this._finishLine.b.x, this._finishLine.b.y);
+      this._finishGfx.strokePath();
+
+      this._finishGfx.lineStyle(4, 0x111111, 0.95);
+      this._finishGfx.beginPath();
+      this._finishGfx.moveTo(this._finishLine.a.x, this._finishLine.a.y);
+      this._finishGfx.lineTo(this._finishLine.b.x, this._finishLine.b.y);
+      this._finishGfx.strokePath();
+
+      this._finishGfx.fillStyle(0xffd166, 1);
+      this._finishGfx.fillCircle(this._finishLine.a.x, this._finishLine.a.y, 5);
+      this._finishGfx.fillCircle(this._finishLine.b.x, this._finishLine.b.y, 5);
     }
 
     // guías y handlers
@@ -945,8 +1062,10 @@ export class TrackStudioScene extends BaseScene {
     if (this._selectedNode < 0 || this._selectedNode >= this._nodes.length) {
       this._panelText.setText(
         'Sin nodo seleccionado\n' +
+        `Herramienta: ${this._tool}\n` +
         `Nodos: ${this._nodes.length}\n` +
         `Loop: ${this._isClosed ? 'cerrado' : 'abierto'}\n` +
+        `Meta: ${this._finishLine ? 'sí' : 'no'}\n` +
         `Zoom: ${this._editCam ? this._editCam.zoom.toFixed(2) : '0.00'}\n` +
         `Ancho: ${this._trackWidth}px`
       );
@@ -958,8 +1077,10 @@ export class TrackStudioScene extends BaseScene {
 
     this._panelText.setText(
       `Nodo #${this._selectedNode}\n` +
+      `Herramienta: ${this._tool}\n` +
       `Modo: ${part}\n` +
       `Loop: ${this._isClosed ? 'cerrado' : 'abierto'}\n` +
+      `Meta: ${this._finishLine ? 'sí' : 'no'}\n` +
       `X: ${Math.round(n.x)}\n` +
       `Y: ${Math.round(n.y)}\n` +
       `In: ${Math.round(n.handleIn.x)}, ${Math.round(n.handleIn.y)}\n` +
