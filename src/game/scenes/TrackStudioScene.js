@@ -92,6 +92,29 @@ export class TrackStudioScene extends BaseScene {
     });
 
     // =================================================
+    // Panel derecho interactivo
+    // =================================================
+    this._xMinusBtn = this._makePanelButton(width - this._rightPanelW + 24, this._topBarH + 170, 'X -', () => {
+      this._nudgeSelectedNode(-10, 0);
+    });
+
+    this._xPlusBtn = this._makePanelButton(width - this._rightPanelW + 164, this._topBarH + 170, 'X +', () => {
+      this._nudgeSelectedNode(10, 0);
+    });
+
+    this._yMinusBtn = this._makePanelButton(width - this._rightPanelW + 24, this._topBarH + 230, 'Y -', () => {
+      this._nudgeSelectedNode(0, -10);
+    });
+
+    this._yPlusBtn = this._makePanelButton(width - this._rightPanelW + 164, this._topBarH + 230, 'Y +', () => {
+      this._nudgeSelectedNode(0, 10);
+    });
+
+    this._deleteBtn = this._makePanelButton(width - this._rightPanelW + 24, this._topBarH + 310, 'BORRAR NODO', () => {
+      this._deleteSelectedNode();
+    }, 260, 48, 0x5a1f2a);
+
+    // =================================================
     // Mundo de edición
     // =================================================
     this._gridGfx = this.add.graphics().setDepth(1);
@@ -354,6 +377,49 @@ export class TrackStudioScene extends BaseScene {
       this._panLast = null;
       this._pinchLastDist = 0;
     });
+
+    this._updatePanel();
+    this._redrawEditor();
+  }
+
+  _makePanelButton(x, y, label, onClick, w = 120, h = 44, fill = 0x1c2540) {
+    const bg = this.add.rectangle(x, y, w, h, fill, 1)
+      .setOrigin(0)
+      .setStrokeStyle(2, 0x3c4e7a, 0.9)
+      .setInteractive({ useHandCursor: true });
+
+    const txt = this.add.text(x + w / 2, y + h / 2, label, {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: '16px',
+      color: '#ffffff',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
+
+    bg.on('pointerup', onClick);
+
+    return { bg, txt };
+  }
+
+  _nudgeSelectedNode(dx, dy) {
+    if (this._selectedNode < 0 || this._selectedNode >= this._nodes.length) return;
+
+    this._nodes[this._selectedNode].x += dx;
+    this._nodes[this._selectedNode].y += dy;
+
+    this._updatePanel();
+    this._redrawEditor();
+  }
+
+  _deleteSelectedNode() {
+    if (this._selectedNode < 0 || this._selectedNode >= this._nodes.length) return;
+
+    this._nodes.splice(this._selectedNode, 1);
+
+    if (this._nodes.length === 0) {
+      this._selectedNode = -1;
+    } else {
+      this._selectedNode = Math.min(this._selectedNode, this._nodes.length - 1);
+    }
 
     this._updatePanel();
     this._redrawEditor();
