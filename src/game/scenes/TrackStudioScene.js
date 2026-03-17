@@ -178,18 +178,25 @@ export class TrackStudioScene extends BaseScene {
       // Arrastre de nodo con un dedo
       if (this._draggingNode && down.length === 1 && this._selectedNode >= 0) {
         const p = down[0];
-        const world = this._screenToWorld(p.x, p.y);
-
-        this._nodes[this._selectedNode].x = world.x;
-        this._nodes[this._selectedNode].y = world.y;
 
         if (this._dragStartScreen) {
           const dist = Phaser.Math.Distance.Between(
             p.x, p.y,
             this._dragStartScreen.x, this._dragStartScreen.y
           );
-          if (dist > 8) this._dragMoved = true;
+
+          // Hasta que no se note intención clara de arrastre, no movemos el nodo
+          if (dist <= 10) {
+            return;
+          }
+
+          this._dragMoved = true;
         }
+
+        const world = this._screenToWorld(p.x, p.y);
+
+        this._nodes[this._selectedNode].x = world.x;
+        this._nodes[this._selectedNode].y = world.y;
 
         this._updatePanel();
         this._redrawEditor();
