@@ -52,8 +52,9 @@ export class TrackStudioScene extends BaseScene {
     this._trackWidthMax = 260;
 
     this._isClosed = false;
-    this._tool = 'edit'; // 'edit' | 'finish'
+    this._tool = 'edit'; // 'edit' | 'finish' | 'checkpoint'
     this._finishLine = null;
+    this._checkpoints = [];
 
     // =================================================
     // UI base
@@ -146,6 +147,12 @@ export class TrackStudioScene extends BaseScene {
 
     this._finishBtn = this._makeIconButton(leftCX, leftY, '🏁', () => {
       this._setTool(this._tool === 'finish' ? 'edit' : 'finish');
+    });
+
+    leftY += 56;
+
+    this._checkpointBtn = this._makeIconButton(leftCX, leftY, 'CP', () => {
+      this._setTool(this._tool === 'checkpoint' ? 'edit' : 'checkpoint');
     });
 
     // =================================================
@@ -267,8 +274,9 @@ export class TrackStudioScene extends BaseScene {
     this._trackGfx = this.add.graphics().setDepth(6);
     this._curveGfx = this.add.graphics().setDepth(7);
     this._guideGfx = this.add.graphics().setDepth(8);
-    this._finishGfx = this.add.graphics().setDepth(9);
-    this._nodeGfx = this.add.graphics().setDepth(10);
+    this._checkpointGfx = this.add.graphics().setDepth(9);
+    this._finishGfx = this.add.graphics().setDepth(10);
+    this._nodeGfx = this.add.graphics().setDepth(11);
 
     this._drawGrid();
 
@@ -308,6 +316,7 @@ export class TrackStudioScene extends BaseScene {
       this._trackGfx,
       this._curveGfx,
       this._guideGfx,
+      this._checkpointGfx,
       this._finishGfx,
       this._nodeGfx
     ]);
@@ -318,10 +327,11 @@ export class TrackStudioScene extends BaseScene {
       this._trackGfx,
       this._curveGfx,
       this._guideGfx,
+      this._checkpointGfx,
       this._finishGfx,
       this._nodeGfx
     ];
-    const uiObjs = this.children.list.filter(o => !worldObjs.includes(o));
+    const uiObjs = this.children.list.filter((o) => !worldObjs.includes(o));
     this._editCam.ignore(uiObjs);
 
     // =================================================
@@ -335,7 +345,7 @@ export class TrackStudioScene extends BaseScene {
       this._tapCandidate = true;
       this._gestureWasMultiTouch = false;
 
-      if (this._tool === 'finish') {
+      if (this._tool === 'finish' || this._tool === 'checkpoint') {
         this._draggingPart = false;
         this._dragMoved = false;
         this._dragStartScreen = { x: pointer.x, y: pointer.y };
@@ -370,7 +380,7 @@ export class TrackStudioScene extends BaseScene {
         (p) => p.isDown && this._isPointerInViewport(p)
       );
 
-      if (this._tool !== 'finish' && this._draggingPart && down.length === 1 && this._selectedPart) {
+      if (this._tool === 'edit' && this._draggingPart && down.length === 1 && this._selectedPart) {
         const p = down[0];
 
         if (this._dragStartScreen) {
@@ -530,6 +540,8 @@ export class TrackStudioScene extends BaseScene {
 
         if (this._tool === 'finish') {
           this._placeFinishLineAt(world.x, world.y);
+        } else if (this._tool === 'checkpoint') {
+          this._placeCheckpointAt(world.x, world.y);
         } else {
           const hit = this._findControlAt(world.x, world.y);
 
@@ -626,9 +638,15 @@ export class TrackStudioScene extends BaseScene {
 
   _updateToolButtons() {
     if (this._finishBtn?.bg) {
-      const active = this._tool === 'finish';
-      this._finishBtn.bg.setFillStyle(active ? 0x2b8a3e : 0x1c2540, 1);
-      this._finishBtn.bg.setStrokeStyle(2, active ? 0xa8ffb8 : 0x3c4e7a, 0.95);
+      const activeFinish = this._tool === 'finish';
+      this._finishBtn.bg.setFillStyle(activeFinish ? 0x2b8a3e : 0x1c2540, 1);
+      this._finishBtn.bg.setStrokeStyle(2, activeFinish ? 0xa8ffb8 : 0x3c4e7a, 0.95);
+    }
+
+    if (this._checkpointBtn?.bg) {
+      const activeCp = this._tool === 'checkpoint';
+      this._checkpointBtn.bg.setFillStyle(activeCp ? 0x235c9f : 0x1c2540, 1);
+      this._checkpointBtn.bg.setStrokeStyle(2, activeCp ? 0xaed4ff : 0x3c4e7a, 0.95);
     }
   }
 
@@ -875,9 +893,9 @@ export class TrackStudioScene extends BaseScene {
     return { left, right };
   }
 
-  _placeFinishLineAt(worldX, worldY) {
+  _findNearestCurvePoint(worldX, worldY) {
     const pts = this._getBezierPoints();
-    if (pts.length < 2) return;
+    if (pts.length < 2) return null;
 
     let bestI = 0;
     let bestD2 = Infinity;
@@ -912,22 +930,59 @@ export class TrackStudioScene extends BaseScene {
 
     const nx = -ty;
     const ny = tx;
+
+    return {
+      point: { x: pCurr.x, y: pCurr.y },
+      tangent: { x: tx, y: ty },
+      normal: { x: nx, y: ny }
+    };
+  }
+
+  _placeFinishLineAt(worldX, worldY) {
+    const hit = this._findNearestCurvePoint(worldX, worldY);
+    if (!hit) return;
+
     const half = this._trackWidth * 0.5;
 
     this._finishLine = {
       a: {
-        x: pCurr.x - nx * half,
-        y: pCurr.y - ny * half
+        x: hit.point.x - hit.normal.x * half,
+        y: hit.point.y - hit.normal.y * half
       },
       b: {
-        x: pCurr.x + nx * half,
-        y: pCurr.y + ny * half
+        x: hit.point.x + hit.normal.x * half,
+        y: hit.point.y + hit.normal.y * half
       },
       normal: {
-        x: tx,
-        y: ty
+        x: hit.tangent.x,
+        y: hit.tangent.y
       }
     };
+
+    this._updatePanel();
+    this._redrawEditor();
+  }
+
+  _placeCheckpointAt(worldX, worldY) {
+    const hit = this._findNearestCurvePoint(worldX, worldY);
+    if (!hit) return;
+
+    const half = this._trackWidth * 0.5;
+
+    this._checkpoints.push({
+      a: {
+        x: hit.point.x - hit.normal.x * half,
+        y: hit.point.y - hit.normal.y * half
+      },
+      b: {
+        x: hit.point.x + hit.normal.x * half,
+        y: hit.point.y + hit.normal.y * half
+      },
+      normal: {
+        x: hit.tangent.x,
+        y: hit.tangent.y
+      }
+    });
 
     this._updatePanel();
     this._redrawEditor();
@@ -937,6 +992,7 @@ export class TrackStudioScene extends BaseScene {
     this._trackGfx.clear();
     this._curveGfx.clear();
     this._guideGfx.clear();
+    this._checkpointGfx.clear();
     this._finishGfx.clear();
     this._nodeGfx.clear();
 
@@ -989,6 +1045,26 @@ export class TrackStudioScene extends BaseScene {
       }
       if (this._isClosed) this._curveGfx.closePath();
       this._curveGfx.strokePath();
+    }
+
+    // checkpoints
+    for (let i = 0; i < this._checkpoints.length; i++) {
+      const cp = this._checkpoints[i];
+
+      this._checkpointGfx.lineStyle(8, 0x4db0ff, 0.95);
+      this._checkpointGfx.beginPath();
+      this._checkpointGfx.moveTo(cp.a.x, cp.a.y);
+      this._checkpointGfx.lineTo(cp.b.x, cp.b.y);
+      this._checkpointGfx.strokePath();
+
+      const midX = (cp.a.x + cp.b.x) * 0.5;
+      const midY = (cp.a.y + cp.b.y) * 0.5;
+
+      this._checkpointGfx.fillStyle(0x4db0ff, 1);
+      this._checkpointGfx.fillCircle(midX, midY, 9);
+
+      this._checkpointGfx.lineStyle(2, 0x0b1020, 0.9);
+      this._checkpointGfx.strokeCircle(midX, midY, 9);
     }
 
     // meta
@@ -1066,6 +1142,7 @@ export class TrackStudioScene extends BaseScene {
         `Nodos: ${this._nodes.length}\n` +
         `Loop: ${this._isClosed ? 'cerrado' : 'abierto'}\n` +
         `Meta: ${this._finishLine ? 'sí' : 'no'}\n` +
+        `Checkpoints: ${this._checkpoints.length}\n` +
         `Zoom: ${this._editCam ? this._editCam.zoom.toFixed(2) : '0.00'}\n` +
         `Ancho: ${this._trackWidth}px`
       );
@@ -1081,6 +1158,7 @@ export class TrackStudioScene extends BaseScene {
       `Modo: ${part}\n` +
       `Loop: ${this._isClosed ? 'cerrado' : 'abierto'}\n` +
       `Meta: ${this._finishLine ? 'sí' : 'no'}\n` +
+      `Checkpoints: ${this._checkpoints.length}\n` +
       `X: ${Math.round(n.x)}\n` +
       `Y: ${Math.round(n.y)}\n` +
       `In: ${Math.round(n.handleIn.x)}, ${Math.round(n.handleIn.y)}\n` +
