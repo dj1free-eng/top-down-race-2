@@ -133,7 +133,7 @@ export class TrackStudioScene extends BaseScene {
     const crossBoxW = Math.min(180, panelInnerW);
     const crossBoxH = 150;
     const crossBoxX = panelX + Math.floor((panelInnerW - crossBoxW) / 2);
-    const crossBoxY = this._topBarH + 250;
+const crossBoxY = this._topBarH + 200;
 
     this.add.text(crossBoxX, crossBoxY - 26, 'AJUSTE', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
