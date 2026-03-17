@@ -161,7 +161,24 @@ const back = this.add.text(width - 38, 18, '←', {
     // =================================================
     const topToolsY = 36;
     let topX = 320;
+// =======================
+// SAVE / LOAD / NEW
+// =======================
 
+this._saveBtn = this._makeIconButton(topX, topToolsY, '💾', () => {
+  this._saveProject();
+}, '16px');
+topX += 50;
+
+this._loadBtn = this._makeIconButton(topX, topToolsY, '📂', () => {
+  this._loadProject();
+}, '16px');
+topX += 50;
+
+this._newBtn = this._makeIconButton(topX, topToolsY, '🆕', () => {
+  this._newProject();
+}, '14px');
+topX += 60;
     this._zoomInBtn = this._makeIconButton(topX, topToolsY, '🔍+', () => {
       this._applyZoomAtViewportCenter(1.15);
     }, '13px');
@@ -1221,4 +1238,88 @@ const back = this.add.text(width - 38, 18, '←', {
       `Ancho: ${this._trackWidth}px`
     );
   }
+  // =================================================
+// SAVE / LOAD / NEW (proyecto de trabajo)
+// =================================================
+
+_getProjectData() {
+  return {
+    version: 1,
+    nodes: this._nodes,
+    trackWidth: this._trackWidth,
+    isClosed: this._isClosed,
+    finishLine: this._finishLine,
+    checkpoints: this._checkpoints,
+    guideAlpha: this._guideAlpha,
+    guideVisible: this._guideVisible
+  };
+}
+
+_applyProjectData(data) {
+  this._nodes = data.nodes || [];
+  this._trackWidth = data.trackWidth ?? 140;
+  this._isClosed = data.isClosed ?? false;
+  this._finishLine = data.finishLine || null;
+  this._checkpoints = data.checkpoints || [];
+  this._guideAlpha = data.guideAlpha ?? 0.32;
+  this._guideVisible = data.guideVisible ?? true;
+
+  if (this._guideImage) {
+    this._guideImage.setAlpha(this._guideAlpha);
+    this._guideImage.setVisible(this._guideVisible);
+  }
+
+  this._selectedNode = -1;
+  this._selectedPart = null;
+
+  this._updateLoopButton();
+  this._updateToolButtons();
+  this._updatePanel();
+  this._redrawEditor();
+}
+
+_saveProject() {
+  try {
+    const data = this._getProjectData();
+    localStorage.setItem('trackstudio_project', JSON.stringify(data));
+
+    console.log('✅ Proyecto guardado');
+  } catch (e) {
+    console.error('❌ Error guardando proyecto', e);
+  }
+}
+
+_loadProject() {
+  try {
+    const raw = localStorage.getItem('trackstudio_project');
+    if (!raw) {
+      console.warn('⚠️ No hay proyecto guardado');
+      return;
+    }
+
+    const data = JSON.parse(raw);
+    this._applyProjectData(data);
+
+    console.log('📂 Proyecto cargado');
+  } catch (e) {
+    console.error('❌ Error cargando proyecto', e);
+  }
+}
+
+_newProject() {
+  this._nodes = [];
+  this._finishLine = null;
+  this._checkpoints = [];
+  this._isClosed = false;
+  this._trackWidth = 140;
+
+  this._selectedNode = -1;
+  this._selectedPart = null;
+
+  this._updateLoopButton();
+  this._updatePanel();
+  this._redrawEditor();
+
+  console.log('🆕 Nuevo proyecto');
+}
 }
