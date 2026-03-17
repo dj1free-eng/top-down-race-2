@@ -43,6 +43,10 @@ export class TrackStudioScene extends BaseScene {
     this._editZoomMin = 0.12;
     this._editZoomMax = 2.5;
 
+    this._trackWidth = 140;
+    this._trackWidthMin = 60;
+    this._trackWidthMax = 260;
+
     // =================================================
     // UI base
     // =================================================
@@ -130,12 +134,51 @@ export class TrackStudioScene extends BaseScene {
     const panelX = width - this._rightPanelW + 20;
     const panelInnerW = this._rightPanelW - 40;
 
+    // ancho pista
+    const widthBoxY = this._topBarH + 150;
+    this.add.text(panelX, widthBoxY - 22, 'ANCHO PISTA', {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: '13px',
+      color: '#8fa8d8',
+      fontStyle: 'bold'
+    });
+
+    this.add.rectangle(panelX, widthBoxY, panelInnerW, 60, 0x162036, 0.9)
+      .setOrigin(0, 0)
+      .setStrokeStyle(2, 0x32456d, 0.9);
+
+    this._widthValueText = this.add.text(panelX + panelInnerW / 2, widthBoxY + 15, `${this._trackWidth}px`, {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: '20px',
+      color: '#ffffff',
+      fontStyle: 'bold'
+    }).setOrigin(0.5, 0);
+
+    this._widthMinusBtn = this._makePanelButton(
+      panelX + 14,
+      widthBoxY + 12,
+      '−',
+      () => this._changeTrackWidth(-10),
+      36,
+      36
+    );
+
+    this._widthPlusBtn = this._makePanelButton(
+      panelX + panelInnerW - 50,
+      widthBoxY + 12,
+      '+',
+      () => this._changeTrackWidth(10),
+      36,
+      36
+    );
+
+    // cruceta
     const crossBoxW = Math.min(180, panelInnerW);
     const crossBoxH = 150;
     const crossBoxX = panelX + Math.floor((panelInnerW - crossBoxW) / 2);
-const crossBoxY = this._topBarH + 200;
+    const crossBoxY = this._topBarH + 200;
 
-    this.add.text(crossBoxX, crossBoxY - 26, 'AJUSTE', {
+    this.add.text(crossBoxX, crossBoxY - 26, 'AJUSTE NODO', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
       fontSize: '13px',
       color: '#8fa8d8',
@@ -189,7 +232,6 @@ const crossBoxY = this._topBarH + 200;
       crossBtnSize
     );
 
-    // Borrar en el centro de la cruceta
     this._deleteBtn = this._makePanelButton(
       crossCenterX - crossBtnSize / 2,
       crossCenterY - crossBtnSize / 2,
@@ -204,6 +246,7 @@ const crossBoxY = this._topBarH + 200;
     // Mundo de edición
     // =================================================
     this._gridGfx = this.add.graphics().setDepth(1);
+    this._trackGfx = this.add.graphics().setDepth(6);
     this._smoothPathGfx = this.add.graphics().setDepth(7);
     this._pathGfx = this.add.graphics().setDepth(8);
     this._nodeGfx = this.add.graphics().setDepth(10);
@@ -243,6 +286,7 @@ const crossBoxY = this._topBarH + 200;
     this.cameras.main.ignore([
       this._gridGfx,
       this._centerMark,
+      this._trackGfx,
       this._smoothPathGfx,
       this._pathGfx,
       this._nodeGfx
@@ -251,6 +295,7 @@ const crossBoxY = this._topBarH + 200;
     const worldObjs = [
       this._gridGfx,
       this._centerMark,
+      this._trackGfx,
       this._smoothPathGfx,
       this._pathGfx,
       this._nodeGfx
@@ -531,6 +576,21 @@ const crossBoxY = this._topBarH + 200;
     this._updatePanel();
   }
 
+  _changeTrackWidth(delta) {
+    this._trackWidth = Phaser.Math.Clamp(
+      this._trackWidth + delta,
+      this._trackWidthMin,
+      this._trackWidthMax
+    );
+
+    if (this._widthValueText) {
+      this._widthValueText.setText(`${this._trackWidth}px`);
+    }
+
+    this._updatePanel();
+    this._redrawEditor();
+  }
+
   _nudgeSelectedNode(dx, dy) {
     if (this._selectedNode < 0 || this._selectedNode >= this._nodes.length) return;
 
@@ -651,7 +711,46 @@ const crossBoxY = this._topBarH + 200;
     return pts;
   }
 
+  _buildTrackStrip(points, width) {
+    if (!Array.isArray(points) || points.length < 2) {
+      return { left: [], right: [] };
+    }
+
+    const left = [];
+    const right = [];
+
+    for (let i = 0; i < points.length; i++) {
+      const pPrev = points[Math.max(0, i - 1)];
+      const pCurr = points[i];
+      const pNext = points[Math.min(points.length - 1, i + 1)];
+
+      let tx = pNext.x - pPrev.x;
+      let ty = pNext.y - pPrev.y;
+
+      const tl = Math.sqrt(tx * tx + ty * ty) || 1;
+      tx /= tl;
+      ty /= tl;
+
+      const nx = -ty;
+      const ny = tx;
+      const half = width * 0.5;
+
+      left.push({
+        x: pCurr.x - nx * half,
+        y: pCurr.y - ny * half
+      });
+
+      right.push({
+        x: pCurr.x + nx * half,
+        y: pCurr.y + ny * half
+      });
+    }
+
+    return { left, right };
+  }
+
   _redrawEditor() {
+    this._trackGfx.clear();
     this._smoothPathGfx.clear();
     this._pathGfx.clear();
     this._nodeGfx.clear();
@@ -669,8 +768,44 @@ const crossBoxY = this._topBarH + 200;
     }
 
     const smooth = this._getSmoothPoints();
+
+    // preview real de pista
     if (smooth.length >= 2) {
-      this._smoothPathGfx.lineStyle(6, 0xb7c0ff, 0.95);
+      const strip = this._buildTrackStrip(smooth, this._trackWidth);
+
+      if (strip.left.length >= 2 && strip.right.length >= 2) {
+        this._trackGfx.fillStyle(0x2f343a, 0.95);
+        this._trackGfx.beginPath();
+        this._trackGfx.moveTo(strip.left[0].x, strip.left[0].y);
+
+        for (let i = 1; i < strip.left.length; i++) {
+          this._trackGfx.lineTo(strip.left[i].x, strip.left[i].y);
+        }
+
+        for (let i = strip.right.length - 1; i >= 0; i--) {
+          this._trackGfx.lineTo(strip.right[i].x, strip.right[i].y);
+        }
+
+        this._trackGfx.closePath();
+        this._trackGfx.fillPath();
+
+        this._trackGfx.lineStyle(4, 0xf2f2f2, 0.9);
+        this._trackGfx.beginPath();
+        this._trackGfx.moveTo(strip.left[0].x, strip.left[0].y);
+        for (let i = 1; i < strip.left.length; i++) {
+          this._trackGfx.lineTo(strip.left[i].x, strip.left[i].y);
+        }
+        this._trackGfx.strokePath();
+
+        this._trackGfx.beginPath();
+        this._trackGfx.moveTo(strip.right[0].x, strip.right[0].y);
+        for (let i = 1; i < strip.right.length; i++) {
+          this._trackGfx.lineTo(strip.right[i].x, strip.right[i].y);
+        }
+        this._trackGfx.strokePath();
+      }
+
+      this._smoothPathGfx.lineStyle(2, 0x8fd0ff, 0.55);
       this._smoothPathGfx.beginPath();
       this._smoothPathGfx.moveTo(smooth[0].x, smooth[0].y);
 
@@ -697,11 +832,16 @@ const crossBoxY = this._topBarH + 200;
   }
 
   _updatePanel() {
+    if (this._widthValueText) {
+      this._widthValueText.setText(`${this._trackWidth}px`);
+    }
+
     if (this._selectedNode < 0 || this._selectedNode >= this._nodes.length) {
       this._panelText.setText(
-        'Sin nodo seleccionado\n\n' +
+        'Sin nodo seleccionado\n' +
         `Nodos: ${this._nodes.length}\n` +
-        `Zoom: ${this._editCam ? this._editCam.zoom.toFixed(2) : '0.00'}`
+        `Zoom: ${this._editCam ? this._editCam.zoom.toFixed(2) : '0.00'}\n` +
+        `Ancho: ${this._trackWidth}px`
       );
       return;
     }
@@ -709,11 +849,12 @@ const crossBoxY = this._topBarH + 200;
     const n = this._nodes[this._selectedNode];
 
     this._panelText.setText(
-      `Nodo #${this._selectedNode}\n\n` +
+      `Nodo #${this._selectedNode}\n` +
       `X: ${Math.round(n.x)}\n` +
-      `Y: ${Math.round(n.y)}\n\n` +
-      `Total nodos: ${this._nodes.length}\n` +
-      `Zoom: ${this._editCam ? this._editCam.zoom.toFixed(2) : '0.00'}`
+      `Y: ${Math.round(n.y)}\n` +
+      `Total: ${this._nodes.length}\n` +
+      `Zoom: ${this._editCam ? this._editCam.zoom.toFixed(2) : '0.00'}\n` +
+      `Ancho: ${this._trackWidth}px`
     );
   }
 }
