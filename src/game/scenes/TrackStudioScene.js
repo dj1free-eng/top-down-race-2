@@ -524,31 +524,38 @@ topX += 60;
           if (hit) {
             this._selectedNode = hit.index;
             this._selectedPart = hit;
-          } else {
-const node = this._createNode(world.x, world.y);
+} else {
+  const hit = this._findControlAt(world.x, world.y);
 
-if (this._nodes.length > 0) {
-  const prev = this._nodes[this._nodes.length - 1];
-  const handleLen = 60;
+  if (hit) {
+    this._selectedNode = hit.index;
+    this._selectedPart = hit;
+  } else {
+    const node = this._createNode(world.x, world.y);
 
-  let dx = node.x - prev.x;
-  let dy = node.y - prev.y;
+    if (this._nodes.length > 0) {
+      const prev = this._nodes[this._nodes.length - 1];
+      const handleLen = 60;
 
-  const len = Math.sqrt(dx * dx + dy * dy) || 1;
-  dx /= len;
-  dy /= len;
+      let dx = node.x - prev.x;
+      let dy = node.y - prev.y;
 
-  prev.handleOut.x = prev.x + dx * handleLen;
-  prev.handleOut.y = prev.y + dy * handleLen;
+      const len = Math.sqrt(dx * dx + dy * dy) || 1;
+      dx /= len;
+      dy /= len;
+
+      prev.handleOut.x = prev.x + dx * handleLen;
+      prev.handleOut.y = prev.y + dy * handleLen;
+    }
+
+    this._nodes.push(node);
+    this._selectedNode = this._nodes.length - 1;
+    this._selectedPart = { type: 'node', index: this._selectedNode };
+  }
+
+  this._updatePanel();
+  this._redrawEditor();
 }
-
-this._nodes.push(node);
-this._selectedNode = this._nodes.length - 1;
-this._selectedPart = { type: 'node', index: this._selectedNode };
-
-          this._updatePanel();
-          this._redrawEditor();
-        }
       }
 
       if (stillDown === 0) {
