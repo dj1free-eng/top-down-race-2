@@ -56,6 +56,13 @@ export class TrackStudioScene extends BaseScene {
     this._finishLine = null;
     this._checkpoints = [];
 
+    // guía de fondo
+    this._guideImage = null;
+    this._guideTextureKey = null;
+    this._guideVisible = true;
+    this._guideAlpha = 0.32;
+    this._guideInput = null;
+
     // =================================================
     // UI base
     // =================================================
@@ -87,7 +94,8 @@ export class TrackStudioScene extends BaseScene {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
       fontSize: '14px',
       color: '#ffffff',
-      lineSpacing: 2
+      lineSpacing: 2,
+      wordWrap: { width: this._rightPanelW - 40 }
     });
 
     const back = this.add.text(width - 96, 18, 'VOLVER', {
@@ -101,14 +109,15 @@ export class TrackStudioScene extends BaseScene {
       .setInteractive({ useHandCursor: true });
 
     back.on('pointerup', () => {
+      this._destroyGuideInput();
       this.scene.start('admin-hub');
     });
 
     // =================================================
-    // Left toolbar compacta
+    // Left toolbar
     // =================================================
     const leftCX = Math.floor(this._leftBarW / 2);
-    let leftY = this._topBarH + 26;
+    let leftY = this._topBarH + 20;
 
     this.add.text(leftCX, leftY, 'TOOLS', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
@@ -117,19 +126,19 @@ export class TrackStudioScene extends BaseScene {
       fontStyle: 'bold'
     }).setOrigin(0.5, 0);
 
-    leftY += 34;
+    leftY += 28;
 
     this._zoomInBtn = this._makeIconButton(leftCX, leftY, '+', () => {
       this._applyZoomAtViewportCenter(1.15);
     });
 
-    leftY += 56;
+    leftY += 48;
 
     this._zoomOutBtn = this._makeIconButton(leftCX, leftY, '−', () => {
       this._applyZoomAtViewportCenter(1 / 1.15);
     });
 
-    leftY += 56;
+    leftY += 48;
 
     this._centerBtn = this._makeIconButton(leftCX, leftY, '◎', () => {
       this._editCam.centerOn(this._editorWorldW / 2, this._editorWorldH / 2);
@@ -137,88 +146,77 @@ export class TrackStudioScene extends BaseScene {
       this._updatePanel();
     });
 
-    leftY += 56;
+    leftY += 48;
 
     this._loopBtn = this._makeIconButton(leftCX, leftY, '🔓', () => {
       this._toggleClosed();
     });
 
-    leftY += 56;
+    leftY += 48;
 
     this._finishBtn = this._makeIconButton(leftCX, leftY, '🏁', () => {
       this._setTool(this._tool === 'finish' ? 'edit' : 'finish');
     });
 
-    leftY += 56;
+    leftY += 48;
 
     this._checkpointBtn = this._makeIconButton(leftCX, leftY, 'CP', () => {
       this._setTool(this._tool === 'checkpoint' ? 'edit' : 'checkpoint');
+    }, '13px');
+
+    leftY += 48;
+
+    this._widthMinusBtn = this._makeIconButton(leftCX, leftY, 'W-', () => {
+      this._changeTrackWidth(-10);
+    }, '13px');
+
+    leftY += 48;
+
+    this._widthPlusBtn = this._makeIconButton(leftCX, leftY, 'W+', () => {
+      this._changeTrackWidth(10);
+    }, '13px');
+
+    leftY += 48;
+
+    this._guideLoadBtn = this._makeIconButton(leftCX, leftY, 'IMG', () => {
+      this._openGuidePicker();
+    }, '12px');
+
+    leftY += 48;
+
+    this._guideToggleBtn = this._makeIconButton(leftCX, leftY, '👁', () => {
+      this._toggleGuideVisibility();
     });
+
+    leftY += 48;
+
+    this._guideAlphaMinusBtn = this._makeIconButton(leftCX, leftY, 'A-', () => {
+      this._changeGuideAlpha(-0.08);
+    }, '12px');
+
+    leftY += 48;
+
+    this._guideAlphaPlusBtn = this._makeIconButton(leftCX, leftY, 'A+', () => {
+      this._changeGuideAlpha(0.08);
+    }, '12px');
 
     // =================================================
-    // Panel derecho responsive
+    // Cruceta overlay dentro del viewport
     // =================================================
-    const panelX = width - this._rightPanelW + 20;
-    const panelInnerW = this._rightPanelW - 40;
+    const crossBoxW = 134;
+    const crossBoxH = 134;
+    const crossBoxX = this._viewX + this._viewW - crossBoxW - 16;
+    const crossBoxY = this._viewY + this._viewH - crossBoxH - 16;
 
-    const widthBoxY = this._topBarH + 150;
-    this.add.text(panelX, widthBoxY - 22, 'ANCHO PISTA', {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '13px',
-      color: '#8fa8d8',
-      fontStyle: 'bold'
-    });
-
-    this.add.rectangle(panelX, widthBoxY, panelInnerW, 60, 0x162036, 0.9)
-      .setOrigin(0, 0)
-      .setStrokeStyle(2, 0x32456d, 0.9);
-
-    this._widthValueText = this.add.text(panelX + panelInnerW / 2, widthBoxY + 15, `${this._trackWidth}px`, {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '20px',
-      color: '#ffffff',
-      fontStyle: 'bold'
-    }).setOrigin(0.5, 0);
-
-    this._widthMinusBtn = this._makePanelButton(
-      panelX + 14,
-      widthBoxY + 12,
-      '−',
-      () => this._changeTrackWidth(-10),
-      36,
-      36
-    );
-
-    this._widthPlusBtn = this._makePanelButton(
-      panelX + panelInnerW - 50,
-      widthBoxY + 12,
-      '+',
-      () => this._changeTrackWidth(10),
-      36,
-      36
-    );
-
-    const crossBoxW = Math.min(180, panelInnerW);
-    const crossBoxH = 150;
-    const crossBoxX = panelX + Math.floor((panelInnerW - crossBoxW) / 2);
-    const crossBoxY = this._topBarH + 200;
-
-    this.add.text(crossBoxX, crossBoxY - 26, 'AJUSTE NODO', {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '13px',
-      color: '#8fa8d8',
-      fontStyle: 'bold'
-    });
-
-    this.add.rectangle(crossBoxX, crossBoxY, crossBoxW, crossBoxH, 0x162036, 0.9)
-      .setOrigin(0, 0)
-      .setStrokeStyle(2, 0x32456d, 0.9);
+    this.add.rectangle(crossBoxX, crossBoxY, crossBoxW, crossBoxH, 0x162036, 0.82)
+      .setOrigin(0)
+      .setStrokeStyle(2, 0x32456d, 0.95);
 
     const crossCenterX = crossBoxX + crossBoxW / 2;
     const crossCenterY = crossBoxY + crossBoxH / 2;
 
-    const crossBtnSize = 34;
-    const crossGap = 10;
+    const crossBtnSize = 30;
+    const crossGap = 9;
     const crossStep = crossBtnSize + crossGap;
 
     this._btnUp = this._makePanelButton(
@@ -580,29 +578,126 @@ export class TrackStudioScene extends BaseScene {
       this._pinchLastDist = 0;
     });
 
+    this._createGuideInput();
     this._updateLoopButton();
     this._updateToolButtons();
     this._updatePanel();
     this._redrawEditor();
   }
 
-  _createNode(x, y) {
-    return {
-      x,
-      y,
-      handleIn: { x: x - 60, y },
-      handleOut: { x: x + 60, y }
-    };
+  // =================================================
+  // Guía de fondo
+  // =================================================
+  _createGuideInput() {
+    this._destroyGuideInput();
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.style.position = 'fixed';
+    input.style.left = '-9999px';
+    input.style.top = '-9999px';
+    input.style.opacity = '0';
+
+    input.addEventListener('change', (ev) => {
+      const file = ev.target.files?.[0];
+      if (!file) return;
+      this._loadGuideImage(file);
+      input.value = '';
+    });
+
+    document.body.appendChild(input);
+    this._guideInput = input;
   }
 
-  _makeIconButton(cx, cy, label, onClick) {
+  _destroyGuideInput() {
+    if (this._guideInput && this._guideInput.parentNode) {
+      this._guideInput.parentNode.removeChild(this._guideInput);
+    }
+    this._guideInput = null;
+  }
+
+  _openGuidePicker() {
+    if (!this._guideInput) this._createGuideInput();
+    this._guideInput?.click();
+  }
+
+  _loadGuideImage(file) {
+    const url = URL.createObjectURL(file);
+    const key = `trackstudio-guide-${Date.now()}`;
+
+    this.load.image(key, url);
+
+    this.load.once(Phaser.Loader.Events.COMPLETE, () => {
+      URL.revokeObjectURL(url);
+
+      if (this._guideImage) {
+        this._guideImage.destroy();
+        this._guideImage = null;
+      }
+
+      if (this._guideTextureKey && this.textures.exists(this._guideTextureKey)) {
+        this.textures.remove(this._guideTextureKey);
+      }
+
+      this._guideTextureKey = key;
+
+      const tex = this.textures.get(key).getSourceImage();
+      const imgW = tex.width || 1;
+      const imgH = tex.height || 1;
+
+      const fitScale = Math.min(
+        (this._editorWorldW * 0.8) / imgW,
+        (this._editorWorldH * 0.8) / imgH,
+        1
+      );
+
+      this._guideImage = this.add.image(
+        this._editorWorldW / 2,
+        this._editorWorldH / 2,
+        key
+      )
+        .setDepth(4)
+        .setAlpha(this._guideAlpha)
+        .setVisible(this._guideVisible)
+        .setScale(fitScale);
+
+      this.cameras.main.ignore(this._guideImage);
+      this._updatePanel();
+    });
+
+    this.load.start();
+  }
+
+  _toggleGuideVisibility() {
+    this._guideVisible = !this._guideVisible;
+    if (this._guideImage) {
+      this._guideImage.setVisible(this._guideVisible);
+    }
+    this._updatePanel();
+  }
+
+  _changeGuideAlpha(delta) {
+    this._guideAlpha = Phaser.Math.Clamp(this._guideAlpha + delta, 0.05, 1);
+
+    if (this._guideImage) {
+      this._guideImage.setAlpha(this._guideAlpha);
+    }
+
+    this._updatePanel();
+  }
+
+  // =================================================
+  // UI helpers
+  // =================================================
+  _makeIconButton(cx, cy, label, onClick, fontSize = '22px') {
     const bg = this.add.circle(cx, cy, 20, 0x1c2540, 1)
       .setStrokeStyle(2, 0x3c4e7a, 0.95)
       .setInteractive({ useHandCursor: true });
 
     const txt = this.add.text(cx, cy, label, {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '22px',
+      fontSize,
       color: '#ffffff',
       fontStyle: 'bold'
     }).setOrigin(0.5);
@@ -620,7 +715,7 @@ export class TrackStudioScene extends BaseScene {
 
     const txt = this.add.text(x + w / 2, y + h / 2, label, {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: w <= 40 ? '18px' : '16px',
+      fontSize: w <= 40 ? '16px' : '16px',
       color: '#ffffff',
       fontStyle: 'bold'
     }).setOrigin(0.5);
@@ -648,6 +743,11 @@ export class TrackStudioScene extends BaseScene {
       this._checkpointBtn.bg.setFillStyle(activeCp ? 0x235c9f : 0x1c2540, 1);
       this._checkpointBtn.bg.setStrokeStyle(2, activeCp ? 0xaed4ff : 0x3c4e7a, 0.95);
     }
+
+    if (this._guideToggleBtn?.bg) {
+      this._guideToggleBtn.bg.setFillStyle(this._guideVisible ? 0x1f4f2d : 0x1c2540, 1);
+      this._guideToggleBtn.bg.setStrokeStyle(2, this._guideVisible ? 0x8df0a8 : 0x3c4e7a, 0.95);
+    }
   }
 
   _toggleClosed() {
@@ -660,6 +760,18 @@ export class TrackStudioScene extends BaseScene {
   _updateLoopButton() {
     if (!this._loopBtn?.txt) return;
     this._loopBtn.txt.setText(this._isClosed ? '🔒' : '🔓');
+  }
+
+  // =================================================
+  // Core editor helpers
+  // =================================================
+  _createNode(x, y) {
+    return {
+      x,
+      y,
+      handleIn: { x: x - 60, y },
+      handleOut: { x: x + 60, y }
+    };
   }
 
   _applyZoomAtViewportCenter(multiplier) {
@@ -697,10 +809,6 @@ export class TrackStudioScene extends BaseScene {
       this._trackWidthMin,
       this._trackWidthMax
     );
-
-    if (this._widthValueText) {
-      this._widthValueText.setText(`${this._trackWidth}px`);
-    }
 
     this._updatePanel();
     this._redrawEditor();
@@ -998,7 +1106,7 @@ export class TrackStudioScene extends BaseScene {
 
     const bezier = this._getBezierPoints();
 
-    // preview pista
+    // pista
     if (bezier.length >= 2) {
       const strip = this._buildTrackStrip(bezier, this._trackWidth);
 
@@ -1065,6 +1173,9 @@ export class TrackStudioScene extends BaseScene {
 
       this._checkpointGfx.lineStyle(2, 0x0b1020, 0.9);
       this._checkpointGfx.strokeCircle(midX, midY, 9);
+
+      this._checkpointGfx.fillStyle(0x0b1020, 1);
+      this._checkpointGfx.fillCircle(midX, midY, 3);
     }
 
     // meta
@@ -1131,9 +1242,7 @@ export class TrackStudioScene extends BaseScene {
   }
 
   _updatePanel() {
-    if (this._widthValueText) {
-      this._widthValueText.setText(`${this._trackWidth}px`);
-    }
+    const guideLoaded = !!this._guideImage;
 
     if (this._selectedNode < 0 || this._selectedNode >= this._nodes.length) {
       this._panelText.setText(
@@ -1143,6 +1252,8 @@ export class TrackStudioScene extends BaseScene {
         `Loop: ${this._isClosed ? 'cerrado' : 'abierto'}\n` +
         `Meta: ${this._finishLine ? 'sí' : 'no'}\n` +
         `Checkpoints: ${this._checkpoints.length}\n` +
+        `Guía: ${guideLoaded ? (this._guideVisible ? 'visible' : 'oculta') : 'no cargada'}\n` +
+        `Alpha guía: ${this._guideAlpha.toFixed(2)}\n` +
         `Zoom: ${this._editCam ? this._editCam.zoom.toFixed(2) : '0.00'}\n` +
         `Ancho: ${this._trackWidth}px`
       );
@@ -1159,6 +1270,8 @@ export class TrackStudioScene extends BaseScene {
       `Loop: ${this._isClosed ? 'cerrado' : 'abierto'}\n` +
       `Meta: ${this._finishLine ? 'sí' : 'no'}\n` +
       `Checkpoints: ${this._checkpoints.length}\n` +
+      `Guía: ${guideLoaded ? (this._guideVisible ? 'visible' : 'oculta') : 'no cargada'}\n` +
+      `Alpha guía: ${this._guideAlpha.toFixed(2)}\n` +
       `X: ${Math.round(n.x)}\n` +
       `Y: ${Math.round(n.y)}\n` +
       `In: ${Math.round(n.handleIn.x)}, ${Math.round(n.handleIn.y)}\n` +
