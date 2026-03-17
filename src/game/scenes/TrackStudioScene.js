@@ -135,25 +135,31 @@ export class TrackStudioScene extends BaseScene {
     });
 
     // =================================================
-    // Panel derecho rediseñado
+    // Panel derecho responsive
     // =================================================
     const panelX = width - this._rightPanelW + 20;
+    const panelInnerW = this._rightPanelW - 40;
 
-    // caja cruceta
-    this.add.rectangle(panelX + 120, this._topBarH + 245, 220, 158, 0x162036, 0.9)
-      .setOrigin(0, 0)
-      .setStrokeStyle(2, 0x32456d, 0.9);
+    const crossBoxW = Math.min(180, panelInnerW);
+    const crossBoxH = 150;
+    const crossBoxX = panelX + Math.floor((panelInnerW - crossBoxW) / 2);
+    const crossBoxY = this._topBarH + 300;
 
-    this.add.text(panelX + 134, this._topBarH + 214, 'AJUSTE', {
+    this.add.text(crossBoxX, crossBoxY - 26, 'AJUSTE', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
       fontSize: '13px',
       color: '#8fa8d8',
       fontStyle: 'bold'
     });
 
-    const crossCenterX = panelX + 120 + 110;
-    const crossCenterY = this._topBarH + 245 + 78;
-    const crossBtnSize = 36;
+    this.add.rectangle(crossBoxX, crossBoxY, crossBoxW, crossBoxH, 0x162036, 0.9)
+      .setOrigin(0, 0)
+      .setStrokeStyle(2, 0x32456d, 0.9);
+
+    const crossCenterX = crossBoxX + crossBoxW / 2;
+    const crossCenterY = crossBoxY + crossBoxH / 2;
+
+    const crossBtnSize = 34;
     const crossGap = 10;
     const crossStep = crossBtnSize + crossGap;
 
@@ -193,14 +199,13 @@ export class TrackStudioScene extends BaseScene {
       crossBtnSize
     );
 
-    // botón borrar siempre visible
     this._deleteBtn = this._makePanelButton(
-      panelX + 120,
-      this._topBarH + 425,
+      crossBoxX,
+      crossBoxY + crossBoxH + 14,
       '✕ BORRAR',
       () => this._deleteSelectedNode(),
-      220,
-      40,
+      crossBoxW,
+      38,
       0x5a1f2a
     );
 
@@ -705,13 +710,10 @@ export class TrackStudioScene extends BaseScene {
 
   _updatePanel() {
     if (this._selectedNode < 0 || this._selectedNode >= this._nodes.length) {
-      this._panelText.setText(
+            this._panelText.setText(
         'Sin nodo seleccionado\n\n' +
         `Nodos: ${this._nodes.length}\n` +
-        `Zoom: ${this._editCam ? this._editCam.zoom.toFixed(2) : '0.00'}\n\n` +
-        'Tap = crear nodo\n' +
-        'Drag = mover nodo\n' +
-        'Pinch = zoom'
+        `Zoom: ${this._editCam ? this._editCam.zoom.toFixed(2) : '0.00'}`
       );
       return;
     }
@@ -722,10 +724,7 @@ export class TrackStudioScene extends BaseScene {
       `Nodo #${this._selectedNode}\n\n` +
       `X: ${Math.round(n.x)}\n` +
       `Y: ${Math.round(n.y)}\n\n` +
-      `Total nodos: ${this._nodes.length}\n` +
-      `Zoom: ${this._editCam ? this._editCam.zoom.toFixed(2) : '0.00'}\n\n` +
-      'Cruceta = mover 10 px\n' +
-      '✕ BORRAR = eliminar'
+      `Total nodos: ${this._nodes.length}\n` +      `Zoom: ${this._editCam ? this._editCam.zoom.toFixed(2) : '0.00'}`
     );
   }
 }
