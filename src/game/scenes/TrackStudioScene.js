@@ -190,7 +190,6 @@ export class TrackStudioScene extends BaseScene {
             this._dragStartScreen.x, this._dragStartScreen.y
           );
 
-          // Hasta que no se note intención clara de arrastre, no movemos el nodo
           if (dist <= 10) {
             return;
           }
@@ -227,7 +226,6 @@ export class TrackStudioScene extends BaseScene {
 
       // Zoom con dos dedos
       if (down.length >= 2) {
-
         this._gestureWasMultiTouch = true;
         this._tapCandidate = false;
 
@@ -283,7 +281,6 @@ export class TrackStudioScene extends BaseScene {
     this.input.on('pointerup', (pointer) => {
       const stillDown = this.input.manager.pointers.filter(p => p.isDown).length;
 
-      // Si estaba arrastrando nodo, no crear nodo nuevo
       if (this._draggingNode) {
         this._draggingNode = false;
         if (stillDown === 0) {
@@ -296,7 +293,6 @@ export class TrackStudioScene extends BaseScene {
         return;
       }
 
-      // Si hubo multitouch, jamás interpretamos esto como tap de creación
       if (this._gestureWasMultiTouch) {
         if (stillDown === 0) {
           this._dragStartScreen = null;
@@ -308,7 +304,6 @@ export class TrackStudioScene extends BaseScene {
         return;
       }
 
-      // Si hubo movimiento apreciable, fue pan y NO tap
       let movedTooMuch = false;
       if (this._dragStartScreen) {
         const dist = Phaser.Math.Distance.Between(
@@ -320,7 +315,6 @@ export class TrackStudioScene extends BaseScene {
         movedTooMuch = dist > 10;
       }
 
-      // Solo crear/seleccionar si hubo pointerdown válido dentro del viewport
       if (
         this._tapCandidate &&
         !movedTooMuch &&
@@ -352,9 +346,6 @@ export class TrackStudioScene extends BaseScene {
       }
     });
 
-    this._updatePanel();
-    this._redrawEditor();
-  }
     this.input.on('pointerupoutside', () => {
       this._draggingNode = false;
       this._dragStartScreen = null;
@@ -363,6 +354,11 @@ export class TrackStudioScene extends BaseScene {
       this._panLast = null;
       this._pinchLastDist = 0;
     });
+
+    this._updatePanel();
+    this._redrawEditor();
+  }
+
   _isPointerInViewport(pointer) {
     return (
       pointer.x >= this._viewX &&
@@ -411,7 +407,6 @@ export class TrackStudioScene extends BaseScene {
     this._pathGfx.clear();
     this._nodeGfx.clear();
 
-    // Línea provisional entre nodos
     if (this._nodes.length >= 2) {
       this._pathGfx.lineStyle(6, 0xb7c0ff, 0.9);
       this._pathGfx.beginPath();
@@ -424,7 +419,6 @@ export class TrackStudioScene extends BaseScene {
       this._pathGfx.strokePath();
     }
 
-    // Nodos
     for (let i = 0; i < this._nodes.length; i++) {
       const n = this._nodes[i];
       const selected = i === this._selectedNode;
