@@ -14,10 +14,10 @@ export class TrackStudioScene extends BaseScene {
     // =================================================
     // Layout base
     // =================================================
-    this._topBarH = 70;
-    this._leftBarW = 86;
-    this._rightPanelW = 320;
-    this._bottomPad = 16;
+    this._topBarH = 72;
+    this._leftBarW = 76;
+    this._rightPanelW = 280;
+    this._bottomPad = 14;
 
     this._viewX = this._leftBarW;
     this._viewY = this._topBarH;
@@ -46,43 +46,53 @@ export class TrackStudioScene extends BaseScene {
     // =================================================
     // UI base
     // =================================================
-    this.cameras.main.setBackgroundColor('#0b1020');
+    this.cameras.main.setBackgroundColor('#09101d');
 
+    // top bar
     this.add.rectangle(0, 0, width, this._topBarH, 0x101626).setOrigin(0);
-    this.add.rectangle(0, this._topBarH, this._leftBarW, height - this._topBarH, 0x0f1422).setOrigin(0);
+
+    // left toolbar
+    this.add.rectangle(0, this._topBarH, this._leftBarW, height - this._topBarH, 0x0d1422).setOrigin(0);
+
+    // right panel
     this.add.rectangle(width - this._rightPanelW, this._topBarH, this._rightPanelW, height - this._topBarH, 0x0f1422).setOrigin(0);
 
+    // viewport frame
     this.add.rectangle(this._viewX, this._viewY, this._viewW, this._viewH, 0x0a0d16)
       .setOrigin(0)
-      .setStrokeStyle(2, 0x26324a, 0.9);
+      .setStrokeStyle(2, 0x26324a, 0.95);
 
-    this.add.text(24, 22, 'TRACK STUDIO', {
+    // title
+    this.add.text(22, 18, 'TRACK STUDIO', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '28px',
+      fontSize: '30px',
       color: '#ffffff',
       fontStyle: 'bold'
     });
 
-    this._rightTitle = this.add.text(width - this._rightPanelW + 24, this._topBarH + 20, 'PROPIEDADES', {
+    // right title
+    this._rightTitle = this.add.text(width - this._rightPanelW + 20, this._topBarH + 18, 'PROPIEDADES', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '20px',
-      color: '#b7c0ff',
+      fontSize: '18px',
+      color: '#c7d2ff',
       fontStyle: 'bold'
     });
 
-    this._panelText = this.add.text(width - this._rightPanelW + 24, this._topBarH + 64, 'Sin nodo seleccionado', {
+    // info panel
+    this._panelText = this.add.text(width - this._rightPanelW + 20, this._topBarH + 58, 'Sin nodo seleccionado', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '16px',
+      fontSize: '15px',
       color: '#ffffff',
       lineSpacing: 8
     });
 
-    const back = this.add.text(width - 110, 22, 'VOLVER', {
+    // back
+    const back = this.add.text(width - 96, 18, 'VOLVER', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '20px',
+      fontSize: '18px',
       color: '#ffffff',
       backgroundColor: '#1c2540',
-      padding: { x: 18, y: 8 }
+      padding: { x: 16, y: 8 }
     })
       .setOrigin(0.5, 0)
       .setInteractive({ useHandCursor: true });
@@ -92,15 +102,59 @@ export class TrackStudioScene extends BaseScene {
     });
 
     // =================================================
-    // Panel derecho interactivo
+    // Left toolbar compacta
     // =================================================
-        const panelBaseX = width - this._rightPanelW + 24;
+    const leftCX = Math.floor(this._leftBarW / 2);
+    let leftY = this._topBarH + 26;
 
-    // Cruceta compacta
-    const crossCenterX = width - this._rightPanelW + 200;
-    const crossCenterY = this._topBarH + 235;
-    const crossBtnSize = 40;
-    const crossGap = 8;
+    this._toolTitle = this.add.text(leftCX, leftY, 'TOOLS', {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: '12px',
+      color: '#90a4d4',
+      fontStyle: 'bold'
+    }).setOrigin(0.5, 0);
+
+    leftY += 34;
+
+    this._zoomInBtn = this._makeIconButton(leftCX, leftY, '+', () => {
+      this._applyZoomAtViewportCenter(1.15);
+    });
+
+    leftY += 56;
+
+    this._zoomOutBtn = this._makeIconButton(leftCX, leftY, '−', () => {
+      this._applyZoomAtViewportCenter(1 / 1.15);
+    });
+
+    leftY += 56;
+
+    this._centerBtn = this._makeIconButton(leftCX, leftY, '◎', () => {
+      this._editCam.centerOn(this._editorWorldW / 2, this._editorWorldH / 2);
+      this._editCam.setZoom(0.28);
+      this._updatePanel();
+    });
+
+    // =================================================
+    // Panel derecho rediseñado
+    // =================================================
+    const panelX = width - this._rightPanelW + 20;
+
+    // caja cruceta
+    this.add.rectangle(panelX + 120, this._topBarH + 245, 220, 158, 0x162036, 0.9)
+      .setOrigin(0, 0)
+      .setStrokeStyle(2, 0x32456d, 0.9);
+
+    this.add.text(panelX + 134, this._topBarH + 214, 'AJUSTE', {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: '13px',
+      color: '#8fa8d8',
+      fontStyle: 'bold'
+    });
+
+    const crossCenterX = panelX + 120 + 110;
+    const crossCenterY = this._topBarH + 245 + 78;
+    const crossBtnSize = 36;
+    const crossGap = 10;
     const crossStep = crossBtnSize + crossGap;
 
     this._btnUp = this._makePanelButton(
@@ -139,13 +193,14 @@ export class TrackStudioScene extends BaseScene {
       crossBtnSize
     );
 
+    // botón borrar siempre visible
     this._deleteBtn = this._makePanelButton(
-      panelBaseX,
-      this._topBarH + 360,
-      'BORRAR NODO',
+      panelX + 120,
+      this._topBarH + 425,
+      '✕ BORRAR',
       () => this._deleteSelectedNode(),
-      260,
-      42,
+      220,
+      40,
       0x5a1f2a
     );
 
@@ -251,9 +306,7 @@ export class TrackStudioScene extends BaseScene {
             this._dragStartScreen.x, this._dragStartScreen.y
           );
 
-          if (dist <= 10) {
-            return;
-          }
+          if (dist <= 10) return;
 
           this._dragMoved = true;
         }
@@ -332,6 +385,7 @@ export class TrackStudioScene extends BaseScene {
           worldY - (midY - this._editCam.y) / newZoom;
 
         this._pinchLastDist = dist;
+        this._updatePanel();
         return;
       }
 
@@ -420,15 +474,14 @@ export class TrackStudioScene extends BaseScene {
     this._redrawEditor();
   }
 
-  _makePanelButton(x, y, label, onClick, w = 120, h = 44, fill = 0x1c2540) {
-    const bg = this.add.rectangle(x, y, w, h, fill, 1)
-      .setOrigin(0)
-      .setStrokeStyle(2, 0x3c4e7a, 0.9)
+  _makeIconButton(cx, cy, label, onClick) {
+    const bg = this.add.circle(cx, cy, 20, 0x1c2540, 1)
+      .setStrokeStyle(2, 0x3c4e7a, 0.95)
       .setInteractive({ useHandCursor: true });
 
-    const txt = this.add.text(x + w / 2, y + h / 2, label, {
+    const txt = this.add.text(cx, cy, label, {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: w <= 40 ? '20px' : '18px',
+      fontSize: '22px',
       color: '#ffffff',
       fontStyle: 'bold'
     }).setOrigin(0.5);
@@ -436,6 +489,53 @@ export class TrackStudioScene extends BaseScene {
     bg.on('pointerup', onClick);
 
     return { bg, txt };
+  }
+
+  _makePanelButton(x, y, label, onClick, w = 120, h = 44, fill = 0x1c2540) {
+    const bg = this.add.rectangle(x, y, w, h, fill, 1)
+      .setOrigin(0)
+      .setStrokeStyle(2, 0x3c4e7a, 0.95)
+      .setInteractive({ useHandCursor: true });
+
+    const txt = this.add.text(x + w / 2, y + h / 2, label, {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: w <= 40 ? '20px' : '16px',
+      color: '#ffffff',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
+
+    bg.on('pointerup', onClick);
+
+    return { bg, txt };
+  }
+
+  _applyZoomAtViewportCenter(multiplier) {
+    const midX = this._editCam.x + this._editCam.width / 2;
+    const midY = this._editCam.y + this._editCam.height / 2;
+
+    const newZoom = Phaser.Math.Clamp(
+      this._editCam.zoom * multiplier,
+      this._editZoomMin,
+      this._editZoomMax
+    );
+
+    const worldX =
+      this._editCam.scrollX +
+      (midX - this._editCam.x) / this._editCam.zoom;
+
+    const worldY =
+      this._editCam.scrollY +
+      (midY - this._editCam.y) / this._editCam.zoom;
+
+    this._editCam.setZoom(newZoom);
+
+    this._editCam.scrollX =
+      worldX - (midX - this._editCam.x) / newZoom;
+
+    this._editCam.scrollY =
+      worldY - (midY - this._editCam.y) / newZoom;
+
+    this._updatePanel();
   }
 
   _nudgeSelectedNode(dx, dy) {
@@ -563,7 +663,6 @@ export class TrackStudioScene extends BaseScene {
     this._pathGfx.clear();
     this._nodeGfx.clear();
 
-    // Línea base entre nodos
     if (this._nodes.length >= 2) {
       this._pathGfx.lineStyle(2, 0x506080, 0.65);
       this._pathGfx.beginPath();
@@ -576,7 +675,6 @@ export class TrackStudioScene extends BaseScene {
       this._pathGfx.strokePath();
     }
 
-    // Línea suave provisional
     const smooth = this._getSmoothPoints();
     if (smooth.length >= 2) {
       this._smoothPathGfx.lineStyle(6, 0xb7c0ff, 0.95);
@@ -590,7 +688,6 @@ export class TrackStudioScene extends BaseScene {
       this._smoothPathGfx.strokePath();
     }
 
-    // Nodos
     for (let i = 0; i < this._nodes.length; i++) {
       const n = this._nodes[i];
       const selected = i === this._selectedNode;
@@ -612,8 +709,9 @@ export class TrackStudioScene extends BaseScene {
         'Sin nodo seleccionado\n\n' +
         `Nodos: ${this._nodes.length}\n` +
         `Zoom: ${this._editCam ? this._editCam.zoom.toFixed(2) : '0.00'}\n\n` +
-        'Usa la cruceta para ajustar\n' +
-        'el nodo seleccionado.'
+        'Tap = crear nodo\n' +
+        'Drag = mover nodo\n' +
+        'Pinch = zoom'
       );
       return;
     }
@@ -626,8 +724,8 @@ export class TrackStudioScene extends BaseScene {
       `Y: ${Math.round(n.y)}\n\n` +
       `Total nodos: ${this._nodes.length}\n` +
       `Zoom: ${this._editCam ? this._editCam.zoom.toFixed(2) : '0.00'}\n\n` +
-      'Ajuste fino:\n' +
-      'cada toque mueve 10 px'
+      'Cruceta = mover 10 px\n' +
+      '✕ BORRAR = eliminar'
     );
   }
 }
