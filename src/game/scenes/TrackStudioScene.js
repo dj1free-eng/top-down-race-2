@@ -938,31 +938,46 @@ _createNode(x, y) {
     return pts;
   }
 
-  _getBezierPoints() {
-    const count = this._nodes.length;
-    if (count < 2) return this._nodes.map((n) => ({ x: n.x, y: n.y }));
+_getBezierPoints() {
+  const count = this._nodes.length;
+  if (count < 2) return this._nodes.map((n) => ({ x: n.x, y: n.y }));
 
-    const pts = [];
-    const segCount = this._isClosed ? count : count - 1;
+  const pts = [];
+  const segCount = this._isClosed ? count : count - 1;
 
-    for (let i = 0; i < segCount; i++) {
-      const a = this._nodes[i];
-      const b = this._nodes[(i + 1) % count];
+  for (let i = 0; i < segCount; i++) {
+    const a = this._nodes[i];
+    const b = this._nodes[(i + 1) % count];
 
-      const seg = this._sampleCubicBezier(
-        { x: a.x, y: a.y },
-        { x: a.handleOut.x, y: a.handleOut.y },
-        { x: b.handleIn.x, y: b.handleIn.y },
-        { x: b.x, y: b.y },
-        28
-      );
+    const seg = this._sampleCubicBezier(
+      { x: a.x, y: a.y },
+      { x: a.handleOut.x, y: a.handleOut.y },
+      { x: b.handleIn.x, y: b.handleIn.y },
+      { x: b.x, y: b.y },
+      28
+    );
 
-      if (i > 0) seg.shift();
-      pts.push(...seg);
-    }
-
-    return pts;
+    if (i > 0) seg.shift();
+    pts.push(...seg);
   }
+
+  // En loop cerrado, quitamos el último punto si duplica el primero.
+  // Esa duplicidad rompe la banda de asfalto en la costura.
+  if (this._isClosed && pts.length > 1) {
+    const first = pts[0];
+    const last = pts[pts.length - 1];
+
+    const dx = last.x - first.x;
+    const dy = last.y - first.y;
+    const d2 = dx * dx + dy * dy;
+
+    if (d2 < 0.0001) {
+      pts.pop();
+    }
+  }
+
+  return pts;
+}
 
   _buildTrackStrip(points, width) {
     if (!Array.isArray(points) || points.length < 2) {
