@@ -51,6 +51,8 @@ export class TrackStudioScene extends BaseScene {
     this._trackWidthMin = 60;
     this._trackWidthMax = 260;
 
+    this._isClosed = false;
+
     // =================================================
     // UI base
     // =================================================
@@ -130,6 +132,12 @@ export class TrackStudioScene extends BaseScene {
       this._editCam.centerOn(this._editorWorldW / 2, this._editorWorldH / 2);
       this._editCam.setZoom(0.28);
       this._updatePanel();
+    });
+
+    leftY += 56;
+
+    this._loopBtn = this._makeIconButton(leftCX, leftY, '🔓', () => {
+      this._toggleClosed();
     });
 
     // =================================================
@@ -340,7 +348,7 @@ export class TrackStudioScene extends BaseScene {
 
     this.input.on('pointermove', () => {
       const down = this.input.manager.pointers.filter(
-        p => p.isDown && this._isPointerInViewport(p)
+        (p) => p.isDown && this._isPointerInViewport(p)
       );
 
       if (this._draggingPart && down.length === 1 && this._selectedPart) {
@@ -408,8 +416,8 @@ export class TrackStudioScene extends BaseScene {
         const p1 = down[0];
         const p2 = down[1];
 
-        const midX = (p1.x + p2.x) / 2;
-        const midY = (p1.y + p2.y) / 2;
+        const midX = (p1.x + p2.x) * 0.5;
+        const midY = (p1.y + p2.y) * 0.5;
 
         const dx = p2.x - p1.x;
         const dy = p2.y - p1.y;
@@ -456,7 +464,7 @@ export class TrackStudioScene extends BaseScene {
     });
 
     this.input.on('pointerup', (pointer) => {
-      const stillDown = this.input.manager.pointers.filter(p => p.isDown).length;
+      const stillDown = this.input.manager.pointers.filter((p) => p.isDown).length;
 
       if (this._draggingPart) {
         this._draggingPart = false;
@@ -536,6 +544,7 @@ export class TrackStudioScene extends BaseScene {
       this._pinchLastDist = 0;
     });
 
+    this._updateLoopButton();
     this._updatePanel();
     this._redrawEditor();
   }
@@ -582,6 +591,18 @@ export class TrackStudioScene extends BaseScene {
     bg.on('pointerup', onClick);
 
     return { bg, txt };
+  }
+
+  _toggleClosed() {
+    this._isClosed = !this._isClosed;
+    this._updateLoopButton();
+    this._updatePanel();
+    this._redrawEditor();
+  }
+
+  _updateLoopButton() {
+    if (!this._loopBtn?.txt) return;
+    this._loopBtn.txt.setText(this._isClosed ? '🔒' : '🔓');
   }
 
   _applyZoomAtViewportCenter(multiplier) {
@@ -744,13 +765,15 @@ export class TrackStudioScene extends BaseScene {
   }
 
   _getBezierPoints() {
-    if (this._nodes.length < 2) return this._nodes.map(n => ({ x: n.x, y: n.y }));
+    const count = this._nodes.length;
+    if (count < 2) return this._nodes.map((n) => ({ x: n.x, y: n.y }));
 
     const pts = [];
+    const segCount = this._isClosed ? count : count - 1;
 
-    for (let i = 0; i < this._nodes.length - 1; i++) {
+    for (let i = 0; i < segCount; i++) {
       const a = this._nodes[i];
-      const b = this._nodes[i + 1];
+      const b = this._nodes[(i + 1) % count];
 
       const seg = this._sampleCubicBezier(
         { x: a.x, y: a.y },
@@ -776,9 +799,17 @@ export class TrackStudioScene extends BaseScene {
     const right = [];
 
     for (let i = 0; i < points.length; i++) {
-      const pPrev = points[Math.max(0, i - 1)];
+      const prevIndex = this._isClosed
+        ? (i - 1 + points.length) % points.length
+        : Math.max(0, i - 1);
+
+      const nextIndex = this._isClosed
+        ? (i + 1) % points.length
+        : Math.min(points.length - 1, i + 1);
+
+      const pPrev = points[prevIndex];
       const pCurr = points[i];
-      const pNext = points[Math.min(points.length - 1, i + 1)];
+      const pNext = points[nextIndex];
 
       let tx = pNext.x - pPrev.x;
       let ty = pNext.y - pPrev.y;
@@ -840,6 +871,7 @@ export class TrackStudioScene extends BaseScene {
         for (let i = 1; i < strip.left.length; i++) {
           this._trackGfx.lineTo(strip.left[i].x, strip.left[i].y);
         }
+        if (this._isClosed) this._trackGfx.closePath();
         this._trackGfx.strokePath();
 
         this._trackGfx.beginPath();
@@ -847,6 +879,7 @@ export class TrackStudioScene extends BaseScene {
         for (let i = 1; i < strip.right.length; i++) {
           this._trackGfx.lineTo(strip.right[i].x, strip.right[i].y);
         }
+        if (this._isClosed) this._trackGfx.closePath();
         this._trackGfx.strokePath();
       }
 
@@ -856,6 +889,7 @@ export class TrackStudioScene extends BaseScene {
       for (let i = 1; i < bezier.length; i++) {
         this._curveGfx.lineTo(bezier[i].x, bezier[i].y);
       }
+      if (this._isClosed) this._curveGfx.closePath();
       this._curveGfx.strokePath();
     }
 
@@ -872,8 +906,17 @@ export class TrackStudioScene extends BaseScene {
       this._guideGfx.lineTo(n.handleOut.x, n.handleOut.y);
       this._guideGfx.strokePath();
 
-      this._drawHandleDot(n.handleIn.x, n.handleIn.y, selected && this._selectedPart?.type === 'handleIn' && this._selectedPart?.index === i);
-      this._drawHandleDot(n.handleOut.x, n.handleOut.y, selected && this._selectedPart?.type === 'handleOut' && this._selectedPart?.index === i);
+      this._drawHandleDot(
+        n.handleIn.x,
+        n.handleIn.y,
+        selected && this._selectedPart?.type === 'handleIn' && this._selectedPart?.index === i
+      );
+
+      this._drawHandleDot(
+        n.handleOut.x,
+        n.handleOut.y,
+        selected && this._selectedPart?.type === 'handleOut' && this._selectedPart?.index === i
+      );
 
       this._nodeGfx.fillStyle(selected ? 0x2bff88 : 0xffffff, 1);
       this._nodeGfx.fillCircle(n.x, n.y, selected ? 16 : 14);
@@ -903,6 +946,7 @@ export class TrackStudioScene extends BaseScene {
       this._panelText.setText(
         'Sin nodo seleccionado\n' +
         `Nodos: ${this._nodes.length}\n` +
+        `Loop: ${this._isClosed ? 'cerrado' : 'abierto'}\n` +
         `Zoom: ${this._editCam ? this._editCam.zoom.toFixed(2) : '0.00'}\n` +
         `Ancho: ${this._trackWidth}px`
       );
@@ -915,6 +959,7 @@ export class TrackStudioScene extends BaseScene {
     this._panelText.setText(
       `Nodo #${this._selectedNode}\n` +
       `Modo: ${part}\n` +
+      `Loop: ${this._isClosed ? 'cerrado' : 'abierto'}\n` +
       `X: ${Math.round(n.x)}\n` +
       `Y: ${Math.round(n.y)}\n` +
       `In: ${Math.round(n.handleIn.x)}, ${Math.round(n.handleIn.y)}\n` +
