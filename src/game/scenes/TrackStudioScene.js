@@ -94,30 +94,64 @@ export class TrackStudioScene extends BaseScene {
     // =================================================
     // Panel derecho interactivo
     // =================================================
-    this._xMinusBtn = this._makePanelButton(width - this._rightPanelW + 24, this._topBarH + 170, 'X -', () => {
-      this._nudgeSelectedNode(-10, 0);
-    });
+    const panelBaseX = width - this._rightPanelW + 24;
+    const crossCenterX = panelBaseX + 120;
+    const crossCenterY = this._topBarH + 220;
+    const crossBtnSize = 56;
+    const crossGap = 8;
+    const step = crossBtnSize + crossGap;
 
-    this._xPlusBtn = this._makePanelButton(width - this._rightPanelW + 164, this._topBarH + 170, 'X +', () => {
-      this._nudgeSelectedNode(10, 0);
-    });
+    this._btnUp = this._makePanelButton(
+      crossCenterX - crossBtnSize / 2,
+      crossCenterY - step - crossBtnSize / 2,
+      '↑',
+      () => this._nudgeSelectedNode(0, -10),
+      crossBtnSize,
+      crossBtnSize
+    );
 
-    this._yMinusBtn = this._makePanelButton(width - this._rightPanelW + 24, this._topBarH + 230, 'Y -', () => {
-      this._nudgeSelectedNode(0, -10);
-    });
+    this._btnLeft = this._makePanelButton(
+      crossCenterX - step - crossBtnSize / 2,
+      crossCenterY - crossBtnSize / 2,
+      '←',
+      () => this._nudgeSelectedNode(-10, 0),
+      crossBtnSize,
+      crossBtnSize
+    );
 
-    this._yPlusBtn = this._makePanelButton(width - this._rightPanelW + 164, this._topBarH + 230, 'Y +', () => {
-      this._nudgeSelectedNode(0, 10);
-    });
+    this._btnRight = this._makePanelButton(
+      crossCenterX + step - crossBtnSize / 2,
+      crossCenterY - crossBtnSize / 2,
+      '→',
+      () => this._nudgeSelectedNode(10, 0),
+      crossBtnSize,
+      crossBtnSize
+    );
 
-    this._deleteBtn = this._makePanelButton(width - this._rightPanelW + 24, this._topBarH + 310, 'BORRAR NODO', () => {
-      this._deleteSelectedNode();
-    }, 260, 48, 0x5a1f2a);
+    this._btnDown = this._makePanelButton(
+      crossCenterX - crossBtnSize / 2,
+      crossCenterY + step - crossBtnSize / 2,
+      '↓',
+      () => this._nudgeSelectedNode(0, 10),
+      crossBtnSize,
+      crossBtnSize
+    );
+
+    this._deleteBtn = this._makePanelButton(
+      panelBaseX,
+      this._topBarH + 360,
+      'BORRAR NODO',
+      () => this._deleteSelectedNode(),
+      260,
+      48,
+      0x5a1f2a
+    );
 
     // =================================================
     // Mundo de edición
     // =================================================
     this._gridGfx = this.add.graphics().setDepth(1);
+    this._smoothPathGfx = this.add.graphics().setDepth(7);
     this._pathGfx = this.add.graphics().setDepth(8);
     this._nodeGfx = this.add.graphics().setDepth(10);
 
@@ -156,6 +190,7 @@ export class TrackStudioScene extends BaseScene {
     this.cameras.main.ignore([
       this._gridGfx,
       this._centerMark,
+      this._smoothPathGfx,
       this._pathGfx,
       this._nodeGfx
     ]);
@@ -163,6 +198,7 @@ export class TrackStudioScene extends BaseScene {
     const worldObjs = [
       this._gridGfx,
       this._centerMark,
+      this._smoothPathGfx,
       this._pathGfx,
       this._nodeGfx
     ];
@@ -390,7 +426,7 @@ export class TrackStudioScene extends BaseScene {
 
     const txt = this.add.text(x + w / 2, y + h / 2, label, {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '16px',
+      fontSize: '24px',
       color: '#ffffff',
       fontStyle: 'bold'
     }).setOrigin(0.5);
@@ -469,12 +505,65 @@ export class TrackStudioScene extends BaseScene {
     }
   }
 
+  _getSmoothPoints() {
+    if (this._nodes.length < 2) return [...this._nodes];
+    if (this._nodes.length === 2) return [...this._nodes];
+
+    const pts = [];
+    const src = this._nodes;
+    const stepsPerSeg = 18;
+
+    const get = (i) => {
+      if (i < 0) return src[0];
+      if (i >= src.length) return src[src.length - 1];
+      return src[i];
+    };
+
+    for (let i = 0; i < src.length - 1; i++) {
+      const p0 = get(i - 1);
+      const p1 = get(i);
+      const p2 = get(i + 1);
+      const p3 = get(i + 2);
+
+      for (let s = 0; s < stepsPerSeg; s++) {
+        const t = s / stepsPerSeg;
+        const t2 = t * t;
+        const t3 = t2 * t;
+
+        const x = 0.5 * (
+          (2 * p1.x) +
+          (-p0.x + p2.x) * t +
+          (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 +
+          (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3
+        );
+
+        const y = 0.5 * (
+          (2 * p1.y) +
+          (-p0.y + p2.y) * t +
+          (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 +
+          (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3
+        );
+
+        pts.push({ x, y });
+      }
+    }
+
+    pts.push({
+      x: src[src.length - 1].x,
+      y: src[src.length - 1].y
+    });
+
+    return pts;
+  }
+
   _redrawEditor() {
+    this._smoothPathGfx.clear();
     this._pathGfx.clear();
     this._nodeGfx.clear();
 
+    // Línea base entre nodos
     if (this._nodes.length >= 2) {
-      this._pathGfx.lineStyle(6, 0xb7c0ff, 0.9);
+      this._pathGfx.lineStyle(2, 0x506080, 0.65);
       this._pathGfx.beginPath();
       this._pathGfx.moveTo(this._nodes[0].x, this._nodes[0].y);
 
@@ -485,6 +574,21 @@ export class TrackStudioScene extends BaseScene {
       this._pathGfx.strokePath();
     }
 
+    // Línea suave provisional
+    const smooth = this._getSmoothPoints();
+    if (smooth.length >= 2) {
+      this._smoothPathGfx.lineStyle(6, 0xb7c0ff, 0.95);
+      this._smoothPathGfx.beginPath();
+      this._smoothPathGfx.moveTo(smooth[0].x, smooth[0].y);
+
+      for (let i = 1; i < smooth.length; i++) {
+        this._smoothPathGfx.lineTo(smooth[i].x, smooth[i].y);
+      }
+
+      this._smoothPathGfx.strokePath();
+    }
+
+    // Nodos
     for (let i = 0; i < this._nodes.length; i++) {
       const n = this._nodes[i];
       const selected = i === this._selectedNode;
@@ -505,7 +609,9 @@ export class TrackStudioScene extends BaseScene {
       this._panelText.setText(
         'Sin nodo seleccionado\n\n' +
         `Nodos: ${this._nodes.length}\n` +
-        `Zoom: ${this._editCam ? this._editCam.zoom.toFixed(2) : '0.00'}`
+        `Zoom: ${this._editCam ? this._editCam.zoom.toFixed(2) : '0.00'}\n\n` +
+        'Usa la cruceta para ajustar\n' +
+        'el nodo seleccionado.'
       );
       return;
     }
@@ -517,7 +623,9 @@ export class TrackStudioScene extends BaseScene {
       `X: ${Math.round(n.x)}\n` +
       `Y: ${Math.round(n.y)}\n\n` +
       `Total nodos: ${this._nodes.length}\n` +
-      `Zoom: ${this._editCam ? this._editCam.zoom.toFixed(2) : '0.00'}`
+      `Zoom: ${this._editCam ? this._editCam.zoom.toFixed(2) : '0.00'}\n\n` +
+      'Ajuste fino:\n' +
+      'cada toque mueve 10 px'
     );
   }
 }
