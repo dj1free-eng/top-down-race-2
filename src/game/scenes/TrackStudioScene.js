@@ -114,7 +114,7 @@ export class TrackStudioScene extends BaseScene {
     });
 
     // =================================================
-    // Left toolbar
+    // Barra izquierda: solo herramientas
     // =================================================
     const leftCX = Math.floor(this._leftBarW / 2);
     let leftY = this._topBarH + 20;
@@ -126,27 +126,7 @@ export class TrackStudioScene extends BaseScene {
       fontStyle: 'bold'
     }).setOrigin(0.5, 0);
 
-    leftY += 28;
-
-    this._zoomInBtn = this._makeIconButton(leftCX, leftY, '+', () => {
-      this._applyZoomAtViewportCenter(1.15);
-    });
-
-    leftY += 48;
-
-    this._zoomOutBtn = this._makeIconButton(leftCX, leftY, '−', () => {
-      this._applyZoomAtViewportCenter(1 / 1.15);
-    });
-
-    leftY += 48;
-
-    this._centerBtn = this._makeIconButton(leftCX, leftY, '◎', () => {
-      this._editCam.centerOn(this._editorWorldW / 2, this._editorWorldH / 2);
-      this._editCam.setZoom(0.28);
-      this._updatePanel();
-    });
-
-    leftY += 48;
+    leftY += 34;
 
     this._loopBtn = this._makeIconButton(leftCX, leftY, '🔓', () => {
       this._toggleClosed();
@@ -166,18 +146,6 @@ export class TrackStudioScene extends BaseScene {
 
     leftY += 48;
 
-    this._widthMinusBtn = this._makeIconButton(leftCX, leftY, 'W-', () => {
-      this._changeTrackWidth(-10);
-    }, '13px');
-
-    leftY += 48;
-
-    this._widthPlusBtn = this._makeIconButton(leftCX, leftY, 'W+', () => {
-      this._changeTrackWidth(10);
-    }, '13px');
-
-    leftY += 48;
-
     this._guideLoadBtn = this._makeIconButton(leftCX, leftY, 'IMG', () => {
       this._openGuidePicker();
     }, '12px');
@@ -188,82 +156,75 @@ export class TrackStudioScene extends BaseScene {
       this._toggleGuideVisibility();
     });
 
-    leftY += 48;
+    // =================================================
+    // Barra superior horizontal: acciones rápidas
+    // =================================================
+    const topToolsY = 36;
+    let topX = 320;
 
-    this._guideAlphaMinusBtn = this._makeIconButton(leftCX, leftY, 'A-', () => {
+    this._zoomInBtn = this._makeIconButton(topX, topToolsY, '🔍+', () => {
+      this._applyZoomAtViewportCenter(1.15);
+    }, '13px');
+    topX += 52;
+
+    this._zoomOutBtn = this._makeIconButton(topX, topToolsY, '🔎-', () => {
+      this._applyZoomAtViewportCenter(1 / 1.15);
+    }, '13px');
+    topX += 52;
+
+    this._centerBtn = this._makeIconButton(topX, topToolsY, '◎', () => {
+      this._editCam.centerOn(this._editorWorldW / 2, this._editorWorldH / 2);
+      this._editCam.setZoom(0.28);
+      this._updatePanel();
+    });
+    topX += 56;
+
+    this._widthMinusBtn = this._makeIconButton(topX, topToolsY, 'W-', () => {
+      this._changeTrackWidth(-10);
+    }, '13px');
+    topX += 48;
+
+    this._widthPlusBtn = this._makeIconButton(topX, topToolsY, 'W+', () => {
+      this._changeTrackWidth(10);
+    }, '13px');
+    topX += 48;
+
+    this._guideAlphaMinusBtn = this._makeIconButton(topX, topToolsY, 'A-', () => {
       this._changeGuideAlpha(-0.08);
-    }, '12px');
+    }, '13px');
+    topX += 48;
 
-    leftY += 48;
-
-    this._guideAlphaPlusBtn = this._makeIconButton(leftCX, leftY, 'A+', () => {
+    this._guideAlphaPlusBtn = this._makeIconButton(topX, topToolsY, 'A+', () => {
       this._changeGuideAlpha(0.08);
-    }, '12px');
+    }, '13px');
+    topX += 60;
 
     // =================================================
-    // Cruceta overlay dentro del viewport
+    // Mini cruceta superior
     // =================================================
-    const crossBoxW = 134;
-    const crossBoxH = 134;
-    const crossBoxX = this._viewX + this._viewW - crossBoxW - 16;
-    const crossBoxY = this._viewY + this._viewH - crossBoxH - 16;
+    this._btnLeft = this._makeIconButton(topX, topToolsY, '←', () => {
+      this._nudgeSelectedNode(-10, 0);
+    }, '18px');
+    topX += 40;
 
-    this.add.rectangle(crossBoxX, crossBoxY, crossBoxW, crossBoxH, 0x162036, 0.82)
-      .setOrigin(0)
-      .setStrokeStyle(2, 0x32456d, 0.95);
+    this._btnUp = this._makeIconButton(topX, topToolsY, '↑', () => {
+      this._nudgeSelectedNode(0, -10);
+    }, '18px');
+    topX += 40;
 
-    const crossCenterX = crossBoxX + crossBoxW / 2;
-    const crossCenterY = crossBoxY + crossBoxH / 2;
+    this._btnDown = this._makeIconButton(topX, topToolsY, '↓', () => {
+      this._nudgeSelectedNode(0, 10);
+    }, '18px');
+    topX += 40;
 
-    const crossBtnSize = 30;
-    const crossGap = 9;
-    const crossStep = crossBtnSize + crossGap;
+    this._btnRight = this._makeIconButton(topX, topToolsY, '→', () => {
+      this._nudgeSelectedNode(10, 0);
+    }, '18px');
+    topX += 40;
 
-    this._btnUp = this._makePanelButton(
-      crossCenterX - crossBtnSize / 2,
-      crossCenterY - crossStep - crossBtnSize / 2,
-      '↑',
-      () => this._nudgeSelectedNode(0, -10),
-      crossBtnSize,
-      crossBtnSize
-    );
-
-    this._btnLeft = this._makePanelButton(
-      crossCenterX - crossStep - crossBtnSize / 2,
-      crossCenterY - crossBtnSize / 2,
-      '←',
-      () => this._nudgeSelectedNode(-10, 0),
-      crossBtnSize,
-      crossBtnSize
-    );
-
-    this._btnRight = this._makePanelButton(
-      crossCenterX + crossStep - crossBtnSize / 2,
-      crossCenterY - crossBtnSize / 2,
-      '→',
-      () => this._nudgeSelectedNode(10, 0),
-      crossBtnSize,
-      crossBtnSize
-    );
-
-    this._btnDown = this._makePanelButton(
-      crossCenterX - crossBtnSize / 2,
-      crossCenterY + crossStep - crossBtnSize / 2,
-      '↓',
-      () => this._nudgeSelectedNode(0, 10),
-      crossBtnSize,
-      crossBtnSize
-    );
-
-    this._deleteBtn = this._makePanelButton(
-      crossCenterX - crossBtnSize / 2,
-      crossCenterY - crossBtnSize / 2,
-      '🗑',
-      () => this._deleteSelectedNode(),
-      crossBtnSize,
-      crossBtnSize,
-      0x7a1f2f
-    );
+    this._deleteBtn = this._makeIconButton(topX, topToolsY, '🗑', () => {
+      this._deleteSelectedNode();
+    }, '16px');
 
     // =================================================
     // Mundo de edición
@@ -674,6 +635,7 @@ export class TrackStudioScene extends BaseScene {
     if (this._guideImage) {
       this._guideImage.setVisible(this._guideVisible);
     }
+    this._updateToolButtons();
     this._updatePanel();
   }
 
@@ -691,31 +653,13 @@ export class TrackStudioScene extends BaseScene {
   // UI helpers
   // =================================================
   _makeIconButton(cx, cy, label, onClick, fontSize = '22px') {
-    const bg = this.add.circle(cx, cy, 20, 0x1c2540, 1)
+    const bg = this.add.circle(cx, cy, 18, 0x1c2540, 1)
       .setStrokeStyle(2, 0x3c4e7a, 0.95)
       .setInteractive({ useHandCursor: true });
 
     const txt = this.add.text(cx, cy, label, {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
       fontSize,
-      color: '#ffffff',
-      fontStyle: 'bold'
-    }).setOrigin(0.5);
-
-    bg.on('pointerup', onClick);
-
-    return { bg, txt };
-  }
-
-  _makePanelButton(x, y, label, onClick, w = 120, h = 44, fill = 0x1c2540) {
-    const bg = this.add.rectangle(x, y, w, h, fill, 1)
-      .setOrigin(0)
-      .setStrokeStyle(2, 0x3c4e7a, 0.95)
-      .setInteractive({ useHandCursor: true });
-
-    const txt = this.add.text(x + w / 2, y + h / 2, label, {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: w <= 40 ? '16px' : '16px',
       color: '#ffffff',
       fontStyle: 'bold'
     }).setOrigin(0.5);
@@ -1106,7 +1050,6 @@ export class TrackStudioScene extends BaseScene {
 
     const bezier = this._getBezierPoints();
 
-    // pista
     if (bezier.length >= 2) {
       const strip = this._buildTrackStrip(bezier, this._trackWidth);
 
@@ -1155,7 +1098,6 @@ export class TrackStudioScene extends BaseScene {
       this._curveGfx.strokePath();
     }
 
-    // checkpoints
     for (let i = 0; i < this._checkpoints.length; i++) {
       const cp = this._checkpoints[i];
 
@@ -1178,7 +1120,6 @@ export class TrackStudioScene extends BaseScene {
       this._checkpointGfx.fillCircle(midX, midY, 3);
     }
 
-    // meta
     if (this._finishLine?.a && this._finishLine?.b) {
       this._finishGfx.lineStyle(10, 0xffffff, 0.95);
       this._finishGfx.beginPath();
@@ -1197,7 +1138,6 @@ export class TrackStudioScene extends BaseScene {
       this._finishGfx.fillCircle(this._finishLine.b.x, this._finishLine.b.y, 5);
     }
 
-    // guías y handlers
     for (let i = 0; i < this._nodes.length; i++) {
       const n = this._nodes[i];
       const selected = i === this._selectedNode;
