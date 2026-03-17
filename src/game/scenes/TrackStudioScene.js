@@ -32,9 +32,13 @@ export class TrackStudioScene extends BaseScene {
 
     this._nodes = [];
     this._selectedNode = -1;
-    this._draggingNode = false;
+    this._selectedPart = null; // { type:'node'|'handleIn'|'handleOut', index:number }
+
+    this._draggingPart = false;
     this._dragMoved = false;
     this._dragStartScreen = null;
+    this._dragStartWorld = null;
+
     this._tapCandidate = false;
     this._gestureWasMultiTouch = false;
     this._panLast = null;
@@ -134,7 +138,6 @@ export class TrackStudioScene extends BaseScene {
     const panelX = width - this._rightPanelW + 20;
     const panelInnerW = this._rightPanelW - 40;
 
-    // ancho pista
     const widthBoxY = this._topBarH + 150;
     this.add.text(panelX, widthBoxY - 22, 'ANCHO PISTA', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
@@ -172,7 +175,6 @@ export class TrackStudioScene extends BaseScene {
       36
     );
 
-    // cruceta
     const crossBoxW = Math.min(180, panelInnerW);
     const crossBoxH = 150;
     const crossBoxX = panelX + Math.floor((panelInnerW - crossBoxW) / 2);
@@ -247,8 +249,8 @@ export class TrackStudioScene extends BaseScene {
     // =================================================
     this._gridGfx = this.add.graphics().setDepth(1);
     this._trackGfx = this.add.graphics().setDepth(6);
-    this._smoothPathGfx = this.add.graphics().setDepth(7);
-    this._pathGfx = this.add.graphics().setDepth(8);
+    this._curveGfx = this.add.graphics().setDepth(7);
+    this._guideGfx = this.add.graphics().setDepth(8);
     this._nodeGfx = this.add.graphics().setDepth(10);
 
     this._drawGrid();
@@ -287,8 +289,8 @@ export class TrackStudioScene extends BaseScene {
       this._gridGfx,
       this._centerMark,
       this._trackGfx,
-      this._smoothPathGfx,
-      this._pathGfx,
+      this._curveGfx,
+      this._guideGfx,
       this._nodeGfx
     ]);
 
@@ -296,8 +298,8 @@ export class TrackStudioScene extends BaseScene {
       this._gridGfx,
       this._centerMark,
       this._trackGfx,
-      this._smoothPathGfx,
-      this._pathGfx,
+      this._curveGfx,
+      this._guideGfx,
       this._nodeGfx
     ];
     const uiObjs = this.children.list.filter(o => !worldObjs.includes(o));
@@ -315,21 +317,25 @@ export class TrackStudioScene extends BaseScene {
       this._gestureWasMultiTouch = false;
 
       const world = this._screenToWorld(pointer.x, pointer.y);
-      const hit = this._findNodeAt(world.x, world.y, 32);
+      const hit = this._findControlAt(world.x, world.y);
 
-      if (hit >= 0) {
-        this._selectedNode = hit;
-        this._draggingNode = true;
+      if (hit) {
+        this._selectedNode = hit.index;
+        this._selectedPart = hit;
+        this._draggingPart = true;
         this._dragMoved = false;
         this._dragStartScreen = { x: pointer.x, y: pointer.y };
+        this._dragStartWorld = { x: world.x, y: world.y };
         this._updatePanel();
         this._redrawEditor();
         return;
       }
 
-      this._draggingNode = false;
+      this._selectedPart = null;
+      this._draggingPart = false;
       this._dragMoved = false;
       this._dragStartScreen = { x: pointer.x, y: pointer.y };
+      this._dragStartWorld = { x: world.x, y: world.y };
     });
 
     this.input.on('pointermove', () => {
@@ -337,7 +343,7 @@ export class TrackStudioScene extends BaseScene {
         p => p.isDown && this._isPointerInViewport(p)
       );
 
-      if (this._draggingNode && down.length === 1 && this._selectedNode >= 0) {
+      if (this._draggingPart && down.length === 1 && this._selectedPart) {
         const p = down[0];
 
         if (this._dragStartScreen) {
@@ -352,9 +358,27 @@ export class TrackStudioScene extends BaseScene {
         }
 
         const world = this._screenToWorld(p.x, p.y);
+        const idx = this._selectedPart.index;
+        const node = this._nodes[idx];
 
-        this._nodes[this._selectedNode].x = world.x;
-        this._nodes[this._selectedNode].y = world.y;
+        if (this._selectedPart.type === 'node') {
+          const dx = world.x - node.x;
+          const dy = world.y - node.y;
+
+          node.x = world.x;
+          node.y = world.y;
+
+          node.handleIn.x += dx;
+          node.handleIn.y += dy;
+          node.handleOut.x += dx;
+          node.handleOut.y += dy;
+        } else if (this._selectedPart.type === 'handleIn') {
+          node.handleIn.x = world.x;
+          node.handleIn.y = world.y;
+        } else if (this._selectedPart.type === 'handleOut') {
+          node.handleOut.x = world.x;
+          node.handleOut.y = world.y;
+        }
 
         this._updatePanel();
         this._redrawEditor();
@@ -394,7 +418,7 @@ export class TrackStudioScene extends BaseScene {
         if (!this._pinchLastDist) {
           this._pinchLastDist = dist;
           this._panLast = null;
-          this._draggingNode = false;
+          this._draggingPart = false;
           return;
         }
 
@@ -434,10 +458,11 @@ export class TrackStudioScene extends BaseScene {
     this.input.on('pointerup', (pointer) => {
       const stillDown = this.input.manager.pointers.filter(p => p.isDown).length;
 
-      if (this._draggingNode) {
-        this._draggingNode = false;
+      if (this._draggingPart) {
+        this._draggingPart = false;
         if (stillDown === 0) {
           this._dragStartScreen = null;
+          this._dragStartWorld = null;
           this._tapCandidate = false;
           this._gestureWasMultiTouch = false;
           this._panLast = null;
@@ -449,6 +474,7 @@ export class TrackStudioScene extends BaseScene {
       if (this._gestureWasMultiTouch) {
         if (stillDown === 0) {
           this._dragStartScreen = null;
+          this._dragStartWorld = null;
           this._tapCandidate = false;
           this._gestureWasMultiTouch = false;
           this._panLast = null;
@@ -474,16 +500,16 @@ export class TrackStudioScene extends BaseScene {
         this._isPointerInViewport(pointer)
       ) {
         const world = this._screenToWorld(pointer.x, pointer.y);
-        const hit = this._findNodeAt(world.x, world.y, 32);
+        const hit = this._findControlAt(world.x, world.y);
 
-        if (hit >= 0) {
-          this._selectedNode = hit;
+        if (hit) {
+          this._selectedNode = hit.index;
+          this._selectedPart = hit;
         } else {
-          this._nodes.push({
-            x: world.x,
-            y: world.y
-          });
+          const node = this._createNode(world.x, world.y);
+          this._nodes.push(node);
           this._selectedNode = this._nodes.length - 1;
+          this._selectedPart = { type: 'node', index: this._selectedNode };
         }
 
         this._updatePanel();
@@ -492,6 +518,7 @@ export class TrackStudioScene extends BaseScene {
 
       if (stillDown === 0) {
         this._dragStartScreen = null;
+        this._dragStartWorld = null;
         this._tapCandidate = false;
         this._gestureWasMultiTouch = false;
         this._panLast = null;
@@ -500,8 +527,9 @@ export class TrackStudioScene extends BaseScene {
     });
 
     this.input.on('pointerupoutside', () => {
-      this._draggingNode = false;
+      this._draggingPart = false;
       this._dragStartScreen = null;
+      this._dragStartWorld = null;
       this._tapCandidate = false;
       this._gestureWasMultiTouch = false;
       this._panLast = null;
@@ -510,6 +538,15 @@ export class TrackStudioScene extends BaseScene {
 
     this._updatePanel();
     this._redrawEditor();
+  }
+
+  _createNode(x, y) {
+    return {
+      x,
+      y,
+      handleIn: { x: x - 60, y },
+      handleOut: { x: x + 60, y }
+    };
   }
 
   _makeIconButton(cx, cy, label, onClick) {
@@ -594,8 +631,13 @@ export class TrackStudioScene extends BaseScene {
   _nudgeSelectedNode(dx, dy) {
     if (this._selectedNode < 0 || this._selectedNode >= this._nodes.length) return;
 
-    this._nodes[this._selectedNode].x += dx;
-    this._nodes[this._selectedNode].y += dy;
+    const node = this._nodes[this._selectedNode];
+    node.x += dx;
+    node.y += dy;
+    node.handleIn.x += dx;
+    node.handleIn.y += dy;
+    node.handleOut.x += dx;
+    node.handleOut.y += dy;
 
     this._updatePanel();
     this._redrawEditor();
@@ -608,8 +650,10 @@ export class TrackStudioScene extends BaseScene {
 
     if (this._nodes.length === 0) {
       this._selectedNode = -1;
+      this._selectedPart = null;
     } else {
       this._selectedNode = Math.min(this._selectedNode, this._nodes.length - 1);
+      this._selectedPart = { type: 'node', index: this._selectedNode };
     }
 
     this._updatePanel();
@@ -629,15 +673,27 @@ export class TrackStudioScene extends BaseScene {
     return this._editCam.getWorldPoint(screenX, screenY);
   }
 
-  _findNodeAt(x, y, radius = 32) {
-    const r2 = radius * radius;
+  _findControlAt(x, y) {
+    const handleRadius = 24;
+    const nodeRadius = 32;
+
     for (let i = this._nodes.length - 1; i >= 0; i--) {
       const n = this._nodes[i];
-      const dx = n.x - x;
-      const dy = n.y - y;
-      if ((dx * dx + dy * dy) <= r2) return i;
+
+      if (Phaser.Math.Distance.Between(x, y, n.handleIn.x, n.handleIn.y) <= handleRadius) {
+        return { type: 'handleIn', index: i };
+      }
+
+      if (Phaser.Math.Distance.Between(x, y, n.handleOut.x, n.handleOut.y) <= handleRadius) {
+        return { type: 'handleOut', index: i };
+      }
+
+      if (Phaser.Math.Distance.Between(x, y, n.x, n.y) <= nodeRadius) {
+        return { type: 'node', index: i };
+      }
     }
-    return -1;
+
+    return null;
   }
 
   _drawGrid() {
@@ -660,53 +716,53 @@ export class TrackStudioScene extends BaseScene {
     }
   }
 
-  _getSmoothPoints() {
-    if (this._nodes.length < 2) return [...this._nodes];
-    if (this._nodes.length === 2) return [...this._nodes];
-
+  _sampleCubicBezier(p0, p1, p2, p3, steps = 24) {
     const pts = [];
-    const src = this._nodes;
-    const stepsPerSeg = 18;
 
-    const get = (i) => {
-      if (i < 0) return src[0];
-      if (i >= src.length) return src[src.length - 1];
-      return src[i];
-    };
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const mt = 1 - t;
+      const mt2 = mt * mt;
+      const t2 = t * t;
 
-    for (let i = 0; i < src.length - 1; i++) {
-      const p0 = get(i - 1);
-      const p1 = get(i);
-      const p2 = get(i + 1);
-      const p3 = get(i + 2);
+      const x =
+        mt2 * mt * p0.x +
+        3 * mt2 * t * p1.x +
+        3 * mt * t2 * p2.x +
+        t2 * t * p3.x;
 
-      for (let s = 0; s < stepsPerSeg; s++) {
-        const t = s / stepsPerSeg;
-        const t2 = t * t;
-        const t3 = t2 * t;
+      const y =
+        mt2 * mt * p0.y +
+        3 * mt2 * t * p1.y +
+        3 * mt * t2 * p2.y +
+        t2 * t * p3.y;
 
-        const x = 0.5 * (
-          (2 * p1.x) +
-          (-p0.x + p2.x) * t +
-          (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 +
-          (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3
-        );
-
-        const y = 0.5 * (
-          (2 * p1.y) +
-          (-p0.y + p2.y) * t +
-          (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 +
-          (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3
-        );
-
-        pts.push({ x, y });
-      }
+      pts.push({ x, y });
     }
 
-    pts.push({
-      x: src[src.length - 1].x,
-      y: src[src.length - 1].y
-    });
+    return pts;
+  }
+
+  _getBezierPoints() {
+    if (this._nodes.length < 2) return this._nodes.map(n => ({ x: n.x, y: n.y }));
+
+    const pts = [];
+
+    for (let i = 0; i < this._nodes.length - 1; i++) {
+      const a = this._nodes[i];
+      const b = this._nodes[i + 1];
+
+      const seg = this._sampleCubicBezier(
+        { x: a.x, y: a.y },
+        { x: a.handleOut.x, y: a.handleOut.y },
+        { x: b.handleIn.x, y: b.handleIn.y },
+        { x: b.x, y: b.y },
+        28
+      );
+
+      if (i > 0) seg.shift();
+      pts.push(...seg);
+    }
 
     return pts;
   }
@@ -751,27 +807,15 @@ export class TrackStudioScene extends BaseScene {
 
   _redrawEditor() {
     this._trackGfx.clear();
-    this._smoothPathGfx.clear();
-    this._pathGfx.clear();
+    this._curveGfx.clear();
+    this._guideGfx.clear();
     this._nodeGfx.clear();
 
-    if (this._nodes.length >= 2) {
-      this._pathGfx.lineStyle(2, 0x506080, 0.65);
-      this._pathGfx.beginPath();
-      this._pathGfx.moveTo(this._nodes[0].x, this._nodes[0].y);
+    const bezier = this._getBezierPoints();
 
-      for (let i = 1; i < this._nodes.length; i++) {
-        this._pathGfx.lineTo(this._nodes[i].x, this._nodes[i].y);
-      }
-
-      this._pathGfx.strokePath();
-    }
-
-    const smooth = this._getSmoothPoints();
-
-    // preview real de pista
-    if (smooth.length >= 2) {
-      const strip = this._buildTrackStrip(smooth, this._trackWidth);
+    // preview pista
+    if (bezier.length >= 2) {
+      const strip = this._buildTrackStrip(bezier, this._trackWidth);
 
       if (strip.left.length >= 2 && strip.right.length >= 2) {
         this._trackGfx.fillStyle(0x2f343a, 0.95);
@@ -790,6 +834,7 @@ export class TrackStudioScene extends BaseScene {
         this._trackGfx.fillPath();
 
         this._trackGfx.lineStyle(4, 0xf2f2f2, 0.9);
+
         this._trackGfx.beginPath();
         this._trackGfx.moveTo(strip.left[0].x, strip.left[0].y);
         for (let i = 1; i < strip.left.length; i++) {
@@ -805,20 +850,30 @@ export class TrackStudioScene extends BaseScene {
         this._trackGfx.strokePath();
       }
 
-      this._smoothPathGfx.lineStyle(2, 0x8fd0ff, 0.55);
-      this._smoothPathGfx.beginPath();
-      this._smoothPathGfx.moveTo(smooth[0].x, smooth[0].y);
-
-      for (let i = 1; i < smooth.length; i++) {
-        this._smoothPathGfx.lineTo(smooth[i].x, smooth[i].y);
+      this._curveGfx.lineStyle(2, 0x8fd0ff, 0.55);
+      this._curveGfx.beginPath();
+      this._curveGfx.moveTo(bezier[0].x, bezier[0].y);
+      for (let i = 1; i < bezier.length; i++) {
+        this._curveGfx.lineTo(bezier[i].x, bezier[i].y);
       }
-
-      this._smoothPathGfx.strokePath();
+      this._curveGfx.strokePath();
     }
 
+    // guías y handlers
     for (let i = 0; i < this._nodes.length; i++) {
       const n = this._nodes[i];
       const selected = i === this._selectedNode;
+
+      this._guideGfx.lineStyle(2, selected ? 0x5fb2ff : 0x4c5a7a, 0.75);
+      this._guideGfx.beginPath();
+      this._guideGfx.moveTo(n.x, n.y);
+      this._guideGfx.lineTo(n.handleIn.x, n.handleIn.y);
+      this._guideGfx.moveTo(n.x, n.y);
+      this._guideGfx.lineTo(n.handleOut.x, n.handleOut.y);
+      this._guideGfx.strokePath();
+
+      this._drawHandleDot(n.handleIn.x, n.handleIn.y, selected && this._selectedPart?.type === 'handleIn' && this._selectedPart?.index === i);
+      this._drawHandleDot(n.handleOut.x, n.handleOut.y, selected && this._selectedPart?.type === 'handleOut' && this._selectedPart?.index === i);
 
       this._nodeGfx.fillStyle(selected ? 0x2bff88 : 0xffffff, 1);
       this._nodeGfx.fillCircle(n.x, n.y, selected ? 16 : 14);
@@ -829,6 +884,14 @@ export class TrackStudioScene extends BaseScene {
       this._nodeGfx.fillStyle(0x0b1020, 1);
       this._nodeGfx.fillCircle(n.x, n.y, 5);
     }
+  }
+
+  _drawHandleDot(x, y, selected = false) {
+    this._nodeGfx.fillStyle(selected ? 0xffd166 : 0xb7c0ff, 1);
+    this._nodeGfx.fillCircle(x, y, selected ? 10 : 8);
+
+    this._nodeGfx.lineStyle(2, 0x0b1020, 0.9);
+    this._nodeGfx.strokeCircle(x, y, selected ? 10 : 8);
   }
 
   _updatePanel() {
@@ -847,11 +910,15 @@ export class TrackStudioScene extends BaseScene {
     }
 
     const n = this._nodes[this._selectedNode];
+    const part = this._selectedPart?.type || 'node';
 
     this._panelText.setText(
       `Nodo #${this._selectedNode}\n` +
+      `Modo: ${part}\n` +
       `X: ${Math.round(n.x)}\n` +
       `Y: ${Math.round(n.y)}\n` +
+      `In: ${Math.round(n.handleIn.x)}, ${Math.round(n.handleIn.y)}\n` +
+      `Out: ${Math.round(n.handleOut.x)}, ${Math.round(n.handleOut.y)}\n` +
       `Total: ${this._nodes.length}\n` +
       `Zoom: ${this._editCam ? this._editCam.zoom.toFixed(2) : '0.00'}\n` +
       `Ancho: ${this._trackWidth}px`
