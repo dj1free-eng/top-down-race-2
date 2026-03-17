@@ -525,11 +525,26 @@ topX += 60;
             this._selectedNode = hit.index;
             this._selectedPart = hit;
           } else {
-            const node = this._createNode(world.x, world.y);
-            this._nodes.push(node);
-            this._selectedNode = this._nodes.length - 1;
-            this._selectedPart = { type: 'node', index: this._selectedNode };
-          }
+const node = this._createNode(world.x, world.y);
+
+if (this._nodes.length > 0) {
+  const prev = this._nodes[this._nodes.length - 1];
+  const handleLen = 60;
+
+  let dx = node.x - prev.x;
+  let dy = node.y - prev.y;
+
+  const len = Math.sqrt(dx * dx + dy * dy) || 1;
+  dx /= len;
+  dy /= len;
+
+  prev.handleOut.x = prev.x + dx * handleLen;
+  prev.handleOut.y = prev.y + dy * handleLen;
+}
+
+this._nodes.push(node);
+this._selectedNode = this._nodes.length - 1;
+this._selectedPart = { type: 'node', index: this._selectedNode };
 
           this._updatePanel();
           this._redrawEditor();
