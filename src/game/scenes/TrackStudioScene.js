@@ -1321,29 +1321,51 @@ _toggleModeMenu() {
     return this._editCam.getWorldPoint(screenX, screenY);
   }
 
-  _findControlAt(x, y) {
-    const handleRadius = 24;
-    const nodeRadius = 32;
+_findControlAt(x, y) {
+  const R = 14;
 
-    for (let i = this._nodes.length - 1; i >= 0; i--) {
-      const n = this._nodes[i];
+  // --- NODOS ---
+  for (let i = this._nodes.length - 1; i >= 0; i--) {
+    const n = this._nodes[i];
 
-      if (Phaser.Math.Distance.Between(x, y, n.handleIn.x, n.handleIn.y) <= handleRadius) {
-        return { type: 'handleIn', index: i };
-      }
-
-      if (Phaser.Math.Distance.Between(x, y, n.handleOut.x, n.handleOut.y) <= handleRadius) {
-        return { type: 'handleOut', index: i };
-      }
-
-      if (Phaser.Math.Distance.Between(x, y, n.x, n.y) <= nodeRadius) {
-        return { type: 'node', index: i };
-      }
+    // nodo
+    if (Phaser.Math.Distance.Between(x, y, n.x, n.y) < R) {
+      return { type: 'node', index: i };
     }
 
-    return null;
+    // handle in
+    if (Phaser.Math.Distance.Between(x, y, n.handleIn.x, n.handleIn.y) < R) {
+      return { type: 'handleIn', index: i };
+    }
+
+    // handle out
+    if (Phaser.Math.Distance.Between(x, y, n.handleOut.x, n.handleOut.y) < R) {
+      return { type: 'handleOut', index: i };
+    }
   }
 
+  // --- PIANOS ---
+  for (let i = this._pianos.length - 1; i >= 0; i--) {
+    const p = this._pianos[i];
+
+    // punto central
+    if (Phaser.Math.Distance.Between(x, y, p.x, p.y) < R) {
+      return { type: 'piano', index: i };
+    }
+
+    // handle A
+    if (Phaser.Math.Distance.Between(x, y, p.hA.x, p.hA.y) < R) {
+      return { type: 'pianoHandleA', index: i };
+    }
+
+    // handle B
+    if (Phaser.Math.Distance.Between(x, y, p.hB.x, p.hB.y) < R) {
+      return { type: 'pianoHandleB', index: i };
+    }
+  }
+
+  return null;
+}
   _drawGrid() {
     this._gridGfx.clear();
 
