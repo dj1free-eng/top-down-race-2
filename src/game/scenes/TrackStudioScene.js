@@ -67,10 +67,9 @@ export class TrackStudioScene extends BaseScene {
     this._nudgeSteps = [1, 5, 10];
     this._nudgeStepIndex = 2;
 
-    // toolbar grupos
-    this._activeFlyout = null;
-    this._activeFlyoutGroup = null;
-    this._groupButtons = {};
+    // grupo vista
+    this._viewTool = 'zoomIn'; // 'zoomIn' | 'zoomOut' | 'center'
+    this._viewMenu = null;
 
     // =================================================
     // UI base
@@ -107,13 +106,23 @@ export class TrackStudioScene extends BaseScene {
       wordWrap: { width: this._rightPanelW - 40 }
     });
 
-    this._backBtn = this._makeIconButton(width - 44, 36, '←', () => {
+    const back = this.add.text(width - 38, 18, '←', {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: '22px',
+      color: '#ffffff',
+      backgroundColor: '#1c2540',
+      padding: { x: 12, y: 8 }
+    })
+      .setOrigin(0.5, 0)
+      .setInteractive({ useHandCursor: true });
+
+    back.on('pointerup', () => {
       this._destroyGuideInput();
       this.scene.start('admin-hub');
-    }, '22px');
+    });
 
     // =================================================
-    // Barra izquierda: grupos
+    // Barra izquierda: solo herramientas
     // =================================================
     const leftCX = Math.floor(this._leftBarW / 2);
     let leftY = this._topBarH + 20;
@@ -125,60 +134,38 @@ export class TrackStudioScene extends BaseScene {
       fontStyle: 'bold'
     }).setOrigin(0.5, 0);
 
-    leftY += 38;
+    leftY += 34;
 
-    this._groupButtons.mode = this._makeGroupButton(leftCX, leftY, '🔓', [
-      {
-        label: '🔓',
-        action: () => {
-          this._isClosed = false;
-          this._updateLoopButton();
-          this._updatePanel();
-          this._redrawEditor();
-        }
-      },
-      {
-        label: '🔒',
-        action: () => {
-          this._isClosed = true;
-          this._updateLoopButton();
-          this._updatePanel();
-          this._redrawEditor();
-        }
-      },
-      {
-        label: '🏁',
-        action: () => this._setTool(this._tool === 'finish' ? 'edit' : 'finish')
-      },
-      {
-        label: 'CP',
-        action: () => this._setTool(this._tool === 'checkpoint' ? 'edit' : 'checkpoint')
-      }
-    ], {
-      groupName: 'mode',
-      fontSize: '16px',
-      horizontal: false
+    this._loopBtn = this._makeIconButton(leftCX, leftY, '🔓', () => {
+      this._toggleClosed();
     });
 
-    leftY += 52;
+    leftY += 48;
 
-    this._groupButtons.guide = this._makeGroupButton(leftCX, leftY, 'IMG', [
-      {
-        label: 'IMG',
-        action: () => this._openGuidePicker()
-      },
-      {
-        label: '👁',
-        action: () => this._toggleGuideVisibility()
-      }
-    ], {
-      groupName: 'guide',
-      fontSize: '12px',
-      horizontal: false
+    this._finishBtn = this._makeIconButton(leftCX, leftY, '🏁', () => {
+      this._setTool(this._tool === 'finish' ? 'edit' : 'finish');
+    });
+
+    leftY += 48;
+
+    this._checkpointBtn = this._makeIconButton(leftCX, leftY, 'CP', () => {
+      this._setTool(this._tool === 'checkpoint' ? 'edit' : 'checkpoint');
+    }, '13px');
+
+    leftY += 48;
+
+    this._guideLoadBtn = this._makeIconButton(leftCX, leftY, 'IMG', () => {
+      this._openGuidePicker();
+    }, '12px');
+
+    leftY += 48;
+
+    this._guideToggleBtn = this._makeIconButton(leftCX, leftY, '👁', () => {
+      this._toggleGuideVisibility();
     });
 
     // =================================================
-    // Barra superior
+    // Barra superior horizontal
     // =================================================
     const topToolsY = 36;
     let topX = 300;
@@ -196,47 +183,32 @@ export class TrackStudioScene extends BaseScene {
     this._newBtn = this._makeIconButton(topX, topToolsY, 'NEW', () => {
       this._newProject();
     }, '12px');
+    topX += 54;
+
+    // =================================================
+    // Grupo vista preparado
+    // =================================================
+    this._viewBtnX = topX;
+    this._viewBtnY = topToolsY;
+    this._viewMainBtn = this._makeGroupedMainButton(
+      this._viewBtnX,
+      this._viewBtnY,
+      this._getViewToolLabel(),
+      () => this._runActiveViewTool(),
+      () => this._toggleViewMenu(),
+      '12px'
+    );
     topX += 52;
 
-    this._groupButtons.view = this._makeGroupButton(topX, topToolsY, '🔍+', [
-      {
-        label: '🔍+',
-        action: () => this._applyZoomAtViewportCenter(1.15)
-      },
-      {
-        label: '🔎-',
-        action: () => this._applyZoomAtViewportCenter(1 / 1.15)
-      },
-      {
-        label: '◎',
-        action: () => {
-          this._editCam.centerOn(this._editorWorldW / 2, this._editorWorldH / 2);
-          this._editCam.setZoom(0.28);
-          this._updatePanel();
-        }
-      }
-    ], {
-      groupName: 'view',
-      fontSize: '12px',
-      horizontal: true
-    });
-    topX += 48;
+    this._widthMinusBtn = this._makeIconButton(topX, topToolsY, 'W-', () => {
+      this._changeTrackWidth(-10);
+    }, '13px');
+    topX += 44;
 
-    this._groupButtons.track = this._makeGroupButton(topX, topToolsY, 'W', [
-      {
-        label: 'W-',
-        action: () => this._changeTrackWidth(-10)
-      },
-      {
-        label: 'W+',
-        action: () => this._changeTrackWidth(10)
-      }
-    ], {
-      groupName: 'track',
-      fontSize: '14px',
-      horizontal: true
-    });
-    topX += 48;
+    this._widthPlusBtn = this._makeIconButton(topX, topToolsY, 'W+', () => {
+      this._changeTrackWidth(10);
+    }, '13px');
+    topX += 44;
 
     this._guideAlphaMinusBtn = this._makeIconButton(topX, topToolsY, 'A-', () => {
       this._changeGuideAlpha(-0.08);
@@ -246,7 +218,7 @@ export class TrackStudioScene extends BaseScene {
     this._guideAlphaPlusBtn = this._makeIconButton(topX, topToolsY, 'A+', () => {
       this._changeGuideAlpha(0.08);
     }, '13px');
-    topX += 52;
+    topX += 50;
 
     this._nudgeStepBtn = this._makeIconButton(topX, topToolsY, String(this._getNudgeStep()), () => {
       this._cycleNudgeStep();
@@ -350,7 +322,9 @@ export class TrackStudioScene extends BaseScene {
     this.input.addPointer(2);
 
     this.input.on('pointerdown', (pointer) => {
-      this._closeFlyout();
+      if (!this._isPointerInViewMenu(pointer)) {
+        this._closeViewMenu();
+      }
 
       if (!this._isPointerInViewport(pointer)) return;
 
@@ -614,6 +588,7 @@ export class TrackStudioScene extends BaseScene {
     this._updatePanel();
     this._redrawEditor();
   }
+
   // =================================================
   // Guía de fondo
   // =================================================
@@ -720,37 +695,33 @@ export class TrackStudioScene extends BaseScene {
   // =================================================
   // UI helpers
   // =================================================
-  _makeIconButton(cx, cy, label, onClick, fontSize = '18px') {
-    return this._makeToolButton(cx, cy, 38, 38, label, onClick, { fontSize });
+  _makeIconButton(cx, cy, label, onClick, fontSize = '22px') {
+    const bg = this.add.circle(cx, cy, 18, 0x1c2540, 1)
+      .setStrokeStyle(2, 0x3c4e7a, 0.95)
+      .setInteractive({ useHandCursor: true });
+
+    const txt = this.add.text(cx, cy, label, {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize,
+      color: '#ffffff',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
+
+    bg.on('pointerup', onClick);
+
+    return { bg, txt, x: cx, y: cy };
   }
 
-  _makeToolButton(cx, cy, w, h, label, onClick, opts = {}) {
-    const fill = opts.fill ?? 0x1c2540;
-    const stroke = opts.stroke ?? 0x3c4e7a;
-    const fontSize = opts.fontSize ?? '18px';
-    const hasCorner = opts.hasCorner ?? false;
-
+  _makeGroupedMainButton(cx, cy, label, onMainClick, onCornerClick, fontSize = '14px') {
     const c = this.add.container(cx, cy);
-    c.setDepth(60);
+    c.setDepth(70);
 
     const bg = this.add.graphics();
-    bg.fillStyle(fill, 1);
-    bg.lineStyle(2, stroke, 0.95);
-    bg.fillRoundedRect(-w / 2, -h / 2, w, h, 8);
-    bg.strokeRoundedRect(-w / 2, -h / 2, w, h, 8);
+    bg.fillStyle(0x1c2540, 1);
+    bg.lineStyle(2, 0x3c4e7a, 0.95);
+    bg.fillRoundedRect(-20, -20, 40, 40, 8);
+    bg.strokeRoundedRect(-20, -20, 40, 40, 8);
     c.add(bg);
-
-    if (hasCorner) {
-      const corner = this.add.graphics();
-      corner.lineStyle(2, 0xaec6ff, 0.95);
-      corner.beginPath();
-      corner.moveTo(-w / 2 + 6, -h / 2 + 14);
-      corner.lineTo(-w / 2 + 6, -h / 2 + 6);
-      corner.lineTo(-w / 2 + 14, -h / 2 + 6);
-      corner.strokePath();
-      c.add(corner);
-      c._corner = corner;
-    }
 
     const txt = this.add.text(0, 0, label, {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
@@ -760,92 +731,122 @@ export class TrackStudioScene extends BaseScene {
     }).setOrigin(0.5);
     c.add(txt);
 
-    const zone = this.add.zone(0, 0, w, h).setInteractive({ useHandCursor: true });
-    zone.on('pointerup', (pointer) => {
+    const cornerGfx = this.add.graphics();
+    cornerGfx.lineStyle(2, 0xaec6ff, 0.95);
+    cornerGfx.beginPath();
+    cornerGfx.moveTo(-14, -6);
+    cornerGfx.lineTo(-14, -14);
+    cornerGfx.lineTo(-6, -14);
+    cornerGfx.strokePath();
+    c.add(cornerGfx);
+
+    const mainZone = this.add.zone(2, 2, 32, 32).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    mainZone.on('pointerup', (pointer) => {
       pointer.event?.stopPropagation?.();
-      onClick();
+      onMainClick();
     });
-    c.add(zone);
+    c.add(mainZone);
+
+    const cornerZone = this.add.zone(-12, -12, 16, 16).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    cornerZone.on('pointerup', (pointer) => {
+      pointer.event?.stopPropagation?.();
+      onCornerClick();
+    });
+    c.add(cornerZone);
 
     c._bg = bg;
     c._txt = txt;
-    c._zone = zone;
-    c._w = w;
-    c._h = h;
-    c._fill = fill;
-    c._stroke = stroke;
-    c._hasCorner = hasCorner;
+    c._cornerGfx = cornerGfx;
+    c._mainZone = mainZone;
+    c._cornerZone = cornerZone;
+    c.x = cx;
+    c.y = cy;
 
     return c;
   }
 
-  _setToolButtonStyle(btn, fill, stroke) {
-    if (!btn?._bg) return;
-
-    btn._fill = fill;
-    btn._stroke = stroke;
-
-    btn._bg.clear();
-    btn._bg.fillStyle(fill, 1);
-    btn._bg.lineStyle(2, stroke, 0.95);
-    btn._bg.fillRoundedRect(-btn._w / 2, -btn._h / 2, btn._w, btn._h, 8);
-    btn._bg.strokeRoundedRect(-btn._w / 2, -btn._h / 2, btn._w, btn._h, 8);
+  _getViewToolLabel() {
+    if (this._viewTool === 'zoomIn') return '🔍+';
+    if (this._viewTool === 'zoomOut') return '🔎-';
+    return '◎';
   }
 
-  _makeGroupButton(cx, cy, initialLabel, items, opts = {}) {
-    const btn = this._makeToolButton(cx, cy, 40, 40, initialLabel, () => {
-      this._toggleFlyout(btn, items, opts);
-    }, {
-      fontSize: opts.fontSize ?? '18px',
-      hasCorner: true
-    });
-
-    btn._groupItems = items;
-    btn._groupName = opts.groupName || 'group';
-    btn._groupHorizontal = !!opts.horizontal;
-    return btn;
-  }
-
-  _toggleFlyout(anchorBtn, items, opts = {}) {
-    if (this._activeFlyoutGroup === anchorBtn._groupName) {
-      this._closeFlyout();
+  _runActiveViewTool() {
+    if (this._viewTool === 'zoomIn') {
+      this._applyZoomAtViewportCenter(1.15);
       return;
     }
 
-    this._closeFlyout();
+    if (this._viewTool === 'zoomOut') {
+      this._applyZoomAtViewportCenter(1 / 1.15);
+      return;
+    }
 
-    const fly = this.add.container(0, 0);
-    fly.setDepth(80);
+    this._editCam.centerOn(this._editorWorldW / 2, this._editorWorldH / 2);
+    this._editCam.setZoom(0.28);
+    this._updatePanel();
+  }
 
-    const horizontal = !!opts.horizontal;
-    const spacing = 44;
+  _toggleViewMenu() {
+    if (this._viewMenu) {
+      this._closeViewMenu();
+      return;
+    }
+
+    const allItems = [
+      { key: 'zoomIn', label: '🔍+' },
+      { key: 'zoomOut', label: '🔎-' },
+      { key: 'center', label: '◎' }
+    ];
+
+    const items = allItems.filter(item => item.key !== this._viewTool);
+
+    const menu = this.add.container(0, 0);
+    menu.setDepth(90);
 
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
-      const x = horizontal ? anchorBtn.x + (i + 1) * spacing : anchorBtn.x;
-      const y = horizontal ? anchorBtn.y : anchorBtn.y + (i + 1) * spacing;
+      const y = this._viewBtnY + 48 + (i * 44);
 
-      const child = this._makeToolButton(x, y, 40, 40, item.label, () => {
-        anchorBtn._txt.setText(item.label);
-        this._closeFlyout();
-        item.action();
-      }, {
-        fontSize: opts.fontSize ?? '18px'
-      });
+      const btn = this._makeIconButton(this._viewBtnX, y, item.label, () => {
+        this._viewTool = item.key;
+        this._viewMainBtn._txt.setText(item.label);
+        this._closeViewMenu();
+        this._runActiveViewTool();
+      }, '12px');
 
-      fly.add(child);
+      menu.add(btn.bg);
+      menu.add(btn.txt);
     }
 
-    this._activeFlyout = fly;
-    this._activeFlyoutGroup = anchorBtn._groupName;
+    menu._x = this._viewBtnX;
+    menu._y = this._viewBtnY + 48;
+    menu._w = 40;
+    menu._h = items.length * 44;
+
+    this._viewMenu = menu;
   }
 
-  _closeFlyout() {
-    if (this._activeFlyout) {
-      this._activeFlyout.destroy(true);
-      this._activeFlyout = null;
-      this._activeFlyoutGroup = null;
-    }
+  _closeViewMenu() {
+    if (!this._viewMenu) return;
+    this._viewMenu.destroy(true);
+    this._viewMenu = null;
+  }
+
+  _isPointerInViewMenu(pointer) {
+    if (!this._viewMenu) return false;
+
+    const x = this._viewMenu._x - 20;
+    const y = this._viewMenu._y - 20;
+    const w = this._viewMenu._w;
+    const h = this._viewMenu._h;
+
+    return (
+      pointer.x >= x &&
+      pointer.x <= x + w &&
+      pointer.y >= y &&
+      pointer.y <= y + h
+    );
   }
 
   _getNudgeStep() {
@@ -854,8 +855,8 @@ export class TrackStudioScene extends BaseScene {
 
   _cycleNudgeStep() {
     this._nudgeStepIndex = (this._nudgeStepIndex + 1) % this._nudgeSteps.length;
-    if (this._nudgeStepBtn?._txt) {
-      this._nudgeStepBtn._txt.setText(String(this._getNudgeStep()));
+    if (this._nudgeStepBtn?.txt) {
+      this._nudgeStepBtn.txt.setText(String(this._getNudgeStep()));
     }
     this._updatePanel();
   }
@@ -867,32 +868,33 @@ export class TrackStudioScene extends BaseScene {
   }
 
   _updateToolButtons() {
-    if (this._groupButtons.mode) {
-      this._setToolButtonStyle(this._groupButtons.mode, 0x1c2540, 0x3c4e7a);
-    }
-    if (this._groupButtons.guide) {
-      this._setToolButtonStyle(this._groupButtons.guide, 0x1c2540, 0x3c4e7a);
-    }
-
-    if (this._tool === 'finish' && this._groupButtons.mode) {
-      this._setToolButtonStyle(this._groupButtons.mode, 0x2b8a3e, 0xa8ffb8);
-      this._groupButtons.mode._txt.setText('🏁');
-    } else if (this._tool === 'checkpoint' && this._groupButtons.mode) {
-      this._setToolButtonStyle(this._groupButtons.mode, 0x235c9f, 0xaed4ff);
-      this._groupButtons.mode._txt.setText('CP');
-    } else if (this._groupButtons.mode) {
-      this._groupButtons.mode._txt.setText(this._isClosed ? '🔒' : '🔓');
+    if (this._finishBtn?.bg) {
+      const activeFinish = this._tool === 'finish';
+      this._finishBtn.bg.setFillStyle(activeFinish ? 0x2b8a3e : 0x1c2540, 1);
+      this._finishBtn.bg.setStrokeStyle(2, activeFinish ? 0xa8ffb8 : 0x3c4e7a, 0.95);
     }
 
-    if (this._groupButtons.guide) {
-      this._groupButtons.guide._txt.setText(this._guideVisible ? '👁' : 'IMG');
-      if (this._guideVisible) {
-        this._setToolButtonStyle(this._groupButtons.guide, 0x1f4f2d, 0x8df0a8);
-      }
+    if (this._checkpointBtn?.bg) {
+      const activeCp = this._tool === 'checkpoint';
+      this._checkpointBtn.bg.setFillStyle(activeCp ? 0x235c9f : 0x1c2540, 1);
+      this._checkpointBtn.bg.setStrokeStyle(2, activeCp ? 0xaed4ff : 0x3c4e7a, 0.95);
     }
 
-    if (this._nudgeStepBtn?._txt) {
-      this._nudgeStepBtn._txt.setText(String(this._getNudgeStep()));
+    if (this._guideToggleBtn?.bg) {
+      this._guideToggleBtn.bg.setFillStyle(this._guideVisible ? 0x1f4f2d : 0x1c2540, 1);
+      this._guideToggleBtn.bg.setStrokeStyle(2, this._guideVisible ? 0x8df0a8 : 0x3c4e7a, 0.95);
+    }
+
+    if (this._loopBtn?.txt && this._tool === 'edit') {
+      this._loopBtn.txt.setText(this._isClosed ? '🔒' : '🔓');
+    }
+
+    if (this._nudgeStepBtn?.txt) {
+      this._nudgeStepBtn.txt.setText(String(this._getNudgeStep()));
+    }
+
+    if (this._viewMainBtn?._txt) {
+      this._viewMainBtn._txt.setText(this._getViewToolLabel());
     }
   }
 
@@ -904,9 +906,8 @@ export class TrackStudioScene extends BaseScene {
   }
 
   _updateLoopButton() {
-    if (this._groupButtons?.mode && this._tool === 'edit') {
-      this._groupButtons.mode._txt.setText(this._isClosed ? '🔒' : '🔓');
-    }
+    if (!this._loopBtn?.txt) return;
+    this._loopBtn.txt.setText(this._isClosed ? '🔒' : '🔓');
   }
 
   // =================================================
@@ -1429,6 +1430,7 @@ export class TrackStudioScene extends BaseScene {
       this._panelText.setText(
         'Sin nodo seleccionado\n' +
         `Herramienta: ${this._tool}\n` +
+        `Vista: ${this._getViewToolLabel()}\n` +
         `Nodos: ${this._nodes.length}\n` +
         `Loop: ${this._isClosed ? 'cerrado' : 'abierto'}\n` +
         `Meta: ${this._finishLine ? 'sí' : 'no'}\n` +
@@ -1448,6 +1450,7 @@ export class TrackStudioScene extends BaseScene {
     this._panelText.setText(
       `Nodo #${this._selectedNode}\n` +
       `Herramienta: ${this._tool}\n` +
+      `Vista: ${this._getViewToolLabel()}\n` +
       `Modo: ${part}\n` +
       `Loop: ${this._isClosed ? 'cerrado' : 'abierto'}\n` +
       `Meta: ${this._finishLine ? 'sí' : 'no'}\n` +
@@ -1478,7 +1481,8 @@ export class TrackStudioScene extends BaseScene {
       checkpoints: this._checkpoints,
       guideAlpha: this._guideAlpha,
       guideVisible: this._guideVisible,
-      nudgeStepIndex: this._nudgeStepIndex
+      nudgeStepIndex: this._nudgeStepIndex,
+      viewTool: this._viewTool
     };
   }
 
@@ -1491,6 +1495,7 @@ export class TrackStudioScene extends BaseScene {
     this._guideAlpha = data.guideAlpha ?? 0.32;
     this._guideVisible = data.guideVisible ?? true;
     this._nudgeStepIndex = data.nudgeStepIndex ?? 2;
+    this._viewTool = data.viewTool || 'zoomIn';
 
     if (this._guideImage) {
       this._guideImage.setAlpha(this._guideAlpha);
@@ -1542,6 +1547,7 @@ export class TrackStudioScene extends BaseScene {
     this._selectedNode = -1;
     this._selectedPart = null;
     this._tool = 'edit';
+    this._viewTool = 'zoomIn';
 
     this._updateLoopButton();
     this._updateToolButtons();
