@@ -980,17 +980,19 @@ export class TrackStudioScene extends BaseScene {
   // =================================================
   // Grupo mode
   // =================================================
-  _getModeToolLabel() {
-    if (this._modeTool === 'finish') return '🏁';
-    if (this._modeTool === 'checkpoint') return 'CP';
-    return this._isClosed ? '🔒' : '🔓';
-  }
+_getModeToolLabel() {
+  if (this._modeTool === 'finish') return '🏁';
+  if (this._modeTool === 'checkpoint') return 'CP';
+  if (this._modeTool === 'piano') return 'PI';
+  return this._isClosed ? '🔒' : '🔓';
+}
 
-  _runActiveModeTool() {
-    if (this._modeTool === 'finish') return this._setTool('finish');
-    if (this._modeTool === 'checkpoint') return this._setTool('checkpoint');
-    return this._toggleClosed();
-  }
+_runActiveModeTool() {
+  if (this._modeTool === 'finish') return this._setTool('finish');
+  if (this._modeTool === 'checkpoint') return this._setTool('checkpoint');
+  if (this._modeTool === 'piano') return this._setTool('piano');
+  return this._toggleClosed();
+}
 
 _toggleModeMenu() {
   if (this._modeMenu) return this._closeModeMenu();
