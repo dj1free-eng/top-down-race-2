@@ -392,7 +392,16 @@ export class TrackStudioScene extends BaseScene {
 
 const world = this._screenToWorld(p.x, p.y);
 const idx = this._selectedPart.index;
-
+if (
+  this._selectedPart.type === 'piano' ||
+  this._selectedPart.type === 'pianoHandleA' ||
+  this._selectedPart.type === 'pianoHandleB'
+) {
+  this._updatePianoDrag(this._selectedPart, world);
+  this._updatePanel();
+  this._redrawEditor();
+  return;
+}
 if (
   this._selectedPart.type === 'node' ||
   this._selectedPart.type === 'handleIn' ||
@@ -584,13 +593,26 @@ if (
       }
 
     } else {
-      const hit = this._findControlAt(world.x, world.y);
+} else {
 
-      if (hit) {
-        this._selectedNode = hit.index;
-        this._selectedPart = hit;
-      } else {
-        const node = this._createNode(world.x, world.y);
+  // 🔴 1. Primero detectar pianos
+  const pianoHit = this._findPianoControl(world.x, world.y);
+  if (pianoHit) {
+    this._selectedPiano = pianoHit.index;
+    this._selectedNode = -1;
+    this._selectedPart = pianoHit;
+    return;
+  }
+
+  // 🔵 2. Luego lo normal (nodos)
+  const hit = this._findControlAt(world.x, world.y);
+
+  if (hit) {
+    this._selectedNode = hit.index;
+    this._selectedPiano = -1;
+    this._selectedPart = hit;
+  } else {
+    const node = this._createNode(world.x, world.y);
 
         if (this._nodes.length > 0) {
           const prev = this._nodes[this._nodes.length - 1];
@@ -1715,7 +1737,7 @@ _findControlAt(x, y) {
     this._checkpointGfx.clear();
     this._finishGfx.clear();
     this._nodeGfx.clear();
-
+    this._drawPianos(g);
     const bezier = this._getBezierPoints();
 
     if (bezier.length >= 2) {
