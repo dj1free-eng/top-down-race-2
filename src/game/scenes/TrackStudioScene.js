@@ -67,17 +67,21 @@ export class TrackStudioScene extends BaseScene {
     this._nudgeSteps = [1, 5, 10];
     this._nudgeStepIndex = 2;
 
-    // grupo save
-    this._saveTool = 'save'; // 'save' | 'load' | 'new'
+    // grupos toolbar
+    this._saveTool = 'save';
     this._saveMenu = null;
 
-    // grupo vista
-    this._viewTool = 'zoomIn'; // 'zoomIn' | 'zoomOut' | 'center'
+    this._viewTool = 'zoomIn';
     this._viewMenu = null;
 
-    // grupo modo
-    this._modeTool = 'edit'; // 'edit' | 'finish' | 'checkpoint'
+    this._modeTool = 'edit';
     this._modeMenu = null;
+
+    this._trackTool = 'widthUp';
+    this._trackMenu = null;
+
+    this._guideTool = 'load';
+    this._guideMenu = null;
 
     // =================================================
     // UI base
@@ -130,10 +134,10 @@ export class TrackStudioScene extends BaseScene {
     });
 
     // =================================================
-    // Barra izquierda: herramientas
+    // Barra izquierda
     // =================================================
     const leftCX = Math.floor(this._leftBarW / 2);
-    let leftY = this._topBarH + 20;
+    const leftY = this._topBarH + 20;
 
     this.add.text(leftCX, leftY, 'TOOLS', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
@@ -142,45 +146,11 @@ export class TrackStudioScene extends BaseScene {
       fontStyle: 'bold'
     }).setOrigin(0.5, 0);
 
-    leftY += 34;
-
-    this._loopBtn = this._makeIconButton(leftCX, leftY, '🔓', () => {
-      this._toggleClosed();
-    });
-
-    leftY += 48;
-
-    this._finishBtn = this._makeIconButton(leftCX, leftY, '🏁', () => {
-      this._setTool(this._tool === 'finish' ? 'edit' : 'finish');
-      this._modeTool = this._tool === 'finish' ? 'edit' : 'finish';
-      this._updateToolButtons();
-    });
-
-    leftY += 48;
-
-    this._checkpointBtn = this._makeIconButton(leftCX, leftY, 'CP', () => {
-      this._setTool(this._tool === 'checkpoint' ? 'edit' : 'checkpoint');
-      this._modeTool = this._tool === 'checkpoint' ? 'edit' : 'checkpoint';
-      this._updateToolButtons();
-    }, '13px');
-
-    leftY += 48;
-
-    this._guideLoadBtn = this._makeIconButton(leftCX, leftY, 'IMG', () => {
-      this._openGuidePicker();
-    }, '12px');
-
-    leftY += 48;
-
-    this._guideToggleBtn = this._makeIconButton(leftCX, leftY, '👁', () => {
-      this._toggleGuideVisibility();
-    });
-
     // =================================================
-    // Barra superior horizontal
+    // Barra superior
     // =================================================
     const topToolsY = 36;
-    let topX = 300;
+    let topX = 260;
 
     this._saveBtnX = topX;
     this._saveBtnY = topToolsY;
@@ -192,7 +162,7 @@ export class TrackStudioScene extends BaseScene {
       () => this._toggleSaveMenu(),
       '14px'
     );
-    topX += 54;
+    topX += 52;
 
     this._viewBtnX = topX;
     this._viewBtnY = topToolsY;
@@ -218,15 +188,29 @@ export class TrackStudioScene extends BaseScene {
     );
     topX += 52;
 
-    this._widthMinusBtn = this._makeIconButton(topX, topToolsY, 'W-', () => {
-      this._changeTrackWidth(-10);
-    }, '13px');
-    topX += 44;
+    this._trackBtnX = topX;
+    this._trackBtnY = topToolsY;
+    this._trackMainBtn = this._makeGroupedMainButton(
+      this._trackBtnX,
+      this._trackBtnY,
+      this._getTrackToolLabel(),
+      () => this._runActiveTrackTool(),
+      () => this._toggleTrackMenu(),
+      '13px'
+    );
+    topX += 52;
 
-    this._widthPlusBtn = this._makeIconButton(topX, topToolsY, 'W+', () => {
-      this._changeTrackWidth(10);
-    }, '13px');
-    topX += 44;
+    this._guideBtnX = topX;
+    this._guideBtnY = topToolsY;
+    this._guideMainBtn = this._makeGroupedMainButton(
+      this._guideBtnX,
+      this._guideBtnY,
+      this._getGuideToolLabel(),
+      () => this._runActiveGuideTool(),
+      () => this._toggleGuideMenu(),
+      '12px'
+    );
+    topX += 52;
 
     this._guideAlphaMinusBtn = this._makeIconButton(topX, topToolsY, 'A-', () => {
       this._changeGuideAlpha(-0.08);
@@ -340,17 +324,11 @@ export class TrackStudioScene extends BaseScene {
     this.input.addPointer(2);
 
     this.input.on('pointerdown', (pointer) => {
-      if (!this._isPointerInViewMenu(pointer)) {
-        this._closeViewMenu();
-      }
-
-      if (!this._isPointerInSaveMenu(pointer)) {
-        this._closeSaveMenu();
-      }
-
-      if (!this._isPointerInModeMenu(pointer)) {
-        this._closeModeMenu();
-      }
+      if (!this._isPointerInViewMenu(pointer)) this._closeViewMenu();
+      if (!this._isPointerInSaveMenu(pointer)) this._closeSaveMenu();
+      if (!this._isPointerInModeMenu(pointer)) this._closeModeMenu();
+      if (!this._isPointerInTrackMenu(pointer)) this._closeTrackMenu();
+      if (!this._isPointerInGuideMenu(pointer)) this._closeGuideMenu();
 
       if (!this._isPointerInViewport(pointer)) return;
 
@@ -776,11 +754,11 @@ export class TrackStudioScene extends BaseScene {
       }
     };
 
-    const mainZone = this.add.zone(0, 0, 40, 40)
+    const zone = this.add.zone(0, 0, 40, 40)
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
 
-    mainZone.on('pointerdown', (pointer) => {
+    zone.on('pointerdown', (pointer) => {
       pointer.event?.stopPropagation?.();
       longPressTriggered = false;
       cancelPress();
@@ -792,7 +770,7 @@ export class TrackStudioScene extends BaseScene {
       });
     });
 
-    mainZone.on('pointerup', (pointer) => {
+    zone.on('pointerup', (pointer) => {
       pointer.event?.stopPropagation?.();
 
       if (longPressTriggered) {
@@ -805,106 +783,51 @@ export class TrackStudioScene extends BaseScene {
       onMainClick();
     });
 
-    mainZone.on('pointerout', () => {
+    zone.on('pointerout', () => {
       cancelPress();
       longPressTriggered = false;
     });
 
-    c.add(mainZone);
+    c.add(zone);
 
     c._bg = bg;
     c._txt = txt;
-    c._cornerGfx = cornerGfx;
-    c._mainZone = mainZone;
-    c.x = cx;
-    c.y = cy;
+    c._zone = zone;
 
     return c;
   }
 
-  // =================================================
-  // Grupo vista
-  // =================================================
-  _getViewToolLabel() {
-    if (this._viewTool === 'zoomIn') return '🔍+';
-    if (this._viewTool === 'zoomOut') return '🔎-';
-    return '◎';
-  }
-
-  _runActiveViewTool() {
-    if (this._viewTool === 'zoomIn') {
-      this._applyZoomAtViewportCenter(1.15);
-      return;
-    }
-
-    if (this._viewTool === 'zoomOut') {
-      this._applyZoomAtViewportCenter(1 / 1.15);
-      return;
-    }
-
-    this._editCam.centerOn(this._editorWorldW / 2, this._editorWorldH / 2);
-    this._editCam.setZoom(0.28);
-    this._updatePanel();
-  }
-
-  _toggleViewMenu() {
-    if (this._viewMenu) {
-      this._closeViewMenu();
-      return;
-    }
-
-    const allItems = [
-      { key: 'zoomIn', label: '🔍+' },
-      { key: 'zoomOut', label: '🔎-' },
-      { key: 'center', label: '◎' }
-    ];
-
-    const items = allItems.filter(item => item.key !== this._viewTool);
-
+  _makeMenuPanel(baseX, baseY, items, makeBtn) {
     const menu = this.add.container(0, 0);
     menu.setDepth(90);
 
+    const panelX = baseX + 28;
+    const panelY = baseY - 20;
+    const panelW = items.length * 44 + 12;
+    const panelH = 52;
+
+    const panel = this.add.graphics();
+    panel.fillStyle(0x101626, 1);
+    panel.lineStyle(2, 0x3c4e7a, 0.95);
+    panel.fillRoundedRect(panelX - 6, panelY - 6, panelW, panelH, 10);
+    panel.strokeRoundedRect(panelX - 6, panelY - 6, panelW, panelH, 10);
+    menu.add(panel);
+
     for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-
-      const x = this._viewBtnX + 48 + (i * 44);
-      const y = this._viewBtnY;
-
-      const btn = this._makeIconButton(x, y, item.label, () => {
-        this._viewTool = item.key;
-        this._viewMainBtn._txt.setText(item.label);
-        this._closeViewMenu();
-        this._runActiveViewTool();
-      }, '12px');
-
+      const x = baseX + 48 + (i * 44);
+      const y = baseY;
+      const btn = makeBtn(items[i], x, y);
       menu.add(btn.bg);
       menu.add(btn.txt);
     }
 
-    menu._x = this._viewBtnX + 28;
-    menu._y = this._viewBtnY - 20;
-    menu._w = items.length * 44;
-    menu._h = 40;
+    menu._x = panelX - 6;
+    menu._y = panelY - 6;
+    menu._w = panelW;
+    menu._h = panelH;
 
-    this._viewMenu = menu;
     this._editCam.ignore(menu.list);
-  }
-
-  _closeViewMenu() {
-    if (!this._viewMenu) return;
-    this._viewMenu.destroy(true);
-    this._viewMenu = null;
-  }
-
-  _isPointerInViewMenu(pointer) {
-    if (!this._viewMenu) return false;
-
-    return (
-      pointer.x >= this._viewMenu._x &&
-      pointer.x <= this._viewMenu._x + this._viewMenu._w &&
-      pointer.y >= this._viewMenu._y &&
-      pointer.y <= this._viewMenu._y + this._viewMenu._h
-    );
+    return menu;
   }
 
   // =================================================
@@ -917,24 +840,13 @@ export class TrackStudioScene extends BaseScene {
   }
 
   _runActiveSaveTool() {
-    if (this._saveTool === 'save') {
-      this._saveProject();
-      return;
-    }
-
-    if (this._saveTool === 'load') {
-      this._loadProject();
-      return;
-    }
-
-    this._newProject();
+    if (this._saveTool === 'save') return this._saveProject();
+    if (this._saveTool === 'load') return this._loadProject();
+    return this._newProject();
   }
 
   _toggleSaveMenu() {
-    if (this._saveMenu) {
-      this._closeSaveMenu();
-      return;
-    }
+    if (this._saveMenu) return this._closeSaveMenu();
 
     const allItems = [
       { key: 'save', label: '💾' },
@@ -944,39 +856,20 @@ export class TrackStudioScene extends BaseScene {
 
     const items = allItems.filter(item => item.key !== this._saveTool);
 
-    const menu = this.add.container(0, 0);
-    menu.setDepth(90);
-
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-
-      const x = this._saveBtnX + 48 + (i * 44);
-      const y = this._saveBtnY;
-
-      const btn = this._makeIconButton(
+    this._saveMenu = this._makeMenuPanel(this._saveBtnX, this._saveBtnY, items, (item, x, y) => {
+      return this._makeIconButton(
         x,
         y,
         item.label,
         () => {
           this._saveTool = item.key;
-          this._saveMainBtn._txt.setText(item.label);
+          this._saveMainBtn._txt.setText(this._getSaveToolLabel());
           this._closeSaveMenu();
           this._runActiveSaveTool();
         },
         item.key === 'new' ? '12px' : '16px'
       );
-
-      menu.add(btn.bg);
-      menu.add(btn.txt);
-    }
-
-    menu._x = this._saveBtnX + 28;
-    menu._y = this._saveBtnY - 20;
-    menu._w = items.length * 44;
-    menu._h = 40;
-
-    this._saveMenu = menu;
-    this._editCam.ignore(menu.list);
+    });
   }
 
   _closeSaveMenu() {
@@ -987,7 +880,6 @@ export class TrackStudioScene extends BaseScene {
 
   _isPointerInSaveMenu(pointer) {
     if (!this._saveMenu) return false;
-
     return (
       pointer.x >= this._saveMenu._x &&
       pointer.x <= this._saveMenu._x + this._saveMenu._w &&
@@ -997,7 +889,62 @@ export class TrackStudioScene extends BaseScene {
   }
 
   // =================================================
-  // Grupo modo
+  // Grupo view
+  // =================================================
+  _getViewToolLabel() {
+    if (this._viewTool === 'zoomIn') return '🔍+';
+    if (this._viewTool === 'zoomOut') return '🔎-';
+    return '◎';
+  }
+
+  _runActiveViewTool() {
+    if (this._viewTool === 'zoomIn') return this._applyZoomAtViewportCenter(1.15);
+    if (this._viewTool === 'zoomOut') return this._applyZoomAtViewportCenter(1 / 1.15);
+
+    this._editCam.centerOn(this._editorWorldW / 2, this._editorWorldH / 2);
+    this._editCam.setZoom(0.28);
+    this._updatePanel();
+  }
+
+  _toggleViewMenu() {
+    if (this._viewMenu) return this._closeViewMenu();
+
+    const allItems = [
+      { key: 'zoomIn', label: '🔍+' },
+      { key: 'zoomOut', label: '🔎-' },
+      { key: 'center', label: '◎' }
+    ];
+
+    const items = allItems.filter(item => item.key !== this._viewTool);
+
+    this._viewMenu = this._makeMenuPanel(this._viewBtnX, this._viewBtnY, items, (item, x, y) => {
+      return this._makeIconButton(x, y, item.label, () => {
+        this._viewTool = item.key;
+        this._viewMainBtn._txt.setText(this._getViewToolLabel());
+        this._closeViewMenu();
+        this._runActiveViewTool();
+      }, '12px');
+    });
+  }
+
+  _closeViewMenu() {
+    if (!this._viewMenu) return;
+    this._viewMenu.destroy(true);
+    this._viewMenu = null;
+  }
+
+  _isPointerInViewMenu(pointer) {
+    if (!this._viewMenu) return false;
+    return (
+      pointer.x >= this._viewMenu._x &&
+      pointer.x <= this._viewMenu._x + this._viewMenu._w &&
+      pointer.y >= this._viewMenu._y &&
+      pointer.y <= this._viewMenu._y + this._viewMenu._h
+    );
+  }
+
+  // =================================================
+  // Grupo mode
   // =================================================
   _getModeToolLabel() {
     if (this._modeTool === 'finish') return '🏁';
@@ -1006,84 +953,43 @@ export class TrackStudioScene extends BaseScene {
   }
 
   _runActiveModeTool() {
-    if (this._modeTool === 'finish') {
-      this._setTool('finish');
-      return;
-    }
-
-    if (this._modeTool === 'checkpoint') {
-      this._setTool('checkpoint');
-      return;
-    }
-
-    this._toggleClosed();
+    if (this._modeTool === 'finish') return this._setTool('finish');
+    if (this._modeTool === 'checkpoint') return this._setTool('checkpoint');
+    return this._toggleClosed();
   }
 
-_toggleModeMenu() {
-  if (this._modeMenu) {
-    this._closeModeMenu();
-    return;
+  _toggleModeMenu() {
+    if (this._modeMenu) return this._closeModeMenu();
+
+    const allItems = [
+      { key: 'edit', label: this._isClosed ? '🔒' : '🔓' },
+      { key: 'finish', label: '🏁' },
+      { key: 'checkpoint', label: 'CP' }
+    ];
+
+    const items = allItems.filter(item => item.key !== this._modeTool);
+
+    this._modeMenu = this._makeMenuPanel(this._modeBtnX, this._modeBtnY, items, (item, x, y) => {
+      return this._makeIconButton(
+        x,
+        y,
+        item.label,
+        () => {
+          this._modeTool = item.key;
+          this._modeMainBtn._txt.setText(this._getModeToolLabel());
+          this._closeModeMenu();
+
+          if (item.key === 'edit') {
+            this._setTool('edit');
+          } else {
+            this._setTool(item.key);
+          }
+        },
+        item.key === 'checkpoint' ? '12px' : '16px'
+      );
+    });
   }
 
-  const allItems = [
-    { key: 'edit', label: this._isClosed ? '🔒' : '🔓' },
-    { key: 'finish', label: '🏁' },
-    { key: 'checkpoint', label: 'CP' }
-  ];
-
-  const items = allItems.filter(item => item.key !== this._modeTool);
-
-  const menu = this.add.container(0, 0);
-  menu.setDepth(90);
-
-  const panelX = this._modeBtnX + 28;
-  const panelY = this._modeBtnY - 20;
-  const panelW = items.length * 44 + 12;
-  const panelH = 52;
-
-  const panel = this.add.graphics();
-  panel.fillStyle(0x101626, 1);
-  panel.lineStyle(2, 0x3c4e7a, 0.95);
-  panel.fillRoundedRect(panelX - 6, panelY - 6, panelW, panelH, 10);
-  panel.strokeRoundedRect(panelX - 6, panelY - 6, panelW, panelH, 10);
-  menu.add(panel);
-
-  for (let i = 0; i < items.length; i++) {
-    const item = items[i];
-
-    const x = this._modeBtnX + 48 + (i * 44);
-    const y = this._modeBtnY;
-
-    const btn = this._makeIconButton(
-      x,
-      y,
-      item.label,
-      () => {
-        this._modeTool = item.key;
-        this._modeMainBtn._txt.setText(this._getModeToolLabel());
-        this._closeModeMenu();
-
-        if (item.key === 'edit') {
-          this._setTool('edit');
-        } else {
-          this._setTool(item.key);
-        }
-      },
-      item.key === 'checkpoint' ? '12px' : '16px'
-    );
-
-    menu.add(btn.bg);
-    menu.add(btn.txt);
-  }
-
-  menu._x = panelX - 6;
-  menu._y = panelY - 6;
-  menu._w = panelW;
-  menu._h = panelH;
-
-  this._modeMenu = menu;
-  this._editCam.ignore(menu.list);
-}
   _closeModeMenu() {
     if (!this._modeMenu) return;
     this._modeMenu.destroy(true);
@@ -1092,12 +998,107 @@ _toggleModeMenu() {
 
   _isPointerInModeMenu(pointer) {
     if (!this._modeMenu) return false;
-
     return (
       pointer.x >= this._modeMenu._x &&
       pointer.x <= this._modeMenu._x + this._modeMenu._w &&
       pointer.y >= this._modeMenu._y &&
       pointer.y <= this._modeMenu._y + this._modeMenu._h
+    );
+  }
+
+  // =================================================
+  // Grupo track
+  // =================================================
+  _getTrackToolLabel() {
+    return this._trackTool === 'widthDown' ? 'W-' : 'W+';
+  }
+
+  _runActiveTrackTool() {
+    if (this._trackTool === 'widthDown') return this._changeTrackWidth(-10);
+    return this._changeTrackWidth(10);
+  }
+
+  _toggleTrackMenu() {
+    if (this._trackMenu) return this._closeTrackMenu();
+
+    const allItems = [
+      { key: 'widthDown', label: 'W-' },
+      { key: 'widthUp', label: 'W+' }
+    ];
+
+    const items = allItems.filter(item => item.key !== this._trackTool);
+
+    this._trackMenu = this._makeMenuPanel(this._trackBtnX, this._trackBtnY, items, (item, x, y) => {
+      return this._makeIconButton(x, y, item.label, () => {
+        this._trackTool = item.key;
+        this._trackMainBtn._txt.setText(this._getTrackToolLabel());
+        this._closeTrackMenu();
+        this._runActiveTrackTool();
+      }, '13px');
+    });
+  }
+
+  _closeTrackMenu() {
+    if (!this._trackMenu) return;
+    this._trackMenu.destroy(true);
+    this._trackMenu = null;
+  }
+
+  _isPointerInTrackMenu(pointer) {
+    if (!this._trackMenu) return false;
+    return (
+      pointer.x >= this._trackMenu._x &&
+      pointer.x <= this._trackMenu._x + this._trackMenu._w &&
+      pointer.y >= this._trackMenu._y &&
+      pointer.y <= this._trackMenu._y + this._trackMenu._h
+    );
+  }
+
+  // =================================================
+  // Grupo guide
+  // =================================================
+  _getGuideToolLabel() {
+    return this._guideTool === 'toggle' ? '👁' : 'IMG';
+  }
+
+  _runActiveGuideTool() {
+    if (this._guideTool === 'toggle') return this._toggleGuideVisibility();
+    return this._openGuidePicker();
+  }
+
+  _toggleGuideMenu() {
+    if (this._guideMenu) return this._closeGuideMenu();
+
+    const allItems = [
+      { key: 'load', label: 'IMG' },
+      { key: 'toggle', label: '👁' }
+    ];
+
+    const items = allItems.filter(item => item.key !== this._guideTool);
+
+    this._guideMenu = this._makeMenuPanel(this._guideBtnX, this._guideBtnY, items, (item, x, y) => {
+      return this._makeIconButton(x, y, item.label, () => {
+        this._guideTool = item.key;
+        this._guideMainBtn._txt.setText(this._getGuideToolLabel());
+        this._closeGuideMenu();
+        this._runActiveGuideTool();
+      }, item.key === 'load' ? '12px' : '16px');
+    });
+  }
+
+  _closeGuideMenu() {
+    if (!this._guideMenu) return;
+    this._guideMenu.destroy(true);
+    this._guideMenu = null;
+  }
+
+  _isPointerInGuideMenu(pointer) {
+    if (!this._guideMenu) return false;
+    return (
+      pointer.x >= this._guideMenu._x &&
+      pointer.x <= this._guideMenu._x + this._guideMenu._w &&
+      pointer.y >= this._guideMenu._y &&
+      pointer.y <= this._guideMenu._y + this._guideMenu._h
     );
   }
 
@@ -1117,68 +1118,52 @@ _toggleModeMenu() {
     this._tool = tool;
     if (tool === 'finish') this._modeTool = 'finish';
     if (tool === 'checkpoint') this._modeTool = 'checkpoint';
-    if (tool === 'edit' && this._modeTool !== 'edit') {
-      this._modeTool = 'edit';
-    }
+    if (tool === 'edit' && this._modeTool !== 'edit') this._modeTool = 'edit';
     this._updateToolButtons();
     this._updatePanel();
   }
 
   _updateToolButtons() {
-    if (this._finishBtn?.bg) {
-      const activeFinish = this._tool === 'finish';
-      this._finishBtn.bg.setFillStyle(activeFinish ? 0x2b8a3e : 0x1c2540, 1);
-      this._finishBtn.bg.setStrokeStyle(2, activeFinish ? 0xa8ffb8 : 0x3c4e7a, 0.95);
+    if (this._guideAlphaMinusBtn?.bg) {
+      this._guideAlphaMinusBtn.bg.setFillStyle(0x1c2540, 1);
+      this._guideAlphaMinusBtn.bg.setStrokeStyle(2, 0x3c4e7a, 0.95);
     }
 
-    if (this._checkpointBtn?.bg) {
-      const activeCp = this._tool === 'checkpoint';
-      this._checkpointBtn.bg.setFillStyle(activeCp ? 0x235c9f : 0x1c2540, 1);
-      this._checkpointBtn.bg.setStrokeStyle(2, activeCp ? 0xaed4ff : 0x3c4e7a, 0.95);
-    }
-
-    if (this._guideToggleBtn?.bg) {
-      this._guideToggleBtn.bg.setFillStyle(this._guideVisible ? 0x1f4f2d : 0x1c2540, 1);
-      this._guideToggleBtn.bg.setStrokeStyle(2, this._guideVisible ? 0x8df0a8 : 0x3c4e7a, 0.95);
-    }
-
-    if (this._loopBtn?.txt && this._tool === 'edit') {
-      this._loopBtn.txt.setText(this._isClosed ? '🔒' : '🔓');
+    if (this._guideAlphaPlusBtn?.bg) {
+      this._guideAlphaPlusBtn.bg.setFillStyle(0x1c2540, 1);
+      this._guideAlphaPlusBtn.bg.setStrokeStyle(2, 0x3c4e7a, 0.95);
     }
 
     if (this._nudgeStepBtn?.txt) {
       this._nudgeStepBtn.txt.setText(String(this._getNudgeStep()));
     }
 
-    if (this._viewMainBtn?._txt) {
-      this._viewMainBtn._txt.setText(this._getViewToolLabel());
-    }
+    if (this._saveMainBtn?._txt) this._saveMainBtn._txt.setText(this._getSaveToolLabel());
+    if (this._viewMainBtn?._txt) this._viewMainBtn._txt.setText(this._getViewToolLabel());
+    if (this._modeMainBtn?._txt) this._modeMainBtn._txt.setText(this._getModeToolLabel());
+    if (this._trackMainBtn?._txt) this._trackMainBtn._txt.setText(this._getTrackToolLabel());
+    if (this._guideMainBtn?._txt) this._guideMainBtn._txt.setText(this._getGuideToolLabel());
 
-    if (this._saveMainBtn?._txt) {
-      this._saveMainBtn._txt.setText(this._getSaveToolLabel());
-    }
-
-    if (this._modeMainBtn?._txt) {
-      this._modeMainBtn._txt.setText(this._getModeToolLabel());
+    if (this._guideMainBtn?._bg) {
+      this._guideMainBtn._bg.clear();
+      this._guideMainBtn._bg.fillStyle(this._guideVisible ? 0x1f4f2d : 0x1c2540, 1);
+      this._guideMainBtn._bg.lineStyle(2, this._guideVisible ? 0x8df0a8 : 0x3c4e7a, 0.95);
+      this._guideMainBtn._bg.fillRoundedRect(-20, -20, 40, 40, 8);
+      this._guideMainBtn._bg.strokeRoundedRect(-20, -20, 40, 40, 8);
     }
   }
 
   _toggleClosed() {
     this._isClosed = !this._isClosed;
-    this._updateLoopButton();
     this._updateToolButtons();
     this._updatePanel();
     this._redrawEditor();
   }
 
   _updateLoopButton() {
-    if (!this._loopBtn?.txt) return;
-    this._loopBtn.txt.setText(this._isClosed ? '🔒' : '🔓');
+    // ya no usamos loopBtn principal, pero dejamos la helper viva
   }
 
-  // =================================================
-  // Core editor helpers
-  // =================================================
   _createNode(x, y) {
     const handleLen = 60;
 
@@ -1698,11 +1683,14 @@ _toggleModeMenu() {
         `Herramienta: ${this._tool}\n` +
         `Vista: ${this._getViewToolLabel()}\n` +
         `Modo: ${this._getModeToolLabel()}\n` +
+        `Pista: ${this._getTrackToolLabel()}\n` +
+        `Guía: ${this._getGuideToolLabel()}\n` +
         `Nodos: ${this._nodes.length}\n` +
         `Loop: ${this._isClosed ? 'cerrado' : 'abierto'}\n` +
         `Meta: ${this._finishLine ? 'sí' : 'no'}\n` +
         `Checkpoints: ${this._checkpoints.length}\n` +
-        `Guía: ${guideLoaded ? (this._guideVisible ? 'visible' : 'oculta') : 'no cargada'}\n` +
+        `Guía cargada: ${guideLoaded ? 'sí' : 'no'}\n` +
+        `Guía visible: ${this._guideVisible ? 'sí' : 'no'}\n` +
         `Alpha guía: ${this._guideAlpha.toFixed(2)}\n` +
         `Nudge: ${this._getNudgeStep()}px\n` +
         `Zoom: ${this._editCam ? this._editCam.zoom.toFixed(2) : '0.00'}\n` +
@@ -1719,11 +1707,14 @@ _toggleModeMenu() {
       `Herramienta: ${this._tool}\n` +
       `Vista: ${this._getViewToolLabel()}\n` +
       `Modo toolbar: ${this._getModeToolLabel()}\n` +
+      `Pista toolbar: ${this._getTrackToolLabel()}\n` +
+      `Guía toolbar: ${this._getGuideToolLabel()}\n` +
       `Modo: ${part}\n` +
       `Loop: ${this._isClosed ? 'cerrado' : 'abierto'}\n` +
       `Meta: ${this._finishLine ? 'sí' : 'no'}\n` +
       `Checkpoints: ${this._checkpoints.length}\n` +
-      `Guía: ${guideLoaded ? (this._guideVisible ? 'visible' : 'oculta') : 'no cargada'}\n` +
+      `Guía cargada: ${guideLoaded ? 'sí' : 'no'}\n` +
+      `Guía visible: ${this._guideVisible ? 'sí' : 'no'}\n` +
       `Alpha guía: ${this._guideAlpha.toFixed(2)}\n` +
       `Nudge: ${this._getNudgeStep()}px\n` +
       `X: ${Math.round(n.x)}\n` +
@@ -1736,9 +1727,6 @@ _toggleModeMenu() {
     );
   }
 
-  // =================================================
-  // SAVE / LOAD / NEW
-  // =================================================
   _getProjectData() {
     return {
       version: 1,
@@ -1752,7 +1740,9 @@ _toggleModeMenu() {
       nudgeStepIndex: this._nudgeStepIndex,
       viewTool: this._viewTool,
       saveTool: this._saveTool,
-      modeTool: this._modeTool
+      modeTool: this._modeTool,
+      trackTool: this._trackTool,
+      guideTool: this._guideTool
     };
   }
 
@@ -1768,6 +1758,8 @@ _toggleModeMenu() {
     this._viewTool = data.viewTool || 'zoomIn';
     this._saveTool = data.saveTool || 'save';
     this._modeTool = data.modeTool || 'edit';
+    this._trackTool = data.trackTool || 'widthUp';
+    this._guideTool = data.guideTool || 'load';
 
     if (this._guideImage) {
       this._guideImage.setAlpha(this._guideAlpha);
@@ -1778,7 +1770,6 @@ _toggleModeMenu() {
     this._selectedPart = null;
     this._tool = 'edit';
 
-    this._updateLoopButton();
     this._updateToolButtons();
     this._updatePanel();
     this._redrawEditor();
@@ -1822,8 +1813,9 @@ _toggleModeMenu() {
     this._viewTool = 'zoomIn';
     this._saveTool = 'save';
     this._modeTool = 'edit';
+    this._trackTool = 'widthUp';
+    this._guideTool = 'load';
 
-    this._updateLoopButton();
     this._updateToolButtons();
     this._updatePanel();
     this._redrawEditor();
