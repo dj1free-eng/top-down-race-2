@@ -200,6 +200,24 @@ topX += 54;
     );
     topX += 52;
 
+    // =================================================
+    // Grupo modo
+    // =================================================
+    this._modeBtnX = topX;
+    this._modeBtnY = topToolsY;
+    this._modeTool = 'edit';
+    this._modeMenu = null;
+
+    this._modeMainBtn = this._makeGroupedMainButton(
+      this._modeBtnX,
+      this._modeBtnY,
+      '🔓',
+      () => {},
+      () => {},
+      '14px'
+    );
+    topX += 52;
+
     this._widthMinusBtn = this._makeIconButton(topX, topToolsY, 'W-', () => {
       this._changeTrackWidth(-10);
     }, '13px');
@@ -985,6 +1003,16 @@ _updateToolButtons() {
 
   if (this._saveMainBtn?._txt) {
     this._saveMainBtn._txt.setText(this._getSaveToolLabel());
+  }
+
+  if (this._modeMainBtn?._txt) {
+    if (this._tool === 'finish') {
+      this._modeMainBtn._txt.setText('🏁');
+    } else if (this._tool === 'checkpoint') {
+      this._modeMainBtn._txt.setText('CP');
+    } else {
+      this._modeMainBtn._txt.setText(this._isClosed ? '🔒' : '🔓');
+    }
   }
 }
   _toggleClosed() {
