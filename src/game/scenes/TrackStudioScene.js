@@ -489,99 +489,127 @@ export class TrackStudioScene extends BaseScene {
     });
 
     this.input.on('pointerup', (pointer) => {
-      const stillDown = this.input.manager.pointers.filter((p) => p.isDown).length;
+  const stillDown = this.input.manager.pointers.filter((p) => p.isDown).length;
 
-      if (this._draggingPart) {
-        this._draggingPart = false;
-        if (stillDown === 0) {
-          this._dragStartScreen = null;
-          this._dragStartWorld = null;
-          this._tapCandidate = false;
-          this._gestureWasMultiTouch = false;
-          this._panLast = null;
-          this._pinchLastDist = 0;
+  if (this._draggingPart) {
+    this._draggingPart = false;
+    if (stillDown === 0) {
+      this._dragStartScreen = null;
+      this._dragStartWorld = null;
+      this._tapCandidate = false;
+      this._gestureWasMultiTouch = false;
+      this._panLast = null;
+      this._pinchLastDist = 0;
+    }
+    return;
+  }
+
+  if (this._gestureWasMultiTouch) {
+    if (stillDown === 0) {
+      this._dragStartScreen = null;
+      this._dragStartWorld = null;
+      this._tapCandidate = false;
+      this._gestureWasMultiTouch = false;
+      this._panLast = null;
+      this._pinchLastDist = 0;
+    }
+    return;
+  }
+
+  let movedTooMuch = false;
+  if (this._dragStartScreen) {
+    const dist = Phaser.Math.Distance.Between(
+      pointer.x,
+      pointer.y,
+      this._dragStartScreen.x,
+      this._dragStartScreen.y
+    );
+    movedTooMuch = dist > 10;
+  }
+
+  if (
+    this._tapCandidate &&
+    !movedTooMuch &&
+    this._isPointerInViewport(pointer)
+  ) {
+    const world = this._screenToWorld(pointer.x, pointer.y);
+
+    if (this._tool === 'finish') {
+      this._placeFinishLineAt(world.x, world.y);
+
+    } else if (this._tool === 'checkpoint') {
+      this._placeCheckpointAt(world.x, world.y);
+
+    } else if (this._tool === 'piano') {
+      const hit = this._findNearestCurvePoint(world.x, world.y);
+
+      if (hit) {
+        const half = this._trackWidth * 0.5;
+
+        const a = {
+          x: hit.point.x + hit.normal.x * half,
+          y: hit.point.y + hit.normal.y * half
+        };
+
+        const b = {
+          x: hit.point.x + hit.normal.x * (half + 28),
+          y: hit.point.y + hit.normal.y * (half + 28)
+        };
+
+        this._pianos.push({
+          a,
+          b,
+          point: { x: hit.point.x, y: hit.point.y },
+          normal: { x: hit.normal.x, y: hit.normal.y },
+          tangent: { x: hit.tangent.x, y: hit.tangent.y }
+        });
+
+        this._selectedPiano = this._pianos.length - 1;
+      }
+
+    } else {
+      const hit = this._findControlAt(world.x, world.y);
+
+      if (hit) {
+        this._selectedNode = hit.index;
+        this._selectedPart = hit;
+      } else {
+        const node = this._createNode(world.x, world.y);
+
+        if (this._nodes.length > 0) {
+          const prev = this._nodes[this._nodes.length - 1];
+          const handleLen = 60;
+
+          let dx = node.x - prev.x;
+          let dy = node.y - prev.y;
+
+          const len = Math.sqrt(dx * dx + dy * dy) || 1;
+          dx /= len;
+          dy /= len;
+
+          prev.handleOut.x = prev.x + dx * handleLen;
+          prev.handleOut.y = prev.y + dy * handleLen;
         }
-        return;
+
+        this._nodes.push(node);
+        this._selectedNode = this._nodes.length - 1;
+        this._selectedPart = { type: 'node', index: this._selectedNode };
       }
+    }
 
-      if (this._gestureWasMultiTouch) {
-        if (stillDown === 0) {
-          this._dragStartScreen = null;
-          this._dragStartWorld = null;
-          this._tapCandidate = false;
-          this._gestureWasMultiTouch = false;
-          this._panLast = null;
-          this._pinchLastDist = 0;
-        }
-        return;
-      }
+    this._updatePanel();
+    this._redrawEditor();
+  }
 
-      let movedTooMuch = false;
-      if (this._dragStartScreen) {
-        const dist = Phaser.Math.Distance.Between(
-          pointer.x,
-          pointer.y,
-          this._dragStartScreen.x,
-          this._dragStartScreen.y
-        );
-        movedTooMuch = dist > 10;
-      }
-
-      if (
-        this._tapCandidate &&
-        !movedTooMuch &&
-        this._isPointerInViewport(pointer)
-      ) {
-        const world = this._screenToWorld(pointer.x, pointer.y);
-
-        if (this._tool === 'finish') {
-          this._placeFinishLineAt(world.x, world.y);
-        } else if (this._tool === 'checkpoint') {
-          this._placeCheckpointAt(world.x, world.y);
-        } else {
-          const hit = this._findControlAt(world.x, world.y);
-
-          if (hit) {
-            this._selectedNode = hit.index;
-            this._selectedPart = hit;
-          } else {
-            const node = this._createNode(world.x, world.y);
-
-            if (this._nodes.length > 0) {
-              const prev = this._nodes[this._nodes.length - 1];
-              const handleLen = 60;
-
-              let dx = node.x - prev.x;
-              let dy = node.y - prev.y;
-
-              const len = Math.sqrt(dx * dx + dy * dy) || 1;
-              dx /= len;
-              dy /= len;
-
-              prev.handleOut.x = prev.x + dx * handleLen;
-              prev.handleOut.y = prev.y + dy * handleLen;
-            }
-
-            this._nodes.push(node);
-            this._selectedNode = this._nodes.length - 1;
-            this._selectedPart = { type: 'node', index: this._selectedNode };
-          }
-
-          this._updatePanel();
-          this._redrawEditor();
-        }
-      }
-
-      if (stillDown === 0) {
-        this._dragStartScreen = null;
-        this._dragStartWorld = null;
-        this._tapCandidate = false;
-        this._gestureWasMultiTouch = false;
-        this._panLast = null;
-        this._pinchLastDist = 0;
-      }
-    });
-
+  if (stillDown === 0) {
+    this._dragStartScreen = null;
+    this._dragStartWorld = null;
+    this._tapCandidate = false;
+    this._gestureWasMultiTouch = false;
+    this._panLast = null;
+    this._pinchLastDist = 0;
+  }
+});
     this.input.on('pointerupoutside', () => {
       this._draggingPart = false;
       this._dragStartScreen = null;
