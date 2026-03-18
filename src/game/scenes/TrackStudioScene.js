@@ -592,7 +592,6 @@ if (
         this._selectedPiano = this._pianos.length - 1;
       }
 
-    } else {
 } else {
 
   // 🔴 1. Primero detectar pianos
