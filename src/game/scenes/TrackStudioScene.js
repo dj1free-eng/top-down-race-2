@@ -170,20 +170,20 @@ export class TrackStudioScene extends BaseScene {
     const topToolsY = 36;
     let topX = 300;
 
-    this._saveBtn = this._makeIconButton(topX, topToolsY, '💾', () => {
-      this._saveProject();
-    }, '16px');
-    topX += 44;
+this._saveBtnX = topX;
+this._saveBtnY = topToolsY;
+this._saveTool = 'save'; // 'save' | 'load' | 'new'
+this._saveMenu = null;
 
-    this._loadBtn = this._makeIconButton(topX, topToolsY, '📂', () => {
-      this._loadProject();
-    }, '16px');
-    topX += 44;
-
-    this._newBtn = this._makeIconButton(topX, topToolsY, 'NEW', () => {
-      this._newProject();
-    }, '12px');
-    topX += 54;
+this._saveMainBtn = this._makeGroupedMainButton(
+  this._saveBtnX,
+  this._saveBtnY,
+  this._getSaveToolLabel(),
+  () => this._runActiveSaveTool(),
+  () => this._toggleSaveMenu(),
+  '14px'
+);
+topX += 54;
 
     // =================================================
     // Grupo vista preparado
@@ -321,10 +321,14 @@ export class TrackStudioScene extends BaseScene {
     // =================================================
     this.input.addPointer(2);
 
-    this.input.on('pointerdown', (pointer) => {
-      if (!this._isPointerInViewMenu(pointer)) {
-        this._closeViewMenu();
-      }
+this.input.on('pointerdown', (pointer) => {
+  if (!this._isPointerInViewMenu(pointer)) {
+    this._closeViewMenu();
+  }
+
+  if (!this._isPointerInSaveMenu(pointer)) {
+    this._closeSaveMenu();
+  }
 
       if (!this._isPointerInViewport(pointer)) return;
 
@@ -846,6 +850,91 @@ _isPointerInViewMenu(pointer) {
     pointer.y <= this._viewMenu._y + this._viewMenu._h
   );
 }
+  _getSaveToolLabel() {
+  if (this._saveTool === 'save') return '💾';
+  if (this._saveTool === 'load') return '📂';
+  return 'NEW';
+}
+
+_runActiveSaveTool() {
+  if (this._saveTool === 'save') {
+    this._saveProject();
+    return;
+  }
+
+  if (this._saveTool === 'load') {
+    this._loadProject();
+    return;
+  }
+
+  this._newProject();
+}
+
+_toggleSaveMenu() {
+  if (this._saveMenu) {
+    this._closeSaveMenu();
+    return;
+  }
+
+  const allItems = [
+    { key: 'save', label: '💾' },
+    { key: 'load', label: '📂' },
+    { key: 'new', label: 'NEW' }
+  ];
+
+  const items = allItems.filter(item => item.key !== this._saveTool);
+
+  const menu = this.add.container(0, 0);
+  menu.setDepth(90);
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+
+    const x = this._saveBtnX + 48 + (i * 44);
+    const y = this._saveBtnY;
+
+    const btn = this._makeIconButton(
+      x,
+      y,
+      item.label,
+      () => {
+        this._saveTool = item.key;
+        this._saveMainBtn._txt.setText(item.label);
+        this._closeSaveMenu();
+        this._runActiveSaveTool();
+      },
+      item.key === 'new' ? '12px' : '16px'
+    );
+
+    menu.add(btn.bg);
+    menu.add(btn.txt);
+  }
+
+  menu._x = this._saveBtnX + 28;
+  menu._y = this._saveBtnY - 20;
+  menu._w = items.length * 44;
+  menu._h = 40;
+
+  this._saveMenu = menu;
+  this._editCam.ignore(menu.list);
+}
+
+_closeSaveMenu() {
+  if (!this._saveMenu) return;
+  this._saveMenu.destroy(true);
+  this._saveMenu = null;
+}
+
+_isPointerInSaveMenu(pointer) {
+  if (!this._saveMenu) return false;
+
+  return (
+    pointer.x >= this._saveMenu._x &&
+    pointer.x <= this._saveMenu._x + this._saveMenu._w &&
+    pointer.y >= this._saveMenu._y &&
+    pointer.y <= this._saveMenu._y + this._saveMenu._h
+  );
+}
   _getNudgeStep() {
     return this._nudgeSteps[this._nudgeStepIndex];
   }
@@ -864,37 +953,40 @@ _isPointerInViewMenu(pointer) {
     this._updatePanel();
   }
 
-  _updateToolButtons() {
-    if (this._finishBtn?.bg) {
-      const activeFinish = this._tool === 'finish';
-      this._finishBtn.bg.setFillStyle(activeFinish ? 0x2b8a3e : 0x1c2540, 1);
-      this._finishBtn.bg.setStrokeStyle(2, activeFinish ? 0xa8ffb8 : 0x3c4e7a, 0.95);
-    }
-
-    if (this._checkpointBtn?.bg) {
-      const activeCp = this._tool === 'checkpoint';
-      this._checkpointBtn.bg.setFillStyle(activeCp ? 0x235c9f : 0x1c2540, 1);
-      this._checkpointBtn.bg.setStrokeStyle(2, activeCp ? 0xaed4ff : 0x3c4e7a, 0.95);
-    }
-
-    if (this._guideToggleBtn?.bg) {
-      this._guideToggleBtn.bg.setFillStyle(this._guideVisible ? 0x1f4f2d : 0x1c2540, 1);
-      this._guideToggleBtn.bg.setStrokeStyle(2, this._guideVisible ? 0x8df0a8 : 0x3c4e7a, 0.95);
-    }
-
-    if (this._loopBtn?.txt && this._tool === 'edit') {
-      this._loopBtn.txt.setText(this._isClosed ? '🔒' : '🔓');
-    }
-
-    if (this._nudgeStepBtn?.txt) {
-      this._nudgeStepBtn.txt.setText(String(this._getNudgeStep()));
-    }
-
-    if (this._viewMainBtn?._txt) {
-      this._viewMainBtn._txt.setText(this._getViewToolLabel());
-    }
+_updateToolButtons() {
+  if (this._finishBtn?.bg) {
+    const activeFinish = this._tool === 'finish';
+    this._finishBtn.bg.setFillStyle(activeFinish ? 0x2b8a3e : 0x1c2540, 1);
+    this._finishBtn.bg.setStrokeStyle(2, activeFinish ? 0xa8ffb8 : 0x3c4e7a, 0.95);
   }
 
+  if (this._checkpointBtn?.bg) {
+    const activeCp = this._tool === 'checkpoint';
+    this._checkpointBtn.bg.setFillStyle(activeCp ? 0x235c9f : 0x1c2540, 1);
+    this._checkpointBtn.bg.setStrokeStyle(2, activeCp ? 0xaed4ff : 0x3c4e7a, 0.95);
+  }
+
+  if (this._guideToggleBtn?.bg) {
+    this._guideToggleBtn.bg.setFillStyle(this._guideVisible ? 0x1f4f2d : 0x1c2540, 1);
+    this._guideToggleBtn.bg.setStrokeStyle(2, this._guideVisible ? 0x8df0a8 : 0x3c4e7a, 0.95);
+  }
+
+  if (this._loopBtn?.txt && this._tool === 'edit') {
+    this._loopBtn.txt.setText(this._isClosed ? '🔒' : '🔓');
+  }
+
+  if (this._nudgeStepBtn?.txt) {
+    this._nudgeStepBtn.txt.setText(String(this._getNudgeStep()));
+  }
+
+  if (this._viewMainBtn?._txt) {
+    this._viewMainBtn._txt.setText(this._getViewToolLabel());
+  }
+
+  if (this._saveMainBtn?._txt) {
+    this._saveMainBtn._txt.setText(this._getSaveToolLabel());
+  }
+}
   _toggleClosed() {
     this._isClosed = !this._isClosed;
     this._updateLoopButton();
@@ -1473,47 +1565,48 @@ _getBezierPoints() {
   // =================================================
   // SAVE / LOAD / NEW
   // =================================================
-  _getProjectData() {
-    return {
-      version: 1,
-      nodes: this._nodes,
-      trackWidth: this._trackWidth,
-      isClosed: this._isClosed,
-      finishLine: this._finishLine,
-      checkpoints: this._checkpoints,
-      guideAlpha: this._guideAlpha,
-      guideVisible: this._guideVisible,
-      nudgeStepIndex: this._nudgeStepIndex,
-      viewTool: this._viewTool
-    };
+_getProjectData() {
+  return {
+    version: 1,
+    nodes: this._nodes,
+    trackWidth: this._trackWidth,
+    isClosed: this._isClosed,
+    finishLine: this._finishLine,
+    checkpoints: this._checkpoints,
+    guideAlpha: this._guideAlpha,
+    guideVisible: this._guideVisible,
+    nudgeStepIndex: this._nudgeStepIndex,
+    viewTool: this._viewTool,
+    saveTool: this._saveTool
+  };
+}
+
+_applyProjectData(data) {
+  this._nodes = data.nodes || [];
+  this._trackWidth = data.trackWidth ?? 140;
+  this._isClosed = data.isClosed ?? false;
+  this._finishLine = data.finishLine || null;
+  this._checkpoints = data.checkpoints || [];
+  this._guideAlpha = data.guideAlpha ?? 0.32;
+  this._guideVisible = data.guideVisible ?? true;
+  this._nudgeStepIndex = data.nudgeStepIndex ?? 2;
+  this._viewTool = data.viewTool || 'zoomIn';
+  this._saveTool = data.saveTool || 'save';
+
+  if (this._guideImage) {
+    this._guideImage.setAlpha(this._guideAlpha);
+    this._guideImage.setVisible(this._guideVisible);
   }
 
-  _applyProjectData(data) {
-    this._nodes = data.nodes || [];
-    this._trackWidth = data.trackWidth ?? 140;
-    this._isClosed = data.isClosed ?? false;
-    this._finishLine = data.finishLine || null;
-    this._checkpoints = data.checkpoints || [];
-    this._guideAlpha = data.guideAlpha ?? 0.32;
-    this._guideVisible = data.guideVisible ?? true;
-    this._nudgeStepIndex = data.nudgeStepIndex ?? 2;
-    this._viewTool = data.viewTool || 'zoomIn';
+  this._selectedNode = -1;
+  this._selectedPart = null;
+  this._tool = 'edit';
 
-    if (this._guideImage) {
-      this._guideImage.setAlpha(this._guideAlpha);
-      this._guideImage.setVisible(this._guideVisible);
-    }
-
-    this._selectedNode = -1;
-    this._selectedPart = null;
-    this._tool = 'edit';
-
-    this._updateLoopButton();
-    this._updateToolButtons();
-    this._updatePanel();
-    this._redrawEditor();
-  }
-
+  this._updateLoopButton();
+  this._updateToolButtons();
+  this._updatePanel();
+  this._redrawEditor();
+}
   _saveProject() {
     try {
       const data = this._getProjectData();
@@ -1539,23 +1632,22 @@ _getBezierPoints() {
       console.error('❌ Error cargando proyecto', e);
     }
   }
+_newProject() {
+  this._nodes = [];
+  this._finishLine = null;
+  this._checkpoints = [];
+  this._isClosed = false;
+  this._trackWidth = 140;
+  this._selectedNode = -1;
+  this._selectedPart = null;
+  this._tool = 'edit';
+  this._viewTool = 'zoomIn';
+  this._saveTool = 'save';
 
-  _newProject() {
-    this._nodes = [];
-    this._finishLine = null;
-    this._checkpoints = [];
-    this._isClosed = false;
-    this._trackWidth = 140;
-    this._selectedNode = -1;
-    this._selectedPart = null;
-    this._tool = 'edit';
-    this._viewTool = 'zoomIn';
+  this._updateLoopButton();
+  this._updateToolButtons();
+  this._updatePanel();
+  this._redrawEditor();
 
-    this._updateLoopButton();
-    this._updateToolButtons();
-    this._updatePanel();
-    this._redrawEditor();
-
-    console.log('🆕 Nuevo proyecto');
-  }
+  console.log('🆕 Nuevo proyecto');
 }
