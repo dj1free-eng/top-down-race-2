@@ -52,9 +52,13 @@ export class TrackStudioScene extends BaseScene {
     this._trackWidthMax = 260;
 
     this._isClosed = false;
-    this._tool = 'edit'; // 'edit' | 'finish' | 'checkpoint'
+    this._tool = 'edit'; // 'edit' | 'finish' | 'checkpoint' | 'piano'
     this._finishLine = null;
     this._checkpoints = [];
+
+    // pianos manuales
+    this._pianos = [];
+    this._selectedPiano = -1;
 
     // guía de fondo
     this._guideImage = null;
@@ -82,7 +86,6 @@ export class TrackStudioScene extends BaseScene {
 
     this._guideTool = 'load';
     this._guideMenu = null;
-
     // =================================================
     // UI base
     // =================================================
@@ -258,9 +261,10 @@ export class TrackStudioScene extends BaseScene {
     this._trackGfx = this.add.graphics().setDepth(6);
     this._curveGfx = this.add.graphics().setDepth(7);
     this._guideGfx = this.add.graphics().setDepth(8);
-    this._checkpointGfx = this.add.graphics().setDepth(9);
-    this._finishGfx = this.add.graphics().setDepth(10);
-    this._nodeGfx = this.add.graphics().setDepth(11);
+    this._pianoGfx = this.add.graphics().setDepth(9);
+    this._checkpointGfx = this.add.graphics().setDepth(10);
+    this._finishGfx = this.add.graphics().setDepth(11);
+    this._nodeGfx = this.add.graphics().setDepth(12);
 
     this._drawGrid();
 
@@ -300,6 +304,7 @@ export class TrackStudioScene extends BaseScene {
       this._trackGfx,
       this._curveGfx,
       this._guideGfx,
+      this._pianoGfx,
       this._checkpointGfx,
       this._finishGfx,
       this._nodeGfx
@@ -311,6 +316,7 @@ export class TrackStudioScene extends BaseScene {
       this._trackGfx,
       this._curveGfx,
       this._guideGfx,
+      this._pianoGfx,
       this._checkpointGfx,
       this._finishGfx,
       this._nodeGfx
@@ -1537,6 +1543,7 @@ export class TrackStudioScene extends BaseScene {
     this._trackGfx.clear();
     this._curveGfx.clear();
     this._guideGfx.clear();
+    this._pianoGfx.clear();
     this._checkpointGfx.clear();
     this._finishGfx.clear();
     this._nodeGfx.clear();
@@ -1613,6 +1620,26 @@ export class TrackStudioScene extends BaseScene {
       this._checkpointGfx.fillCircle(midX, midY, 3);
     }
 
+    // Pianos manuales placeholder
+    for (let i = 0; i < this._pianos.length; i++) {
+      const p = this._pianos[i];
+      const selected = i === this._selectedPiano;
+
+      if (p?.a && p?.b) {
+        this._pianoGfx.lineStyle(selected ? 12 : 10, selected ? 0xffd166 : 0xd92f2f, 0.95);
+        this._pianoGfx.beginPath();
+        this._pianoGfx.moveTo(p.a.x, p.a.y);
+        this._pianoGfx.lineTo(p.b.x, p.b.y);
+        this._pianoGfx.strokePath();
+
+        this._pianoGfx.lineStyle(4, 0xf2f2f2, 0.95);
+        this._pianoGfx.beginPath();
+        this._pianoGfx.moveTo(p.a.x, p.a.y);
+        this._pianoGfx.lineTo(p.b.x, p.b.y);
+        this._pianoGfx.strokePath();
+      }
+    }
+
     if (this._finishLine?.a && this._finishLine?.b) {
       this._finishGfx.lineStyle(10, 0xffffff, 0.95);
       this._finishGfx.beginPath();
@@ -1665,7 +1692,6 @@ export class TrackStudioScene extends BaseScene {
       this._nodeGfx.fillCircle(n.x, n.y, 5);
     }
   }
-
   _drawHandleDot(x, y, selected = false) {
     this._nodeGfx.fillStyle(selected ? 0xffd166 : 0xb7c0ff, 1);
     this._nodeGfx.fillCircle(x, y, selected ? 10 : 8);
