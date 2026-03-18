@@ -825,6 +825,7 @@ export class TrackStudioScene extends BaseScene {
     menu._h = items.length * 44;
 
     this._viewMenu = menu;
+    this._editCam.ignore(menu.list);
   }
 
   _closeViewMenu() {
