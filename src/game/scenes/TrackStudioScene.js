@@ -787,46 +787,48 @@ export class TrackStudioScene extends BaseScene {
     this._updatePanel();
   }
 
-  _toggleViewMenu() {
-    if (this._viewMenu) {
-      this._closeViewMenu();
-      return;
-    }
-
-    const allItems = [
-      { key: 'zoomIn', label: '🔍+' },
-      { key: 'zoomOut', label: '🔎-' },
-      { key: 'center', label: '◎' }
-    ];
-
-    const items = allItems.filter(item => item.key !== this._viewTool);
-
-    const menu = this.add.container(0, 0);
-    menu.setDepth(90);
-
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      const y = this._viewBtnY + 48 + (i * 44);
-
-      const btn = this._makeIconButton(this._viewBtnX, y, item.label, () => {
-        this._viewTool = item.key;
-        this._viewMainBtn._txt.setText(item.label);
-        this._closeViewMenu();
-        this._runActiveViewTool();
-      }, '12px');
-
-      menu.add(btn.bg);
-      menu.add(btn.txt);
-    }
-
-    menu._x = this._viewBtnX;
-    menu._y = this._viewBtnY + 48;
-    menu._w = 40;
-    menu._h = items.length * 44;
-
-    this._viewMenu = menu;
-    this._editCam.ignore(menu.list);
+_toggleViewMenu() {
+  if (this._viewMenu) {
+    this._closeViewMenu();
+    return;
   }
+
+  const allItems = [
+    { key: 'zoomIn', label: '🔍+' },
+    { key: 'zoomOut', label: '🔎-' },
+    { key: 'center', label: '◎' }
+  ];
+
+  const items = allItems.filter(item => item.key !== this._viewTool);
+
+  const menu = this.add.container(0, 0);
+  menu.setDepth(90);
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+
+    const x = this._viewBtnX + 48 + (i * 44);
+    const y = this._viewBtnY;
+
+    const btn = this._makeIconButton(x, y, item.label, () => {
+      this._viewTool = item.key;
+      this._viewMainBtn._txt.setText(item.label);
+      this._closeViewMenu();
+      this._runActiveViewTool();
+    }, '12px');
+
+    menu.add(btn.bg);
+    menu.add(btn.txt);
+  }
+
+  menu._x = this._viewBtnX + 28;
+  menu._y = this._viewBtnY - 20;
+  menu._w = items.length * 44;
+  menu._h = 40;
+
+  this._viewMenu = menu;
+  this._editCam.ignore(menu.list);
+}
 
   _closeViewMenu() {
     if (!this._viewMenu) return;
@@ -834,22 +836,16 @@ export class TrackStudioScene extends BaseScene {
     this._viewMenu = null;
   }
 
-  _isPointerInViewMenu(pointer) {
-    if (!this._viewMenu) return false;
+_isPointerInViewMenu(pointer) {
+  if (!this._viewMenu) return false;
 
-    const x = this._viewMenu._x - 20;
-    const y = this._viewMenu._y - 20;
-    const w = this._viewMenu._w;
-    const h = this._viewMenu._h;
-
-    return (
-      pointer.x >= x &&
-      pointer.x <= x + w &&
-      pointer.y >= y &&
-      pointer.y <= y + h
-    );
-  }
-
+  return (
+    pointer.x >= this._viewMenu._x &&
+    pointer.x <= this._viewMenu._x + this._viewMenu._w &&
+    pointer.y >= this._viewMenu._y &&
+    pointer.y <= this._viewMenu._y + this._viewMenu._h
+  );
+}
   _getNudgeStep() {
     return this._nudgeSteps[this._nudgeStepIndex];
   }
