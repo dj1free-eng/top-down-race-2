@@ -67,9 +67,17 @@ export class TrackStudioScene extends BaseScene {
     this._nudgeSteps = [1, 5, 10];
     this._nudgeStepIndex = 2;
 
+    // grupo save
+    this._saveTool = 'save'; // 'save' | 'load' | 'new'
+    this._saveMenu = null;
+
     // grupo vista
     this._viewTool = 'zoomIn'; // 'zoomIn' | 'zoomOut' | 'center'
     this._viewMenu = null;
+
+    // grupo modo
+    this._modeTool = 'edit'; // 'edit' | 'finish' | 'checkpoint'
+    this._modeMenu = null;
 
     // =================================================
     // UI base
@@ -122,7 +130,7 @@ export class TrackStudioScene extends BaseScene {
     });
 
     // =================================================
-    // Barra izquierda: solo herramientas
+    // Barra izquierda: herramientas
     // =================================================
     const leftCX = Math.floor(this._leftBarW / 2);
     let leftY = this._topBarH + 20;
@@ -144,12 +152,16 @@ export class TrackStudioScene extends BaseScene {
 
     this._finishBtn = this._makeIconButton(leftCX, leftY, '🏁', () => {
       this._setTool(this._tool === 'finish' ? 'edit' : 'finish');
+      this._modeTool = this._tool === 'finish' ? 'edit' : 'finish';
+      this._updateToolButtons();
     });
 
     leftY += 48;
 
     this._checkpointBtn = this._makeIconButton(leftCX, leftY, 'CP', () => {
       this._setTool(this._tool === 'checkpoint' ? 'edit' : 'checkpoint');
+      this._modeTool = this._tool === 'checkpoint' ? 'edit' : 'checkpoint';
+      this._updateToolButtons();
     }, '13px');
 
     leftY += 48;
@@ -170,24 +182,18 @@ export class TrackStudioScene extends BaseScene {
     const topToolsY = 36;
     let topX = 300;
 
-this._saveBtnX = topX;
-this._saveBtnY = topToolsY;
-this._saveTool = 'save'; // 'save' | 'load' | 'new'
-this._saveMenu = null;
+    this._saveBtnX = topX;
+    this._saveBtnY = topToolsY;
+    this._saveMainBtn = this._makeGroupedMainButton(
+      this._saveBtnX,
+      this._saveBtnY,
+      this._getSaveToolLabel(),
+      () => this._runActiveSaveTool(),
+      () => this._toggleSaveMenu(),
+      '14px'
+    );
+    topX += 54;
 
-this._saveMainBtn = this._makeGroupedMainButton(
-  this._saveBtnX,
-  this._saveBtnY,
-  this._getSaveToolLabel(),
-  () => this._runActiveSaveTool(),
-  () => this._toggleSaveMenu(),
-  '14px'
-);
-topX += 54;
-
-    // =================================================
-    // Grupo vista preparado
-    // =================================================
     this._viewBtnX = topX;
     this._viewBtnY = topToolsY;
     this._viewMainBtn = this._makeGroupedMainButton(
@@ -200,20 +206,14 @@ topX += 54;
     );
     topX += 52;
 
-    // =================================================
-    // Grupo modo
-    // =================================================
     this._modeBtnX = topX;
     this._modeBtnY = topToolsY;
-    this._modeTool = 'edit';
-    this._modeMenu = null;
-
     this._modeMainBtn = this._makeGroupedMainButton(
       this._modeBtnX,
       this._modeBtnY,
-      '🔓',
-      () => {},
-      () => {},
+      this._getModeToolLabel(),
+      () => this._runActiveModeTool(),
+      () => this._toggleModeMenu(),
       '14px'
     );
     topX += 52;
@@ -339,14 +339,18 @@ topX += 54;
     // =================================================
     this.input.addPointer(2);
 
-this.input.on('pointerdown', (pointer) => {
-  if (!this._isPointerInViewMenu(pointer)) {
-    this._closeViewMenu();
-  }
+    this.input.on('pointerdown', (pointer) => {
+      if (!this._isPointerInViewMenu(pointer)) {
+        this._closeViewMenu();
+      }
 
-  if (!this._isPointerInSaveMenu(pointer)) {
-    this._closeSaveMenu();
-  }
+      if (!this._isPointerInSaveMenu(pointer)) {
+        this._closeSaveMenu();
+      }
+
+      if (!this._isPointerInModeMenu(pointer)) {
+        this._closeModeMenu();
+      }
 
       if (!this._isPointerInViewport(pointer)) return;
 
@@ -734,7 +738,7 @@ this.input.on('pointerdown', (pointer) => {
     return { bg, txt, x: cx, y: cy };
   }
 
-  _makeGroupedMainButton(cx, cy, label, onMainClick, onCornerClick, fontSize = '14px') {
+  _makeGroupedMainButton(cx, cy, label, onMainClick, onLongPressClick, fontSize = '14px') {
     const c = this.add.container(cx, cy);
     c.setDepth(70);
 
@@ -762,31 +766,65 @@ this.input.on('pointerdown', (pointer) => {
     cornerGfx.strokePath();
     c.add(cornerGfx);
 
-    const mainZone = this.add.zone(2, 2, 32, 32).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    let pressTimer = null;
+    let longPressTriggered = false;
+
+    const cancelPress = () => {
+      if (pressTimer) {
+        pressTimer.remove(false);
+        pressTimer = null;
+      }
+    };
+
+    const mainZone = this.add.zone(0, 0, 40, 40)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+
+    mainZone.on('pointerdown', (pointer) => {
+      pointer.event?.stopPropagation?.();
+      longPressTriggered = false;
+      cancelPress();
+
+      pressTimer = this.time.delayedCall(500, () => {
+        longPressTriggered = true;
+        pressTimer = null;
+        onLongPressClick();
+      });
+    });
+
     mainZone.on('pointerup', (pointer) => {
       pointer.event?.stopPropagation?.();
+
+      if (longPressTriggered) {
+        longPressTriggered = false;
+        cancelPress();
+        return;
+      }
+
+      cancelPress();
       onMainClick();
     });
-    c.add(mainZone);
 
-    const cornerZone = this.add.zone(-12, -12, 16, 16).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    cornerZone.on('pointerup', (pointer) => {
-      pointer.event?.stopPropagation?.();
-      onCornerClick();
+    mainZone.on('pointerout', () => {
+      cancelPress();
+      longPressTriggered = false;
     });
-    c.add(cornerZone);
+
+    c.add(mainZone);
 
     c._bg = bg;
     c._txt = txt;
     c._cornerGfx = cornerGfx;
     c._mainZone = mainZone;
-    c._cornerZone = cornerZone;
     c.x = cx;
     c.y = cy;
 
     return c;
   }
 
+  // =================================================
+  // Grupo vista
+  // =================================================
   _getViewToolLabel() {
     if (this._viewTool === 'zoomIn') return '🔍+';
     if (this._viewTool === 'zoomOut') return '🔎-';
@@ -809,48 +847,48 @@ this.input.on('pointerdown', (pointer) => {
     this._updatePanel();
   }
 
-_toggleViewMenu() {
-  if (this._viewMenu) {
-    this._closeViewMenu();
-    return;
-  }
-
-  const allItems = [
-    { key: 'zoomIn', label: '🔍+' },
-    { key: 'zoomOut', label: '🔎-' },
-    { key: 'center', label: '◎' }
-  ];
-
-  const items = allItems.filter(item => item.key !== this._viewTool);
-
-  const menu = this.add.container(0, 0);
-  menu.setDepth(90);
-
-  for (let i = 0; i < items.length; i++) {
-    const item = items[i];
-
-    const x = this._viewBtnX + 48 + (i * 44);
-    const y = this._viewBtnY;
-
-    const btn = this._makeIconButton(x, y, item.label, () => {
-      this._viewTool = item.key;
-      this._viewMainBtn._txt.setText(item.label);
+  _toggleViewMenu() {
+    if (this._viewMenu) {
       this._closeViewMenu();
-      this._runActiveViewTool();
-    }, '12px');
+      return;
+    }
 
-    menu.add(btn.bg);
-    menu.add(btn.txt);
+    const allItems = [
+      { key: 'zoomIn', label: '🔍+' },
+      { key: 'zoomOut', label: '🔎-' },
+      { key: 'center', label: '◎' }
+    ];
+
+    const items = allItems.filter(item => item.key !== this._viewTool);
+
+    const menu = this.add.container(0, 0);
+    menu.setDepth(90);
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+
+      const x = this._viewBtnX + 48 + (i * 44);
+      const y = this._viewBtnY;
+
+      const btn = this._makeIconButton(x, y, item.label, () => {
+        this._viewTool = item.key;
+        this._viewMainBtn._txt.setText(item.label);
+        this._closeViewMenu();
+        this._runActiveViewTool();
+      }, '12px');
+
+      menu.add(btn.bg);
+      menu.add(btn.txt);
+    }
+
+    menu._x = this._viewBtnX + 28;
+    menu._y = this._viewBtnY - 20;
+    menu._w = items.length * 44;
+    menu._h = 40;
+
+    this._viewMenu = menu;
+    this._editCam.ignore(menu.list);
   }
-
-  menu._x = this._viewBtnX + 28;
-  menu._y = this._viewBtnY - 20;
-  menu._w = items.length * 44;
-  menu._h = 40;
-
-  this._viewMenu = menu;
-  this._editCam.ignore(menu.list);
-}
 
   _closeViewMenu() {
     if (!this._viewMenu) return;
@@ -858,101 +896,200 @@ _toggleViewMenu() {
     this._viewMenu = null;
   }
 
-_isPointerInViewMenu(pointer) {
-  if (!this._viewMenu) return false;
+  _isPointerInViewMenu(pointer) {
+    if (!this._viewMenu) return false;
 
-  return (
-    pointer.x >= this._viewMenu._x &&
-    pointer.x <= this._viewMenu._x + this._viewMenu._w &&
-    pointer.y >= this._viewMenu._y &&
-    pointer.y <= this._viewMenu._y + this._viewMenu._h
-  );
-}
-  _getSaveToolLabel() {
-  if (this._saveTool === 'save') return '💾';
-  if (this._saveTool === 'load') return '📂';
-  return 'NEW';
-}
-
-_runActiveSaveTool() {
-  if (this._saveTool === 'save') {
-    this._saveProject();
-    return;
-  }
-
-  if (this._saveTool === 'load') {
-    this._loadProject();
-    return;
-  }
-
-  this._newProject();
-}
-
-_toggleSaveMenu() {
-  if (this._saveMenu) {
-    this._closeSaveMenu();
-    return;
-  }
-
-  const allItems = [
-    { key: 'save', label: '💾' },
-    { key: 'load', label: '📂' },
-    { key: 'new', label: 'NEW' }
-  ];
-
-  const items = allItems.filter(item => item.key !== this._saveTool);
-
-  const menu = this.add.container(0, 0);
-  menu.setDepth(90);
-
-  for (let i = 0; i < items.length; i++) {
-    const item = items[i];
-
-    const x = this._saveBtnX + 48 + (i * 44);
-    const y = this._saveBtnY;
-
-    const btn = this._makeIconButton(
-      x,
-      y,
-      item.label,
-      () => {
-        this._saveTool = item.key;
-        this._saveMainBtn._txt.setText(item.label);
-        this._closeSaveMenu();
-        this._runActiveSaveTool();
-      },
-      item.key === 'new' ? '12px' : '16px'
+    return (
+      pointer.x >= this._viewMenu._x &&
+      pointer.x <= this._viewMenu._x + this._viewMenu._w &&
+      pointer.y >= this._viewMenu._y &&
+      pointer.y <= this._viewMenu._y + this._viewMenu._h
     );
-
-    menu.add(btn.bg);
-    menu.add(btn.txt);
   }
 
-  menu._x = this._saveBtnX + 28;
-  menu._y = this._saveBtnY - 20;
-  menu._w = items.length * 44;
-  menu._h = 40;
+  // =================================================
+  // Grupo save
+  // =================================================
+  _getSaveToolLabel() {
+    if (this._saveTool === 'save') return '💾';
+    if (this._saveTool === 'load') return '📂';
+    return 'NEW';
+  }
 
-  this._saveMenu = menu;
-  this._editCam.ignore(menu.list);
-}
+  _runActiveSaveTool() {
+    if (this._saveTool === 'save') {
+      this._saveProject();
+      return;
+    }
 
-_closeSaveMenu() {
-  if (!this._saveMenu) return;
-  this._saveMenu.destroy(true);
-  this._saveMenu = null;
-}
+    if (this._saveTool === 'load') {
+      this._loadProject();
+      return;
+    }
 
-_isPointerInSaveMenu(pointer) {
-  if (!this._saveMenu) return false;
+    this._newProject();
+  }
 
-  return (
-    pointer.x >= this._saveMenu._x &&
-    pointer.x <= this._saveMenu._x + this._saveMenu._w &&
-    pointer.y >= this._saveMenu._y &&
-    pointer.y <= this._saveMenu._y + this._saveMenu._h
-  );
-}
+  _toggleSaveMenu() {
+    if (this._saveMenu) {
+      this._closeSaveMenu();
+      return;
+    }
+
+    const allItems = [
+      { key: 'save', label: '💾' },
+      { key: 'load', label: '📂' },
+      { key: 'new', label: 'NEW' }
+    ];
+
+    const items = allItems.filter(item => item.key !== this._saveTool);
+
+    const menu = this.add.container(0, 0);
+    menu.setDepth(90);
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+
+      const x = this._saveBtnX + 48 + (i * 44);
+      const y = this._saveBtnY;
+
+      const btn = this._makeIconButton(
+        x,
+        y,
+        item.label,
+        () => {
+          this._saveTool = item.key;
+          this._saveMainBtn._txt.setText(item.label);
+          this._closeSaveMenu();
+          this._runActiveSaveTool();
+        },
+        item.key === 'new' ? '12px' : '16px'
+      );
+
+      menu.add(btn.bg);
+      menu.add(btn.txt);
+    }
+
+    menu._x = this._saveBtnX + 28;
+    menu._y = this._saveBtnY - 20;
+    menu._w = items.length * 44;
+    menu._h = 40;
+
+    this._saveMenu = menu;
+    this._editCam.ignore(menu.list);
+  }
+
+  _closeSaveMenu() {
+    if (!this._saveMenu) return;
+    this._saveMenu.destroy(true);
+    this._saveMenu = null;
+  }
+
+  _isPointerInSaveMenu(pointer) {
+    if (!this._saveMenu) return false;
+
+    return (
+      pointer.x >= this._saveMenu._x &&
+      pointer.x <= this._saveMenu._x + this._saveMenu._w &&
+      pointer.y >= this._saveMenu._y &&
+      pointer.y <= this._saveMenu._y + this._saveMenu._h
+    );
+  }
+
+  // =================================================
+  // Grupo modo
+  // =================================================
+  _getModeToolLabel() {
+    if (this._modeTool === 'finish') return '🏁';
+    if (this._modeTool === 'checkpoint') return 'CP';
+    return this._isClosed ? '🔒' : '🔓';
+  }
+
+  _runActiveModeTool() {
+    if (this._modeTool === 'finish') {
+      this._setTool('finish');
+      return;
+    }
+
+    if (this._modeTool === 'checkpoint') {
+      this._setTool('checkpoint');
+      return;
+    }
+
+    this._toggleClosed();
+  }
+
+  _toggleModeMenu() {
+    if (this._modeMenu) {
+      this._closeModeMenu();
+      return;
+    }
+
+    const allItems = [
+      { key: 'edit', label: this._isClosed ? '🔒' : '🔓' },
+      { key: 'finish', label: '🏁' },
+      { key: 'checkpoint', label: 'CP' }
+    ];
+
+    const items = allItems.filter(item => item.key !== this._modeTool);
+
+    const menu = this.add.container(0, 0);
+    menu.setDepth(90);
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+
+      const x = this._modeBtnX + 48 + (i * 44);
+      const y = this._modeBtnY;
+
+      const btn = this._makeIconButton(
+        x,
+        y,
+        item.label,
+        () => {
+          this._modeTool = item.key;
+          this._modeMainBtn._txt.setText(this._getModeToolLabel());
+          this._closeModeMenu();
+
+          if (item.key === 'edit') {
+            this._setTool('edit');
+          } else {
+            this._setTool(item.key);
+          }
+        },
+        item.key === 'checkpoint' ? '12px' : '16px'
+      );
+
+      menu.add(btn.bg);
+      menu.add(btn.txt);
+    }
+
+    menu._x = this._modeBtnX + 28;
+    menu._y = this._modeBtnY - 20;
+    menu._w = items.length * 44;
+    menu._h = 40;
+
+    this._modeMenu = menu;
+    this._editCam.ignore(menu.list);
+  }
+
+  _closeModeMenu() {
+    if (!this._modeMenu) return;
+    this._modeMenu.destroy(true);
+    this._modeMenu = null;
+  }
+
+  _isPointerInModeMenu(pointer) {
+    if (!this._modeMenu) return false;
+
+    return (
+      pointer.x >= this._modeMenu._x &&
+      pointer.x <= this._modeMenu._x + this._modeMenu._w &&
+      pointer.y >= this._modeMenu._y &&
+      pointer.y <= this._modeMenu._y + this._modeMenu._h
+    );
+  }
+
   _getNudgeStep() {
     return this._nudgeSteps[this._nudgeStepIndex];
   }
@@ -967,57 +1104,58 @@ _isPointerInSaveMenu(pointer) {
 
   _setTool(tool) {
     this._tool = tool;
+    if (tool === 'finish') this._modeTool = 'finish';
+    if (tool === 'checkpoint') this._modeTool = 'checkpoint';
+    if (tool === 'edit' && this._modeTool !== 'edit') {
+      this._modeTool = 'edit';
+    }
     this._updateToolButtons();
     this._updatePanel();
   }
 
-_updateToolButtons() {
-  if (this._finishBtn?.bg) {
-    const activeFinish = this._tool === 'finish';
-    this._finishBtn.bg.setFillStyle(activeFinish ? 0x2b8a3e : 0x1c2540, 1);
-    this._finishBtn.bg.setStrokeStyle(2, activeFinish ? 0xa8ffb8 : 0x3c4e7a, 0.95);
-  }
+  _updateToolButtons() {
+    if (this._finishBtn?.bg) {
+      const activeFinish = this._tool === 'finish';
+      this._finishBtn.bg.setFillStyle(activeFinish ? 0x2b8a3e : 0x1c2540, 1);
+      this._finishBtn.bg.setStrokeStyle(2, activeFinish ? 0xa8ffb8 : 0x3c4e7a, 0.95);
+    }
 
-  if (this._checkpointBtn?.bg) {
-    const activeCp = this._tool === 'checkpoint';
-    this._checkpointBtn.bg.setFillStyle(activeCp ? 0x235c9f : 0x1c2540, 1);
-    this._checkpointBtn.bg.setStrokeStyle(2, activeCp ? 0xaed4ff : 0x3c4e7a, 0.95);
-  }
+    if (this._checkpointBtn?.bg) {
+      const activeCp = this._tool === 'checkpoint';
+      this._checkpointBtn.bg.setFillStyle(activeCp ? 0x235c9f : 0x1c2540, 1);
+      this._checkpointBtn.bg.setStrokeStyle(2, activeCp ? 0xaed4ff : 0x3c4e7a, 0.95);
+    }
 
-  if (this._guideToggleBtn?.bg) {
-    this._guideToggleBtn.bg.setFillStyle(this._guideVisible ? 0x1f4f2d : 0x1c2540, 1);
-    this._guideToggleBtn.bg.setStrokeStyle(2, this._guideVisible ? 0x8df0a8 : 0x3c4e7a, 0.95);
-  }
+    if (this._guideToggleBtn?.bg) {
+      this._guideToggleBtn.bg.setFillStyle(this._guideVisible ? 0x1f4f2d : 0x1c2540, 1);
+      this._guideToggleBtn.bg.setStrokeStyle(2, this._guideVisible ? 0x8df0a8 : 0x3c4e7a, 0.95);
+    }
 
-  if (this._loopBtn?.txt && this._tool === 'edit') {
-    this._loopBtn.txt.setText(this._isClosed ? '🔒' : '🔓');
-  }
+    if (this._loopBtn?.txt && this._tool === 'edit') {
+      this._loopBtn.txt.setText(this._isClosed ? '🔒' : '🔓');
+    }
 
-  if (this._nudgeStepBtn?.txt) {
-    this._nudgeStepBtn.txt.setText(String(this._getNudgeStep()));
-  }
+    if (this._nudgeStepBtn?.txt) {
+      this._nudgeStepBtn.txt.setText(String(this._getNudgeStep()));
+    }
 
-  if (this._viewMainBtn?._txt) {
-    this._viewMainBtn._txt.setText(this._getViewToolLabel());
-  }
+    if (this._viewMainBtn?._txt) {
+      this._viewMainBtn._txt.setText(this._getViewToolLabel());
+    }
 
-  if (this._saveMainBtn?._txt) {
-    this._saveMainBtn._txt.setText(this._getSaveToolLabel());
-  }
+    if (this._saveMainBtn?._txt) {
+      this._saveMainBtn._txt.setText(this._getSaveToolLabel());
+    }
 
-  if (this._modeMainBtn?._txt) {
-    if (this._tool === 'finish') {
-      this._modeMainBtn._txt.setText('🏁');
-    } else if (this._tool === 'checkpoint') {
-      this._modeMainBtn._txt.setText('CP');
-    } else {
-      this._modeMainBtn._txt.setText(this._isClosed ? '🔒' : '🔓');
+    if (this._modeMainBtn?._txt) {
+      this._modeMainBtn._txt.setText(this._getModeToolLabel());
     }
   }
-}
+
   _toggleClosed() {
     this._isClosed = !this._isClosed;
     this._updateLoopButton();
+    this._updateToolButtons();
     this._updatePanel();
     this._redrawEditor();
   }
@@ -1220,49 +1358,44 @@ _updateToolButtons() {
     return pts;
   }
 
-_getBezierPoints() {
-  const count = this._nodes.length;
-  if (count < 2) return this._nodes.map((n) => ({ x: n.x, y: n.y }));
+  _getBezierPoints() {
+    const count = this._nodes.length;
+    if (count < 2) return this._nodes.map((n) => ({ x: n.x, y: n.y }));
 
-  const pts = [];
-  const segCount = this._isClosed ? count : count - 1;
+    const pts = [];
+    const segCount = this._isClosed ? count : count - 1;
 
-  for (let i = 0; i < segCount; i++) {
-    const a = this._nodes[i];
-    const b = this._nodes[(i + 1) % count];
+    for (let i = 0; i < segCount; i++) {
+      const a = this._nodes[i];
+      const b = this._nodes[(i + 1) % count];
 
-    const seg = this._sampleCubicBezier(
-      { x: a.x, y: a.y },
-      { x: a.handleOut.x, y: a.handleOut.y },
-      { x: b.handleIn.x, y: b.handleIn.y },
-      { x: b.x, y: b.y },
-      28
-    );
+      const seg = this._sampleCubicBezier(
+        { x: a.x, y: a.y },
+        { x: a.handleOut.x, y: a.handleOut.y },
+        { x: b.handleIn.x, y: b.handleIn.y },
+        { x: b.x, y: b.y },
+        28
+      );
 
-    // 🔥 CLAVE:
-    // quitamos duplicados SOLO en segmentos intermedios
-    // pero dejamos intacto el último si es loop
-    if (i > 0 && !(this._isClosed && i === segCount - 1)) {
-      seg.shift();
+      if (i > 0 && !(this._isClosed && i === segCount - 1)) {
+        seg.shift();
+      }
+
+      pts.push(...seg);
     }
 
-    pts.push(...seg);
-  }
+    if (this._isClosed && pts.length > 1) {
+      const first = pts[0];
+      const last = pts[pts.length - 1];
 
-  // 🔥 CLAVE 2:
-  // aseguramos cierre PERFECTO
-  if (this._isClosed && pts.length > 1) {
-    const first = pts[0];
-    const last = pts[pts.length - 1];
-
-    // si no coinciden EXACTAMENTE → forzamos
-    if (first.x !== last.x || first.y !== last.y) {
-      pts.push({ x: first.x, y: first.y });
+      if (first.x !== last.x || first.y !== last.y) {
+        pts.push({ x: first.x, y: first.y });
+      }
     }
+
+    return pts;
   }
 
-  return pts;
-}
   _buildTrackStrip(points, width) {
     if (!Array.isArray(points) || points.length < 2) {
       return { left: [], right: [] };
@@ -1553,6 +1686,7 @@ _getBezierPoints() {
         'Sin nodo seleccionado\n' +
         `Herramienta: ${this._tool}\n` +
         `Vista: ${this._getViewToolLabel()}\n` +
+        `Modo: ${this._getModeToolLabel()}\n` +
         `Nodos: ${this._nodes.length}\n` +
         `Loop: ${this._isClosed ? 'cerrado' : 'abierto'}\n` +
         `Meta: ${this._finishLine ? 'sí' : 'no'}\n` +
@@ -1573,6 +1707,7 @@ _getBezierPoints() {
       `Nodo #${this._selectedNode}\n` +
       `Herramienta: ${this._tool}\n` +
       `Vista: ${this._getViewToolLabel()}\n` +
+      `Modo toolbar: ${this._getModeToolLabel()}\n` +
       `Modo: ${part}\n` +
       `Loop: ${this._isClosed ? 'cerrado' : 'abierto'}\n` +
       `Meta: ${this._finishLine ? 'sí' : 'no'}\n` +
@@ -1593,48 +1728,51 @@ _getBezierPoints() {
   // =================================================
   // SAVE / LOAD / NEW
   // =================================================
-_getProjectData() {
-  return {
-    version: 1,
-    nodes: this._nodes,
-    trackWidth: this._trackWidth,
-    isClosed: this._isClosed,
-    finishLine: this._finishLine,
-    checkpoints: this._checkpoints,
-    guideAlpha: this._guideAlpha,
-    guideVisible: this._guideVisible,
-    nudgeStepIndex: this._nudgeStepIndex,
-    viewTool: this._viewTool,
-    saveTool: this._saveTool
-  };
-}
-
-_applyProjectData(data) {
-  this._nodes = data.nodes || [];
-  this._trackWidth = data.trackWidth ?? 140;
-  this._isClosed = data.isClosed ?? false;
-  this._finishLine = data.finishLine || null;
-  this._checkpoints = data.checkpoints || [];
-  this._guideAlpha = data.guideAlpha ?? 0.32;
-  this._guideVisible = data.guideVisible ?? true;
-  this._nudgeStepIndex = data.nudgeStepIndex ?? 2;
-  this._viewTool = data.viewTool || 'zoomIn';
-  this._saveTool = data.saveTool || 'save';
-
-  if (this._guideImage) {
-    this._guideImage.setAlpha(this._guideAlpha);
-    this._guideImage.setVisible(this._guideVisible);
+  _getProjectData() {
+    return {
+      version: 1,
+      nodes: this._nodes,
+      trackWidth: this._trackWidth,
+      isClosed: this._isClosed,
+      finishLine: this._finishLine,
+      checkpoints: this._checkpoints,
+      guideAlpha: this._guideAlpha,
+      guideVisible: this._guideVisible,
+      nudgeStepIndex: this._nudgeStepIndex,
+      viewTool: this._viewTool,
+      saveTool: this._saveTool,
+      modeTool: this._modeTool
+    };
   }
 
-  this._selectedNode = -1;
-  this._selectedPart = null;
-  this._tool = 'edit';
+  _applyProjectData(data) {
+    this._nodes = data.nodes || [];
+    this._trackWidth = data.trackWidth ?? 140;
+    this._isClosed = data.isClosed ?? false;
+    this._finishLine = data.finishLine || null;
+    this._checkpoints = data.checkpoints || [];
+    this._guideAlpha = data.guideAlpha ?? 0.32;
+    this._guideVisible = data.guideVisible ?? true;
+    this._nudgeStepIndex = data.nudgeStepIndex ?? 2;
+    this._viewTool = data.viewTool || 'zoomIn';
+    this._saveTool = data.saveTool || 'save';
+    this._modeTool = data.modeTool || 'edit';
 
-  this._updateLoopButton();
-  this._updateToolButtons();
-  this._updatePanel();
-  this._redrawEditor();
-}
+    if (this._guideImage) {
+      this._guideImage.setAlpha(this._guideAlpha);
+      this._guideImage.setVisible(this._guideVisible);
+    }
+
+    this._selectedNode = -1;
+    this._selectedPart = null;
+    this._tool = 'edit';
+
+    this._updateLoopButton();
+    this._updateToolButtons();
+    this._updatePanel();
+    this._redrawEditor();
+  }
+
   _saveProject() {
     try {
       const data = this._getProjectData();
@@ -1660,23 +1798,25 @@ _applyProjectData(data) {
       console.error('❌ Error cargando proyecto', e);
     }
   }
-_newProject() {
-  this._nodes = [];
-  this._finishLine = null;
-  this._checkpoints = [];
-  this._isClosed = false;
-  this._trackWidth = 140;
-  this._selectedNode = -1;
-  this._selectedPart = null;
-  this._tool = 'edit';
-  this._viewTool = 'zoomIn';
-  this._saveTool = 'save';
 
-  this._updateLoopButton();
-  this._updateToolButtons();
-  this._updatePanel();
-  this._redrawEditor();
+  _newProject() {
+    this._nodes = [];
+    this._finishLine = null;
+    this._checkpoints = [];
+    this._isClosed = false;
+    this._trackWidth = 140;
+    this._selectedNode = -1;
+    this._selectedPart = null;
+    this._tool = 'edit';
+    this._viewTool = 'zoomIn';
+    this._saveTool = 'save';
+    this._modeTool = 'edit';
 
-  console.log('🆕 Nuevo proyecto');
-}
+    this._updateLoopButton();
+    this._updateToolButtons();
+    this._updatePanel();
+    this._redrawEditor();
+
+    console.log('🆕 Nuevo proyecto');
+  }
 }
