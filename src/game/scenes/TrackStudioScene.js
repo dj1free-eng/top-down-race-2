@@ -1651,3 +1651,4 @@ _newProject() {
 
   console.log('🆕 Nuevo proyecto');
 }
+}
