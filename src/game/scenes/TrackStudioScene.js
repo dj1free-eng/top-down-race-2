@@ -992,37 +992,38 @@ export class TrackStudioScene extends BaseScene {
     return this._toggleClosed();
   }
 
-  _toggleModeMenu() {
-    if (this._modeMenu) return this._closeModeMenu();
+_toggleModeMenu() {
+  if (this._modeMenu) return this._closeModeMenu();
 
-    const allItems = [
-      { key: 'edit', label: this._isClosed ? '🔒' : '🔓' },
-      { key: 'finish', label: '🏁' },
-      { key: 'checkpoint', label: 'CP' }
-    ];
+  const allItems = [
+    { key: 'edit', label: this._isClosed ? '🔒' : '🔓' },
+    { key: 'finish', label: '🏁' },
+    { key: 'checkpoint', label: 'CP' },
+    { key: 'piano', label: 'PI' }
+  ];
 
-    const items = allItems.filter(item => item.key !== this._modeTool);
+  const items = allItems.filter(item => item.key !== this._modeTool);
 
-    this._modeMenu = this._makeMenuPanel(this._modeBtnX, this._modeBtnY, items, (item, x, y) => {
-      return this._makeIconButton(
-        x,
-        y,
-        item.label,
-        () => {
-          this._modeTool = item.key;
-          this._modeMainBtn._txt.setText(this._getModeToolLabel());
-          this._closeModeMenu();
+  this._modeMenu = this._makeMenuPanel(this._modeBtnX, this._modeBtnY, items, (item, x, y) => {
+    return this._makeIconButton(
+      x,
+      y,
+      item.label,
+      () => {
+        this._modeTool = item.key;
+        this._modeMainBtn._txt.setText(this._getModeToolLabel());
+        this._closeModeMenu();
 
-          if (item.key === 'edit') {
-            this._setTool('edit');
-          } else {
-            this._setTool(item.key);
-          }
-        },
-        item.key === 'checkpoint' ? '12px' : '16px'
-      );
-    });
-  }
+        if (item.key === 'edit') {
+          this._setTool('edit');
+        } else {
+          this._setTool(item.key);
+        }
+      },
+      item.key === 'checkpoint' ? '12px' : '13px'
+    );
+  });
+}
 
   _closeModeMenu() {
     if (!this._modeMenu) return;
