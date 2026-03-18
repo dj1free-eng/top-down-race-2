@@ -390,29 +390,45 @@ export class TrackStudioScene extends BaseScene {
           this._dragMoved = true;
         }
 
-        const world = this._screenToWorld(p.x, p.y);
-        const idx = this._selectedPart.index;
-        const node = this._nodes[idx];
+const world = this._screenToWorld(p.x, p.y);
+const idx = this._selectedPart.index;
 
-        if (this._selectedPart.type === 'node') {
-          const dx = world.x - node.x;
-          const dy = world.y - node.y;
+if (
+  this._selectedPart.type === 'node' ||
+  this._selectedPart.type === 'handleIn' ||
+  this._selectedPart.type === 'handleOut'
+) {
+  const node = this._nodes[idx];
 
-          node.x = world.x;
-          node.y = world.y;
+  if (this._selectedPart.type === 'node') {
+    const dx = world.x - node.x;
+    const dy = world.y - node.y;
 
-          node.handleIn.x += dx;
-          node.handleIn.y += dy;
-          node.handleOut.x += dx;
-          node.handleOut.y += dy;
-        } else if (this._selectedPart.type === 'handleIn') {
-          node.handleIn.x = world.x;
-          node.handleIn.y = world.y;
-        } else if (this._selectedPart.type === 'handleOut') {
-          node.handleOut.x = world.x;
-          node.handleOut.y = world.y;
-        }
+    node.x = world.x;
+    node.y = world.y;
 
+    node.handleIn.x += dx;
+    node.handleIn.y += dy;
+    node.handleOut.x += dx;
+    node.handleOut.y += dy;
+  } else if (this._selectedPart.type === 'handleIn') {
+    node.handleIn.x = world.x;
+    node.handleIn.y = world.y;
+  } else if (this._selectedPart.type === 'handleOut') {
+    node.handleOut.x = world.x;
+    node.handleOut.y = world.y;
+  }
+
+} else if (this._selectedPart.type === 'pianoA') {
+  const piano = this._pianos[idx];
+  piano.a.x = world.x;
+  piano.a.y = world.y;
+
+} else if (this._selectedPart.type === 'pianoB') {
+  const piano = this._pianos[idx];
+  piano.b.x = world.x;
+  piano.b.y = world.y;
+}
         this._updatePanel();
         this._redrawEditor();
         return;
