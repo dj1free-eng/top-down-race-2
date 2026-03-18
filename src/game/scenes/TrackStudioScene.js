@@ -1251,7 +1251,106 @@ _toggleModeMenu() {
       }
     };
   }
+// ==============================
+// 🟥 PIANOS SYSTEM
+// ==============================
 
+_initPianos() {
+  this._pianos = [];
+  this._activePiano = null;
+}
+
+// Crear piano en punto del track
+_createPiano(x, y) {
+  const p = {
+    x,
+    y,
+    side: 'left', // o 'right'
+    len: 120,
+    width: 12,
+    angle: 0,
+    handleA: { x: x - 40, y },
+    handleB: { x: x + 40, y }
+  };
+
+  this._pianos.push(p);
+  this._activePiano = p;
+}
+
+// Detectar si tocas un piano o handler
+_findPianoControl(x, y) {
+  for (let i = 0; i < this._pianos.length; i++) {
+    const p = this._pianos[i];
+
+    if (Phaser.Math.Distance.Between(x, y, p.x, p.y) < 20) {
+      return { type: 'piano', index: i };
+    }
+
+    if (Phaser.Math.Distance.Between(x, y, p.handleA.x, p.handleA.y) < 15) {
+      return { type: 'pianoHandleA', index: i };
+    }
+
+    if (Phaser.Math.Distance.Between(x, y, p.handleB.x, p.handleB.y) < 15) {
+      return { type: 'pianoHandleB', index: i };
+    }
+  }
+
+  return null;
+}
+
+// Dibujar pianos
+_drawPianos(g) {
+  if (!this._pianos.length) return;
+
+  g.lineStyle(2, 0xff0000, 1);
+
+  this._pianos.forEach((p) => {
+    // línea principal
+    g.strokeLineShape(
+      new Phaser.Geom.Line(p.handleA.x, p.handleA.y, p.handleB.x, p.handleB.y)
+    );
+
+    // centro
+    g.fillStyle(0xff0000, 1);
+    g.fillCircle(p.x, p.y, 5);
+
+    // handlers
+    g.fillStyle(0xffff00, 1);
+    g.fillCircle(p.handleA.x, p.handleA.y, 4);
+    g.fillCircle(p.handleB.x, p.handleB.y, 4);
+  });
+}
+
+// Update piano mientras arrastras
+_updatePianoDrag(part, world) {
+  const p = this._pianos[part.index];
+
+  if (!p) return;
+
+  if (part.type === 'piano') {
+    const dx = world.x - p.x;
+    const dy = world.y - p.y;
+
+    p.x = world.x;
+    p.y = world.y;
+
+    p.handleA.x += dx;
+    p.handleA.y += dy;
+
+    p.handleB.x += dx;
+    p.handleB.y += dy;
+  }
+
+  if (part.type === 'pianoHandleA') {
+    p.handleA.x = world.x;
+    p.handleA.y = world.y;
+  }
+
+  if (part.type === 'pianoHandleB') {
+    p.handleB.x = world.x;
+    p.handleB.y = world.y;
+  }
+}
   _applyZoomAtViewportCenter(multiplier) {
     const midX = this._editCam.x + this._editCam.width / 2;
     const midY = this._editCam.y + this._editCam.height / 2;
