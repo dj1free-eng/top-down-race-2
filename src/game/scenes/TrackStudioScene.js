@@ -1019,60 +1019,71 @@ export class TrackStudioScene extends BaseScene {
     this._toggleClosed();
   }
 
-  _toggleModeMenu() {
-    if (this._modeMenu) {
-      this._closeModeMenu();
-      return;
-    }
-
-    const allItems = [
-      { key: 'edit', label: this._isClosed ? '🔒' : '🔓' },
-      { key: 'finish', label: '🏁' },
-      { key: 'checkpoint', label: 'CP' }
-    ];
-
-    const items = allItems.filter(item => item.key !== this._modeTool);
-
-    const menu = this.add.container(0, 0);
-    menu.setDepth(90);
-
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-
-      const x = this._modeBtnX + 48 + (i * 44);
-      const y = this._modeBtnY;
-
-      const btn = this._makeIconButton(
-        x,
-        y,
-        item.label,
-        () => {
-          this._modeTool = item.key;
-          this._modeMainBtn._txt.setText(this._getModeToolLabel());
-          this._closeModeMenu();
-
-          if (item.key === 'edit') {
-            this._setTool('edit');
-          } else {
-            this._setTool(item.key);
-          }
-        },
-        item.key === 'checkpoint' ? '12px' : '16px'
-      );
-
-      menu.add(btn.bg);
-      menu.add(btn.txt);
-    }
-
-    menu._x = this._modeBtnX + 28;
-    menu._y = this._modeBtnY - 20;
-    menu._w = items.length * 44;
-    menu._h = 40;
-
-    this._modeMenu = menu;
-    this._editCam.ignore(menu.list);
+_toggleModeMenu() {
+  if (this._modeMenu) {
+    this._closeModeMenu();
+    return;
   }
 
+  const allItems = [
+    { key: 'edit', label: this._isClosed ? '🔒' : '🔓' },
+    { key: 'finish', label: '🏁' },
+    { key: 'checkpoint', label: 'CP' }
+  ];
+
+  const items = allItems.filter(item => item.key !== this._modeTool);
+
+  const menu = this.add.container(0, 0);
+  menu.setDepth(90);
+
+  const panelX = this._modeBtnX + 28;
+  const panelY = this._modeBtnY - 20;
+  const panelW = items.length * 44 + 12;
+  const panelH = 52;
+
+  const panel = this.add.graphics();
+  panel.fillStyle(0x101626, 1);
+  panel.lineStyle(2, 0x3c4e7a, 0.95);
+  panel.fillRoundedRect(panelX - 6, panelY - 6, panelW, panelH, 10);
+  panel.strokeRoundedRect(panelX - 6, panelY - 6, panelW, panelH, 10);
+  menu.add(panel);
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+
+    const x = this._modeBtnX + 48 + (i * 44);
+    const y = this._modeBtnY;
+
+    const btn = this._makeIconButton(
+      x,
+      y,
+      item.label,
+      () => {
+        this._modeTool = item.key;
+        this._modeMainBtn._txt.setText(this._getModeToolLabel());
+        this._closeModeMenu();
+
+        if (item.key === 'edit') {
+          this._setTool('edit');
+        } else {
+          this._setTool(item.key);
+        }
+      },
+      item.key === 'checkpoint' ? '12px' : '16px'
+    );
+
+    menu.add(btn.bg);
+    menu.add(btn.txt);
+  }
+
+  menu._x = panelX - 6;
+  menu._y = panelY - 6;
+  menu._w = panelW;
+  menu._h = panelH;
+
+  this._modeMenu = menu;
+  this._editCam.ignore(menu.list);
+}
   _closeModeMenu() {
     if (!this._modeMenu) return;
     this._modeMenu.destroy(true);
