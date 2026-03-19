@@ -353,12 +353,24 @@ export class TrackStudioScene extends BaseScene {
       const hit = this._findControlAt(world.x, world.y);
 
       if (hit) {
-        this._selectedNode = hit.index;
         this._selectedPart = hit;
         this._draggingPart = true;
         this._dragMoved = false;
         this._dragStartScreen = { x: pointer.x, y: pointer.y };
         this._dragStartWorld = { x: world.x, y: world.y };
+
+        if (
+          hit.type === 'piano' ||
+          hit.type === 'pianoA' ||
+          hit.type === 'pianoB'
+        ) {
+          this._selectedPiano = hit.index;
+          this._selectedNode = -1;
+        } else {
+          this._selectedNode = hit.index;
+          this._selectedPiano = -1;
+        }
+
         this._updatePanel();
         this._redrawEditor();
         return;
@@ -392,16 +404,22 @@ export class TrackStudioScene extends BaseScene {
 
 const world = this._screenToWorld(p.x, p.y);
 const idx = this._selectedPart.index;
+
+// --- PIANOS ---
 if (
   this._selectedPart.type === 'piano' ||
-  this._selectedPart.type === 'pianoHandleA' ||
-  this._selectedPart.type === 'pianoHandleB'
+  this._selectedPart.type === 'pianoA' ||
+  this._selectedPart.type === 'pianoB'
 ) {
   this._updatePianoDrag(this._selectedPart, world);
+  this._selectedPiano = idx;
+  this._selectedNode = -1;
   this._updatePanel();
   this._redrawEditor();
   return;
 }
+
+// --- NODOS ---
 if (
   this._selectedPart.type === 'node' ||
   this._selectedPart.type === 'handleIn' ||
@@ -428,19 +446,12 @@ if (
     node.handleOut.y = world.y;
   }
 
-} else if (this._selectedPart.type === 'pianoA') {
-  const piano = this._pianos[idx];
-  piano.a.x = world.x;
-  piano.a.y = world.y;
-
-} else if (this._selectedPart.type === 'pianoB') {
-  const piano = this._pianos[idx];
-  piano.b.x = world.x;
-  piano.b.y = world.y;
+  this._selectedNode = idx;
+  this._selectedPiano = -1;
+  this._updatePanel();
+  this._redrawEditor();
+  return;
 }
-        this._updatePanel();
-        this._redrawEditor();
-        return;
       }
 
       if (down.length === 1) {
@@ -1329,22 +1340,29 @@ _findPianoControl(x, y) {
 _drawPianos(g) {
   if (!this._pianos.length) return;
 
-  g.lineStyle(2, 0xff0000, 1);
+  this._pianos.forEach((p, i) => {
+    if (!p || !p.a || !p.b || !p.point) return;
 
-  this._pianos.forEach((p) => {
-    // línea principal
-    g.strokeLineShape(
-      new Phaser.Geom.Line(p.handleA.x, p.handleA.y, p.handleB.x, p.handleB.y)
-    );
+    const selected = i === this._selectedPiano;
 
-    // centro
-    g.fillStyle(0xff0000, 1);
-    g.fillCircle(p.x, p.y, 5);
+    g.lineStyle(selected ? 10 : 8, selected ? 0xffd166 : 0xd92f2f, 0.95);
+    g.beginPath();
+    g.moveTo(p.a.x, p.a.y);
+    g.lineTo(p.b.x, p.b.y);
+    g.strokePath();
 
-    // handlers
-    g.fillStyle(0xffff00, 1);
-    g.fillCircle(p.handleA.x, p.handleA.y, 4);
-    g.fillCircle(p.handleB.x, p.handleB.y, 4);
+    g.lineStyle(3, 0xf2f2f2, 0.95);
+    g.beginPath();
+    g.moveTo(p.a.x, p.a.y);
+    g.lineTo(p.b.x, p.b.y);
+    g.strokePath();
+
+    g.fillStyle(0xffd166, 1);
+    g.fillCircle(p.a.x, p.a.y, 6);
+    g.fillCircle(p.b.x, p.b.y, 6);
+
+    g.fillStyle(selected ? 0x2bff88 : 0xffffff, 1);
+    g.fillCircle(p.point.x, p.point.y, selected ? 7 : 5);
   });
 }
 
