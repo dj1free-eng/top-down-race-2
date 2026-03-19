@@ -1368,4 +1368,35 @@ _updatePanel() {
 
   return null;
 }
+  _findControlAt(x, y) {
+  const radiusNode = 18;
+  const radiusHandle = 14;
+
+  // 1. Prioridad: handles (más pequeños, más precisos)
+  for (let i = this._nodes.length - 1; i >= 0; i--) {
+    const n = this._nodes[i];
+
+    const dIn = Phaser.Math.Distance.Between(x, y, n.handleIn.x, n.handleIn.y);
+    if (dIn < radiusHandle) {
+      return { type: 'handleIn', index: i };
+    }
+
+    const dOut = Phaser.Math.Distance.Between(x, y, n.handleOut.x, n.handleOut.y);
+    if (dOut < radiusHandle) {
+      return { type: 'handleOut', index: i };
+    }
+  }
+
+  // 2. Luego nodos
+  for (let i = this._nodes.length - 1; i >= 0; i--) {
+    const n = this._nodes[i];
+
+    const d = Phaser.Math.Distance.Between(x, y, n.x, n.y);
+    if (d < radiusNode) {
+      return { type: 'node', index: i };
+    }
+  }
+
+  return null;
+}
 }
