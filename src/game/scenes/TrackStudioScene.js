@@ -6,679 +6,645 @@ export class TrackStudioScene extends BaseScene {
     super('TrackStudioScene');
   }
 
-  create() {
-    super.create();
+create() {
+  super.create();
 
-    const { width, height } = this.scale;
+  const { width, height } = this.scale;
 
-    // =================================================
-    // Layout base
-    // =================================================
-    this._topBarH = 72;
-    this._leftBarW = 76;
-    this._rightPanelW = 280;
-    this._bottomPad = 14;
+  // =================================================
+  // Layout base
+  // =================================================
+  this._topBarH = 72;
+  this._leftBarW = 76;
+  this._rightPanelW = 320;
+  this._bottomPad = 14;
 
-    this._viewX = this._leftBarW;
-    this._viewY = this._topBarH;
-    this._viewW = width - this._leftBarW - this._rightPanelW;
-    this._viewH = height - this._topBarH - this._bottomPad;
+  this._viewX = this._leftBarW;
+  this._viewY = this._topBarH;
+  this._viewW = width - this._leftBarW - this._rightPanelW;
+  this._viewH = height - this._topBarH - this._bottomPad;
 
-    // =================================================
-    // Estado editor
-    // =================================================
-    this._editorWorldW = 4000;
-    this._editorWorldH = 4000;
+  // =================================================
+  // Estado editor
+  // =================================================
+  this._editorWorldW = 4000;
+  this._editorWorldH = 4000;
 
-    this._nodes = [];
-    this._selectedNode = -1;
-    this._selectedPart = null;
+  this._nodes = [];
+  this._selectedNode = -1;
+  this._selectedPart = null;
 
-    this._draggingPart = false;
-    this._dragMoved = false;
-    this._dragStartScreen = null;
-    this._dragStartWorld = null;
+  this._draggingPart = false;
+  this._dragMoved = false;
+  this._dragStartScreen = null;
+  this._dragStartWorld = null;
 
-    this._tapCandidate = false;
-    this._gestureWasMultiTouch = false;
-    this._panLast = null;
-    this._pinchLastDist = 0;
+  this._tapCandidate = false;
+  this._gestureWasMultiTouch = false;
+  this._panLast = null;
+  this._pinchLastDist = 0;
 
-    this._editZoomMin = 0.12;
-    this._editZoomMax = 2.5;
+  this._editZoomMin = 0.12;
+  this._editZoomMax = 2.5;
 
-    this._trackWidth = 140;
-    this._trackWidthMin = 30;
-    this._trackWidthMax = 260;
+  this._trackWidth = 140;
+  this._trackWidthMin = 30;
+  this._trackWidthMax = 260;
 
-    this._isClosed = false;
-    this._tool = 'edit'; // 'edit' | 'finish' | 'checkpoint' | 'piano'
-    this._finishLine = null;
-    this._checkpoints = [];
+  this._isClosed = false;
+  this._tool = 'edit'; // 'edit' | 'finish' | 'checkpoint' | 'piano'
+  this._finishLine = null;
+  this._checkpoints = [];
 
-    // pianos manuales
-    this._pianos = [];
-    this._selectedPiano = -1;
+  // pianos manuales
+  this._pianos = [];
+  this._selectedPiano = -1;
 
-    // guía de fondo
-    this._guideImage = null;
-    this._guideTextureKey = null;
-    this._guideVisible = true;
-    this._guideAlpha = 0.32;
-    this._guideInput = null;
+  // guía de fondo
+  this._guideImage = null;
+  this._guideTextureKey = null;
+  this._guideVisible = true;
+  this._guideAlpha = 0.32;
+  this._guideInput = null;
 
-    // nudge
-    this._nudgeSteps = [1, 5, 10];
-    this._nudgeStepIndex = 2;
+  // nudge
+  this._nudgeSteps = [1, 5, 10];
+  this._nudgeStepIndex = 2;
 
-    // grupos toolbar
-    this._saveTool = 'save';
-    this._saveMenu = null;
+  // toolbar/contexto
+  this._saveTool = 'save';
+  this._viewTool = 'zoomIn';
+  this._modeTool = 'edit';
+  this._trackTool = 'widthUp';
+  this._guideTool = 'load';
 
-    this._viewTool = 'zoomIn';
-    this._viewMenu = null;
+  this._activeTopTool = 'mode';
+  this._contextButtons = [];
 
-    this._modeTool = 'edit';
-    this._modeMenu = null;
+  // =================================================
+  // UI base
+  // =================================================
+  this.cameras.main.setBackgroundColor('#09101d');
 
-    this._trackTool = 'widthUp';
-    this._trackMenu = null;
+  this.add.rectangle(0, 0, width, this._topBarH, 0x101626).setOrigin(0);
+  this.add.rectangle(0, this._topBarH, this._leftBarW, height - this._topBarH, 0x0d1422).setOrigin(0);
+  this.add.rectangle(width - this._rightPanelW, this._topBarH, this._rightPanelW, height - this._topBarH, 0x0f1422).setOrigin(0);
 
-    this._guideTool = 'load';
-    this._guideMenu = null;
-    // =================================================
-    // UI base
-    // =================================================
-    this.cameras.main.setBackgroundColor('#09101d');
+  this.add.rectangle(this._viewX, this._viewY, this._viewW, this._viewH, 0x0a0d16)
+    .setOrigin(0)
+    .setStrokeStyle(2, 0x26324a, 0.95);
 
-    this.add.rectangle(0, 0, width, this._topBarH, 0x101626).setOrigin(0);
-    this.add.rectangle(0, this._topBarH, this._leftBarW, height - this._topBarH, 0x0d1422).setOrigin(0);
-    this.add.rectangle(width - this._rightPanelW, this._topBarH, this._rightPanelW, height - this._topBarH, 0x0f1422).setOrigin(0);
+  this.add.text(22, 18, 'TRACK STUDIO', {
+    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: '30px',
+    color: '#ffffff',
+    fontStyle: 'bold'
+  });
 
-    this.add.rectangle(this._viewX, this._viewY, this._viewW, this._viewH, 0x0a0d16)
-      .setOrigin(0)
-      .setStrokeStyle(2, 0x26324a, 0.95);
+  this._rightTitle = this.add.text(width - this._rightPanelW + 20, this._topBarH + 18, 'PROPIEDADES', {
+    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: '18px',
+    color: '#c7d2ff',
+    fontStyle: 'bold'
+  });
 
-    this.add.text(22, 18, 'TRACK STUDIO', {
+  this._panelText = this.add.text(width - this._rightPanelW + 20, this._topBarH + 58, 'Sin selección', {
+    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: '14px',
+    color: '#ffffff',
+    lineSpacing: 2,
+    wordWrap: { width: this._rightPanelW - 40 }
+  });
+
+  this._contextTitle = this.add.text(
+    width - this._rightPanelW + 20,
+    this._topBarH + 290,
+    'HERRAMIENTA ACTIVA',
+    {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '30px',
-      color: '#ffffff',
-      fontStyle: 'bold'
-    });
-
-    this._rightTitle = this.add.text(width - this._rightPanelW + 20, this._topBarH + 18, 'PROPIEDADES', {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '18px',
+      fontSize: '17px',
       color: '#c7d2ff',
       fontStyle: 'bold'
-    });
+    }
+  );
 
-    this._panelText = this.add.text(width - this._rightPanelW + 20, this._topBarH + 58, 'Sin nodo seleccionado', {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '14px',
-      color: '#ffffff',
-      lineSpacing: 2,
-      wordWrap: { width: this._rightPanelW - 40 }
-    });
+  const back = this.add.text(width - 38, 18, '←', {
+    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: '22px',
+    color: '#ffffff',
+    backgroundColor: '#1c2540',
+    padding: { x: 12, y: 8 }
+  })
+    .setOrigin(0.5, 0)
+    .setInteractive({ useHandCursor: true });
 
-    const back = this.add.text(width - 38, 18, '←', {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '22px',
-      color: '#ffffff',
-      backgroundColor: '#1c2540',
-      padding: { x: 12, y: 8 }
-    })
-      .setOrigin(0.5, 0)
-      .setInteractive({ useHandCursor: true });
+  back.on('pointerup', () => {
+    this._destroyGuideInput();
+    this.scene.start('admin-hub');
+  });
 
-    back.on('pointerup', () => {
-      this._destroyGuideInput();
-      this.scene.start('admin-hub');
-    });
+  // =================================================
+  // Barra izquierda
+  // =================================================
+  const leftCX = Math.floor(this._leftBarW / 2);
+  const leftY = this._topBarH + 20;
 
-    // =================================================
-    // Barra izquierda
-    // =================================================
-    const leftCX = Math.floor(this._leftBarW / 2);
-    const leftY = this._topBarH + 20;
+  this._leftToolsTitle = this.add.text(leftCX, leftY, 'NAV', {
+    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: '12px',
+    color: '#90a4d4',
+    fontStyle: 'bold'
+  }).setOrigin(0.5, 0);
 
-    this._leftToolsTitle = this.add.text(leftCX, leftY, 'TOOLS', {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '12px',
-      color: '#90a4d4',
-      fontStyle: 'bold'
-    }).setOrigin(0.5, 0);
-
-    // Grupo activo mostrado en barra izquierda
-    this._activeSideGroup = null;   // 'save' | 'view' | 'mode' | 'track' | 'guide' | null
-    this._sideGroupButtons = [];
-
-    // =================================================
-    // Barra superior
-    // =================================================
-    const topToolsY = 36;
-    let topX = 260;
-
-    this._saveBtnX = topX;
-    this._saveBtnY = topToolsY;
-    this._saveMainBtn = this._makeGroupedMainButton(
-      this._saveBtnX,
-      this._saveBtnY,
-      this._getSaveToolLabel(),
-      () => this._runActiveSaveTool(),
-      () => this._toggleSaveMenu(),
-      '14px'
-    );
-    topX += 52;
-
-    this._viewBtnX = topX;
-    this._viewBtnY = topToolsY;
-    this._viewMainBtn = this._makeGroupedMainButton(
-      this._viewBtnX,
-      this._viewBtnY,
-      this._getViewToolLabel(),
-      () => this._runActiveViewTool(),
-      () => this._toggleViewMenu(),
-      '12px'
-    );
-    topX += 52;
-
-    this._modeBtnX = topX;
-    this._modeBtnY = topToolsY;
-    this._modeMainBtn = this._makeGroupedMainButton(
-      this._modeBtnX,
-      this._modeBtnY,
-      this._getModeToolLabel(),
-      () => this._runActiveModeTool(),
-      () => this._toggleModeMenu(),
-      '14px'
-    );
-    topX += 52;
-
-    this._trackBtnX = topX;
-    this._trackBtnY = topToolsY;
-    this._trackMainBtn = this._makeGroupedMainButton(
-      this._trackBtnX,
-      this._trackBtnY,
-      this._getTrackToolLabel(),
-      () => this._runActiveTrackTool(),
-      () => this._toggleTrackMenu(),
-      '13px'
-    );
-    topX += 52;
-
-    this._guideBtnX = topX;
-    this._guideBtnY = topToolsY;
-    this._guideMainBtn = this._makeGroupedMainButton(
-      this._guideBtnX,
-      this._guideBtnY,
-      this._getGuideToolLabel(),
-      () => this._runActiveGuideTool(),
-      () => this._toggleGuideMenu(),
-      '12px'
-    );
-    topX += 52;
-
-    this._guideAlphaMinusBtn = this._makeIconButton(topX, topToolsY, 'A-', () => {
-      this._changeGuideAlpha(-0.08);
-    }, '13px');
-    topX += 44;
-
-    this._guideAlphaPlusBtn = this._makeIconButton(topX, topToolsY, 'A+', () => {
-      this._changeGuideAlpha(0.08);
-    }, '13px');
-    topX += 50;
-
-    this._nudgeStepBtn = this._makeIconButton(topX, topToolsY, String(this._getNudgeStep()), () => {
-      this._cycleNudgeStep();
-    }, '16px');
-    topX += 44;
-
-    this._btnLeft = this._makeIconButton(topX, topToolsY, '←', () => {
-      this._nudgeSelectedNode(-this._getNudgeStep(), 0);
-    }, '18px');
-    topX += 40;
-
-    this._btnUp = this._makeIconButton(topX, topToolsY, '↑', () => {
-      this._nudgeSelectedNode(0, -this._getNudgeStep());
-    }, '18px');
-    topX += 40;
-
-    this._btnDown = this._makeIconButton(topX, topToolsY, '↓', () => {
-      this._nudgeSelectedNode(0, this._getNudgeStep());
-    }, '18px');
-    topX += 40;
-
-    this._btnRight = this._makeIconButton(topX, topToolsY, '→', () => {
-      this._nudgeSelectedNode(this._getNudgeStep(), 0);
-    }, '18px');
-    topX += 40;
-
-    this._deleteBtn = this._makeIconButton(topX, topToolsY, '🗑', () => {
-      this._deleteSelectedNode();
-    }, '16px');
-
-    // =================================================
-    // Mundo de edición
-    // =================================================
-    this._gridGfx = this.add.graphics().setDepth(1);
-    this._trackGfx = this.add.graphics().setDepth(6);
-    this._curveGfx = this.add.graphics().setDepth(7);
-    this._guideGfx = this.add.graphics().setDepth(8);
-    this._pianoGfx = this.add.graphics().setDepth(9);
-    this._checkpointGfx = this.add.graphics().setDepth(10);
-    this._finishGfx = this.add.graphics().setDepth(11);
-    this._nodeGfx = this.add.graphics().setDepth(12);
-
-    this._drawGrid();
-
-    this._centerMark = this.add.graphics().setDepth(2);
-    this._centerMark.lineStyle(3, 0x2bff88, 0.8);
-    this._centerMark.lineBetween(
-      this._editorWorldW / 2 - 30,
-      this._editorWorldH / 2,
-      this._editorWorldW / 2 + 30,
-      this._editorWorldH / 2
-    );
-    this._centerMark.lineBetween(
-      this._editorWorldW / 2,
-      this._editorWorldH / 2 - 30,
-      this._editorWorldW / 2,
-      this._editorWorldH / 2 + 30
-    );
-
-    // =================================================
-    // Cámara de edición
-    // =================================================
-    this._editCam = this.cameras.add(
-      this._viewX + 2,
-      this._viewY + 2,
-      this._viewW - 4,
-      this._viewH - 4
-    );
-
-    this._editCam.setBackgroundColor('#0a0d16');
-    this._editCam.setBounds(0, 0, this._editorWorldW, this._editorWorldH);
+  this._leftHomeBtn = this._makeIconButton(leftCX, this._topBarH + 74, '⌂', () => {
     this._editCam.centerOn(this._editorWorldW / 2, this._editorWorldH / 2);
-    this._editCam.setZoom(0.28);
+    this._updatePanel();
+  }, '18px');
 
-    this.cameras.main.ignore([
-      this._gridGfx,
-      this._centerMark,
-      this._trackGfx,
-      this._curveGfx,
-      this._guideGfx,
-      this._pianoGfx,
-      this._checkpointGfx,
-      this._finishGfx,
-      this._nodeGfx
-    ]);
+  this._leftZoomInBtn = this._makeIconButton(leftCX, this._topBarH + 122, '+', () => {
+    this._applyZoomAtViewportCenter(1.15);
+  }, '20px');
 
-    const worldObjs = [
-      this._gridGfx,
-      this._centerMark,
-      this._trackGfx,
-      this._curveGfx,
-      this._guideGfx,
-      this._pianoGfx,
-      this._checkpointGfx,
-      this._finishGfx,
-      this._nodeGfx
-    ];
-    const uiObjs = this.children.list.filter((o) => !worldObjs.includes(o));
-    this._editCam.ignore(uiObjs);
+  this._leftZoomOutBtn = this._makeIconButton(leftCX, this._topBarH + 170, '−', () => {
+    this._applyZoomAtViewportCenter(1 / 1.15);
+  }, '22px');
 
-    // =================================================
-    // Input
-    // =================================================
-    this.input.addPointer(2);
+  // =================================================
+  // Barra superior
+  // =================================================
+  const topToolsY = 36;
+  let topX = 470;
 
-    this.input.on('pointerdown', (pointer) => {
-      if (!this._isPointerInViewMenu(pointer)) this._closeViewMenu();
-      if (!this._isPointerInSaveMenu(pointer)) this._closeSaveMenu();
-      if (!this._isPointerInModeMenu(pointer)) this._closeModeMenu();
-      if (!this._isPointerInTrackMenu(pointer)) this._closeTrackMenu();
-      if (!this._isPointerInGuideMenu(pointer)) this._closeGuideMenu();
+  this._saveMainBtn = this._makeIconButton(topX, topToolsY, '💾', () => {
+    this._setActiveTopTool('save');
+  }, '16px');
+  topX += 48;
 
-      if (!this._isPointerInViewport(pointer)) return;
+  this._viewMainBtn = this._makeIconButton(topX, topToolsY, '🔍', () => {
+    this._setActiveTopTool('view');
+  }, '16px');
+  topX += 48;
 
-      this._tapCandidate = true;
-      this._gestureWasMultiTouch = false;
+  this._modeMainBtn = this._makeIconButton(topX, topToolsY, '✏', () => {
+    this._setActiveTopTool('mode');
+  }, '16px');
+  topX += 48;
 
-      if (this._tool === 'finish' || this._tool === 'checkpoint') {
-        this._draggingPart = false;
-        this._dragMoved = false;
-        this._dragStartScreen = { x: pointer.x, y: pointer.y };
-        this._dragStartWorld = this._screenToWorld(pointer.x, pointer.y);
-        return;
+  this._trackMainBtn = this._makeIconButton(topX, topToolsY, 'W', () => {
+    this._setActiveTopTool('track');
+  }, '18px');
+  topX += 48;
+
+  this._guideMainBtn = this._makeIconButton(topX, topToolsY, '👁', () => {
+    this._setActiveTopTool('guide');
+  }, '16px');
+  topX += 58;
+
+  this._nudgeStepBtn = this._makeIconButton(topX, topToolsY, String(this._getNudgeStep()), () => {
+    this._cycleNudgeStep();
+  }, '16px');
+  topX += 48;
+
+  this._btnLeft = this._makeIconButton(topX, topToolsY, '←', () => {
+    this._nudgeSelectedNode(-this._getNudgeStep(), 0);
+  }, '18px');
+  topX += 42;
+
+  this._btnUp = this._makeIconButton(topX, topToolsY, '↑', () => {
+    this._nudgeSelectedNode(0, -this._getNudgeStep());
+  }, '18px');
+  topX += 42;
+
+  this._btnDown = this._makeIconButton(topX, topToolsY, '↓', () => {
+    this._nudgeSelectedNode(0, this._getNudgeStep());
+  }, '18px');
+  topX += 42;
+
+  this._btnRight = this._makeIconButton(topX, topToolsY, '→', () => {
+    this._nudgeSelectedNode(this._getNudgeStep(), 0);
+  }, '18px');
+  topX += 42;
+
+  this._deleteBtn = this._makeIconButton(topX, topToolsY, '🗑', () => {
+    this._deleteSelectedNode();
+  }, '16px');
+
+  // =================================================
+  // Mundo de edición
+  // =================================================
+  this._gridGfx = this.add.graphics().setDepth(1);
+  this._trackGfx = this.add.graphics().setDepth(6);
+  this._curveGfx = this.add.graphics().setDepth(7);
+  this._guideGfx = this.add.graphics().setDepth(8);
+  this._pianoGfx = this.add.graphics().setDepth(9);
+  this._checkpointGfx = this.add.graphics().setDepth(10);
+  this._finishGfx = this.add.graphics().setDepth(11);
+  this._nodeGfx = this.add.graphics().setDepth(12);
+
+  this._drawGrid();
+
+  this._centerMark = this.add.graphics().setDepth(2);
+  this._centerMark.lineStyle(3, 0x2bff88, 0.8);
+  this._centerMark.lineBetween(
+    this._editorWorldW / 2 - 30,
+    this._editorWorldH / 2,
+    this._editorWorldW / 2 + 30,
+    this._editorWorldH / 2
+  );
+  this._centerMark.lineBetween(
+    this._editorWorldW / 2,
+    this._editorWorldH / 2 - 30,
+    this._editorWorldW / 2,
+    this._editorWorldH / 2 + 30
+  );
+
+  // =================================================
+  // Cámara de edición
+  // =================================================
+  this._editCam = this.cameras.add(
+    this._viewX + 2,
+    this._viewY + 2,
+    this._viewW - 4,
+    this._viewH - 4
+  );
+
+  this._editCam.setBackgroundColor('#0a0d16');
+  this._editCam.setBounds(0, 0, this._editorWorldW, this._editorWorldH);
+  this._editCam.centerOn(this._editorWorldW / 2, this._editorWorldH / 2);
+  this._editCam.setZoom(0.28);
+
+  this.cameras.main.ignore([
+    this._gridGfx,
+    this._centerMark,
+    this._trackGfx,
+    this._curveGfx,
+    this._guideGfx,
+    this._pianoGfx,
+    this._checkpointGfx,
+    this._finishGfx,
+    this._nodeGfx
+  ]);
+
+  const worldObjs = [
+    this._gridGfx,
+    this._centerMark,
+    this._trackGfx,
+    this._curveGfx,
+    this._guideGfx,
+    this._pianoGfx,
+    this._checkpointGfx,
+    this._finishGfx,
+    this._nodeGfx
+  ];
+  const uiObjs = this.children.list.filter((o) => !worldObjs.includes(o));
+  this._editCam.ignore(uiObjs);
+
+  // =================================================
+  // Input
+  // =================================================
+  this.input.addPointer(2);
+
+  this.input.on('pointerdown', (pointer) => {
+    if (!this._isPointerInViewport(pointer)) return;
+
+    this._tapCandidate = true;
+    this._gestureWasMultiTouch = false;
+
+    if (this._tool === 'finish' || this._tool === 'checkpoint') {
+      this._draggingPart = false;
+      this._dragMoved = false;
+      this._dragStartScreen = { x: pointer.x, y: pointer.y };
+      this._dragStartWorld = this._screenToWorld(pointer.x, pointer.y);
+      return;
+    }
+
+    const world = this._screenToWorld(pointer.x, pointer.y);
+    const hit = this._findControlAt(world.x, world.y);
+
+    if (hit) {
+      this._selectedPart = hit;
+      this._draggingPart = true;
+      this._dragMoved = false;
+      this._dragStartScreen = { x: pointer.x, y: pointer.y };
+      this._dragStartWorld = { x: world.x, y: world.y };
+
+      if (
+        hit.type === 'piano' ||
+        hit.type === 'pianoA' ||
+        hit.type === 'pianoB'
+      ) {
+        this._selectedPiano = hit.index;
+        this._selectedNode = -1;
+      } else {
+        this._selectedNode = hit.index;
+        this._selectedPiano = -1;
       }
 
-      const world = this._screenToWorld(pointer.x, pointer.y);
-      const hit = this._findControlAt(world.x, world.y);
+      this._updatePanel();
+      this._redrawEditor();
+      return;
+    }
 
-      if (hit) {
-        this._selectedPart = hit;
-        this._draggingPart = true;
-        this._dragMoved = false;
-        this._dragStartScreen = { x: pointer.x, y: pointer.y };
-        this._dragStartWorld = { x: world.x, y: world.y };
+    this._selectedPart = null;
+    this._draggingPart = false;
+    this._dragMoved = false;
+    this._dragStartScreen = { x: pointer.x, y: pointer.y };
+    this._dragStartWorld = { x: world.x, y: world.y };
+  });
 
-        if (
-          hit.type === 'piano' ||
-          hit.type === 'pianoA' ||
-          hit.type === 'pianoB'
-        ) {
-          this._selectedPiano = hit.index;
-          this._selectedNode = -1;
-        } else {
-          this._selectedNode = hit.index;
-          this._selectedPiano = -1;
-        }
+  this.input.on('pointermove', () => {
+    const down = this.input.manager.pointers.filter(
+      (p) => p.isDown && this._isPointerInViewport(p)
+    );
 
+    if (this._tool === 'edit' && this._draggingPart && down.length === 1 && this._selectedPart) {
+      const p = down[0];
+
+      if (this._dragStartScreen) {
+        const dist = Phaser.Math.Distance.Between(
+          p.x, p.y,
+          this._dragStartScreen.x, this._dragStartScreen.y
+        );
+
+        if (dist <= 10) return;
+
+        this._dragMoved = true;
+      }
+
+      const world = this._screenToWorld(p.x, p.y);
+      const idx = this._selectedPart.index;
+
+      if (
+        this._selectedPart.type === 'piano' ||
+        this._selectedPart.type === 'pianoA' ||
+        this._selectedPart.type === 'pianoB'
+      ) {
+        this._updatePianoDrag(this._selectedPart, world);
+        this._selectedPiano = idx;
+        this._selectedNode = -1;
         this._updatePanel();
         this._redrawEditor();
         return;
       }
 
-      this._selectedPart = null;
-      this._draggingPart = false;
-      this._dragMoved = false;
-      this._dragStartScreen = { x: pointer.x, y: pointer.y };
-      this._dragStartWorld = { x: world.x, y: world.y };
-    });
+      if (
+        this._selectedPart.type === 'node' ||
+        this._selectedPart.type === 'handleIn' ||
+        this._selectedPart.type === 'handleOut'
+      ) {
+        const node = this._nodes[idx];
 
-    this.input.on('pointermove', () => {
-      const down = this.input.manager.pointers.filter(
-        (p) => p.isDown && this._isPointerInViewport(p)
-      );
+        if (this._selectedPart.type === 'node') {
+          const dx = world.x - node.x;
+          const dy = world.y - node.y;
 
-      if (this._tool === 'edit' && this._draggingPart && down.length === 1 && this._selectedPart) {
-        const p = down[0];
+          node.x = world.x;
+          node.y = world.y;
 
-        if (this._dragStartScreen) {
-          const dist = Phaser.Math.Distance.Between(
-            p.x, p.y,
-            this._dragStartScreen.x, this._dragStartScreen.y
-          );
-
-          if (dist <= 10) return;
-
-          this._dragMoved = true;
+          node.handleIn.x += dx;
+          node.handleIn.y += dy;
+          node.handleOut.x += dx;
+          node.handleOut.y += dy;
+        } else if (this._selectedPart.type === 'handleIn') {
+          node.handleIn.x = world.x;
+          node.handleIn.y = world.y;
+        } else if (this._selectedPart.type === 'handleOut') {
+          node.handleOut.x = world.x;
+          node.handleOut.y = world.y;
         }
 
-const world = this._screenToWorld(p.x, p.y);
-const idx = this._selectedPart.index;
+        this._selectedNode = idx;
+        this._selectedPiano = -1;
+        this._updatePanel();
+        this._redrawEditor();
+        return;
+      }
+    }
 
-// --- PIANOS ---
-if (
-  this._selectedPart.type === 'piano' ||
-  this._selectedPart.type === 'pianoA' ||
-  this._selectedPart.type === 'pianoB'
-) {
-  this._updatePianoDrag(this._selectedPart, world);
-  this._selectedPiano = idx;
-  this._selectedNode = -1;
-  this._updatePanel();
-  this._redrawEditor();
-  return;
-}
+    if (down.length === 1) {
+      const p = down[0];
 
-// --- NODOS ---
-if (
-  this._selectedPart.type === 'node' ||
-  this._selectedPart.type === 'handleIn' ||
-  this._selectedPart.type === 'handleOut'
-) {
-  const node = this._nodes[idx];
+      if (this._panLast) {
+        const dx = p.x - this._panLast.x;
+        const dy = p.y - this._panLast.y;
 
-  if (this._selectedPart.type === 'node') {
-    const dx = world.x - node.x;
-    const dy = world.y - node.y;
-
-    node.x = world.x;
-    node.y = world.y;
-
-    node.handleIn.x += dx;
-    node.handleIn.y += dy;
-    node.handleOut.x += dx;
-    node.handleOut.y += dy;
-  } else if (this._selectedPart.type === 'handleIn') {
-    node.handleIn.x = world.x;
-    node.handleIn.y = world.y;
-  } else if (this._selectedPart.type === 'handleOut') {
-    node.handleOut.x = world.x;
-    node.handleOut.y = world.y;
-  }
-
-  this._selectedNode = idx;
-  this._selectedPiano = -1;
-  this._updatePanel();
-  this._redrawEditor();
-  return;
-}
+        this._editCam.scrollX -= dx / this._editCam.zoom;
+        this._editCam.scrollY -= dy / this._editCam.zoom;
       }
 
-      if (down.length === 1) {
-        const p = down[0];
+      this._panLast = { x: p.x, y: p.y };
+      this._pinchLastDist = 0;
+      return;
+    }
 
-        if (this._panLast) {
-          const dx = p.x - this._panLast.x;
-          const dy = p.y - this._panLast.y;
+    if (down.length >= 2) {
+      this._gestureWasMultiTouch = true;
+      this._tapCandidate = false;
 
-          this._editCam.scrollX -= dx / this._editCam.zoom;
-          this._editCam.scrollY -= dy / this._editCam.zoom;
-        }
+      const p1 = down[0];
+      const p2 = down[1];
 
-        this._panLast = { x: p.x, y: p.y };
-        this._pinchLastDist = 0;
+      const midX = (p1.x + p2.x) * 0.5;
+      const midY = (p1.y + p2.y) * 0.5;
+
+      const dx = p2.x - p1.x;
+      const dy = p2.y - p1.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (!this._pinchLastDist) {
+        this._pinchLastDist = dist;
+        this._panLast = null;
+        this._draggingPart = false;
         return;
       }
 
-      if (down.length >= 2) {
-        this._gestureWasMultiTouch = true;
+      const ratio = dist / this._pinchLastDist;
+
+      const newZoom = Phaser.Math.Clamp(
+        this._editCam.zoom * ratio,
+        this._editZoomMin,
+        this._editZoomMax
+      );
+
+      const worldX =
+        this._editCam.scrollX +
+        (midX - this._editCam.x) / this._editCam.zoom;
+
+      const worldY =
+        this._editCam.scrollY +
+        (midY - this._editCam.y) / this._editCam.zoom;
+
+      this._editCam.setZoom(newZoom);
+
+      this._editCam.scrollX =
+        worldX - (midX - this._editCam.x) / newZoom;
+
+      this._editCam.scrollY =
+        worldY - (midY - this._editCam.y) / newZoom;
+
+      this._pinchLastDist = dist;
+      this._updatePanel();
+      return;
+    }
+
+    this._panLast = null;
+    this._pinchLastDist = 0;
+  });
+
+  this.input.on('pointerup', (pointer) => {
+    const stillDown = this.input.manager.pointers.filter((p) => p.isDown).length;
+
+    if (this._draggingPart) {
+      this._draggingPart = false;
+      if (stillDown === 0) {
+        this._dragStartScreen = null;
+        this._dragStartWorld = null;
         this._tapCandidate = false;
+        this._gestureWasMultiTouch = false;
+        this._panLast = null;
+        this._pinchLastDist = 0;
+      }
+      return;
+    }
 
-        const p1 = down[0];
-        const p2 = down[1];
+    if (this._gestureWasMultiTouch) {
+      if (stillDown === 0) {
+        this._dragStartScreen = null;
+        this._dragStartWorld = null;
+        this._tapCandidate = false;
+        this._gestureWasMultiTouch = false;
+        this._panLast = null;
+        this._pinchLastDist = 0;
+      }
+      return;
+    }
 
-        const midX = (p1.x + p2.x) * 0.5;
-        const midY = (p1.y + p2.y) * 0.5;
+    let movedTooMuch = false;
+    if (this._dragStartScreen) {
+      const dist = Phaser.Math.Distance.Between(
+        pointer.x,
+        pointer.y,
+        this._dragStartScreen.x,
+        this._dragStartScreen.y
+      );
+      movedTooMuch = dist > 10;
+    }
 
-        const dx = p2.x - p1.x;
-        const dy = p2.y - p1.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
+    if (
+      this._tapCandidate &&
+      !movedTooMuch &&
+      this._isPointerInViewport(pointer)
+    ) {
+      const world = this._screenToWorld(pointer.x, pointer.y);
 
-        if (!this._pinchLastDist) {
-          this._pinchLastDist = dist;
-          this._panLast = null;
-          this._draggingPart = false;
+      if (this._tool === 'finish') {
+        this._placeFinishLineAt(world.x, world.y);
+
+      } else if (this._tool === 'checkpoint') {
+        this._placeCheckpointAt(world.x, world.y);
+
+      } else if (this._tool === 'piano') {
+        const hit = this._findNearestCurvePoint(world.x, world.y);
+
+        if (hit) {
+          const half = this._trackWidth * 0.5;
+          const halfLen = 38;
+
+          const a = {
+            x: hit.point.x - hit.tangent.x * halfLen + hit.normal.x * half,
+            y: hit.point.y - hit.tangent.y * halfLen + hit.normal.y * half
+          };
+
+          const b = {
+            x: hit.point.x + hit.tangent.x * halfLen + hit.normal.x * half,
+            y: hit.point.y + hit.tangent.y * halfLen + hit.normal.y * half
+          };
+
+          this._pianos.push({
+            a,
+            b,
+            point: { x: hit.point.x + hit.normal.x * half, y: hit.point.y + hit.normal.y * half },
+            normal: { x: hit.normal.x, y: hit.normal.y },
+            tangent: { x: hit.tangent.x, y: hit.tangent.y }
+          });
+
+          this._selectedPiano = this._pianos.length - 1;
+          this._selectedNode = -1;
+          this._selectedPart = { type: 'piano', index: this._selectedPiano };
+        }
+
+      } else {
+        const pianoHit = this._findPianoControl(world.x, world.y);
+        if (pianoHit) {
+          this._selectedPiano = pianoHit.index;
+          this._selectedNode = -1;
+          this._selectedPart = pianoHit;
+          this._updatePanel();
+          this._redrawEditor();
           return;
         }
 
-        const ratio = dist / this._pinchLastDist;
+        const hit = this._findControlAt(world.x, world.y);
 
-        const newZoom = Phaser.Math.Clamp(
-          this._editCam.zoom * ratio,
-          this._editZoomMin,
-          this._editZoomMax
-        );
+        if (hit) {
+          this._selectedNode = hit.index;
+          this._selectedPiano = -1;
+          this._selectedPart = hit;
+        } else {
+          const node = this._createNode(world.x, world.y);
 
-        const worldX =
-          this._editCam.scrollX +
-          (midX - this._editCam.x) / this._editCam.zoom;
+          if (this._nodes.length > 0) {
+            const prev = this._nodes[this._nodes.length - 1];
+            const handleLen = 60;
 
-        const worldY =
-          this._editCam.scrollY +
-          (midY - this._editCam.y) / this._editCam.zoom;
+            let dx = node.x - prev.x;
+            let dy = node.y - prev.y;
 
-        this._editCam.setZoom(newZoom);
+            const len = Math.sqrt(dx * dx + dy * dy) || 1;
+            dx /= len;
+            dy /= len;
 
-        this._editCam.scrollX =
-          worldX - (midX - this._editCam.x) / newZoom;
+            prev.handleOut.x = prev.x + dx * handleLen;
+            prev.handleOut.y = prev.y + dy * handleLen;
+          }
 
-        this._editCam.scrollY =
-          worldY - (midY - this._editCam.y) / newZoom;
-
-        this._pinchLastDist = dist;
-        this._updatePanel();
-        return;
-      }
-
-      this._panLast = null;
-      this._pinchLastDist = 0;
-    });
-
-    this.input.on('pointerup', (pointer) => {
-  const stillDown = this.input.manager.pointers.filter((p) => p.isDown).length;
-
-  if (this._draggingPart) {
-    this._draggingPart = false;
-    if (stillDown === 0) {
-      this._dragStartScreen = null;
-      this._dragStartWorld = null;
-      this._tapCandidate = false;
-      this._gestureWasMultiTouch = false;
-      this._panLast = null;
-      this._pinchLastDist = 0;
-    }
-    return;
-  }
-
-  if (this._gestureWasMultiTouch) {
-    if (stillDown === 0) {
-      this._dragStartScreen = null;
-      this._dragStartWorld = null;
-      this._tapCandidate = false;
-      this._gestureWasMultiTouch = false;
-      this._panLast = null;
-      this._pinchLastDist = 0;
-    }
-    return;
-  }
-
-  let movedTooMuch = false;
-  if (this._dragStartScreen) {
-    const dist = Phaser.Math.Distance.Between(
-      pointer.x,
-      pointer.y,
-      this._dragStartScreen.x,
-      this._dragStartScreen.y
-    );
-    movedTooMuch = dist > 10;
-  }
-
-  if (
-    this._tapCandidate &&
-    !movedTooMuch &&
-    this._isPointerInViewport(pointer)
-  ) {
-    const world = this._screenToWorld(pointer.x, pointer.y);
-
-    if (this._tool === 'finish') {
-      this._placeFinishLineAt(world.x, world.y);
-
-    } else if (this._tool === 'checkpoint') {
-      this._placeCheckpointAt(world.x, world.y);
-
-    } else if (this._tool === 'piano') {
-      const hit = this._findNearestCurvePoint(world.x, world.y);
-
-      if (hit) {
-        const half = this._trackWidth * 0.5;
-
-        const a = {
-          x: hit.point.x + hit.normal.x * half,
-          y: hit.point.y + hit.normal.y * half
-        };
-
-        const b = {
-          x: hit.point.x + hit.normal.x * (half + 28),
-          y: hit.point.y + hit.normal.y * (half + 28)
-        };
-
-        this._pianos.push({
-          a,
-          b,
-          point: { x: hit.point.x, y: hit.point.y },
-          normal: { x: hit.normal.x, y: hit.normal.y },
-          tangent: { x: hit.tangent.x, y: hit.tangent.y }
-        });
-
-        this._selectedPiano = this._pianos.length - 1;
-      }
-
-  } else {
-
-  // 🔴 1. Primero detectar pianos
-  const pianoHit = this._findPianoControl(world.x, world.y);
-  if (pianoHit) {
-    this._selectedPiano = pianoHit.index;
-    this._selectedNode = -1;
-    this._selectedPart = pianoHit;
-    return;
-  }
-
-  // 🔵 2. Luego lo normal (nodos)
-  const hit = this._findControlAt(world.x, world.y);
-
-  if (hit) {
-    this._selectedNode = hit.index;
-    this._selectedPiano = -1;
-    this._selectedPart = hit;
-  } else {
-    const node = this._createNode(world.x, world.y);
-
-        if (this._nodes.length > 0) {
-          const prev = this._nodes[this._nodes.length - 1];
-          const handleLen = 60;
-
-          let dx = node.x - prev.x;
-          let dy = node.y - prev.y;
-
-          const len = Math.sqrt(dx * dx + dy * dy) || 1;
-          dx /= len;
-          dy /= len;
-
-          prev.handleOut.x = prev.x + dx * handleLen;
-          prev.handleOut.y = prev.y + dy * handleLen;
+          this._nodes.push(node);
+          this._selectedNode = this._nodes.length - 1;
+          this._selectedPiano = -1;
+          this._selectedPart = { type: 'node', index: this._selectedNode };
         }
-
-        this._nodes.push(node);
-        this._selectedNode = this._nodes.length - 1;
-        this._selectedPart = { type: 'node', index: this._selectedNode };
       }
+
+      this._updatePanel();
+      this._redrawEditor();
     }
 
-    this._updatePanel();
-    this._redrawEditor();
-  }
+    if (stillDown === 0) {
+      this._dragStartScreen = null;
+      this._dragStartWorld = null;
+      this._tapCandidate = false;
+      this._gestureWasMultiTouch = false;
+      this._panLast = null;
+      this._pinchLastDist = 0;
+    }
+  });
 
-  if (stillDown === 0) {
+  this.input.on('pointerupoutside', () => {
+    this._draggingPart = false;
     this._dragStartScreen = null;
     this._dragStartWorld = null;
     this._tapCandidate = false;
     this._gestureWasMultiTouch = false;
     this._panLast = null;
     this._pinchLastDist = 0;
-  }
-});
-    this.input.on('pointerupoutside', () => {
-      this._draggingPart = false;
-      this._dragStartScreen = null;
-      this._dragStartWorld = null;
-      this._tapCandidate = false;
-      this._gestureWasMultiTouch = false;
-      this._panLast = null;
-      this._pinchLastDist = 0;
-    });
+  });
 
-    this._createGuideInput();
-    this._updateLoopButton();
-    this._updateToolButtons();
-    this._updatePanel();
-    this._redrawEditor();
-  }
-
+  this._createGuideInput();
+  this._updateToolButtons();
+  this._renderContextPanel();
+  this._updatePanel();
+  this._redrawEditor();
+}
   // =================================================
   // Guía de fondo
   // =================================================
