@@ -1332,4 +1332,13 @@ _updatePanel() {
 
     console.log('🆕 Nuevo proyecto');
   }
+  
+  _isPointerInViewport(pointer) {
+  return (
+    pointer.x >= this._viewX &&
+    pointer.x <= this._viewX + this._viewW &&
+    pointer.y >= this._viewY &&
+    pointer.y <= this._viewY + this._viewH
+  );
+}  
 }
