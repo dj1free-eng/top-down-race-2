@@ -963,33 +963,28 @@ _renderSideGroup(items, onItemClick) {
     return this._newProject();
   }
 
-  _toggleSaveMenu() {
-    if (this._saveMenu) return this._closeSaveMenu();
-
-    const allItems = [
-      { key: 'save', label: '💾' },
-      { key: 'load', label: '📂' },
-      { key: 'new', label: 'NEW' }
-    ];
-
-    const items = allItems.filter(item => item.key !== this._saveTool);
-
-    this._saveMenu = this._makeMenuPanel(this._saveBtnX, this._saveBtnY, items, (item, x, y) => {
-      return this._makeIconButton(
-        x,
-        y,
-        item.label,
-        () => {
-          this._saveTool = item.key;
-          this._saveMainBtn._txt.setText(this._getSaveToolLabel());
-          this._closeSaveMenu();
-          this._runActiveSaveTool();
-        },
-        item.key === 'new' ? '12px' : '16px'
-      );
-    });
+_toggleSaveMenu() {
+  if (this._activeSideGroup === 'save') {
+    this._clearSideGroup();
+    return;
   }
 
+  const allItems = [
+    { key: 'save', label: '💾', fontSize: '16px' },
+    { key: 'load', label: '📂', fontSize: '16px' },
+    { key: 'new', label: 'NEW', fontSize: '12px' }
+  ];
+
+  const items = allItems.filter(item => item.key !== this._saveTool);
+
+  this._activeSideGroup = 'save';
+  this._renderSideGroup(items, (item) => {
+    this._saveTool = item.key;
+    this._saveMainBtn._txt.setText(this._getSaveToolLabel());
+    this._runActiveSaveTool();
+    this._clearSideGroup();
+  });
+}
   _closeSaveMenu() {
     if (!this._saveMenu) return;
     this._saveMenu.destroy(true);
