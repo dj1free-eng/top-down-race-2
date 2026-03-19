@@ -1344,4 +1344,28 @@ _updatePanel() {
   _screenToWorld(screenX, screenY) {
   return this._editCam.getWorldPoint(screenX, screenY);
 }
+  _findPianoControl(x, y) {
+  const radius = 20;
+
+  for (let i = 0; i < this._pianos.length; i++) {
+    const p = this._pianos[i];
+
+    const dCenter = Phaser.Math.Distance.Between(x, y, p.point.x, p.point.y);
+    if (dCenter < radius) {
+      return { type: 'piano', index: i };
+    }
+
+    const dA = Phaser.Math.Distance.Between(x, y, p.a.x, p.a.y);
+    if (dA < radius) {
+      return { type: 'pianoA', index: i };
+    }
+
+    const dB = Phaser.Math.Distance.Between(x, y, p.b.x, p.b.y);
+    if (dB < radius) {
+      return { type: 'pianoB', index: i };
+    }
+  }
+
+  return null;
+}
 }
