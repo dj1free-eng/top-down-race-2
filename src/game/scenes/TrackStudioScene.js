@@ -1318,17 +1318,14 @@ _findPianoControl(x, y) {
     const p = this._pianos[i];
     if (!p || !p.a || !p.b || !p.point) continue;
 
-    // centro lógico del piano
     if (Phaser.Math.Distance.Between(x, y, p.point.x, p.point.y) < R_CENTER) {
       return { type: 'piano', index: i };
     }
 
-    // extremo A
     if (Phaser.Math.Distance.Between(x, y, p.a.x, p.a.y) < R_HANDLE) {
       return { type: 'pianoA', index: i };
     }
 
-    // extremo B
     if (Phaser.Math.Distance.Between(x, y, p.b.x, p.b.y) < R_HANDLE) {
       return { type: 'pianoB', index: i };
     }
