@@ -883,39 +883,71 @@ if (
     return c;
   }
 
-  _makeMenuPanel(baseX, baseY, items, makeBtn) {
-    const menu = this.add.container(0, 0);
-    menu.setDepth(90);
+_makeMenuPanel(baseX, baseY, items, makeBtn) {
+  const menu = this.add.container(0, 0);
+  menu.setDepth(90);
 
-    const panelX = baseX + 28;
-    const panelY = baseY - 20;
-    const panelW = items.length * 44 + 12;
-    const panelH = 52;
+  const panelX = baseX + 28;
+  const panelY = baseY - 20;
+  const panelW = items.length * 44 + 12;
+  const panelH = 52;
 
-    const panel = this.add.graphics();
-    panel.fillStyle(0x101626, 1);
-    panel.lineStyle(2, 0x3c4e7a, 0.95);
-    panel.fillRoundedRect(panelX - 6, panelY - 6, panelW, panelH, 10);
-    panel.strokeRoundedRect(panelX - 6, panelY - 6, panelW, panelH, 10);
-    menu.add(panel);
+  const panel = this.add.graphics();
+  panel.fillStyle(0x101626, 1);
+  panel.lineStyle(2, 0x3c4e7a, 0.95);
+  panel.fillRoundedRect(panelX - 6, panelY - 6, panelW, panelH, 10);
+  panel.strokeRoundedRect(panelX - 6, panelY - 6, panelW, panelH, 10);
+  menu.add(panel);
 
-    for (let i = 0; i < items.length; i++) {
-      const x = baseX + 48 + (i * 44);
-      const y = baseY;
-      const btn = makeBtn(items[i], x, y);
-      menu.add(btn.bg);
-      menu.add(btn.txt);
-    }
-
-    menu._x = panelX - 6;
-    menu._y = panelY - 6;
-    menu._w = panelW;
-    menu._h = panelH;
-
-    this._editCam.ignore(menu.list);
-    return menu;
+  for (let i = 0; i < items.length; i++) {
+    const x = baseX + 48 + (i * 44);
+    const y = baseY;
+    const btn = makeBtn(items[i], x, y);
+    menu.add(btn.bg);
+    menu.add(btn.txt);
   }
 
+  menu._x = panelX - 6;
+  menu._y = panelY - 6;
+  menu._w = panelW;
+  menu._h = panelH;
+
+  this._editCam.ignore(menu.list);
+  return menu;
+}
+
+_clearSideGroup() {
+  if (!this._sideGroupButtons) this._sideGroupButtons = [];
+
+  for (const btn of this._sideGroupButtons) {
+    try { btn.bg?.destroy(); } catch (e) {}
+    try { btn.txt?.destroy(); } catch (e) {}
+  }
+
+  this._sideGroupButtons = [];
+  this._activeSideGroup = null;
+}
+
+_renderSideGroup(items, onItemClick) {
+  this._clearSideGroup();
+
+  const leftCX = Math.floor(this._leftBarW / 2);
+  let y = this._topBarH + 58;
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const btn = this._makeIconButton(
+      leftCX,
+      y,
+      item.label,
+      () => onItemClick(item),
+      item.fontSize || '14px'
+    );
+
+    this._sideGroupButtons.push(btn);
+    y += 48;
+  }
+}
   // =================================================
   // Grupo save
   // =================================================
