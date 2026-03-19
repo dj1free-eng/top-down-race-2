@@ -1362,7 +1362,6 @@ _drawPianos(g) {
     g.fillCircle(p.point.x, p.point.y, selected ? 7 : 5);
   });
 }
-
 // Update piano mientras arrastras
 _updatePianoDrag(part, world) {
   const p = this._pianos[part.index];
