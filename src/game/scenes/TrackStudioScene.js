@@ -234,8 +234,20 @@ create() {
   topX += 42;
 
   this._deleteBtn = this._makeIconButton(topX, topToolsY, '🗑', () => {
-    this._deleteSelectedNode();
-  }, '16px');
+  if (this._selectedNode >= 0 && this._selectedNode < this._nodes.length) {
+    this._nodes.splice(this._selectedNode, 1);
+    this._selectedNode = -1;
+    this._selectedPart = null;
+    this._updatePanel();
+  }
+
+  if (this._selectedPiano >= 0 && this._selectedPiano < this._pianos.length) {
+    this._pianos.splice(this._selectedPiano, 1);
+    this._selectedPiano = -1;
+    this._selectedPart = null;
+    this._updatePanel();
+  }
+}, '16px');
 
   // =================================================
   // Mundo de edición
