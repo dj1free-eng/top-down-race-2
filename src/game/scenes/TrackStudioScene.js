@@ -870,20 +870,20 @@ _renderContextPanel() {
   this._clearContextButtons();
 
   const x = this.scale.width - this._rightPanelW + 20;
-  let y = this._topBarH + 328;
+  let y = this._topBarH + 314;
   const w = this._rightPanelW - 40;
-  const h = 40;
-  const gap = 10;
+  const h = 36;
+  const gap = 8;
 
   if (this._contextTitle) {
     const map = {
-      save: 'ARCHIVO',
-      view: 'VISTA',
-      mode: 'HERRAMIENTAS',
-      track: 'PISTA',
-      guide: 'GUÍA'
+      save: 'HERRAMIENTAS · ARCHIVO',
+      view: 'HERRAMIENTAS · VISTA',
+      mode: 'HERRAMIENTAS · MODO',
+      track: 'HERRAMIENTAS · PISTA',
+      guide: 'HERRAMIENTAS · GUÍA'
     };
-    this._contextTitle.setText(map[this._activeTopTool] || 'HERRAMIENTA');
+    this._contextTitle.setText(map[this._activeTopTool] || 'HERRAMIENTAS');
   }
 
   const addBtn = (label, active, onClick) => {
@@ -921,12 +921,14 @@ _renderContextPanel() {
       this._viewTool = 'zoomIn';
       this._applyZoomAtViewportCenter(1.15);
       this._updateToolButtons();
+      this._updatePanel();
     });
 
     addBtn('Zoom -', this._viewTool === 'zoomOut', () => {
       this._viewTool = 'zoomOut';
       this._applyZoomAtViewportCenter(1 / 1.15);
       this._updateToolButtons();
+      this._updatePanel();
     });
 
     addBtn('Centrar cámara', this._viewTool === 'center', () => {
@@ -960,9 +962,8 @@ _renderContextPanel() {
       this._setTool('piano');
     });
 
-    addBtn(this._isClosed ? 'Loop: cerrado' : 'Loop: abierto', false, () => {
+    addBtn(this._isClosed ? 'Cerrar loop: sí' : 'Cerrar loop: no', false, () => {
       this._isClosed = !this._isClosed;
-
       this._updatePanel();
       this._renderContextPanel();
     });
@@ -1011,7 +1012,6 @@ _renderContextPanel() {
     });
   }
 }
-
 // stubs antiguos para no romper pointerdown heredado
 _makeMenuPanel(baseX, baseY, items, makeBtn) {
   return null;
