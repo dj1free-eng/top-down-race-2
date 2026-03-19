@@ -1172,19 +1172,16 @@ _updatePanel() {
     this._panelText.setText(
       `Piano #${this._selectedPiano}\n` +
       `Herramienta: ${this._tool}\n` +
-      `Panel: ${this._activeTopTool}\n` +
+      `Panel activo: ${this._activeTopTool}\n` +
       `Loop: ${this._isClosed ? 'cerrado' : 'abierto'}\n` +
       `Meta: ${this._finishLine ? 'sí' : 'no'}\n` +
       `Checkpoints: ${this._checkpoints.length}\n` +
-      `Guía cargada: ${guideLoaded ? 'sí' : 'no'}\n` +
-      `Guía visible: ${this._guideVisible ? 'sí' : 'no'}\n` +
-      `Alpha guía: ${this._guideAlpha.toFixed(2)}\n` +
+      `Guía: ${guideLoaded ? (this._guideVisible ? 'visible' : 'oculta') : 'no cargada'}\n` +
+      `Zoom: ${this._editCam ? this._editCam.zoom.toFixed(2) : '0.00'}\n` +
       `Nudge: ${this._getNudgeStep()}px\n` +
       `Centro: ${Math.round(p.point.x)}, ${Math.round(p.point.y)}\n` +
       `A: ${Math.round(p.a.x)}, ${Math.round(p.a.y)}\n` +
-      `B: ${Math.round(p.b.x)}, ${Math.round(p.b.y)}\n` +
-      `Zoom: ${this._editCam ? this._editCam.zoom.toFixed(2) : '0.00'}\n` +
-      `Ancho pista: ${this._trackWidth}px`
+      `B: ${Math.round(p.b.x)}, ${Math.round(p.b.y)}`
     );
     return;
   }
@@ -1193,22 +1190,16 @@ _updatePanel() {
     this._panelText.setText(
       'Sin selección\n' +
       `Herramienta: ${this._tool}\n` +
-      `Panel: ${this._activeTopTool}\n` +
-      `Vista: ${this._getViewToolLabel()}\n` +
-      `Modo: ${this._getModeToolLabel()}\n` +
-      `Pista: ${this._getTrackToolLabel()}\n` +
-      `Guía: ${this._getGuideToolLabel()}\n` +
+      `Panel activo: ${this._activeTopTool}\n` +
       `Nodos: ${this._nodes.length}\n` +
       `Pianos: ${this._pianos.length}\n` +
       `Loop: ${this._isClosed ? 'cerrado' : 'abierto'}\n` +
       `Meta: ${this._finishLine ? 'sí' : 'no'}\n` +
       `Checkpoints: ${this._checkpoints.length}\n` +
-      `Guía cargada: ${guideLoaded ? 'sí' : 'no'}\n` +
-      `Guía visible: ${this._guideVisible ? 'sí' : 'no'}\n` +
-      `Alpha guía: ${this._guideAlpha.toFixed(2)}\n` +
-      `Nudge: ${this._getNudgeStep()}px\n` +
+      `Guía: ${guideLoaded ? (this._guideVisible ? 'visible' : 'oculta') : 'no cargada'}\n` +
       `Zoom: ${this._editCam ? this._editCam.zoom.toFixed(2) : '0.00'}\n` +
-      `Ancho: ${this._trackWidth}px`
+      `Alpha guía: ${this._guideAlpha.toFixed(2)}\n` +
+      `Ancho pista: ${this._trackWidth}px`
     );
     return;
   }
@@ -1219,22 +1210,19 @@ _updatePanel() {
   this._panelText.setText(
     `Nodo #${this._selectedNode}\n` +
     `Herramienta: ${this._tool}\n` +
-    `Panel: ${this._activeTopTool}\n` +
+    `Panel activo: ${this._activeTopTool}\n` +
     `Modo: ${part}\n` +
     `Loop: ${this._isClosed ? 'cerrado' : 'abierto'}\n` +
     `Meta: ${this._finishLine ? 'sí' : 'no'}\n` +
     `Checkpoints: ${this._checkpoints.length}\n` +
-    `Guía cargada: ${guideLoaded ? 'sí' : 'no'}\n` +
-    `Guía visible: ${this._guideVisible ? 'sí' : 'no'}\n` +
-    `Alpha guía: ${this._guideAlpha.toFixed(2)}\n` +
+    `Guía: ${guideLoaded ? (this._guideVisible ? 'visible' : 'oculta') : 'no cargada'}\n` +
+    `Zoom: ${this._editCam ? this._editCam.zoom.toFixed(2) : '0.00'}\n` +
     `Nudge: ${this._getNudgeStep()}px\n` +
     `X: ${Math.round(n.x)}\n` +
     `Y: ${Math.round(n.y)}\n` +
     `In: ${Math.round(n.handleIn.x)}, ${Math.round(n.handleIn.y)}\n` +
     `Out: ${Math.round(n.handleOut.x)}, ${Math.round(n.handleOut.y)}\n` +
-    `Total: ${this._nodes.length}\n` +
-    `Zoom: ${this._editCam ? this._editCam.zoom.toFixed(2) : '0.00'}\n` +
-    `Ancho: ${this._trackWidth}px`
+    `Ancho pista: ${this._trackWidth}px`
   );
 }
   _getProjectData() {
