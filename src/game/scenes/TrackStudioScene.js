@@ -1141,7 +1141,7 @@ _toggleClosed() {
   this._updateToolButtons();
   this._renderContextPanel();
   this._updatePanel();
-  this._redrawEditor();
+
 }
 
 _updateLoopButton() {
