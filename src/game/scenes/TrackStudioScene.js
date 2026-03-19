@@ -1341,4 +1341,7 @@ _updatePanel() {
     pointer.y <= this._viewY + this._viewH
   );
 }  
+  _screenToWorld(screenX, screenY) {
+  return this._editCam.getWorldPoint(screenX, screenY);
+}
 }
