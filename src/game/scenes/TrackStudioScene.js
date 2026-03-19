@@ -1298,27 +1298,33 @@ _createPiano(x, y) {
   this._activePiano = p;
 }
 
-// Detectar si tocas un piano o handler
+// Detectar si tocas un piano o handlere
 _findPianoControl(x, y) {
-  for (let i = 0; i < this._pianos.length; i++) {
-    const p = this._pianos[i];
+  const R_CENTER = 20;
+  const R_HANDLE = 15;
 
-    if (Phaser.Math.Distance.Between(x, y, p.x, p.y) < 20) {
+  for (let i = this._pianos.length - 1; i >= 0; i--) {
+    const p = this._pianos[i];
+    if (!p || !p.a || !p.b || !p.point) continue;
+
+    // centro lógico del piano
+    if (Phaser.Math.Distance.Between(x, y, p.point.x, p.point.y) < R_CENTER) {
       return { type: 'piano', index: i };
     }
 
-    if (Phaser.Math.Distance.Between(x, y, p.handleA.x, p.handleA.y) < 15) {
-      return { type: 'pianoHandleA', index: i };
+    // extremo A
+    if (Phaser.Math.Distance.Between(x, y, p.a.x, p.a.y) < R_HANDLE) {
+      return { type: 'pianoA', index: i };
     }
 
-    if (Phaser.Math.Distance.Between(x, y, p.handleB.x, p.handleB.y) < 15) {
-      return { type: 'pianoHandleB', index: i };
+    // extremo B
+    if (Phaser.Math.Distance.Between(x, y, p.b.x, p.b.y) < R_HANDLE) {
+      return { type: 'pianoB', index: i };
     }
   }
 
   return null;
 }
-
 // Dibujar pianos
 _drawPianos(g) {
   if (!this._pianos.length) return;
