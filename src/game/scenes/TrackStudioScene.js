@@ -241,7 +241,23 @@ create() {
   this._finishGfx = this.add.graphics().setDepth(11);
   this._nodeGfx = this.add.graphics().setDepth(12);
 
-  this._drawGrid();
+  this._gridGfx.clear();
+
+this._gridGfx.lineStyle(1, 0x1f2c44, 0.7);
+for (let x = 0; x <= this._editorWorldW; x += 100) {
+  this._gridGfx.lineBetween(x, 0, x, this._editorWorldH);
+}
+for (let y = 0; y <= this._editorWorldH; y += 100) {
+  this._gridGfx.lineBetween(0, y, this._editorWorldW, y);
+}
+
+this._gridGfx.lineStyle(2, 0x2d3d5c, 0.9);
+for (let x = 0; x <= this._editorWorldW; x += 500) {
+  this._gridGfx.lineBetween(x, 0, x, this._editorWorldH);
+}
+for (let y = 0; y <= this._editorWorldH; y += 500) {
+  this._gridGfx.lineBetween(0, y, this._editorWorldW, y);
+}
 
   this._centerMark = this.add.graphics().setDepth(2);
   this._centerMark.lineStyle(3, 0x2bff88, 0.8);
