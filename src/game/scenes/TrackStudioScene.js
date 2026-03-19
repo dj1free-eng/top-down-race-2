@@ -1499,22 +1499,19 @@ _findControlAt(x, y) {
     }
   }
 
-  // --- PIANOS (modelo actual: a / b / point) ---
+  // --- PIANOS ---
   for (let i = this._pianos.length - 1; i >= 0; i--) {
     const p = this._pianos[i];
     if (!p || !p.a || !p.b || !p.point) continue;
 
-    // centro lógico del piano
     if (Phaser.Math.Distance.Between(x, y, p.point.x, p.point.y) < R) {
       return { type: 'piano', index: i };
     }
 
-    // extremo A
     if (Phaser.Math.Distance.Between(x, y, p.a.x, p.a.y) < R) {
       return { type: 'pianoA', index: i };
     }
 
-    // extremo B
     if (Phaser.Math.Distance.Between(x, y, p.b.x, p.b.y) < R) {
       return { type: 'pianoB', index: i };
     }
