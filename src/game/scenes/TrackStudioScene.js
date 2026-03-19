@@ -357,7 +357,7 @@ for (let y = 0; y <= this._editorWorldH; y += 500) {
       }
 
       this._updatePanel();
-      this._redrawEditor();
+
       return;
     }
 
@@ -399,7 +399,7 @@ for (let y = 0; y <= this._editorWorldH; y += 500) {
         this._selectedPiano = idx;
         this._selectedNode = -1;
         this._updatePanel();
-        this._redrawEditor();
+
         return;
       }
 
@@ -432,7 +432,7 @@ for (let y = 0; y <= this._editorWorldH; y += 500) {
         this._selectedNode = idx;
         this._selectedPiano = -1;
         this._updatePanel();
-        this._redrawEditor();
+
         return;
       }
     }
@@ -596,7 +596,7 @@ for (let y = 0; y <= this._editorWorldH; y += 500) {
           this._selectedNode = -1;
           this._selectedPart = pianoHit;
           this._updatePanel();
-          this._redrawEditor();
+
           return;
         }
 
@@ -632,7 +632,7 @@ for (let y = 0; y <= this._editorWorldH; y += 500) {
       }
 
       this._updatePanel();
-      this._redrawEditor();
+
     }
 
     if (stillDown === 0) {
@@ -659,7 +659,7 @@ for (let y = 0; y <= this._editorWorldH; y += 500) {
   this._updateToolButtons();
   this._renderContextPanel();
   this._updatePanel();
-  this._redrawEditor();
+
 }
   // =================================================
   // Guía de fondo
@@ -954,7 +954,7 @@ _renderContextPanel() {
 
     addBtn(this._isClosed ? 'Loop: cerrado' : 'Loop: abierto', false, () => {
       this._isClosed = !this._isClosed;
-      this._redrawEditor();
+
       this._updatePanel();
       this._renderContextPanel();
     });
@@ -1274,7 +1274,7 @@ _updatePanel() {
 
     this._updateToolButtons();
     this._updatePanel();
-    this._redrawEditor();
+
   }
 
   _saveProject() {
@@ -1320,7 +1320,7 @@ _updatePanel() {
 
     this._updateToolButtons();
     this._updatePanel();
-    this._redrawEditor();
+
 
     console.log('🆕 Nuevo proyecto');
   }
