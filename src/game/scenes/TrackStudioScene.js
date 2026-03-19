@@ -1736,7 +1736,7 @@ _findControlAt(x, y) {
     this._checkpointGfx.clear();
     this._finishGfx.clear();
     this._nodeGfx.clear();
-    this._drawPianos(g);
+
     const bezier = this._getBezierPoints();
 
     if (bezier.length >= 2) {
