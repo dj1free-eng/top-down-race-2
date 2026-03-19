@@ -1351,31 +1351,32 @@ _drawPianos(g) {
 // Update piano mientras arrastras
 _updatePianoDrag(part, world) {
   const p = this._pianos[part.index];
-
-  if (!p) return;
+  if (!p || !p.a || !p.b || !p.point) return;
 
   if (part.type === 'piano') {
-    const dx = world.x - p.x;
-    const dy = world.y - p.y;
+    const dx = world.x - p.point.x;
+    const dy = world.y - p.point.y;
 
-    p.x = world.x;
-    p.y = world.y;
+    p.point.x = world.x;
+    p.point.y = world.y;
 
-    p.handleA.x += dx;
-    p.handleA.y += dy;
+    p.a.x += dx;
+    p.a.y += dy;
 
-    p.handleB.x += dx;
-    p.handleB.y += dy;
+    p.b.x += dx;
+    p.b.y += dy;
+    return;
   }
 
-  if (part.type === 'pianoHandleA') {
-    p.handleA.x = world.x;
-    p.handleA.y = world.y;
+  if (part.type === 'pianoA') {
+    p.a.x = world.x;
+    p.a.y = world.y;
+    return;
   }
 
-  if (part.type === 'pianoHandleB') {
-    p.handleB.x = world.x;
-    p.handleB.y = world.y;
+  if (part.type === 'pianoB') {
+    p.b.x = world.x;
+    p.b.y = world.y;
   }
 }
   _applyZoomAtViewportCenter(multiplier) {
