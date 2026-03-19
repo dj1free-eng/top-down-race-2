@@ -1464,39 +1464,37 @@ _findControlAt(x, y) {
   for (let i = this._nodes.length - 1; i >= 0; i--) {
     const n = this._nodes[i];
 
-    // nodo
     if (Phaser.Math.Distance.Between(x, y, n.x, n.y) < R) {
       return { type: 'node', index: i };
     }
 
-    // handle in
     if (Phaser.Math.Distance.Between(x, y, n.handleIn.x, n.handleIn.y) < R) {
       return { type: 'handleIn', index: i };
     }
 
-    // handle out
     if (Phaser.Math.Distance.Between(x, y, n.handleOut.x, n.handleOut.y) < R) {
       return { type: 'handleOut', index: i };
     }
   }
 
-  // --- PIANOS ---
+  // --- PIANOS (modelo actual: a / b / point) ---
   for (let i = this._pianos.length - 1; i >= 0; i--) {
     const p = this._pianos[i];
+    if (!p || !p.a || !p.b || !p.point) continue;
 
-    // punto central
-    if (Phaser.Math.Distance.Between(x, y, p.x, p.y) < R) {
+    // centro lógico del piano
+    if (Phaser.Math.Distance.Between(x, y, p.point.x, p.point.y) < R) {
       return { type: 'piano', index: i };
     }
 
-    // handle A
-    if (Phaser.Math.Distance.Between(x, y, p.hA.x, p.hA.y) < R) {
-      return { type: 'pianoHandleA', index: i };
+    // extremo A
+    if (Phaser.Math.Distance.Between(x, y, p.a.x, p.a.y) < R) {
+      return { type: 'pianoA', index: i };
     }
 
-    // handle B
-    if (Phaser.Math.Distance.Between(x, y, p.hB.x, p.hB.y) < R) {
-      return { type: 'pianoHandleB', index: i };
+    // extremo B
+    if (Phaser.Math.Distance.Between(x, y, p.b.x, p.b.y) < R) {
+      return { type: 'pianoB', index: i };
     }
   }
 
