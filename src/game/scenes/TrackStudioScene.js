@@ -1399,4 +1399,38 @@ _updatePanel() {
 
   return null;
 }
+  _createNode(x, y) {
+  const handleLen = 60;
+
+  if (!this._nodes || this._nodes.length === 0) {
+    return {
+      x,
+      y,
+      handleIn: { x: x - handleLen, y },
+      handleOut: { x: x + handleLen, y }
+    };
+  }
+
+  const prev = this._nodes[this._nodes.length - 1];
+
+  let dx = x - prev.x;
+  let dy = y - prev.y;
+
+  const len = Math.sqrt(dx * dx + dy * dy) || 1;
+  dx /= len;
+  dy /= len;
+
+  return {
+    x,
+    y,
+    handleIn: {
+      x: x - dx * handleLen,
+      y: y - dy * handleLen
+    },
+    handleOut: {
+      x: x + dx * handleLen,
+      y: y + dy * handleLen
+    }
+  };
+}
 }
