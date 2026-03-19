@@ -6,655 +6,529 @@ export class TrackStudioScene extends BaseScene {
     super('TrackStudioScene');
   }
 
-create() {
-  super.create();
+  create() {
+    super.create();
 
-  const { width, height } = this.scale;
+    const { width, height } = this.scale;
 
-  // =================================================
-  // Layout base
-  // =================================================
-  this._topBarH = 72;
-  this._leftBarW = 76;
-  this._rightPanelW = 320;
-  this._bottomPad = 14;
+    // =================================================
+    // Layout base
+    // =================================================
+    this._topBarH = 72;
+    this._leftBarW = 76;
+    this._rightPanelW = 280;
+    this._bottomPad = 14;
 
-  this._viewX = this._leftBarW;
-  this._viewY = this._topBarH;
-  this._viewW = width - this._leftBarW - this._rightPanelW;
-  this._viewH = height - this._topBarH - this._bottomPad;
+    this._viewX = this._leftBarW;
+    this._viewY = this._topBarH;
+    this._viewW = width - this._leftBarW - this._rightPanelW;
+    this._viewH = height - this._topBarH - this._bottomPad;
 
-  // =================================================
-  // Estado editor
-  // =================================================
-  this._editorWorldW = 4000;
-  this._editorWorldH = 4000;
+    // =================================================
+    // Estado editor
+    // =================================================
+    this._editorWorldW = 4000;
+    this._editorWorldH = 4000;
 
-  this._nodes = [];
-  this._selectedNode = -1;
-  this._selectedPart = null;
-
-  this._draggingPart = false;
-  this._dragMoved = false;
-  this._dragStartScreen = null;
-  this._dragStartWorld = null;
-
-  this._tapCandidate = false;
-  this._gestureWasMultiTouch = false;
-  this._panLast = null;
-  this._pinchLastDist = 0;
-
-  this._editZoomMin = 0.12;
-  this._editZoomMax = 2.5;
-
-  this._trackWidth = 140;
-  this._trackWidthMin = 30;
-  this._trackWidthMax = 260;
-
-  this._isClosed = false;
-  this._tool = 'edit'; // 'edit' | 'finish' | 'checkpoint' | 'piano'
-  this._finishLine = null;
-  this._checkpoints = [];
-
-  // pianos manuales
-  this._pianos = [];
-  this._selectedPiano = -1;
-
-  // guía de fondo
-  this._guideImage = null;
-  this._guideTextureKey = null;
-  this._guideVisible = true;
-  this._guideAlpha = 0.32;
-  this._guideInput = null;
-
-  // nudge
-  this._nudgeSteps = [1, 5, 10];
-  this._nudgeStepIndex = 2;
-
-  // toolbar/contexto
-  this._saveTool = 'save';
-  this._viewTool = 'zoomIn';
-  this._modeTool = 'edit';
-  this._trackTool = 'widthUp';
-  this._guideTool = 'load';
-
-  this._activeTopTool = 'mode';
-  this._contextButtons = [];
-
-  // =================================================
-  // UI base
-  // =================================================
-  this.cameras.main.setBackgroundColor('#09101d');
-
-  this.add.rectangle(0, 0, width, this._topBarH, 0x101626).setOrigin(0);
-  this.add.rectangle(0, this._topBarH, this._leftBarW, height - this._topBarH, 0x0d1422).setOrigin(0);
-  this.add.rectangle(width - this._rightPanelW, this._topBarH, this._rightPanelW, height - this._topBarH, 0x0f1422).setOrigin(0);
-
-  this.add.rectangle(this._viewX, this._viewY, this._viewW, this._viewH, 0x0a0d16)
-    .setOrigin(0)
-    .setStrokeStyle(2, 0x26324a, 0.95);
-
-  this.add.text(22, 18, 'TRACK STUDIO', {
-    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-    fontSize: '30px',
-    color: '#ffffff',
-    fontStyle: 'bold'
-  });
-
-  this._rightTitle = this.add.text(width - this._rightPanelW + 20, this._topBarH + 18, 'PROPIEDADES', {
-    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-    fontSize: '18px',
-    color: '#c7d2ff',
-    fontStyle: 'bold'
-  });
-
-  this._panelDivider = this.add.rectangle(
-    width - this._rightPanelW + 20,
-    this._topBarH + 252,
-    this._rightPanelW - 40,
-    2,
-    0x26324a,
-    0.95
-  ).setOrigin(0, 0.5);
-
-  this._panelText = this.add.text(width - this._rightPanelW + 20, this._topBarH + 58, 'Sin selección', {
-    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-    fontSize: '13px',
-    color: '#ffffff',
-    lineSpacing: 1,
-    wordWrap: { width: this._rightPanelW - 40 }
-  });
-
-  this._contextTitle = this.add.text(
-    width - this._rightPanelW + 20,
-    this._topBarH + 272,
-    'HERRAMIENTAS',
-    {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '17px',
-      color: '#c7d2ff',
-      fontStyle: 'bold'
-    }
-  );
-  const back = this.add.text(width - 38, 18, '←', {
-    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-    fontSize: '22px',
-    color: '#ffffff',
-    backgroundColor: '#1c2540',
-    padding: { x: 12, y: 8 }
-  })
-    .setOrigin(0.5, 0)
-    .setInteractive({ useHandCursor: true });
-
-  back.on('pointerup', () => {
-    this._destroyGuideInput();
-    this.scene.start('admin-hub');
-  });
-
-  // =================================================
-  // Barra izquierda
-  // =================================================
-  const leftCX = Math.floor(this._leftBarW / 2);
-  const leftY = this._topBarH + 20;
-
-  this._leftToolsTitle = this.add.text(leftCX, leftY, 'NAV', {
-    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-    fontSize: '12px',
-    color: '#90a4d4',
-    fontStyle: 'bold'
-  }).setOrigin(0.5, 0);
-
-  this._leftHomeBtn = this._makeIconButton(leftCX, this._topBarH + 74, '⌂', () => {
-    this._editCam.centerOn(this._editorWorldW / 2, this._editorWorldH / 2);
-    this._updatePanel();
-  }, '18px');
-
-  this._leftZoomInBtn = this._makeIconButton(leftCX, this._topBarH + 122, '+', () => {
-    this._applyZoomAtViewportCenter(1.15);
-  }, '20px');
-
-  this._leftZoomOutBtn = this._makeIconButton(leftCX, this._topBarH + 170, '−', () => {
-    this._applyZoomAtViewportCenter(1 / 1.15);
-  }, '22px');
-
-  // =================================================
-  // Barra superior
-  // =================================================
-  const topToolsY = 36;
-  let topX = 470;
-
-  this._saveMainBtn = this._makeIconButton(topX, topToolsY, '💾', () => {
-    this._setActiveTopTool('save');
-  }, '16px');
-  topX += 48;
-
-  this._viewMainBtn = this._makeIconButton(topX, topToolsY, '🔍', () => {
-    this._setActiveTopTool('view');
-  }, '16px');
-  topX += 48;
-
-  this._modeMainBtn = this._makeIconButton(topX, topToolsY, '✏', () => {
-    this._setActiveTopTool('mode');
-  }, '16px');
-  topX += 48;
-
-  this._trackMainBtn = this._makeIconButton(topX, topToolsY, 'W', () => {
-    this._setActiveTopTool('track');
-  }, '18px');
-  topX += 48;
-
-  this._guideMainBtn = this._makeIconButton(topX, topToolsY, '👁', () => {
-    this._setActiveTopTool('guide');
-  }, '16px');
-  topX += 58;
-
-  this._nudgeStepBtn = this._makeIconButton(topX, topToolsY, String(this._getNudgeStep()), () => {
-    this._cycleNudgeStep();
-  }, '16px');
-  topX += 48;
-
-  this._btnLeft = this._makeIconButton(topX, topToolsY, '←', () => {
-    this._nudgeSelectedNode(-this._getNudgeStep(), 0);
-  }, '18px');
-  topX += 42;
-
-  this._btnUp = this._makeIconButton(topX, topToolsY, '↑', () => {
-    this._nudgeSelectedNode(0, -this._getNudgeStep());
-  }, '18px');
-  topX += 42;
-
-  this._btnDown = this._makeIconButton(topX, topToolsY, '↓', () => {
-    this._nudgeSelectedNode(0, this._getNudgeStep());
-  }, '18px');
-  topX += 42;
-
-  this._btnRight = this._makeIconButton(topX, topToolsY, '→', () => {
-    this._nudgeSelectedNode(this._getNudgeStep(), 0);
-  }, '18px');
-  topX += 42;
-
-  this._deleteBtn = this._makeIconButton(topX, topToolsY, '🗑', () => {
-  if (this._selectedNode >= 0 && this._selectedNode < this._nodes.length) {
-    this._nodes.splice(this._selectedNode, 1);
+    this._nodes = [];
     this._selectedNode = -1;
     this._selectedPart = null;
-    this._updatePanel();
-  }
 
-  if (this._selectedPiano >= 0 && this._selectedPiano < this._pianos.length) {
-    this._pianos.splice(this._selectedPiano, 1);
-    this._selectedPiano = -1;
-    this._selectedPart = null;
-    this._updatePanel();
-  }
-}, '16px');
+    this._draggingPart = false;
+    this._dragMoved = false;
+    this._dragStartScreen = null;
+    this._dragStartWorld = null;
 
-  // =================================================
-  // Mundo de edición
-  // =================================================
-  this._gridGfx = this.add.graphics().setDepth(1);
-  this._trackGfx = this.add.graphics().setDepth(6);
-  this._curveGfx = this.add.graphics().setDepth(7);
-  this._guideGfx = this.add.graphics().setDepth(8);
-  this._pianoGfx = this.add.graphics().setDepth(9);
-  this._checkpointGfx = this.add.graphics().setDepth(10);
-  this._finishGfx = this.add.graphics().setDepth(11);
-  this._nodeGfx = this.add.graphics().setDepth(12);
-
-  this._gridGfx.clear();
-
-this._gridGfx.lineStyle(1, 0x1f2c44, 0.7);
-for (let x = 0; x <= this._editorWorldW; x += 100) {
-  this._gridGfx.lineBetween(x, 0, x, this._editorWorldH);
-}
-for (let y = 0; y <= this._editorWorldH; y += 100) {
-  this._gridGfx.lineBetween(0, y, this._editorWorldW, y);
-}
-
-this._gridGfx.lineStyle(2, 0x2d3d5c, 0.9);
-for (let x = 0; x <= this._editorWorldW; x += 500) {
-  this._gridGfx.lineBetween(x, 0, x, this._editorWorldH);
-}
-for (let y = 0; y <= this._editorWorldH; y += 500) {
-  this._gridGfx.lineBetween(0, y, this._editorWorldW, y);
-}
-
-  this._centerMark = this.add.graphics().setDepth(2);
-  this._centerMark.lineStyle(3, 0x2bff88, 0.8);
-  this._centerMark.lineBetween(
-    this._editorWorldW / 2 - 30,
-    this._editorWorldH / 2,
-    this._editorWorldW / 2 + 30,
-    this._editorWorldH / 2
-  );
-  this._centerMark.lineBetween(
-    this._editorWorldW / 2,
-    this._editorWorldH / 2 - 30,
-    this._editorWorldW / 2,
-    this._editorWorldH / 2 + 30
-  );
-
-  // =================================================
-  // Cámara de edición
-  // =================================================
-  this._editCam = this.cameras.add(
-    this._viewX + 2,
-    this._viewY + 2,
-    this._viewW - 4,
-    this._viewH - 4
-  );
-
-  this._editCam.setBackgroundColor('#0a0d16');
-  this._editCam.setBounds(0, 0, this._editorWorldW, this._editorWorldH);
-  this._editCam.centerOn(this._editorWorldW / 2, this._editorWorldH / 2);
-  this._editCam.setZoom(0.28);
-
-  this.cameras.main.ignore([
-    this._gridGfx,
-    this._centerMark,
-    this._trackGfx,
-    this._curveGfx,
-    this._guideGfx,
-    this._pianoGfx,
-    this._checkpointGfx,
-    this._finishGfx,
-    this._nodeGfx
-  ]);
-
-  const worldObjs = [
-    this._gridGfx,
-    this._centerMark,
-    this._trackGfx,
-    this._curveGfx,
-    this._guideGfx,
-    this._pianoGfx,
-    this._checkpointGfx,
-    this._finishGfx,
-    this._nodeGfx
-  ];
-  const uiObjs = this.children.list.filter((o) => !worldObjs.includes(o));
-  this._editCam.ignore(uiObjs);
-
-  // =================================================
-  // Input
-  // =================================================
-  this.input.addPointer(2);
-
-  this.input.on('pointerdown', (pointer) => {
-    if (!this._isPointerInViewport(pointer)) return;
-
-    this._tapCandidate = true;
+    this._tapCandidate = false;
     this._gestureWasMultiTouch = false;
+    this._panLast = null;
+    this._pinchLastDist = 0;
 
-    if (this._tool === 'finish' || this._tool === 'checkpoint') {
+    this._editZoomMin = 0.12;
+    this._editZoomMax = 2.5;
+
+    this._trackWidth = 140;
+    this._trackWidthMin = 30;
+    this._trackWidthMax = 260;
+
+    this._isClosed = false;
+    this._tool = 'edit'; // 'edit' | 'finish' | 'checkpoint' | 'piano'
+    this._finishLine = null;
+    this._checkpoints = [];
+
+    // pianos manuales
+    this._pianos = [];
+    this._selectedPiano = -1;
+
+    // guía de fondo
+    this._guideImage = null;
+    this._guideTextureKey = null;
+    this._guideVisible = true;
+    this._guideAlpha = 0.32;
+    this._guideInput = null;
+
+    // nudge
+    this._nudgeSteps = [1, 5, 10];
+    this._nudgeStepIndex = 2;
+
+    // grupos toolbar
+    this._saveTool = 'save';
+    this._saveMenu = null;
+
+    this._viewTool = 'zoomIn';
+    this._viewMenu = null;
+
+    this._modeTool = 'edit';
+    this._modeMenu = null;
+
+    this._trackTool = 'widthUp';
+    this._trackMenu = null;
+
+    this._guideTool = 'load';
+    this._guideMenu = null;
+    // =================================================
+    // UI base
+    // =================================================
+    this.cameras.main.setBackgroundColor('#09101d');
+
+    this.add.rectangle(0, 0, width, this._topBarH, 0x101626).setOrigin(0);
+    this.add.rectangle(0, this._topBarH, this._leftBarW, height - this._topBarH, 0x0d1422).setOrigin(0);
+    this.add.rectangle(width - this._rightPanelW, this._topBarH, this._rightPanelW, height - this._topBarH, 0x0f1422).setOrigin(0);
+
+    this.add.rectangle(this._viewX, this._viewY, this._viewW, this._viewH, 0x0a0d16)
+      .setOrigin(0)
+      .setStrokeStyle(2, 0x26324a, 0.95);
+
+    this.add.text(22, 18, 'TRACK STUDIO', {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: '30px',
+      color: '#ffffff',
+      fontStyle: 'bold'
+    });
+
+    this._rightTitle = this.add.text(width - this._rightPanelW + 20, this._topBarH + 18, 'PROPIEDADES', {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: '18px',
+      color: '#c7d2ff',
+      fontStyle: 'bold'
+    });
+
+    this._panelText = this.add.text(width - this._rightPanelW + 20, this._topBarH + 58, 'Sin nodo seleccionado', {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: '14px',
+      color: '#ffffff',
+      lineSpacing: 2,
+      wordWrap: { width: this._rightPanelW - 40 }
+    });
+
+    const back = this.add.text(width - 38, 18, '←', {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: '22px',
+      color: '#ffffff',
+      backgroundColor: '#1c2540',
+      padding: { x: 12, y: 8 }
+    })
+      .setOrigin(0.5, 0)
+      .setInteractive({ useHandCursor: true });
+
+    back.on('pointerup', () => {
+      this._destroyGuideInput();
+      this.scene.start('admin-hub');
+    });
+
+    // =================================================
+    // Barra izquierda
+    // =================================================
+    const leftCX = Math.floor(this._leftBarW / 2);
+    const leftY = this._topBarH + 20;
+
+    this.add.text(leftCX, leftY, 'TOOLS', {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize: '12px',
+      color: '#90a4d4',
+      fontStyle: 'bold'
+    }).setOrigin(0.5, 0);
+
+    // =================================================
+    // Barra superior
+    // =================================================
+    const topToolsY = 36;
+    let topX = 260;
+
+    this._saveBtnX = topX;
+    this._saveBtnY = topToolsY;
+    this._saveMainBtn = this._makeGroupedMainButton(
+      this._saveBtnX,
+      this._saveBtnY,
+      this._getSaveToolLabel(),
+      () => this._runActiveSaveTool(),
+      () => this._toggleSaveMenu(),
+      '14px'
+    );
+    topX += 52;
+
+    this._viewBtnX = topX;
+    this._viewBtnY = topToolsY;
+    this._viewMainBtn = this._makeGroupedMainButton(
+      this._viewBtnX,
+      this._viewBtnY,
+      this._getViewToolLabel(),
+      () => this._runActiveViewTool(),
+      () => this._toggleViewMenu(),
+      '12px'
+    );
+    topX += 52;
+
+    this._modeBtnX = topX;
+    this._modeBtnY = topToolsY;
+    this._modeMainBtn = this._makeGroupedMainButton(
+      this._modeBtnX,
+      this._modeBtnY,
+      this._getModeToolLabel(),
+      () => this._runActiveModeTool(),
+      () => this._toggleModeMenu(),
+      '14px'
+    );
+    topX += 52;
+
+    this._trackBtnX = topX;
+    this._trackBtnY = topToolsY;
+    this._trackMainBtn = this._makeGroupedMainButton(
+      this._trackBtnX,
+      this._trackBtnY,
+      this._getTrackToolLabel(),
+      () => this._runActiveTrackTool(),
+      () => this._toggleTrackMenu(),
+      '13px'
+    );
+    topX += 52;
+
+    this._guideBtnX = topX;
+    this._guideBtnY = topToolsY;
+    this._guideMainBtn = this._makeGroupedMainButton(
+      this._guideBtnX,
+      this._guideBtnY,
+      this._getGuideToolLabel(),
+      () => this._runActiveGuideTool(),
+      () => this._toggleGuideMenu(),
+      '12px'
+    );
+    topX += 52;
+
+    this._guideAlphaMinusBtn = this._makeIconButton(topX, topToolsY, 'A-', () => {
+      this._changeGuideAlpha(-0.08);
+    }, '13px');
+    topX += 44;
+
+    this._guideAlphaPlusBtn = this._makeIconButton(topX, topToolsY, 'A+', () => {
+      this._changeGuideAlpha(0.08);
+    }, '13px');
+    topX += 50;
+
+    this._nudgeStepBtn = this._makeIconButton(topX, topToolsY, String(this._getNudgeStep()), () => {
+      this._cycleNudgeStep();
+    }, '16px');
+    topX += 44;
+
+    this._btnLeft = this._makeIconButton(topX, topToolsY, '←', () => {
+      this._nudgeSelectedNode(-this._getNudgeStep(), 0);
+    }, '18px');
+    topX += 40;
+
+    this._btnUp = this._makeIconButton(topX, topToolsY, '↑', () => {
+      this._nudgeSelectedNode(0, -this._getNudgeStep());
+    }, '18px');
+    topX += 40;
+
+    this._btnDown = this._makeIconButton(topX, topToolsY, '↓', () => {
+      this._nudgeSelectedNode(0, this._getNudgeStep());
+    }, '18px');
+    topX += 40;
+
+    this._btnRight = this._makeIconButton(topX, topToolsY, '→', () => {
+      this._nudgeSelectedNode(this._getNudgeStep(), 0);
+    }, '18px');
+    topX += 40;
+
+    this._deleteBtn = this._makeIconButton(topX, topToolsY, '🗑', () => {
+      this._deleteSelectedNode();
+    }, '16px');
+
+    // =================================================
+    // Mundo de edición
+    // =================================================
+    this._gridGfx = this.add.graphics().setDepth(1);
+    this._trackGfx = this.add.graphics().setDepth(6);
+    this._curveGfx = this.add.graphics().setDepth(7);
+    this._guideGfx = this.add.graphics().setDepth(8);
+    this._pianoGfx = this.add.graphics().setDepth(9);
+    this._checkpointGfx = this.add.graphics().setDepth(10);
+    this._finishGfx = this.add.graphics().setDepth(11);
+    this._nodeGfx = this.add.graphics().setDepth(12);
+
+    this._drawGrid();
+
+    this._centerMark = this.add.graphics().setDepth(2);
+    this._centerMark.lineStyle(3, 0x2bff88, 0.8);
+    this._centerMark.lineBetween(
+      this._editorWorldW / 2 - 30,
+      this._editorWorldH / 2,
+      this._editorWorldW / 2 + 30,
+      this._editorWorldH / 2
+    );
+    this._centerMark.lineBetween(
+      this._editorWorldW / 2,
+      this._editorWorldH / 2 - 30,
+      this._editorWorldW / 2,
+      this._editorWorldH / 2 + 30
+    );
+
+    // =================================================
+    // Cámara de edición
+    // =================================================
+    this._editCam = this.cameras.add(
+      this._viewX + 2,
+      this._viewY + 2,
+      this._viewW - 4,
+      this._viewH - 4
+    );
+
+    this._editCam.setBackgroundColor('#0a0d16');
+    this._editCam.setBounds(0, 0, this._editorWorldW, this._editorWorldH);
+    this._editCam.centerOn(this._editorWorldW / 2, this._editorWorldH / 2);
+    this._editCam.setZoom(0.28);
+
+    this.cameras.main.ignore([
+      this._gridGfx,
+      this._centerMark,
+      this._trackGfx,
+      this._curveGfx,
+      this._guideGfx,
+      this._pianoGfx,
+      this._checkpointGfx,
+      this._finishGfx,
+      this._nodeGfx
+    ]);
+
+    const worldObjs = [
+      this._gridGfx,
+      this._centerMark,
+      this._trackGfx,
+      this._curveGfx,
+      this._guideGfx,
+      this._pianoGfx,
+      this._checkpointGfx,
+      this._finishGfx,
+      this._nodeGfx
+    ];
+    const uiObjs = this.children.list.filter((o) => !worldObjs.includes(o));
+    this._editCam.ignore(uiObjs);
+
+    // =================================================
+    // Input
+    // =================================================
+    this.input.addPointer(2);
+
+    this.input.on('pointerdown', (pointer) => {
+      if (!this._isPointerInViewMenu(pointer)) this._closeViewMenu();
+      if (!this._isPointerInSaveMenu(pointer)) this._closeSaveMenu();
+      if (!this._isPointerInModeMenu(pointer)) this._closeModeMenu();
+      if (!this._isPointerInTrackMenu(pointer)) this._closeTrackMenu();
+      if (!this._isPointerInGuideMenu(pointer)) this._closeGuideMenu();
+
+      if (!this._isPointerInViewport(pointer)) return;
+
+      this._tapCandidate = true;
+      this._gestureWasMultiTouch = false;
+
+      if (this._tool === 'finish' || this._tool === 'checkpoint') {
+        this._draggingPart = false;
+        this._dragMoved = false;
+        this._dragStartScreen = { x: pointer.x, y: pointer.y };
+        this._dragStartWorld = this._screenToWorld(pointer.x, pointer.y);
+        return;
+      }
+
+      const world = this._screenToWorld(pointer.x, pointer.y);
+      const hit = this._findControlAt(world.x, world.y);
+
+      if (hit) {
+        this._selectedPart = hit;
+        this._draggingPart = true;
+        this._dragMoved = false;
+        this._dragStartScreen = { x: pointer.x, y: pointer.y };
+        this._dragStartWorld = { x: world.x, y: world.y };
+
+        if (
+          hit.type === 'piano' ||
+          hit.type === 'pianoA' ||
+          hit.type === 'pianoB'
+        ) {
+          this._selectedPiano = hit.index;
+          this._selectedNode = -1;
+        } else {
+          this._selectedNode = hit.index;
+          this._selectedPiano = -1;
+        }
+
+        this._updatePanel();
+        this._redrawEditor();
+        return;
+      }
+
+      this._selectedPart = null;
       this._draggingPart = false;
-      this._dragMoved = false;
-      this._dragStartScreen = { x: pointer.x, y: pointer.y };
-      this._dragStartWorld = this._screenToWorld(pointer.x, pointer.y);
-      return;
-    }
-
-    const world = this._screenToWorld(pointer.x, pointer.y);
-    const hit = this._findControlAt(world.x, world.y);
-
-    if (hit) {
-      this._selectedPart = hit;
-      this._draggingPart = true;
       this._dragMoved = false;
       this._dragStartScreen = { x: pointer.x, y: pointer.y };
       this._dragStartWorld = { x: world.x, y: world.y };
+    });
 
-      if (
-        hit.type === 'piano' ||
-        hit.type === 'pianoA' ||
-        hit.type === 'pianoB'
-      ) {
-        this._selectedPiano = hit.index;
-        this._selectedNode = -1;
-      } else {
-        this._selectedNode = hit.index;
-        this._selectedPiano = -1;
-      }
-
-      this._updatePanel();
-
-      return;
-    }
-
-    this._selectedPart = null;
-    this._draggingPart = false;
-    this._dragMoved = false;
-    this._dragStartScreen = { x: pointer.x, y: pointer.y };
-    this._dragStartWorld = { x: world.x, y: world.y };
-  });
-
-  this.input.on('pointermove', () => {
-    const down = this.input.manager.pointers.filter(
-      (p) => p.isDown && this._isPointerInViewport(p)
-    );
-
-    if (this._tool === 'edit' && this._draggingPart && down.length === 1 && this._selectedPart) {
-      const p = down[0];
-
-      if (this._dragStartScreen) {
-        const dist = Phaser.Math.Distance.Between(
-          p.x, p.y,
-          this._dragStartScreen.x, this._dragStartScreen.y
-        );
-
-        if (dist <= 10) return;
-
-        this._dragMoved = true;
-      }
-
-      const world = this._screenToWorld(p.x, p.y);
-      const idx = this._selectedPart.index;
-
-      if (
-        this._selectedPart.type === 'piano' ||
-        this._selectedPart.type === 'pianoA' ||
-        this._selectedPart.type === 'pianoB'
-      ) {
-        this._updatePianoDrag(this._selectedPart, world);
-        this._selectedPiano = idx;
-        this._selectedNode = -1;
-        this._updatePanel();
-
-        return;
-      }
-
-      if (
-        this._selectedPart.type === 'node' ||
-        this._selectedPart.type === 'handleIn' ||
-        this._selectedPart.type === 'handleOut'
-      ) {
-        const node = this._nodes[idx];
-
-        if (this._selectedPart.type === 'node') {
-          const dx = world.x - node.x;
-          const dy = world.y - node.y;
-
-          node.x = world.x;
-          node.y = world.y;
-
-          node.handleIn.x += dx;
-          node.handleIn.y += dy;
-          node.handleOut.x += dx;
-          node.handleOut.y += dy;
-        } else if (this._selectedPart.type === 'handleIn') {
-          node.handleIn.x = world.x;
-          node.handleIn.y = world.y;
-        } else if (this._selectedPart.type === 'handleOut') {
-          node.handleOut.x = world.x;
-          node.handleOut.y = world.y;
-        }
-
-        this._selectedNode = idx;
-        this._selectedPiano = -1;
-        this._updatePanel();
-
-        return;
-      }
-    }
-
-    if (down.length === 1) {
-      const p = down[0];
-
-      if (this._panLast) {
-        const dx = p.x - this._panLast.x;
-        const dy = p.y - this._panLast.y;
-
-        this._editCam.scrollX -= dx / this._editCam.zoom;
-        this._editCam.scrollY -= dy / this._editCam.zoom;
-      }
-
-      this._panLast = { x: p.x, y: p.y };
-      this._pinchLastDist = 0;
-      return;
-    }
-
-    if (down.length >= 2) {
-      this._gestureWasMultiTouch = true;
-      this._tapCandidate = false;
-
-      const p1 = down[0];
-      const p2 = down[1];
-
-      const midX = (p1.x + p2.x) * 0.5;
-      const midY = (p1.y + p2.y) * 0.5;
-
-      const dx = p2.x - p1.x;
-      const dy = p2.y - p1.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-
-      if (!this._pinchLastDist) {
-        this._pinchLastDist = dist;
-        this._panLast = null;
-        this._draggingPart = false;
-        return;
-      }
-
-      const ratio = dist / this._pinchLastDist;
-
-      const newZoom = Phaser.Math.Clamp(
-        this._editCam.zoom * ratio,
-        this._editZoomMin,
-        this._editZoomMax
+    this.input.on('pointermove', () => {
+      const down = this.input.manager.pointers.filter(
+        (p) => p.isDown && this._isPointerInViewport(p)
       );
 
-      const worldX =
-        this._editCam.scrollX +
-        (midX - this._editCam.x) / this._editCam.zoom;
+      if (this._tool === 'edit' && this._draggingPart && down.length === 1 && this._selectedPart) {
+        const p = down[0];
 
-      const worldY =
-        this._editCam.scrollY +
-        (midY - this._editCam.y) / this._editCam.zoom;
+        if (this._dragStartScreen) {
+          const dist = Phaser.Math.Distance.Between(
+            p.x, p.y,
+            this._dragStartScreen.x, this._dragStartScreen.y
+          );
 
-      this._editCam.setZoom(newZoom);
+          if (dist <= 10) return;
 
-      this._editCam.scrollX =
-        worldX - (midX - this._editCam.x) / newZoom;
-
-      this._editCam.scrollY =
-        worldY - (midY - this._editCam.y) / newZoom;
-
-      this._pinchLastDist = dist;
-      this._updatePanel();
-      return;
-    }
-
-    this._panLast = null;
-    this._pinchLastDist = 0;
-  });
-
-  this.input.on('pointerup', (pointer) => {
-    const stillDown = this.input.manager.pointers.filter((p) => p.isDown).length;
-
-    if (this._draggingPart) {
-      this._draggingPart = false;
-      if (stillDown === 0) {
-        this._dragStartScreen = null;
-        this._dragStartWorld = null;
-        this._tapCandidate = false;
-        this._gestureWasMultiTouch = false;
-        this._panLast = null;
-        this._pinchLastDist = 0;
-      }
-      return;
-    }
-
-    if (this._gestureWasMultiTouch) {
-      if (stillDown === 0) {
-        this._dragStartScreen = null;
-        this._dragStartWorld = null;
-        this._tapCandidate = false;
-        this._gestureWasMultiTouch = false;
-        this._panLast = null;
-        this._pinchLastDist = 0;
-      }
-      return;
-    }
-
-    let movedTooMuch = false;
-    if (this._dragStartScreen) {
-      const dist = Phaser.Math.Distance.Between(
-        pointer.x,
-        pointer.y,
-        this._dragStartScreen.x,
-        this._dragStartScreen.y
-      );
-      movedTooMuch = dist > 10;
-    }
-
-    if (
-      this._tapCandidate &&
-      !movedTooMuch &&
-      this._isPointerInViewport(pointer)
-    ) {
-      const world = this._screenToWorld(pointer.x, pointer.y);
-
-      if (this._tool === 'finish') {
-        this._placeFinishLineAt(world.x, world.y);
-
-      } else if (this._tool === 'checkpoint') {
-        this._placeCheckpointAt(world.x, world.y);
-
-      } else if (this._tool === 'piano') {
-        const hit = this._findNearestCurvePoint(world.x, world.y);
-
-        if (hit) {
-          const half = this._trackWidth * 0.5;
-          const halfLen = 38;
-
-          const a = {
-            x: hit.point.x - hit.tangent.x * halfLen + hit.normal.x * half,
-            y: hit.point.y - hit.tangent.y * halfLen + hit.normal.y * half
-          };
-
-          const b = {
-            x: hit.point.x + hit.tangent.x * halfLen + hit.normal.x * half,
-            y: hit.point.y + hit.tangent.y * halfLen + hit.normal.y * half
-          };
-
-          this._pianos.push({
-            a,
-            b,
-            point: { x: hit.point.x + hit.normal.x * half, y: hit.point.y + hit.normal.y * half },
-            normal: { x: hit.normal.x, y: hit.normal.y },
-            tangent: { x: hit.tangent.x, y: hit.tangent.y }
-          });
-
-          this._selectedPiano = this._pianos.length - 1;
-          this._selectedNode = -1;
-          this._selectedPart = { type: 'piano', index: this._selectedPiano };
+          this._dragMoved = true;
         }
 
-      } else {
-        const pianoHit = this._findPianoControl(world.x, world.y);
-        if (pianoHit) {
-          this._selectedPiano = pianoHit.index;
-          this._selectedNode = -1;
-          this._selectedPart = pianoHit;
-          this._updatePanel();
+const world = this._screenToWorld(p.x, p.y);
+const idx = this._selectedPart.index;
 
+// --- PIANOS ---
+if (
+  this._selectedPart.type === 'piano' ||
+  this._selectedPart.type === 'pianoA' ||
+  this._selectedPart.type === 'pianoB'
+) {
+  this._updatePianoDrag(this._selectedPart, world);
+  this._selectedPiano = idx;
+  this._selectedNode = -1;
+  this._updatePanel();
+  this._redrawEditor();
+  return;
+}
+
+// --- NODOS ---
+if (
+  this._selectedPart.type === 'node' ||
+  this._selectedPart.type === 'handleIn' ||
+  this._selectedPart.type === 'handleOut'
+) {
+  const node = this._nodes[idx];
+
+  if (this._selectedPart.type === 'node') {
+    const dx = world.x - node.x;
+    const dy = world.y - node.y;
+
+    node.x = world.x;
+    node.y = world.y;
+
+    node.handleIn.x += dx;
+    node.handleIn.y += dy;
+    node.handleOut.x += dx;
+    node.handleOut.y += dy;
+  } else if (this._selectedPart.type === 'handleIn') {
+    node.handleIn.x = world.x;
+    node.handleIn.y = world.y;
+  } else if (this._selectedPart.type === 'handleOut') {
+    node.handleOut.x = world.x;
+    node.handleOut.y = world.y;
+  }
+
+  this._selectedNode = idx;
+  this._selectedPiano = -1;
+  this._updatePanel();
+  this._redrawEditor();
+  return;
+}
+      }
+
+      if (down.length === 1) {
+        const p = down[0];
+
+        if (this._panLast) {
+          const dx = p.x - this._panLast.x;
+          const dy = p.y - this._panLast.y;
+
+          this._editCam.scrollX -= dx / this._editCam.zoom;
+          this._editCam.scrollY -= dy / this._editCam.zoom;
+        }
+
+        this._panLast = { x: p.x, y: p.y };
+        this._pinchLastDist = 0;
+        return;
+      }
+
+      if (down.length >= 2) {
+        this._gestureWasMultiTouch = true;
+        this._tapCandidate = false;
+
+        const p1 = down[0];
+        const p2 = down[1];
+
+        const midX = (p1.x + p2.x) * 0.5;
+        const midY = (p1.y + p2.y) * 0.5;
+
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (!this._pinchLastDist) {
+          this._pinchLastDist = dist;
+          this._panLast = null;
+          this._draggingPart = false;
           return;
         }
 
-        const hit = this._findControlAt(world.x, world.y);
+        const ratio = dist / this._pinchLastDist;
 
-        if (hit) {
-          this._selectedNode = hit.index;
-          this._selectedPiano = -1;
-          this._selectedPart = hit;
-        } else {
-          const node = this._createNode(world.x, world.y);
+        const newZoom = Phaser.Math.Clamp(
+          this._editCam.zoom * ratio,
+          this._editZoomMin,
+          this._editZoomMax
+        );
 
-          if (this._nodes.length > 0) {
-            const prev = this._nodes[this._nodes.length - 1];
-            const handleLen = 60;
+        const worldX =
+          this._editCam.scrollX +
+          (midX - this._editCam.x) / this._editCam.zoom;
 
-            let dx = node.x - prev.x;
-            let dy = node.y - prev.y;
+        const worldY =
+          this._editCam.scrollY +
+          (midY - this._editCam.y) / this._editCam.zoom;
 
-            const len = Math.sqrt(dx * dx + dy * dy) || 1;
-            dx /= len;
-            dy /= len;
+        this._editCam.setZoom(newZoom);
 
-            prev.handleOut.x = prev.x + dx * handleLen;
-            prev.handleOut.y = prev.y + dy * handleLen;
-          }
+        this._editCam.scrollX =
+          worldX - (midX - this._editCam.x) / newZoom;
 
-          this._nodes.push(node);
-          this._selectedNode = this._nodes.length - 1;
-          this._selectedPiano = -1;
-          this._selectedPart = { type: 'node', index: this._selectedNode };
-        }
+        this._editCam.scrollY =
+          worldY - (midY - this._editCam.y) / newZoom;
+
+        this._pinchLastDist = dist;
+        this._updatePanel();
+        return;
       }
 
-      this._updatePanel();
+      this._panLast = null;
+      this._pinchLastDist = 0;
+    });
 
-    }
+    this.input.on('pointerup', (pointer) => {
+  const stillDown = this.input.manager.pointers.filter((p) => p.isDown).length;
 
+  if (this._draggingPart) {
+    this._draggingPart = false;
     if (stillDown === 0) {
       this._dragStartScreen = null;
       this._dragStartWorld = null;
@@ -663,24 +537,144 @@ for (let y = 0; y <= this._editorWorldH; y += 500) {
       this._panLast = null;
       this._pinchLastDist = 0;
     }
-  });
+    return;
+  }
 
-  this.input.on('pointerupoutside', () => {
-    this._draggingPart = false;
+  if (this._gestureWasMultiTouch) {
+    if (stillDown === 0) {
+      this._dragStartScreen = null;
+      this._dragStartWorld = null;
+      this._tapCandidate = false;
+      this._gestureWasMultiTouch = false;
+      this._panLast = null;
+      this._pinchLastDist = 0;
+    }
+    return;
+  }
+
+  let movedTooMuch = false;
+  if (this._dragStartScreen) {
+    const dist = Phaser.Math.Distance.Between(
+      pointer.x,
+      pointer.y,
+      this._dragStartScreen.x,
+      this._dragStartScreen.y
+    );
+    movedTooMuch = dist > 10;
+  }
+
+  if (
+    this._tapCandidate &&
+    !movedTooMuch &&
+    this._isPointerInViewport(pointer)
+  ) {
+    const world = this._screenToWorld(pointer.x, pointer.y);
+
+    if (this._tool === 'finish') {
+      this._placeFinishLineAt(world.x, world.y);
+
+    } else if (this._tool === 'checkpoint') {
+      this._placeCheckpointAt(world.x, world.y);
+
+    } else if (this._tool === 'piano') {
+      const hit = this._findNearestCurvePoint(world.x, world.y);
+
+      if (hit) {
+        const half = this._trackWidth * 0.5;
+
+        const a = {
+          x: hit.point.x + hit.normal.x * half,
+          y: hit.point.y + hit.normal.y * half
+        };
+
+        const b = {
+          x: hit.point.x + hit.normal.x * (half + 28),
+          y: hit.point.y + hit.normal.y * (half + 28)
+        };
+
+        this._pianos.push({
+          a,
+          b,
+          point: { x: hit.point.x, y: hit.point.y },
+          normal: { x: hit.normal.x, y: hit.normal.y },
+          tangent: { x: hit.tangent.x, y: hit.tangent.y }
+        });
+
+        this._selectedPiano = this._pianos.length - 1;
+      }
+
+  } else {
+
+  // 🔴 1. Primero detectar pianos
+  const pianoHit = this._findPianoControl(world.x, world.y);
+  if (pianoHit) {
+    this._selectedPiano = pianoHit.index;
+    this._selectedNode = -1;
+    this._selectedPart = pianoHit;
+    return;
+  }
+
+  // 🔵 2. Luego lo normal (nodos)
+  const hit = this._findControlAt(world.x, world.y);
+
+  if (hit) {
+    this._selectedNode = hit.index;
+    this._selectedPiano = -1;
+    this._selectedPart = hit;
+  } else {
+    const node = this._createNode(world.x, world.y);
+
+        if (this._nodes.length > 0) {
+          const prev = this._nodes[this._nodes.length - 1];
+          const handleLen = 60;
+
+          let dx = node.x - prev.x;
+          let dy = node.y - prev.y;
+
+          const len = Math.sqrt(dx * dx + dy * dy) || 1;
+          dx /= len;
+          dy /= len;
+
+          prev.handleOut.x = prev.x + dx * handleLen;
+          prev.handleOut.y = prev.y + dy * handleLen;
+        }
+
+        this._nodes.push(node);
+        this._selectedNode = this._nodes.length - 1;
+        this._selectedPart = { type: 'node', index: this._selectedNode };
+      }
+    }
+
+    this._updatePanel();
+    this._redrawEditor();
+  }
+
+  if (stillDown === 0) {
     this._dragStartScreen = null;
     this._dragStartWorld = null;
     this._tapCandidate = false;
     this._gestureWasMultiTouch = false;
     this._panLast = null;
     this._pinchLastDist = 0;
-  });
+  }
+});
+    this.input.on('pointerupoutside', () => {
+      this._draggingPart = false;
+      this._dragStartScreen = null;
+      this._dragStartWorld = null;
+      this._tapCandidate = false;
+      this._gestureWasMultiTouch = false;
+      this._panLast = null;
+      this._pinchLastDist = 0;
+    });
 
-  this._createGuideInput();
-  this._updateToolButtons();
-  this._renderContextPanel();
-  this._updatePanel();
+    this._createGuideInput();
+    this._updateLoopButton();
+    this._updateToolButtons();
+    this._updatePanel();
+    this._redrawEditor();
+  }
 
-}
   // =================================================
   // Guía de fondo
   // =================================================
@@ -787,456 +781,1190 @@ for (let y = 0; y <= this._editorWorldH; y += 500) {
   // =================================================
   // UI helpers
   // =================================================
-_makeIconButton(cx, cy, label, onClick, fontSize = '22px') {
-  const bg = this.add.circle(cx, cy, 18, 0x1c2540, 1)
-    .setStrokeStyle(2, 0x3c4e7a, 0.95)
-    .setInteractive({ useHandCursor: true });
+  _makeIconButton(cx, cy, label, onClick, fontSize = '22px') {
+    const bg = this.add.circle(cx, cy, 18, 0x1c2540, 1)
+      .setStrokeStyle(2, 0x3c4e7a, 0.95)
+      .setInteractive({ useHandCursor: true });
 
-  const txt = this.add.text(cx, cy, label, {
-    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-    fontSize,
-    color: '#ffffff',
-    fontStyle: 'bold'
-  }).setOrigin(0.5);
+    const txt = this.add.text(cx, cy, label, {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize,
+      color: '#ffffff',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
 
-  bg.on('pointerup', onClick);
+    bg.on('pointerup', onClick);
 
-  return { bg, txt, x: cx, y: cy };
-}
-
-_makeGroupedMainButton(cx, cy, label, onMainClick, onLongPressClick, fontSize = '14px') {
-  const c = this.add.container(cx, cy);
-  c.setDepth(70);
-
-  const bg = this.add.graphics();
-  bg.fillStyle(0x1c2540, 1);
-  bg.lineStyle(2, 0x3c4e7a, 0.95);
-  bg.fillRoundedRect(-20, -20, 40, 40, 8);
-  bg.strokeRoundedRect(-20, -20, 40, 40, 8);
-  c.add(bg);
-
-  const txt = this.add.text(0, 0, label, {
-    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-    fontSize,
-    color: '#ffffff',
-    fontStyle: 'bold'
-  }).setOrigin(0.5);
-  c.add(txt);
-
-  const zone = this.add.zone(0, 0, 40, 40)
-    .setOrigin(0.5)
-    .setInteractive({ useHandCursor: true });
-
-  zone.on('pointerup', onMainClick);
-  c.add(zone);
-
-  c._bg = bg;
-  c._txt = txt;
-  c._zone = zone;
-
-  return c;
-}
-
-_makePanelActionButton(x, y, w, h, label, active, onClick) {
-  const bg = this.add.rectangle(
-    x + w * 0.5,
-    y + h * 0.5,
-    w,
-    h,
-    active ? 0x2a4277 : 0x18233a,
-    1
-  )
-    .setStrokeStyle(2, active ? 0x8eb8ff : 0x3c4e7a, 0.95)
-    .setOrigin(0.5)
-    .setInteractive({ useHandCursor: true });
-
-  const txt = this.add.text(x + 14, y + h * 0.5, label, {
-    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-    fontSize: '14px',
-    color: '#ffffff',
-    fontStyle: active ? 'bold' : 'normal'
-  }).setOrigin(0, 0.5);
-
-  bg.on('pointerup', onClick);
-
-  return { bg, txt };
-}
-
-_clearContextButtons() {
-  if (!this._contextButtons) this._contextButtons = [];
-  for (const btn of this._contextButtons) {
-    try { btn.bg?.destroy(); } catch (e) {}
-    try { btn.txt?.destroy(); } catch (e) {}
+    return { bg, txt, x: cx, y: cy };
   }
-  this._contextButtons = [];
-}
 
-_setActiveTopTool(toolName) {
-  this._activeTopTool = toolName;
-  this._updateToolButtons();
-  this._renderContextPanel();
-  this._updatePanel();
-}
+  _makeGroupedMainButton(cx, cy, label, onMainClick, onLongPressClick, fontSize = '14px') {
+    const c = this.add.container(cx, cy);
+    c.setDepth(70);
 
-_renderContextPanel() {
-  this._clearContextButtons();
+    const bg = this.add.graphics();
+    bg.fillStyle(0x1c2540, 1);
+    bg.lineStyle(2, 0x3c4e7a, 0.95);
+    bg.fillRoundedRect(-20, -20, 40, 40, 8);
+    bg.strokeRoundedRect(-20, -20, 40, 40, 8);
+    c.add(bg);
 
-  const x = this.scale.width - this._rightPanelW + 20;
-  let y = this._topBarH + 314;
-  const w = this._rightPanelW - 40;
-  const h = 36;
-  const gap = 8;
+    const txt = this.add.text(0, 0, label, {
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontSize,
+      color: '#ffffff',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
+    c.add(txt);
 
-  if (this._contextTitle) {
-    const map = {
-      save: 'HERRAMIENTAS · ARCHIVO',
-      view: 'HERRAMIENTAS · VISTA',
-      mode: 'HERRAMIENTAS · MODO',
-      track: 'HERRAMIENTAS · PISTA',
-      guide: 'HERRAMIENTAS · GUÍA'
+    const cornerGfx = this.add.graphics();
+    cornerGfx.lineStyle(2, 0xaec6ff, 0.95);
+    cornerGfx.beginPath();
+    cornerGfx.moveTo(-14, -6);
+    cornerGfx.lineTo(-14, -14);
+    cornerGfx.lineTo(-6, -14);
+    cornerGfx.strokePath();
+    c.add(cornerGfx);
+
+    let pressTimer = null;
+    let longPressTriggered = false;
+
+    const cancelPress = () => {
+      if (pressTimer) {
+        pressTimer.remove(false);
+        pressTimer = null;
+      }
     };
-    this._contextTitle.setText(map[this._activeTopTool] || 'HERRAMIENTAS');
+
+    const zone = this.add.zone(0, 0, 40, 40)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+
+    zone.on('pointerdown', (pointer) => {
+      pointer.event?.stopPropagation?.();
+      longPressTriggered = false;
+      cancelPress();
+
+      pressTimer = this.time.delayedCall(500, () => {
+        longPressTriggered = true;
+        pressTimer = null;
+        onLongPressClick();
+      });
+    });
+
+    zone.on('pointerup', (pointer) => {
+      pointer.event?.stopPropagation?.();
+
+      if (longPressTriggered) {
+        longPressTriggered = false;
+        cancelPress();
+        return;
+      }
+
+      cancelPress();
+      onMainClick();
+    });
+
+    zone.on('pointerout', () => {
+      cancelPress();
+      longPressTriggered = false;
+    });
+
+    c.add(zone);
+
+    c._bg = bg;
+    c._txt = txt;
+    c._zone = zone;
+
+    return c;
   }
 
-  const addBtn = (label, active, onClick) => {
-    const btn = this._makePanelActionButton(x, y, w, h, label, active, onClick);
-    this._contextButtons.push(btn);
-    y += h + gap;
-  };
+  _makeMenuPanel(baseX, baseY, items, makeBtn) {
+    const menu = this.add.container(0, 0);
+    menu.setDepth(90);
 
-  if (this._activeTopTool === 'save') {
-    addBtn('Guardar proyecto', this._saveTool === 'save', () => {
-      this._saveTool = 'save';
-      this._saveProject();
-      this._updateToolButtons();
-      this._updatePanel();
-    });
+    const panelX = baseX + 28;
+    const panelY = baseY - 20;
+    const panelW = items.length * 44 + 12;
+    const panelH = 52;
 
-    addBtn('Cargar proyecto', this._saveTool === 'load', () => {
-      this._saveTool = 'load';
-      this._loadProject();
-      this._updateToolButtons();
-      this._updatePanel();
-    });
+    const panel = this.add.graphics();
+    panel.fillStyle(0x101626, 1);
+    panel.lineStyle(2, 0x3c4e7a, 0.95);
+    panel.fillRoundedRect(panelX - 6, panelY - 6, panelW, panelH, 10);
+    panel.strokeRoundedRect(panelX - 6, panelY - 6, panelW, panelH, 10);
+    menu.add(panel);
 
-    addBtn('Nuevo proyecto', this._saveTool === 'new', () => {
-      this._saveTool = 'new';
-      this._newProject();
-      this._updateToolButtons();
-      this._updatePanel();
-    });
-    return;
+    for (let i = 0; i < items.length; i++) {
+      const x = baseX + 48 + (i * 44);
+      const y = baseY;
+      const btn = makeBtn(items[i], x, y);
+      menu.add(btn.bg);
+      menu.add(btn.txt);
+    }
+
+    menu._x = panelX - 6;
+    menu._y = panelY - 6;
+    menu._w = panelW;
+    menu._h = panelH;
+
+    this._editCam.ignore(menu.list);
+    return menu;
   }
 
-  if (this._activeTopTool === 'view') {
-    addBtn('Zoom +', this._viewTool === 'zoomIn', () => {
-      this._viewTool = 'zoomIn';
-      this._applyZoomAtViewportCenter(1.15);
-      this._updateToolButtons();
-      this._updatePanel();
-    });
-
-    addBtn('Zoom -', this._viewTool === 'zoomOut', () => {
-      this._viewTool = 'zoomOut';
-      this._applyZoomAtViewportCenter(1 / 1.15);
-      this._updateToolButtons();
-      this._updatePanel();
-    });
-
-    addBtn('Centrar cámara', this._viewTool === 'center', () => {
-      this._viewTool = 'center';
-      this._editCam.centerOn(this._editorWorldW / 2, this._editorWorldH / 2);
-      this._editCam.setZoom(0.28);
-      this._updateToolButtons();
-      this._updatePanel();
-    });
-    return;
+  // =================================================
+  // Grupo save
+  // =================================================
+  _getSaveToolLabel() {
+    if (this._saveTool === 'save') return '💾';
+    if (this._saveTool === 'load') return '📂';
+    return 'NEW';
   }
 
-  if (this._activeTopTool === 'mode') {
-    addBtn('Editar nodos', this._tool === 'edit' && this._modeTool === 'edit', () => {
-      this._modeTool = 'edit';
-      this._setTool('edit');
-    });
-
-    addBtn('Línea de meta', this._tool === 'finish', () => {
-      this._modeTool = 'finish';
-      this._setTool('finish');
-    });
-
-    addBtn('Checkpoint', this._tool === 'checkpoint', () => {
-      this._modeTool = 'checkpoint';
-      this._setTool('checkpoint');
-    });
-
-    addBtn('Piano', this._tool === 'piano', () => {
-      this._modeTool = 'piano';
-      this._setTool('piano');
-    });
-
-    addBtn(this._isClosed ? 'Cerrar loop: sí' : 'Cerrar loop: no', false, () => {
-      this._isClosed = !this._isClosed;
-      this._updatePanel();
-      this._renderContextPanel();
-    });
-    return;
+  _runActiveSaveTool() {
+    if (this._saveTool === 'save') return this._saveProject();
+    if (this._saveTool === 'load') return this._loadProject();
+    return this._newProject();
   }
 
-  if (this._activeTopTool === 'track') {
-    addBtn(`Ancho - (${this._trackWidth}px)`, this._trackTool === 'widthDown', () => {
-      this._trackTool = 'widthDown';
-      this._changeTrackWidth(-10);
-      this._updateToolButtons();
-      this._renderContextPanel();
-    });
+  _toggleSaveMenu() {
+    if (this._saveMenu) return this._closeSaveMenu();
 
-    addBtn(`Ancho + (${this._trackWidth}px)`, this._trackTool === 'widthUp', () => {
-      this._trackTool = 'widthUp';
-      this._changeTrackWidth(10);
-      this._updateToolButtons();
-      this._renderContextPanel();
-    });
-    return;
-  }
+    const allItems = [
+      { key: 'save', label: '💾' },
+      { key: 'load', label: '📂' },
+      { key: 'new', label: 'NEW' }
+    ];
 
-  if (this._activeTopTool === 'guide') {
-    addBtn('Cargar imagen guía', this._guideTool === 'load', () => {
-      this._guideTool = 'load';
-      this._openGuidePicker();
-      this._updateToolButtons();
-    });
+    const items = allItems.filter(item => item.key !== this._saveTool);
 
-    addBtn(this._guideVisible ? 'Ocultar guía' : 'Mostrar guía', this._guideTool === 'toggle', () => {
-      this._guideTool = 'toggle';
-      this._toggleGuideVisibility();
-      this._updateToolButtons();
-      this._renderContextPanel();
-    });
-
-    addBtn(`Alpha - (${this._guideAlpha.toFixed(2)})`, false, () => {
-      this._changeGuideAlpha(-0.08);
-      this._renderContextPanel();
-    });
-
-    addBtn(`Alpha + (${this._guideAlpha.toFixed(2)})`, false, () => {
-      this._changeGuideAlpha(0.08);
-      this._renderContextPanel();
+    this._saveMenu = this._makeMenuPanel(this._saveBtnX, this._saveBtnY, items, (item, x, y) => {
+      return this._makeIconButton(
+        x,
+        y,
+        item.label,
+        () => {
+          this._saveTool = item.key;
+          this._saveMainBtn._txt.setText(this._getSaveToolLabel());
+          this._closeSaveMenu();
+          this._runActiveSaveTool();
+        },
+        item.key === 'new' ? '12px' : '16px'
+      );
     });
   }
-}
-// stubs antiguos para no romper pointerdown heredado
-_makeMenuPanel(baseX, baseY, items, makeBtn) {
-  return null;
-}
-_clearSideGroup() {}
-_renderSideGroup(items, onItemClick) {}
 
-_getSaveToolLabel() {
-  if (this._saveTool === 'save') return '💾';
-  if (this._saveTool === 'load') return '📂';
-  return 'NEW';
-}
+  _closeSaveMenu() {
+    if (!this._saveMenu) return;
+    this._saveMenu.destroy(true);
+    this._saveMenu = null;
+  }
 
-_runActiveSaveTool() {
-  if (this._saveTool === 'save') return this._saveProject();
-  if (this._saveTool === 'load') return this._loadProject();
-  return this._newProject();
-}
+  _isPointerInSaveMenu(pointer) {
+    if (!this._saveMenu) return false;
+    return (
+      pointer.x >= this._saveMenu._x &&
+      pointer.x <= this._saveMenu._x + this._saveMenu._w &&
+      pointer.y >= this._saveMenu._y &&
+      pointer.y <= this._saveMenu._y + this._saveMenu._h
+    );
+  }
 
-_toggleSaveMenu() {
-  this._setActiveTopTool('save');
-}
+  // =================================================
+  // Grupo view
+  // =================================================
+  _getViewToolLabel() {
+    if (this._viewTool === 'zoomIn') return '🔍+';
+    if (this._viewTool === 'zoomOut') return '🔎-';
+    return '◎';
+  }
 
-_closeSaveMenu() {}
-_isPointerInSaveMenu(pointer) { return false; }
+  _runActiveViewTool() {
+    if (this._viewTool === 'zoomIn') return this._applyZoomAtViewportCenter(1.15);
+    if (this._viewTool === 'zoomOut') return this._applyZoomAtViewportCenter(1 / 1.15);
 
-_getViewToolLabel() {
-  if (this._viewTool === 'zoomIn') return '🔍';
-  if (this._viewTool === 'zoomOut') return '🔎';
-  return '◎';
-}
+    this._editCam.centerOn(this._editorWorldW / 2, this._editorWorldH / 2);
+    this._editCam.setZoom(0.28);
+    this._updatePanel();
+  }
 
-_runActiveViewTool() {
-  this._setActiveTopTool('view');
-}
+  _toggleViewMenu() {
+    if (this._viewMenu) return this._closeViewMenu();
 
-_toggleViewMenu() {
-  this._setActiveTopTool('view');
-}
+    const allItems = [
+      { key: 'zoomIn', label: '🔍+' },
+      { key: 'zoomOut', label: '🔎-' },
+      { key: 'center', label: '◎' }
+    ];
 
-_closeViewMenu() {}
-_isPointerInViewMenu(pointer) { return false; }
+    const items = allItems.filter(item => item.key !== this._viewTool);
 
+    this._viewMenu = this._makeMenuPanel(this._viewBtnX, this._viewBtnY, items, (item, x, y) => {
+      return this._makeIconButton(x, y, item.label, () => {
+        this._viewTool = item.key;
+        this._viewMainBtn._txt.setText(this._getViewToolLabel());
+        this._closeViewMenu();
+        this._runActiveViewTool();
+      }, '12px');
+    });
+  }
+
+  _closeViewMenu() {
+    if (!this._viewMenu) return;
+    this._viewMenu.destroy(true);
+    this._viewMenu = null;
+  }
+
+  _isPointerInViewMenu(pointer) {
+    if (!this._viewMenu) return false;
+    return (
+      pointer.x >= this._viewMenu._x &&
+      pointer.x <= this._viewMenu._x + this._viewMenu._w &&
+      pointer.y >= this._viewMenu._y &&
+      pointer.y <= this._viewMenu._y + this._viewMenu._h
+    );
+  }
+
+  // =================================================
+  // Grupo mode
+  // =================================================
 _getModeToolLabel() {
   if (this._modeTool === 'finish') return '🏁';
   if (this._modeTool === 'checkpoint') return 'CP';
   if (this._modeTool === 'piano') return 'PI';
-  return this._isClosed ? '🔒' : '✏';
+  return this._isClosed ? '🔒' : '🔓';
 }
 
 _runActiveModeTool() {
-  this._setActiveTopTool('mode');
+  if (this._modeTool === 'finish') return this._setTool('finish');
+  if (this._modeTool === 'checkpoint') return this._setTool('checkpoint');
+  if (this._modeTool === 'piano') return this._setTool('piano');
+  return this._toggleClosed();
 }
 
 _toggleModeMenu() {
-  this._setActiveTopTool('mode');
-}
+  if (this._modeMenu) return this._closeModeMenu();
 
-_closeModeMenu() {}
-_isPointerInModeMenu(pointer) { return false; }
+  const allItems = [
+    { key: 'edit', label: this._isClosed ? '🔒' : '🔓' },
+    { key: 'finish', label: '🏁' },
+    { key: 'checkpoint', label: 'CP' },
+    { key: 'piano', label: 'PI' }
+  ];
 
-_getTrackToolLabel() {
-  return this._trackTool === 'widthDown' ? 'W-' : 'W+';
-}
+  const items = allItems.filter(item => item.key !== this._modeTool);
 
-_runActiveTrackTool() {
-  this._setActiveTopTool('track');
-}
+  this._modeMenu = this._makeMenuPanel(this._modeBtnX, this._modeBtnY, items, (item, x, y) => {
+    return this._makeIconButton(
+      x,
+      y,
+      item.label,
+      () => {
+        this._modeTool = item.key;
+        this._modeMainBtn._txt.setText(this._getModeToolLabel());
+        this._closeModeMenu();
 
-_toggleTrackMenu() {
-  this._setActiveTopTool('track');
-}
-
-_closeTrackMenu() {}
-_isPointerInTrackMenu(pointer) { return false; }
-
-_getGuideToolLabel() {
-  return this._guideTool === 'toggle' ? '👁' : 'IMG';
-}
-
-_runActiveGuideTool() {
-  this._setActiveTopTool('guide');
-}
-
-_toggleGuideMenu() {
-  this._setActiveTopTool('guide');
-}
-
-_closeGuideMenu() {}
-_isPointerInGuideMenu(pointer) { return false; }
-
-_getNudgeStep() {
-  return this._nudgeSteps[this._nudgeStepIndex];
-}
-
-_cycleNudgeStep() {
-  this._nudgeStepIndex = (this._nudgeStepIndex + 1) % this._nudgeSteps.length;
-  if (this._nudgeStepBtn?.txt) {
-    this._nudgeStepBtn.txt.setText(String(this._getNudgeStep()));
-  }
-  this._updatePanel();
-}
-
-_setTool(tool) {
-  this._tool = tool;
-  if (tool === 'finish') this._modeTool = 'finish';
-  if (tool === 'checkpoint') this._modeTool = 'checkpoint';
-  if (tool === 'piano') this._modeTool = 'piano';
-  if (tool === 'edit') this._modeTool = 'edit';
-  this._updateToolButtons();
-  this._renderContextPanel();
-  this._updatePanel();
-}
-
-_paintCircleButton(btn, active = false, fill = 0x1c2540, stroke = 0x3c4e7a) {
-  if (!btn?.bg) return;
-  btn.bg.setFillStyle(active ? fill : 0x1c2540, 1);
-  btn.bg.setStrokeStyle(2, active ? stroke : 0x3c4e7a, 0.95);
-}
-
-_updateToolButtons() {
-  if (this._nudgeStepBtn?.txt) {
-    this._nudgeStepBtn.txt.setText(String(this._getNudgeStep()));
-  }
-
-  this._paintCircleButton(this._saveMainBtn, this._activeTopTool === 'save', 0x2a4277, 0x8eb8ff);
-  this._paintCircleButton(this._viewMainBtn, this._activeTopTool === 'view', 0x2a4277, 0x8eb8ff);
-  this._paintCircleButton(this._modeMainBtn, this._activeTopTool === 'mode', 0x2a4277, 0x8eb8ff);
-  this._paintCircleButton(this._trackMainBtn, this._activeTopTool === 'track', 0x2a4277, 0x8eb8ff);
-  this._paintCircleButton(this._guideMainBtn, this._activeTopTool === 'guide', this._guideVisible ? 0x1f4f2d : 0x2a4277, this._guideVisible ? 0x8df0a8 : 0x8eb8ff);
-}
-
-_toggleClosed() {
-  this._isClosed = !this._isClosed;
-  this._updateToolButtons();
-  this._renderContextPanel();
-  this._updatePanel();
-
-}
-
-_updateLoopButton() {
-  // no-op
-}
-
-_drawHandleDot(x, y, selected = false) {
-  this._nodeGfx.fillStyle(selected ? 0xffd166 : 0xb7c0ff, 1);
-  this._nodeGfx.fillCircle(x, y, selected ? 10 : 8);
-
-  this._nodeGfx.lineStyle(2, 0x0b1020, 0.9);
-  this._nodeGfx.strokeCircle(x, y, selected ? 10 : 8);
-}
-
-_updatePanel() {
-  const guideLoaded = !!this._guideImage;
-
-  if (this._selectedPiano >= 0 && this._selectedPiano < this._pianos.length) {
-    const p = this._pianos[this._selectedPiano];
-    this._panelText.setText(
-      `Piano #${this._selectedPiano}\n` +
-      `Herramienta: ${this._tool}\n` +
-      `Panel activo: ${this._activeTopTool}\n` +
-      `Loop: ${this._isClosed ? 'cerrado' : 'abierto'}\n` +
-      `Meta: ${this._finishLine ? 'sí' : 'no'}\n` +
-      `Checkpoints: ${this._checkpoints.length}\n` +
-      `Guía: ${guideLoaded ? (this._guideVisible ? 'visible' : 'oculta') : 'no cargada'}\n` +
-      `Zoom: ${this._editCam ? this._editCam.zoom.toFixed(2) : '0.00'}\n` +
-      `Nudge: ${this._getNudgeStep()}px\n` +
-      `Centro: ${Math.round(p.point.x)}, ${Math.round(p.point.y)}\n` +
-      `A: ${Math.round(p.a.x)}, ${Math.round(p.a.y)}\n` +
-      `B: ${Math.round(p.b.x)}, ${Math.round(p.b.y)}`
+        if (item.key === 'edit') {
+          this._setTool('edit');
+        } else {
+          this._setTool(item.key);
+        }
+      },
+      item.key === 'checkpoint' ? '12px' : '13px'
     );
+  });
+}
+
+  _closeModeMenu() {
+    if (!this._modeMenu) return;
+    this._modeMenu.destroy(true);
+    this._modeMenu = null;
+  }
+
+  _isPointerInModeMenu(pointer) {
+    if (!this._modeMenu) return false;
+    return (
+      pointer.x >= this._modeMenu._x &&
+      pointer.x <= this._modeMenu._x + this._modeMenu._w &&
+      pointer.y >= this._modeMenu._y &&
+      pointer.y <= this._modeMenu._y + this._modeMenu._h
+    );
+  }
+
+  // =================================================
+  // Grupo track
+  // =================================================
+  _getTrackToolLabel() {
+    return this._trackTool === 'widthDown' ? 'W-' : 'W+';
+  }
+
+  _runActiveTrackTool() {
+    if (this._trackTool === 'widthDown') return this._changeTrackWidth(-10);
+    return this._changeTrackWidth(10);
+  }
+
+  _toggleTrackMenu() {
+    if (this._trackMenu) return this._closeTrackMenu();
+
+    const allItems = [
+      { key: 'widthDown', label: 'W-' },
+      { key: 'widthUp', label: 'W+' }
+    ];
+
+    const items = allItems.filter(item => item.key !== this._trackTool);
+
+    this._trackMenu = this._makeMenuPanel(this._trackBtnX, this._trackBtnY, items, (item, x, y) => {
+      return this._makeIconButton(x, y, item.label, () => {
+        this._trackTool = item.key;
+        this._trackMainBtn._txt.setText(this._getTrackToolLabel());
+        this._closeTrackMenu();
+        this._runActiveTrackTool();
+      }, '13px');
+    });
+  }
+
+  _closeTrackMenu() {
+    if (!this._trackMenu) return;
+    this._trackMenu.destroy(true);
+    this._trackMenu = null;
+  }
+
+  _isPointerInTrackMenu(pointer) {
+    if (!this._trackMenu) return false;
+    return (
+      pointer.x >= this._trackMenu._x &&
+      pointer.x <= this._trackMenu._x + this._trackMenu._w &&
+      pointer.y >= this._trackMenu._y &&
+      pointer.y <= this._trackMenu._y + this._trackMenu._h
+    );
+  }
+
+  // =================================================
+  // Grupo guide
+  // =================================================
+  _getGuideToolLabel() {
+    return this._guideTool === 'toggle' ? '👁' : 'IMG';
+  }
+
+  _runActiveGuideTool() {
+    if (this._guideTool === 'toggle') return this._toggleGuideVisibility();
+    return this._openGuidePicker();
+  }
+
+  _toggleGuideMenu() {
+    if (this._guideMenu) return this._closeGuideMenu();
+
+    const allItems = [
+      { key: 'load', label: 'IMG' },
+      { key: 'toggle', label: '👁' }
+    ];
+
+    const items = allItems.filter(item => item.key !== this._guideTool);
+
+    this._guideMenu = this._makeMenuPanel(this._guideBtnX, this._guideBtnY, items, (item, x, y) => {
+      return this._makeIconButton(x, y, item.label, () => {
+        this._guideTool = item.key;
+        this._guideMainBtn._txt.setText(this._getGuideToolLabel());
+        this._closeGuideMenu();
+        this._runActiveGuideTool();
+      }, item.key === 'load' ? '12px' : '16px');
+    });
+  }
+
+  _closeGuideMenu() {
+    if (!this._guideMenu) return;
+    this._guideMenu.destroy(true);
+    this._guideMenu = null;
+  }
+
+  _isPointerInGuideMenu(pointer) {
+    if (!this._guideMenu) return false;
+    return (
+      pointer.x >= this._guideMenu._x &&
+      pointer.x <= this._guideMenu._x + this._guideMenu._w &&
+      pointer.y >= this._guideMenu._y &&
+      pointer.y <= this._guideMenu._y + this._guideMenu._h
+    );
+  }
+
+  _getNudgeStep() {
+    return this._nudgeSteps[this._nudgeStepIndex];
+  }
+
+  _cycleNudgeStep() {
+    this._nudgeStepIndex = (this._nudgeStepIndex + 1) % this._nudgeSteps.length;
+    if (this._nudgeStepBtn?.txt) {
+      this._nudgeStepBtn.txt.setText(String(this._getNudgeStep()));
+    }
+    this._updatePanel();
+  }
+
+  _setTool(tool) {
+    this._tool = tool;
+    if (tool === 'finish') this._modeTool = 'finish';
+    if (tool === 'checkpoint') this._modeTool = 'checkpoint';
+    if (tool === 'edit' && this._modeTool !== 'edit') this._modeTool = 'edit';
+    this._updateToolButtons();
+    this._updatePanel();
+  }
+
+  _updateToolButtons() {
+    if (this._guideAlphaMinusBtn?.bg) {
+      this._guideAlphaMinusBtn.bg.setFillStyle(0x1c2540, 1);
+      this._guideAlphaMinusBtn.bg.setStrokeStyle(2, 0x3c4e7a, 0.95);
+    }
+
+    if (this._guideAlphaPlusBtn?.bg) {
+      this._guideAlphaPlusBtn.bg.setFillStyle(0x1c2540, 1);
+      this._guideAlphaPlusBtn.bg.setStrokeStyle(2, 0x3c4e7a, 0.95);
+    }
+
+    if (this._nudgeStepBtn?.txt) {
+      this._nudgeStepBtn.txt.setText(String(this._getNudgeStep()));
+    }
+
+    if (this._saveMainBtn?._txt) this._saveMainBtn._txt.setText(this._getSaveToolLabel());
+    if (this._viewMainBtn?._txt) this._viewMainBtn._txt.setText(this._getViewToolLabel());
+    if (this._modeMainBtn?._txt) this._modeMainBtn._txt.setText(this._getModeToolLabel());
+    if (this._trackMainBtn?._txt) this._trackMainBtn._txt.setText(this._getTrackToolLabel());
+    if (this._guideMainBtn?._txt) this._guideMainBtn._txt.setText(this._getGuideToolLabel());
+
+    if (this._guideMainBtn?._bg) {
+      this._guideMainBtn._bg.clear();
+      this._guideMainBtn._bg.fillStyle(this._guideVisible ? 0x1f4f2d : 0x1c2540, 1);
+      this._guideMainBtn._bg.lineStyle(2, this._guideVisible ? 0x8df0a8 : 0x3c4e7a, 0.95);
+      this._guideMainBtn._bg.fillRoundedRect(-20, -20, 40, 40, 8);
+      this._guideMainBtn._bg.strokeRoundedRect(-20, -20, 40, 40, 8);
+    }
+  }
+
+  _toggleClosed() {
+    this._isClosed = !this._isClosed;
+    this._updateToolButtons();
+    this._updatePanel();
+    this._redrawEditor();
+  }
+
+  _updateLoopButton() {
+    // ya no usamos loopBtn principal, pero dejamos la helper viva
+  }
+
+  _createNode(x, y) {
+    const handleLen = 60;
+
+    if (!this._nodes || this._nodes.length === 0) {
+      return {
+        x,
+        y,
+        handleIn: { x: x - handleLen, y },
+        handleOut: { x: x + handleLen, y }
+      };
+    }
+
+    const prev = this._nodes[this._nodes.length - 1];
+
+    let dx = x - prev.x;
+    let dy = y - prev.y;
+
+    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+    dx /= len;
+    dy /= len;
+
+    return {
+      x,
+      y,
+      handleIn: {
+        x: x - dx * handleLen,
+        y: y - dy * handleLen
+      },
+      handleOut: {
+        x: x + dx * handleLen,
+        y: y + dy * handleLen
+      }
+    };
+  }
+// ==============================
+// 🟥 PIANOS SYSTEM
+// ==============================
+
+_initPianos() {
+  this._pianos = [];
+  this._activePiano = null;
+}
+
+// Crear piano en punto del track
+_createPiano(x, y) {
+  const p = {
+    x,
+    y,
+    side: 'left', // o 'right'
+    len: 120,
+    width: 12,
+    angle: 0,
+    handleA: { x: x - 40, y },
+    handleB: { x: x + 40, y }
+  };
+
+  this._pianos.push(p);
+  this._activePiano = p;
+}
+
+// Detectar si tocas un piano o handlere
+_findPianoControl(x, y) {
+  const R_CENTER = 20;
+  const R_HANDLE = 15;
+
+  for (let i = this._pianos.length - 1; i >= 0; i--) {
+    const p = this._pianos[i];
+    if (!p || !p.a || !p.b || !p.point) continue;
+
+    // centro lógico del piano
+    if (Phaser.Math.Distance.Between(x, y, p.point.x, p.point.y) < R_CENTER) {
+      return { type: 'piano', index: i };
+    }
+
+    // extremo A
+    if (Phaser.Math.Distance.Between(x, y, p.a.x, p.a.y) < R_HANDLE) {
+      return { type: 'pianoA', index: i };
+    }
+
+    // extremo B
+    if (Phaser.Math.Distance.Between(x, y, p.b.x, p.b.y) < R_HANDLE) {
+      return { type: 'pianoB', index: i };
+    }
+  }
+
+  return null;
+}
+// Dibujar pianos
+_drawPianos(g) {
+  if (!this._pianos.length) return;
+
+  this._pianos.forEach((p, i) => {
+    if (!p || !p.a || !p.b || !p.point) return;
+
+    const selected = i === this._selectedPiano;
+
+    g.lineStyle(selected ? 10 : 8, selected ? 0xffd166 : 0xd92f2f, 0.95);
+    g.beginPath();
+    g.moveTo(p.a.x, p.a.y);
+    g.lineTo(p.b.x, p.b.y);
+    g.strokePath();
+
+    g.lineStyle(3, 0xf2f2f2, 0.95);
+    g.beginPath();
+    g.moveTo(p.a.x, p.a.y);
+    g.lineTo(p.b.x, p.b.y);
+    g.strokePath();
+
+    g.fillStyle(0xffd166, 1);
+    g.fillCircle(p.a.x, p.a.y, 6);
+    g.fillCircle(p.b.x, p.b.y, 6);
+
+    g.fillStyle(selected ? 0x2bff88 : 0xffffff, 1);
+    g.fillCircle(p.point.x, p.point.y, selected ? 7 : 5);
+  });
+}
+
+// Update piano mientras arrastras
+_updatePianoDrag(part, world) {
+  const p = this._pianos[part.index];
+  if (!p || !p.a || !p.b || !p.point) return;
+
+  if (part.type === 'piano') {
+    const dx = world.x - p.point.x;
+    const dy = world.y - p.point.y;
+
+    p.point.x = world.x;
+    p.point.y = world.y;
+
+    p.a.x += dx;
+    p.a.y += dy;
+
+    p.b.x += dx;
+    p.b.y += dy;
     return;
   }
 
-  if (this._selectedNode < 0 || this._selectedNode >= this._nodes.length) {
+  if (part.type === 'pianoA') {
+    p.a.x = world.x;
+    p.a.y = world.y;
+    return;
+  }
+
+  if (part.type === 'pianoB') {
+    p.b.x = world.x;
+    p.b.y = world.y;
+  }
+}
+  _applyZoomAtViewportCenter(multiplier) {
+    const midX = this._editCam.x + this._editCam.width / 2;
+    const midY = this._editCam.y + this._editCam.height / 2;
+
+    const newZoom = Phaser.Math.Clamp(
+      this._editCam.zoom * multiplier,
+      this._editZoomMin,
+      this._editZoomMax
+    );
+
+    const worldX =
+      this._editCam.scrollX +
+      (midX - this._editCam.x) / this._editCam.zoom;
+
+    const worldY =
+      this._editCam.scrollY +
+      (midY - this._editCam.y) / this._editCam.zoom;
+
+    this._editCam.setZoom(newZoom);
+
+    this._editCam.scrollX =
+      worldX - (midX - this._editCam.x) / newZoom;
+
+    this._editCam.scrollY =
+      worldY - (midY - this._editCam.y) / newZoom;
+
+    this._updatePanel();
+  }
+
+  _changeTrackWidth(delta) {
+    this._trackWidth = Phaser.Math.Clamp(
+      this._trackWidth + delta,
+      this._trackWidthMin,
+      this._trackWidthMax
+    );
+
+    this._updatePanel();
+    this._redrawEditor();
+  }
+
+  _nudgeSelectedNode(dx, dy) {
+    if (this._selectedNode < 0 || this._selectedNode >= this._nodes.length) return;
+
+    const node = this._nodes[this._selectedNode];
+    node.x += dx;
+    node.y += dy;
+    node.handleIn.x += dx;
+    node.handleIn.y += dy;
+    node.handleOut.x += dx;
+    node.handleOut.y += dy;
+
+    this._updatePanel();
+    this._redrawEditor();
+  }
+
+  _deleteSelectedNode() {
+    if (this._selectedNode < 0 || this._selectedNode >= this._nodes.length) return;
+
+    this._nodes.splice(this._selectedNode, 1);
+
+    if (this._nodes.length === 0) {
+      this._selectedNode = -1;
+      this._selectedPart = null;
+    } else {
+      this._selectedNode = Math.min(this._selectedNode, this._nodes.length - 1);
+      this._selectedPart = { type: 'node', index: this._selectedNode };
+    }
+
+    this._updatePanel();
+    this._redrawEditor();
+  }
+
+  _isPointerInViewport(pointer) {
+    return (
+      pointer.x >= this._viewX &&
+      pointer.x <= this._viewX + this._viewW &&
+      pointer.y >= this._viewY &&
+      pointer.y <= this._viewY + this._viewH
+    );
+  }
+
+  _screenToWorld(screenX, screenY) {
+    return this._editCam.getWorldPoint(screenX, screenY);
+  }
+
+_findControlAt(x, y) {
+  const R = 14;
+
+  // --- NODOS ---
+  for (let i = this._nodes.length - 1; i >= 0; i--) {
+    const n = this._nodes[i];
+
+    if (Phaser.Math.Distance.Between(x, y, n.x, n.y) < R) {
+      return { type: 'node', index: i };
+    }
+
+    if (Phaser.Math.Distance.Between(x, y, n.handleIn.x, n.handleIn.y) < R) {
+      return { type: 'handleIn', index: i };
+    }
+
+    if (Phaser.Math.Distance.Between(x, y, n.handleOut.x, n.handleOut.y) < R) {
+      return { type: 'handleOut', index: i };
+    }
+  }
+
+  // --- PIANOS (modelo actual: a / b / point) ---
+  for (let i = this._pianos.length - 1; i >= 0; i--) {
+    const p = this._pianos[i];
+    if (!p || !p.a || !p.b || !p.point) continue;
+
+    // centro lógico del piano
+    if (Phaser.Math.Distance.Between(x, y, p.point.x, p.point.y) < R) {
+      return { type: 'piano', index: i };
+    }
+
+    // extremo A
+    if (Phaser.Math.Distance.Between(x, y, p.a.x, p.a.y) < R) {
+      return { type: 'pianoA', index: i };
+    }
+
+    // extremo B
+    if (Phaser.Math.Distance.Between(x, y, p.b.x, p.b.y) < R) {
+      return { type: 'pianoB', index: i };
+    }
+  }
+
+  return null;
+}
+  _drawGrid() {
+    this._gridGfx.clear();
+
+    this._gridGfx.lineStyle(1, 0x1f2c44, 0.7);
+    for (let x = 0; x <= this._editorWorldW; x += 100) {
+      this._gridGfx.lineBetween(x, 0, x, this._editorWorldH);
+    }
+    for (let y = 0; y <= this._editorWorldH; y += 100) {
+      this._gridGfx.lineBetween(0, y, this._editorWorldW, y);
+    }
+
+    this._gridGfx.lineStyle(2, 0x2d3d5c, 0.9);
+    for (let x = 0; x <= this._editorWorldW; x += 500) {
+      this._gridGfx.lineBetween(x, 0, x, this._editorWorldH);
+    }
+    for (let y = 0; y <= this._editorWorldH; y += 500) {
+      this._gridGfx.lineBetween(0, y, this._editorWorldW, y);
+    }
+  }
+
+  _sampleCubicBezier(p0, p1, p2, p3, steps = 24) {
+    const pts = [];
+
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const mt = 1 - t;
+      const mt2 = mt * mt;
+      const t2 = t * t;
+
+      const x =
+        mt2 * mt * p0.x +
+        3 * mt2 * t * p1.x +
+        3 * mt * t2 * p2.x +
+        t2 * t * p3.x;
+
+      const y =
+        mt2 * mt * p0.y +
+        3 * mt2 * t * p1.y +
+        3 * mt * t2 * p2.y +
+        t2 * t * p3.y;
+
+      pts.push({ x, y });
+    }
+
+    return pts;
+  }
+
+  _getBezierPoints() {
+    const count = this._nodes.length;
+    if (count < 2) return this._nodes.map((n) => ({ x: n.x, y: n.y }));
+
+    const pts = [];
+    const segCount = this._isClosed ? count : count - 1;
+
+    for (let i = 0; i < segCount; i++) {
+      const a = this._nodes[i];
+      const b = this._nodes[(i + 1) % count];
+
+      const seg = this._sampleCubicBezier(
+        { x: a.x, y: a.y },
+        { x: a.handleOut.x, y: a.handleOut.y },
+        { x: b.handleIn.x, y: b.handleIn.y },
+        { x: b.x, y: b.y },
+        28
+      );
+
+      if (i > 0 && !(this._isClosed && i === segCount - 1)) {
+        seg.shift();
+      }
+
+      pts.push(...seg);
+    }
+
+    if (this._isClosed && pts.length > 1) {
+      const first = pts[0];
+      const last = pts[pts.length - 1];
+
+      if (first.x !== last.x || first.y !== last.y) {
+        pts.push({ x: first.x, y: first.y });
+      }
+    }
+
+    return pts;
+  }
+
+  _buildTrackStrip(points, width) {
+    if (!Array.isArray(points) || points.length < 2) {
+      return { left: [], right: [] };
+    }
+
+    const left = [];
+    const right = [];
+
+    for (let i = 0; i < points.length; i++) {
+      const prevIndex = this._isClosed
+        ? (i - 1 + points.length) % points.length
+        : Math.max(0, i - 1);
+
+      const nextIndex = this._isClosed
+        ? (i + 1) % points.length
+        : Math.min(points.length - 1, i + 1);
+
+      const pPrev = points[prevIndex];
+      const pCurr = points[i];
+      const pNext = points[nextIndex];
+
+      let tx = pNext.x - pPrev.x;
+      let ty = pNext.y - pPrev.y;
+
+      const tl = Math.sqrt(tx * tx + ty * ty) || 1;
+      tx /= tl;
+      ty /= tl;
+
+      const nx = -ty;
+      const ny = tx;
+      const half = width * 0.5;
+
+      left.push({
+        x: pCurr.x - nx * half,
+        y: pCurr.y - ny * half
+      });
+
+      right.push({
+        x: pCurr.x + nx * half,
+        y: pCurr.y + ny * half
+      });
+    }
+
+    return { left, right };
+  }
+
+  _findNearestCurvePoint(worldX, worldY) {
+    const pts = this._getBezierPoints();
+    if (pts.length < 2) return null;
+
+    let bestI = 0;
+    let bestD2 = Infinity;
+
+    for (let i = 0; i < pts.length; i++) {
+      const dx = pts[i].x - worldX;
+      const dy = pts[i].y - worldY;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < bestD2) {
+        bestD2 = d2;
+        bestI = i;
+      }
+    }
+
+    const prevIndex = this._isClosed
+      ? (bestI - 1 + pts.length) % pts.length
+      : Math.max(0, bestI - 1);
+
+    const nextIndex = this._isClosed
+      ? (bestI + 1) % pts.length
+      : Math.min(pts.length - 1, bestI + 1);
+
+    const pPrev = pts[prevIndex];
+    const pCurr = pts[bestI];
+    const pNext = pts[nextIndex];
+
+    let tx = pNext.x - pPrev.x;
+    let ty = pNext.y - pPrev.y;
+    const tl = Math.sqrt(tx * tx + ty * ty) || 1;
+    tx /= tl;
+    ty /= tl;
+
+    const nx = -ty;
+    const ny = tx;
+
+    return {
+      point: { x: pCurr.x, y: pCurr.y },
+      tangent: { x: tx, y: ty },
+      normal: { x: nx, y: ny }
+    };
+  }
+
+  _placeFinishLineAt(worldX, worldY) {
+    const hit = this._findNearestCurvePoint(worldX, worldY);
+    if (!hit) return;
+
+    const half = this._trackWidth * 0.5;
+
+    this._finishLine = {
+      a: {
+        x: hit.point.x - hit.normal.x * half,
+        y: hit.point.y - hit.normal.y * half
+      },
+      b: {
+        x: hit.point.x + hit.normal.x * half,
+        y: hit.point.y + hit.normal.y * half
+      },
+      normal: {
+        x: hit.tangent.x,
+        y: hit.tangent.y
+      }
+    };
+
+    this._updatePanel();
+    this._redrawEditor();
+  }
+
+  _placeCheckpointAt(worldX, worldY) {
+    const hit = this._findNearestCurvePoint(worldX, worldY);
+    if (!hit) return;
+
+    const half = this._trackWidth * 0.5;
+
+    this._checkpoints.push({
+      a: {
+        x: hit.point.x - hit.normal.x * half,
+        y: hit.point.y - hit.normal.y * half
+      },
+      b: {
+        x: hit.point.x + hit.normal.x * half,
+        y: hit.point.y + hit.normal.y * half
+      },
+      normal: {
+        x: hit.tangent.x,
+        y: hit.tangent.y
+      }
+    });
+
+    this._updatePanel();
+    this._redrawEditor();
+  }
+
+  _redrawEditor() {
+    this._trackGfx.clear();
+    this._curveGfx.clear();
+    this._guideGfx.clear();
+    this._pianoGfx.clear();
+    this._checkpointGfx.clear();
+    this._finishGfx.clear();
+    this._nodeGfx.clear();
+
+    const bezier = this._getBezierPoints();
+
+    if (bezier.length >= 2) {
+      const strip = this._buildTrackStrip(bezier, this._trackWidth);
+
+      if (strip.left.length >= 2 && strip.right.length >= 2) {
+        this._trackGfx.fillStyle(0x2f343a, 0.95);
+        this._trackGfx.beginPath();
+        this._trackGfx.moveTo(strip.left[0].x, strip.left[0].y);
+
+        for (let i = 1; i < strip.left.length; i++) {
+          this._trackGfx.lineTo(strip.left[i].x, strip.left[i].y);
+        }
+
+        for (let i = strip.right.length - 1; i >= 0; i--) {
+          this._trackGfx.lineTo(strip.right[i].x, strip.right[i].y);
+        }
+
+        this._trackGfx.closePath();
+        this._trackGfx.fillPath();
+
+        this._trackGfx.lineStyle(4, 0xf2f2f2, 0.9);
+
+        this._trackGfx.beginPath();
+        this._trackGfx.moveTo(strip.left[0].x, strip.left[0].y);
+        for (let i = 1; i < strip.left.length; i++) {
+          this._trackGfx.lineTo(strip.left[i].x, strip.left[i].y);
+        }
+        if (this._isClosed) this._trackGfx.closePath();
+        this._trackGfx.strokePath();
+
+        this._trackGfx.beginPath();
+        this._trackGfx.moveTo(strip.right[0].x, strip.right[0].y);
+        for (let i = 1; i < strip.right.length; i++) {
+          this._trackGfx.lineTo(strip.right[i].x, strip.right[i].y);
+        }
+        if (this._isClosed) this._trackGfx.closePath();
+        this._trackGfx.strokePath();
+      }
+
+      this._curveGfx.lineStyle(2, 0x8fd0ff, 0.55);
+      this._curveGfx.beginPath();
+      this._curveGfx.moveTo(bezier[0].x, bezier[0].y);
+      for (let i = 1; i < bezier.length; i++) {
+        this._curveGfx.lineTo(bezier[i].x, bezier[i].y);
+      }
+      if (this._isClosed) this._curveGfx.closePath();
+      this._curveGfx.strokePath();
+    }
+
+    for (let i = 0; i < this._checkpoints.length; i++) {
+      const cp = this._checkpoints[i];
+
+      this._checkpointGfx.lineStyle(8, 0x4db0ff, 0.95);
+      this._checkpointGfx.beginPath();
+      this._checkpointGfx.moveTo(cp.a.x, cp.a.y);
+      this._checkpointGfx.lineTo(cp.b.x, cp.b.y);
+      this._checkpointGfx.strokePath();
+
+      const midX = (cp.a.x + cp.b.x) * 0.5;
+      const midY = (cp.a.y + cp.b.y) * 0.5;
+
+      this._checkpointGfx.fillStyle(0x4db0ff, 1);
+      this._checkpointGfx.fillCircle(midX, midY, 9);
+
+      this._checkpointGfx.lineStyle(2, 0x0b1020, 0.9);
+      this._checkpointGfx.strokeCircle(midX, midY, 9);
+
+      this._checkpointGfx.fillStyle(0x0b1020, 1);
+      this._checkpointGfx.fillCircle(midX, midY, 3);
+    }
+
+    // Pianos manuales placeholder
+    for (let i = 0; i < this._pianos.length; i++) {
+      const p = this._pianos[i];
+      const selected = i === this._selectedPiano;
+
+      if (p?.a && p?.b) {
+        this._pianoGfx.lineStyle(selected ? 12 : 10, selected ? 0xffd166 : 0xd92f2f, 0.95);
+        this._pianoGfx.beginPath();
+        this._pianoGfx.moveTo(p.a.x, p.a.y);
+        this._pianoGfx.lineTo(p.b.x, p.b.y);
+        this._pianoGfx.strokePath();
+
+        this._pianoGfx.lineStyle(4, 0xf2f2f2, 0.95);
+        this._pianoGfx.beginPath();
+        this._pianoGfx.moveTo(p.a.x, p.a.y);
+        this._pianoGfx.lineTo(p.b.x, p.b.y);
+        this._pianoGfx.strokePath();
+      }
+    }
+
+    if (this._finishLine?.a && this._finishLine?.b) {
+      this._finishGfx.lineStyle(10, 0xffffff, 0.95);
+      this._finishGfx.beginPath();
+      this._finishGfx.moveTo(this._finishLine.a.x, this._finishLine.a.y);
+      this._finishGfx.lineTo(this._finishLine.b.x, this._finishLine.b.y);
+      this._finishGfx.strokePath();
+
+      this._finishGfx.lineStyle(4, 0x111111, 0.95);
+      this._finishGfx.beginPath();
+      this._finishGfx.moveTo(this._finishLine.a.x, this._finishLine.a.y);
+      this._finishGfx.lineTo(this._finishLine.b.x, this._finishLine.b.y);
+      this._finishGfx.strokePath();
+
+      this._finishGfx.fillStyle(0xffd166, 1);
+      this._finishGfx.fillCircle(this._finishLine.a.x, this._finishLine.a.y, 5);
+      this._finishGfx.fillCircle(this._finishLine.b.x, this._finishLine.b.y, 5);
+    }
+
+    for (let i = 0; i < this._nodes.length; i++) {
+      const n = this._nodes[i];
+      const selected = i === this._selectedNode;
+
+      this._guideGfx.lineStyle(2, selected ? 0x5fb2ff : 0x4c5a7a, 0.75);
+      this._guideGfx.beginPath();
+      this._guideGfx.moveTo(n.x, n.y);
+      this._guideGfx.lineTo(n.handleIn.x, n.handleIn.y);
+      this._guideGfx.moveTo(n.x, n.y);
+      this._guideGfx.lineTo(n.handleOut.x, n.handleOut.y);
+      this._guideGfx.strokePath();
+
+      this._drawHandleDot(
+        n.handleIn.x,
+        n.handleIn.y,
+        selected && this._selectedPart?.type === 'handleIn' && this._selectedPart?.index === i
+      );
+
+      this._drawHandleDot(
+        n.handleOut.x,
+        n.handleOut.y,
+        selected && this._selectedPart?.type === 'handleOut' && this._selectedPart?.index === i
+      );
+
+      this._nodeGfx.fillStyle(selected ? 0x2bff88 : 0xffffff, 1);
+      this._nodeGfx.fillCircle(n.x, n.y, selected ? 16 : 14);
+
+      this._nodeGfx.lineStyle(3, 0x0b1020, 0.9);
+      this._nodeGfx.strokeCircle(n.x, n.y, selected ? 16 : 14);
+
+      this._nodeGfx.fillStyle(0x0b1020, 1);
+      this._nodeGfx.fillCircle(n.x, n.y, 5);
+    }
+  }
+  _drawHandleDot(x, y, selected = false) {
+    this._nodeGfx.fillStyle(selected ? 0xffd166 : 0xb7c0ff, 1);
+    this._nodeGfx.fillCircle(x, y, selected ? 10 : 8);
+
+    this._nodeGfx.lineStyle(2, 0x0b1020, 0.9);
+    this._nodeGfx.strokeCircle(x, y, selected ? 10 : 8);
+  }
+
+  _updatePanel() {
+    const guideLoaded = !!this._guideImage;
+
+    if (this._selectedNode < 0 || this._selectedNode >= this._nodes.length) {
+      this._panelText.setText(
+        'Sin nodo seleccionado\n' +
+        `Herramienta: ${this._tool}\n` +
+        `Vista: ${this._getViewToolLabel()}\n` +
+        `Modo: ${this._getModeToolLabel()}\n` +
+        `Pista: ${this._getTrackToolLabel()}\n` +
+        `Guía: ${this._getGuideToolLabel()}\n` +
+        `Nodos: ${this._nodes.length}\n` +
+        `Loop: ${this._isClosed ? 'cerrado' : 'abierto'}\n` +
+        `Meta: ${this._finishLine ? 'sí' : 'no'}\n` +
+        `Checkpoints: ${this._checkpoints.length}\n` +
+        `Guía cargada: ${guideLoaded ? 'sí' : 'no'}\n` +
+        `Guía visible: ${this._guideVisible ? 'sí' : 'no'}\n` +
+        `Alpha guía: ${this._guideAlpha.toFixed(2)}\n` +
+        `Nudge: ${this._getNudgeStep()}px\n` +
+        `Zoom: ${this._editCam ? this._editCam.zoom.toFixed(2) : '0.00'}\n` +
+        `Ancho: ${this._trackWidth}px`
+      );
+      return;
+    }
+
+    const n = this._nodes[this._selectedNode];
+    const part = this._selectedPart?.type || 'node';
+
     this._panelText.setText(
-      'Sin selección\n' +
+      `Nodo #${this._selectedNode}\n` +
       `Herramienta: ${this._tool}\n` +
-      `Panel activo: ${this._activeTopTool}\n` +
-      `Nodos: ${this._nodes.length}\n` +
-      `Pianos: ${this._pianos.length}\n` +
+      `Vista: ${this._getViewToolLabel()}\n` +
+      `Modo toolbar: ${this._getModeToolLabel()}\n` +
+      `Pista toolbar: ${this._getTrackToolLabel()}\n` +
+      `Guía toolbar: ${this._getGuideToolLabel()}\n` +
+      `Modo: ${part}\n` +
       `Loop: ${this._isClosed ? 'cerrado' : 'abierto'}\n` +
       `Meta: ${this._finishLine ? 'sí' : 'no'}\n` +
       `Checkpoints: ${this._checkpoints.length}\n` +
-      `Guía: ${guideLoaded ? (this._guideVisible ? 'visible' : 'oculta') : 'no cargada'}\n` +
-      `Zoom: ${this._editCam ? this._editCam.zoom.toFixed(2) : '0.00'}\n` +
+      `Guía cargada: ${guideLoaded ? 'sí' : 'no'}\n` +
+      `Guía visible: ${this._guideVisible ? 'sí' : 'no'}\n` +
       `Alpha guía: ${this._guideAlpha.toFixed(2)}\n` +
-      `Ancho pista: ${this._trackWidth}px`
+      `Nudge: ${this._getNudgeStep()}px\n` +
+      `X: ${Math.round(n.x)}\n` +
+      `Y: ${Math.round(n.y)}\n` +
+      `In: ${Math.round(n.handleIn.x)}, ${Math.round(n.handleIn.y)}\n` +
+      `Out: ${Math.round(n.handleOut.x)}, ${Math.round(n.handleOut.y)}\n` +
+      `Total: ${this._nodes.length}\n` +
+      `Zoom: ${this._editCam ? this._editCam.zoom.toFixed(2) : '0.00'}\n` +
+      `Ancho: ${this._trackWidth}px`
     );
-    return;
   }
 
-  const n = this._nodes[this._selectedNode];
-  const part = this._selectedPart?.type || 'node';
-
-  this._panelText.setText(
-    `Nodo #${this._selectedNode}\n` +
-    `Herramienta: ${this._tool}\n` +
-    `Panel activo: ${this._activeTopTool}\n` +
-    `Modo: ${part}\n` +
-    `Loop: ${this._isClosed ? 'cerrado' : 'abierto'}\n` +
-    `Meta: ${this._finishLine ? 'sí' : 'no'}\n` +
-    `Checkpoints: ${this._checkpoints.length}\n` +
-    `Guía: ${guideLoaded ? (this._guideVisible ? 'visible' : 'oculta') : 'no cargada'}\n` +
-    `Zoom: ${this._editCam ? this._editCam.zoom.toFixed(2) : '0.00'}\n` +
-    `Nudge: ${this._getNudgeStep()}px\n` +
-    `X: ${Math.round(n.x)}\n` +
-    `Y: ${Math.round(n.y)}\n` +
-    `In: ${Math.round(n.handleIn.x)}, ${Math.round(n.handleIn.y)}\n` +
-    `Out: ${Math.round(n.handleOut.x)}, ${Math.round(n.handleOut.y)}\n` +
-    `Ancho pista: ${this._trackWidth}px`
-  );
-}
   _getProjectData() {
     return {
       version: 1,
@@ -1282,7 +2010,7 @@ _updatePanel() {
 
     this._updateToolButtons();
     this._updatePanel();
-
+    this._redrawEditor();
   }
 
   _saveProject() {
@@ -1328,109 +2056,8 @@ _updatePanel() {
 
     this._updateToolButtons();
     this._updatePanel();
-
+    this._redrawEditor();
 
     console.log('🆕 Nuevo proyecto');
   }
-  
-  _isPointerInViewport(pointer) {
-  return (
-    pointer.x >= this._viewX &&
-    pointer.x <= this._viewX + this._viewW &&
-    pointer.y >= this._viewY &&
-    pointer.y <= this._viewY + this._viewH
-  );
-}  
-  _screenToWorld(screenX, screenY) {
-  return this._editCam.getWorldPoint(screenX, screenY);
-}
-  _findPianoControl(x, y) {
-  const radius = 20;
-
-  for (let i = 0; i < this._pianos.length; i++) {
-    const p = this._pianos[i];
-
-    const dCenter = Phaser.Math.Distance.Between(x, y, p.point.x, p.point.y);
-    if (dCenter < radius) {
-      return { type: 'piano', index: i };
-    }
-
-    const dA = Phaser.Math.Distance.Between(x, y, p.a.x, p.a.y);
-    if (dA < radius) {
-      return { type: 'pianoA', index: i };
-    }
-
-    const dB = Phaser.Math.Distance.Between(x, y, p.b.x, p.b.y);
-    if (dB < radius) {
-      return { type: 'pianoB', index: i };
-    }
-  }
-
-  return null;
-}
-  _findControlAt(x, y) {
-  const radiusNode = 18;
-  const radiusHandle = 14;
-
-  // 1. Prioridad: handles (más pequeños, más precisos)
-  for (let i = this._nodes.length - 1; i >= 0; i--) {
-    const n = this._nodes[i];
-
-    const dIn = Phaser.Math.Distance.Between(x, y, n.handleIn.x, n.handleIn.y);
-    if (dIn < radiusHandle) {
-      return { type: 'handleIn', index: i };
-    }
-
-    const dOut = Phaser.Math.Distance.Between(x, y, n.handleOut.x, n.handleOut.y);
-    if (dOut < radiusHandle) {
-      return { type: 'handleOut', index: i };
-    }
-  }
-
-  // 2. Luego nodos
-  for (let i = this._nodes.length - 1; i >= 0; i--) {
-    const n = this._nodes[i];
-
-    const d = Phaser.Math.Distance.Between(x, y, n.x, n.y);
-    if (d < radiusNode) {
-      return { type: 'node', index: i };
-    }
-  }
-
-  return null;
-}
-  _createNode(x, y) {
-  const handleLen = 60;
-
-  if (!this._nodes || this._nodes.length === 0) {
-    return {
-      x,
-      y,
-      handleIn: { x: x - handleLen, y },
-      handleOut: { x: x + handleLen, y }
-    };
-  }
-
-  const prev = this._nodes[this._nodes.length - 1];
-
-  let dx = x - prev.x;
-  let dy = y - prev.y;
-
-  const len = Math.sqrt(dx * dx + dy * dy) || 1;
-  dx /= len;
-  dy /= len;
-
-  return {
-    x,
-    y,
-    handleIn: {
-      x: x - dx * handleLen,
-      y: y - dy * handleLen
-    },
-    handleOut: {
-      x: x + dx * handleLen,
-      y: y + dy * handleLen
-    }
-  };
-}
 }
