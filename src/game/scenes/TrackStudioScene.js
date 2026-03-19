@@ -142,12 +142,16 @@ export class TrackStudioScene extends BaseScene {
     const leftCX = Math.floor(this._leftBarW / 2);
     const leftY = this._topBarH + 20;
 
-    this.add.text(leftCX, leftY, 'TOOLS', {
+    this._leftToolsTitle = this.add.text(leftCX, leftY, 'TOOLS', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
       fontSize: '12px',
       color: '#90a4d4',
       fontStyle: 'bold'
     }).setOrigin(0.5, 0);
+
+    // Grupo activo mostrado en barra izquierda
+    this._activeSideGroup = null;   // 'save' | 'view' | 'mode' | 'track' | 'guide' | null
+    this._sideGroupButtons = [];
 
     // =================================================
     // Barra superior
