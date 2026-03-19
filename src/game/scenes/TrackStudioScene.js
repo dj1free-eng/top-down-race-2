@@ -108,18 +108,27 @@ create() {
     fontStyle: 'bold'
   });
 
+  this._panelDivider = this.add.rectangle(
+    width - this._rightPanelW + 20,
+    this._topBarH + 252,
+    this._rightPanelW - 40,
+    2,
+    0x26324a,
+    0.95
+  ).setOrigin(0, 0.5);
+
   this._panelText = this.add.text(width - this._rightPanelW + 20, this._topBarH + 58, 'Sin selección', {
     fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-    fontSize: '14px',
+    fontSize: '13px',
     color: '#ffffff',
-    lineSpacing: 2,
+    lineSpacing: 1,
     wordWrap: { width: this._rightPanelW - 40 }
   });
 
   this._contextTitle = this.add.text(
     width - this._rightPanelW + 20,
-    this._topBarH + 290,
-    'HERRAMIENTA ACTIVA',
+    this._topBarH + 272,
+    'HERRAMIENTAS',
     {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
       fontSize: '17px',
@@ -127,7 +136,6 @@ create() {
       fontStyle: 'bold'
     }
   );
-
   const back = this.add.text(width - 38, 18, '←', {
     fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
     fontSize: '22px',
