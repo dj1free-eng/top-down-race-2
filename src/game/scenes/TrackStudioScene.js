@@ -284,19 +284,19 @@ this._padCenter.on('pointerup', () => {
 
 // Guardar
 this._btnSave = this._makeIconButton(topX, topToolsY, '💾', () => {
-  this._saveTrack();
+  this._saveProject();
 }, '18px');
 topX += 48;
 
 // Cargar
 this._btnLoad = this._makeIconButton(topX, topToolsY, '📂', () => {
-  this._loadTrack();
+  this._loadProject();
 }, '18px');
 topX += 48;
 
 // Nuevo
 this._btnNew = this._makeIconButton(topX, topToolsY, 'NEW', () => {
-  this._newTrack();
+  this._newProject();
 }, '14px');
 topX += 60;
     // modo directo
