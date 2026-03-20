@@ -4878,7 +4878,10 @@ if (state.stickX === 0 && state.stickY === 0) {
 const hasJsonFinish =
   !!((j.finishLine && j.finishLine.a && j.finishLine.b) ||
      (j.finish && j.finish.a && j.finish.b));
-
+// checkpoints opcionales desde editor
+const checkpoints = Array.isArray(j.checkpoints)
+  ? j.checkpoints
+  : null;
 // -------------------------------------------------
 // AUTO-ALIGN (imports): start.r + finishLine desde centerline
 // - Corrige coche cruzado por _carVisualRotOffset = PI/2
@@ -4983,6 +4986,7 @@ const fl = j.finishLine || j.finish || j.__autoFinishLine || null;
 
       start,
       centerline,
+      checkpoints,
 
       // datos exportados por TrackEditor que RaceScene debe conservar
       geometry: (j.geometry && typeof j.geometry === 'object') ? j.geometry : null,
