@@ -44,7 +44,7 @@ this._viewH = height - this._topBarH - this._bottomPad - 16;
     this._panLast = null;
     this._pinchLastDist = 0;
 
-    this._editZoomMin = 0.35;
+    this._editZoomMin = 0.12;
     this._editZoomMax = 2.5;
 
     this._trackWidth = 140;
@@ -393,7 +393,7 @@ topX += 52;
     this._editCam.setBackgroundColor('#0a0d16');
     this._editCam.setBounds(0, 0, this._editorWorldW, this._editorWorldH);
     this._editCam.centerOn(this._editorWorldW / 2, this._editorWorldH / 2);
-    this._editCam.setZoom(0.45);
+    this._editCam.setZoom(0.28);
 
     this.cameras.main.ignore([
       this._gridGfx,
