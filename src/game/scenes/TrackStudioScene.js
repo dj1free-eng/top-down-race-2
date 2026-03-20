@@ -146,6 +146,23 @@ this.add.rectangle(
   0x26324a,
   0.85
 ).setOrigin(0, 0.5);
+    this._panelDeleteBtn = this.add.text(
+  width - this._rightPanelW + 20,
+  this._panelActionsY + 44,
+  'Borrar selección',
+  {
+    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: '14px',
+    color: '#ffffff',
+    backgroundColor: '#243454',
+    padding: { x: 12, y: 8 }
+  }
+)
+  .setInteractive({ useHandCursor: true });
+
+this._panelDeleteBtn.on('pointerup', () => {
+  this._deleteSelectedNode();
+});
 
     const back = this.add.text(width - 38, 18, '←', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
