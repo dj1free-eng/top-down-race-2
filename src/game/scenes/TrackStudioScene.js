@@ -1479,35 +1479,43 @@ _updatePianoDrag(part, world) {
     p.b.y = world.y;
   }
 }
-  _applyZoomAtViewportCenter(multiplier) {
-    const midX = this._editCam.x + this._editCam.width / 2;
-    const midY = this._editCam.y + this._editCam.height / 2;
+_applyZoomAtViewportCenter(multiplier) {
+  const cam = this._editCam;
+  if (!cam) return;
 
-    const newZoom = Phaser.Math.Clamp(
-      this._editCam.zoom * multiplier,
-      this._editZoomMin,
-      this._editZoomMax
-    );
+  const midX = cam.x + cam.width / 2;
+  const midY = cam.y + cam.height / 2;
 
-    const worldX =
-      this._editCam.scrollX +
-      (midX - this._editCam.x) / this._editCam.zoom;
+  const newZoom = Phaser.Math.Clamp(
+    cam.zoom * multiplier,
+    this._editZoomMin,
+    this._editZoomMax
+  );
 
-    const worldY =
-      this._editCam.scrollY +
-      (midY - this._editCam.y) / this._editCam.zoom;
+  const worldX =
+    cam.scrollX +
+    (midX - cam.x) / cam.zoom;
 
-    this._editCam.setZoom(newZoom);
+  const worldY =
+    cam.scrollY +
+    (midY - cam.y) / cam.zoom;
 
-    this._editCam.scrollX =
-      worldX - (midX - this._editCam.x) / newZoom;
+  cam.setZoom(newZoom);
 
-    this._editCam.scrollY =
-      worldY - (midY - this._editCam.y) / newZoom;
+  cam.scrollX =
+    worldX - (midX - cam.x) / newZoom;
 
-    this._updatePanel();
-  }
+  cam.scrollY =
+    worldY - (midY - cam.y) / newZoom;
 
+  const maxScrollX = this._editorWorldW - (cam.width / cam.zoom);
+  const maxScrollY = this._editorWorldH - (cam.height / cam.zoom);
+
+  cam.scrollX = Phaser.Math.Clamp(cam.scrollX, 0, Math.max(0, maxScrollX));
+  cam.scrollY = Phaser.Math.Clamp(cam.scrollY, 0, Math.max(0, maxScrollY));
+
+  this._updatePanel();
+}
   _changeTrackWidth(delta) {
     this._trackWidth = Phaser.Math.Clamp(
       this._trackWidth + delta,
