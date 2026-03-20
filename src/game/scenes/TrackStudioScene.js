@@ -2255,7 +2255,7 @@ const data = {
       }
 
       const data = JSON.parse(raw);
-      this._applyProjectData(data);
+this._applyProjectData(data.editor || data);
       console.log('📂 Proyecto cargado');
     } catch (e) {
       console.error('❌ Error cargando proyecto', e);
