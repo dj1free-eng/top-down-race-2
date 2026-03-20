@@ -2117,6 +2117,48 @@ _exportToGameTrack() {
     }))
   };
 }
+// =================================================
+// SAVE / LOAD TRACK (localStorage)
+// =================================================
+
+_saveTrack() {
+  try {
+    const data = {
+      nodes: this._nodes,
+      trackWidth: this._trackWidth,
+      isClosed: this._isClosed
+    };
+
+    localStorage.setItem('tdr_track', JSON.stringify(data));
+    console.log('💾 Track guardado');
+  } catch (e) {
+    console.error('Error guardando track', e);
+  }
+}
+
+_loadTrack() {
+  try {
+    const raw = localStorage.getItem('tdr_track');
+    if (!raw) {
+      console.warn('No hay track guardado');
+      return;
+    }
+
+    const data = JSON.parse(raw);
+
+    this._nodes = data.nodes || [];
+    this._trackWidth = data.trackWidth || 140;
+    this._isClosed = data.isClosed || false;
+
+    // 🔁 reconstruir visual
+    this._rebuildFromNodes?.();
+    this._redrawAll?.();
+
+    console.log('📂 Track cargado');
+  } catch (e) {
+    console.error('Error cargando track', e);
+  }
+}  
   _applyProjectData(data) {
     this._nodes = data.nodes || [];
     this._trackWidth = data.trackWidth ?? 140;
