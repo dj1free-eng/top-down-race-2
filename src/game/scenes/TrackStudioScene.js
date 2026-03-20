@@ -27,8 +27,8 @@ this._viewH = height - this._topBarH - this._bottomPad - 16;
     // =================================================
     // Estado editor
     // =================================================
-    this._editorWorldW = 4000;
-    this._editorWorldH = 4000;
+    this._editorWorldW = 8000;
+    this._editorWorldH = 5000;
 
     this._nodes = [];
     this._selectedNode = -1;
