@@ -2034,6 +2034,20 @@ _updatePanel() {
   if (this._panelDeleteBtn) {
     this._panelDeleteBtn.setVisible(false);
   }
+    const setPadVisible = (visible) => {
+    this._padUp?.bg?.setVisible(visible);
+    this._padUp?.txt?.setVisible(visible);
+    this._padDown?.bg?.setVisible(visible);
+    this._padDown?.txt?.setVisible(visible);
+    this._padLeft?.bg?.setVisible(visible);
+    this._padLeft?.txt?.setVisible(visible);
+    this._padRight?.bg?.setVisible(visible);
+    this._padRight?.txt?.setVisible(visible);
+    this._padCenter?.setVisible(visible);
+    this._padCenterTxt?.setVisible(visible);
+  };
+
+  setPadVisible(false);
   if (!this._panelInfoText) {
     this._panelInfoText = this.add.text(
       this.scale.width - this._rightPanelW + 20,
@@ -2054,6 +2068,7 @@ _updatePanel() {
     if (this._panelDeleteBtn) {
       this._panelDeleteBtn.setVisible(true);
     }
+        setPadVisible(true);
     this._panelInfoText.setVisible(true);
     this._panelInfoText.setText(
       `Piano #${this._selectedPiano}\n` +
@@ -2072,6 +2087,7 @@ _updatePanel() {
     if (this._panelDeleteBtn) {
       this._panelDeleteBtn.setVisible(true);
     }
+        setPadVisible(true);
     this._panelInfoText.setVisible(true);
     this._panelInfoText.setText(
       `Nodo #${this._selectedNode}\n` +
