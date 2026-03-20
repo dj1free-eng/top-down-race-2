@@ -205,13 +205,17 @@ this._panelDeleteBtn.on('pointerup', () => {
       this._applyZoomAtViewportCenter(1 / 1.15);
     }, '22px');
 
+    this._leftGuideBtn = this._makeIconButton(leftCX, this._topBarH + 226, 'IMG', () => {
+      this._runActiveGuideTool();
+    }, '12px');
+
     // =================================================
     // Barra superior
     // =================================================
     const topToolsY = 36;
-    let topX = 340;
+    let topX = 420;
 
-    // grupo archivo
+    // archivo
     this._saveBtnX = topX;
     this._saveBtnY = topToolsY;
     this._saveMainBtn = this._makeGroupedMainButton(
@@ -222,72 +226,49 @@ this._panelDeleteBtn.on('pointerup', () => {
       () => this._toggleSaveMenu(),
       '14px'
     );
-    topX += 52;
+    topX += 56;
 
-    // grupo vista
-    this._viewBtnX = topX;
-    this._viewBtnY = topToolsY;
-    this._viewMainBtn = this._makeGroupedMainButton(
-      this._viewBtnX,
-      this._viewBtnY,
-      this._getViewToolLabel(),
-      () => this._runActiveViewTool(),
-      () => this._toggleViewMenu(),
-      '12px'
-    );
-    topX += 52;
-
-    // grupo modo
-    this._modeBtnX = topX;
-    this._modeBtnY = topToolsY;
-    this._modeMainBtn = this._makeGroupedMainButton(
-      this._modeBtnX,
-      this._modeBtnY,
-      this._getModeToolLabel(),
-      () => this._runActiveModeTool(),
-      () => this._toggleModeMenu(),
-      '14px'
-    );
-    topX += 52;
-
-    // grupo pista
-    this._trackBtnX = topX;
-    this._trackBtnY = topToolsY;
-    this._trackMainBtn = this._makeGroupedMainButton(
-      this._trackBtnX,
-      this._trackBtnY,
-      this._getTrackToolLabel(),
-      () => this._runActiveTrackTool(),
-      () => this._toggleTrackMenu(),
-      '13px'
-    );
-    topX += 52;
-
-    // grupo guía
-    this._guideBtnX = topX;
-    this._guideBtnY = topToolsY;
-    this._guideMainBtn = this._makeGroupedMainButton(
-      this._guideBtnX,
-      this._guideBtnY,
-      this._getGuideToolLabel(),
-      () => this._runActiveGuideTool(),
-      () => this._toggleGuideMenu(),
-      '12px'
-    );
-    topX += 60;
-
-    // alpha guía
-    this._guideAlphaMinusBtn = this._makeIconButton(topX, topToolsY, 'A-', () => {
-      this._changeGuideAlpha(-0.08);
-    }, '13px');
+    // modo directo
+    this._editBtn = this._makeIconButton(topX, topToolsY, 'ED', () => {
+      this._modeTool = 'edit';
+      this._setTool('edit');
+    }, '12px');
     topX += 44;
 
-    this._guideAlphaPlusBtn = this._makeIconButton(topX, topToolsY, 'A+', () => {
-      this._changeGuideAlpha(0.08);
-    }, '13px');
+    this._finishTopBtn = this._makeIconButton(topX, topToolsY, '🏁', () => {
+      this._modeTool = 'finish';
+      this._setTool('finish');
+    }, '14px');
+    topX += 44;
+
+    this._checkpointTopBtn = this._makeIconButton(topX, topToolsY, 'CP', () => {
+      this._modeTool = 'checkpoint';
+      this._setTool('checkpoint');
+    }, '12px');
+    topX += 44;
+
+    this._pianoTopBtn = this._makeIconButton(topX, topToolsY, 'PI', () => {
+      this._modeTool = 'piano';
+      this._setTool('piano');
+    }, '12px');
     topX += 52;
 
-    // nudge
+    // track directo
+    this._trackMinusBtn = this._makeIconButton(topX, topToolsY, 'W-', () => {
+      this._trackTool = 'widthDown';
+      this._changeTrackWidth(-10);
+      this._updateToolButtons();
+    }, '12px');
+    topX += 44;
+
+    this._trackPlusBtn = this._makeIconButton(topX, topToolsY, 'W+', () => {
+      this._trackTool = 'widthUp';
+      this._changeTrackWidth(10);
+      this._updateToolButtons();
+    }, '12px');
+    topX += 56;
+
+    // nudge step
     this._nudgeStepBtn = this._makeIconButton(topX, topToolsY, String(this._getNudgeStep()), () => {
       this._cycleNudgeStep();
     }, '16px');
@@ -312,12 +293,6 @@ this._panelDeleteBtn.on('pointerup', () => {
     this._btnRight = this._makeIconButton(topX, topToolsY, '→', () => {
       this._nudgeSelectedNode(this._getNudgeStep(), 0);
     }, '18px');
-    topX += 44;
-
-    // borrar
-    this._deleteBtn = this._makeIconButton(topX, topToolsY, '🗑', () => {
-      this._deleteSelectedNode();
-    }, '16px');
     // =================================================
     // Mundo de edición
     // =================================================
