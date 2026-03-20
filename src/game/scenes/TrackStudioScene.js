@@ -2138,7 +2138,17 @@ _updatePanel() {
       guideTool: this._guideTool
     };
   }
+_exportToGameTrack() {
+  const points = this._getBezierPoints();
 
+  if (!points || points.length < 2) return null;
+
+  return points.map(p => ({
+    x: Math.round(p.x),
+    y: Math.round(p.y),
+    width: this._trackWidth
+  }));
+}
   _applyProjectData(data) {
     this._nodes = data.nodes || [];
     this._trackWidth = data.trackWidth ?? 140;
