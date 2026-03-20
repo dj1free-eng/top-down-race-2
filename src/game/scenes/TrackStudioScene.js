@@ -164,6 +164,66 @@ this.add.rectangle(
 this._panelDeleteBtn.on('pointerup', () => {
   this._deleteSelectedNode();
 });
+    // =========================
+// 🎮 CRUCETA (D-PAD)
+// =========================
+const cx = this.scale.width - this._rightPanelW + 140;
+const cy = this._panelActionsY + 120;
+const size = 26;
+
+const makePadBtn = (dx, dy, label, onClick) => {
+  const x = cx + dx * size;
+  const y = cy + dy * size;
+
+  const bg = this.add.circle(x, y, 18, 0x1c2540, 1)
+    .setStrokeStyle(2, 0x3c4e7a, 0.95)
+    .setInteractive({ useHandCursor: true });
+
+  const txt = this.add.text(x, y, label, {
+    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: '18px',
+    color: '#ffffff',
+    fontStyle: 'bold'
+  }).setOrigin(0.5);
+
+  bg.on('pointerup', onClick);
+
+  return { bg, txt };
+};
+
+// botones
+this._padUp = makePadBtn(0, -1, '↑', () => {
+  this._nudgeSelectedNode(0, -this._getNudgeStep());
+});
+
+this._padDown = makePadBtn(0, 1, '↓', () => {
+  this._nudgeSelectedNode(0, this._getNudgeStep());
+});
+
+this._padLeft = makePadBtn(-1, 0, '←', () => {
+  this._nudgeSelectedNode(-this._getNudgeStep(), 0);
+});
+
+this._padRight = makePadBtn(1, 0, '→', () => {
+  this._nudgeSelectedNode(this._getNudgeStep(), 0);
+});
+
+// centro (step)
+this._padCenter = this.add.circle(cx, cy, 16, 0x243454, 1)
+  .setStrokeStyle(2, 0x5a78b0, 0.95)
+  .setInteractive({ useHandCursor: true });
+
+this._padCenterTxt = this.add.text(cx, cy, String(this._getNudgeStep()), {
+  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+  fontSize: '13px',
+  color: '#ffffff',
+  fontStyle: 'bold'
+}).setOrigin(0.5);
+
+this._padCenter.on('pointerup', () => {
+  this._cycleNudgeStep();
+  this._padCenterTxt.setText(String(this._getNudgeStep()));
+});
     const back = this.add.text(width - 38, 18, '←', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
       fontSize: '22px',
