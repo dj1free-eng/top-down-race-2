@@ -1247,36 +1247,58 @@ _toggleModeMenu() {
     this._updatePanel();
   }
 
-  _updateToolButtons() {
-    if (this._guideAlphaMinusBtn?.bg) {
-      this._guideAlphaMinusBtn.bg.setFillStyle(0x1c2540, 1);
-      this._guideAlphaMinusBtn.bg.setStrokeStyle(2, 0x3c4e7a, 0.95);
-    }
-
-    if (this._guideAlphaPlusBtn?.bg) {
-      this._guideAlphaPlusBtn.bg.setFillStyle(0x1c2540, 1);
-      this._guideAlphaPlusBtn.bg.setStrokeStyle(2, 0x3c4e7a, 0.95);
-    }
-
-    if (this._nudgeStepBtn?.txt) {
-      this._nudgeStepBtn.txt.setText(String(this._getNudgeStep()));
-    }
-
-    if (this._saveMainBtn?._txt) this._saveMainBtn._txt.setText(this._getSaveToolLabel());
-    if (this._viewMainBtn?._txt) this._viewMainBtn._txt.setText(this._getViewToolLabel());
-    if (this._modeMainBtn?._txt) this._modeMainBtn._txt.setText(this._getModeToolLabel());
-    if (this._trackMainBtn?._txt) this._trackMainBtn._txt.setText(this._getTrackToolLabel());
-    if (this._guideMainBtn?._txt) this._guideMainBtn._txt.setText(this._getGuideToolLabel());
-
-    if (this._guideMainBtn?._bg) {
-      this._guideMainBtn._bg.clear();
-      this._guideMainBtn._bg.fillStyle(this._guideVisible ? 0x1f4f2d : 0x1c2540, 1);
-      this._guideMainBtn._bg.lineStyle(2, this._guideVisible ? 0x8df0a8 : 0x3c4e7a, 0.95);
-      this._guideMainBtn._bg.fillRoundedRect(-20, -20, 40, 40, 8);
-      this._guideMainBtn._bg.strokeRoundedRect(-20, -20, 40, 40, 8);
-    }
+_updateToolButtons() {
+  if (this._guideAlphaMinusBtn?.bg) {
+    this._guideAlphaMinusBtn.bg.setFillStyle(0x1c2540, 1);
+    this._guideAlphaMinusBtn.bg.setStrokeStyle(2, 0x3c4e7a, 0.95);
   }
 
+  if (this._guideAlphaPlusBtn?.bg) {
+    this._guideAlphaPlusBtn.bg.setFillStyle(0x1c2540, 1);
+    this._guideAlphaPlusBtn.bg.setStrokeStyle(2, 0x3c4e7a, 0.95);
+  }
+
+  if (this._nudgeStepBtn?.txt) {
+    this._nudgeStepBtn.txt.setText(String(this._getNudgeStep()));
+  }
+
+  if (this._saveMainBtn?._txt) {
+    this._saveMainBtn._txt.setText(this._getSaveToolLabel());
+  }
+
+  const paintCircle = (btn, active = false, fill = 0x1c2540, stroke = 0x3c4e7a) => {
+    if (!btn?.bg) return;
+    btn.bg.setFillStyle(active ? fill : 0x1c2540, 1);
+    btn.bg.setStrokeStyle(2, active ? stroke : 0x3c4e7a, 0.95);
+  };
+
+  // modo directo
+  paintCircle(this._editBtn, this._tool === 'edit', 0x2a4277, 0x8eb8ff);
+  paintCircle(this._finishTopBtn, this._tool === 'finish', 0x2a4277, 0x8eb8ff);
+  paintCircle(this._checkpointTopBtn, this._tool === 'checkpoint', 0x2a4277, 0x8eb8ff);
+  paintCircle(this._pianoTopBtn, this._tool === 'piano', 0x2a4277, 0x8eb8ff);
+
+  // track directo
+  paintCircle(this._trackMinusBtn, this._trackTool === 'widthDown', 0x2a4277, 0x8eb8ff);
+  paintCircle(this._trackPlusBtn, this._trackTool === 'widthUp', 0x2a4277, 0x8eb8ff);
+
+  // guía en nav
+  paintCircle(
+    this._leftGuideBtn,
+    this._guideVisible,
+    this._guideVisible ? 0x1f4f2d : 0x2a4277,
+    this._guideVisible ? 0x8df0a8 : 0x8eb8ff
+  );
+
+  // compatibilidad con botones antiguos que sigan vivos
+  if (this._saveMainBtn?._bg) {
+    this._saveMainBtn._bg.clear();
+    this._saveMainBtn._bg.fillStyle(0x1c2540, 1);
+    this._saveMainBtn._bg.lineStyle(2, 0x3c4e7a, 0.95);
+    this._saveMainBtn._bg.fillRoundedRect(-20, -20, 40, 40, 8);
+    this._saveMainBtn._bg.strokeRoundedRect(-20, -20, 40, 40, 8);
+  }
+}
   _toggleClosed() {
     this._isClosed = !this._isClosed;
     this._updateToolButtons();
