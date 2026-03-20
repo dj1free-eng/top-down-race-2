@@ -167,12 +167,12 @@ this._panelDeleteBtn.on('pointerup', () => {
     // =========================
 // 🎮 CRUCETA (D-PAD)
 // =========================
-const padZoneRight = this.scale.width - 26;
-const padZoneBottom = this.scale.height - 26;
+const padZoneRight = this.scale.width - 12;
+const padZoneBottom = this.scale.height - 20;
 
-const cx = padZoneRight - 90;
-const cy = padZoneBottom - 90;
-const size = 24;
+const cx = padZoneRight - 72;
+const cy = padZoneBottom - 86;
+const size = 28;
 
 const makePadBtn = (dx, dy, label, onClick) => {
   const x = cx + dx * size;
