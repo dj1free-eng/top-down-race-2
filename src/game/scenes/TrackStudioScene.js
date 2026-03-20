@@ -284,19 +284,25 @@ this._padCenter.on('pointerup', () => {
 
 // Guardar
 this._btnSave = this._makeIconButton(topX, topToolsY, '💾', () => {
-  this._saveProject();
+  console.log('CLICK SAVE');
+  this._flashMessage('💾 Guardando...');
+  this._saveProject?.();
 }, '18px');
 topX += 48;
 
 // Cargar
 this._btnLoad = this._makeIconButton(topX, topToolsY, '📂', () => {
-  this._loadProject();
+  console.log('CLICK LOAD');
+  this._flashMessage('📂 Cargando...');
+  this._loadProject?.();
 }, '18px');
 topX += 48;
 
 // Nuevo
 this._btnNew = this._makeIconButton(topX, topToolsY, 'NEW', () => {
-  this._newProject();
+  console.log('CLICK NEW');
+  this._flashMessage('🆕 Nuevo...');
+  this._newProject?.();
 }, '14px');
 topX += 60;
     // modo directo
@@ -867,7 +873,26 @@ if (
 
     this._updatePanel();
   }
+_flashMessage(txt) {
+  if (this._msgText) this._msgText.destroy();
 
+  this._msgText = this.add.text(
+    this.scale.width / 2,
+    80,
+    txt,
+    {
+      fontSize: '18px',
+      color: '#ffffff',
+      backgroundColor: '#000000cc',
+      padding: { x: 10, y: 6 }
+    }
+  ).setOrigin(0.5).setDepth(9999);
+
+  this.time.delayedCall(1000, () => {
+    this._msgText?.destroy();
+    this._msgText = null;
+  });
+}
   // =================================================
   // UI helpers
   // =================================================
