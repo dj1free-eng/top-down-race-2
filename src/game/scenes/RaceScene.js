@@ -1699,13 +1699,27 @@ const _makeGateAtFraction = (frac01) => {
 };
 
 // ---------- construir checkpoints 33% / 66% ----------
-this.checkpoints = {
-  cp1: _makeGateAtFraction(0.33),
-  cp2: _makeGateAtFraction(0.66)
-};
+// usar checkpoints del editor si existen
+if (t01.checkpoints && t01.checkpoints.length > 0) {
+
+  this.checkpoints = {};
+
+  t01.checkpoints.forEach((cp, i) => {
+    this.checkpoints[`cp${i + 1}`] = cp;
+  });
+
+} else {
+
+  // fallback automático (como antes)
+  this.checkpoints = {
+    cp1: _makeGateAtFraction(0.33),
+    cp2: _makeGateAtFraction(0.66)
+  };
+
+}
 
 // Debug visual: meta + checkpoints
-const finish = t01.finish || t01.finishLine;
+const finish = t01.finishLine || t01.finish;
 if (finish?.a && finish?.b) {
   this.finishGfx?.destroy?.();
   this.finishGfx = this.add.graphics();
