@@ -1581,23 +1581,24 @@ _deleteSelectedNode() {
   }
 
 _findControlAt(x, y) {
-  const R = 14;
+const R_NODE = 18;
+const R_HANDLE = 28;
 
   // --- NODOS ---
   for (let i = this._nodes.length - 1; i >= 0; i--) {
     const n = this._nodes[i];
 
-    if (Phaser.Math.Distance.Between(x, y, n.x, n.y) < R) {
-      return { type: 'node', index: i };
-    }
+if (Phaser.Math.Distance.Between(x, y, n.x, n.y) < R_NODE) {
+  return { type: 'node', index: i };
+}
 
-    if (Phaser.Math.Distance.Between(x, y, n.handleIn.x, n.handleIn.y) < R) {
-      return { type: 'handleIn', index: i };
-    }
+if (Phaser.Math.Distance.Between(x, y, n.handleIn.x, n.handleIn.y) < R_HANDLE) {
+  return { type: 'handleIn', index: i };
+}
 
-    if (Phaser.Math.Distance.Between(x, y, n.handleOut.x, n.handleOut.y) < R) {
-      return { type: 'handleOut', index: i };
-    }
+if (Phaser.Math.Distance.Between(x, y, n.handleOut.x, n.handleOut.y) < R_HANDLE) {
+  return { type: 'handleOut', index: i };
+}
   }
 
   // --- PIANOS (modelo actual: a / b / point) ---
