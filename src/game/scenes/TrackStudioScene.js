@@ -278,19 +278,27 @@ this._padCenter.on('pointerup', () => {
     const topToolsY = 36;
     let topX = 285;
 
-    // archivo
-    this._saveBtnX = topX;
-    this._saveBtnY = topToolsY;
-    this._saveMainBtn = this._makeGroupedMainButton(
-      this._saveBtnX,
-      this._saveBtnY,
-      this._getSaveToolLabel(),
-      () => this._runActiveSaveTool(),
-      () => this._toggleSaveMenu(),
-      '14px'
-    );
-    topX += 56;
+// =================================================
+// Guardar / Cargar / Nuevo (directos)
+// =================================================
 
+// Guardar
+this._btnSave = this._makeIconButton(topX, topToolsY, '💾', () => {
+  this._saveTrack();
+}, '18px');
+topX += 48;
+
+// Cargar
+this._btnLoad = this._makeIconButton(topX, topToolsY, '📂', () => {
+  this._loadTrack();
+}, '18px');
+topX += 48;
+
+// Nuevo
+this._btnNew = this._makeIconButton(topX, topToolsY, 'NEW', () => {
+  this._newTrack();
+}, '14px');
+topX += 60;
     // modo directo
     this._editBtn = this._makeIconButton(topX, topToolsY, 'ED', () => {
       this._modeTool = 'edit';
