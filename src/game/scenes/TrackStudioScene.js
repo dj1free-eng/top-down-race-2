@@ -2180,7 +2180,10 @@ _exportToGameTrack() {
 
   _saveProject() {
     try {
-      const data = this._getProjectData();
+const data = {
+  editor: this._getProjectData(),
+  gameTrack: this._exportToGameTrack()
+};
       localStorage.setItem('trackstudio_project', JSON.stringify(data));
       console.log('✅ Proyecto guardado');
     } catch (e) {
