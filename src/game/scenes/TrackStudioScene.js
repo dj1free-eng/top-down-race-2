@@ -213,7 +213,7 @@ this._panelDeleteBtn.on('pointerup', () => {
     // Barra superior
     // =================================================
     const topToolsY = 36;
-    let topX = 260;
+    let topX = 285;
 
     // archivo
     this._saveBtnX = topX;
