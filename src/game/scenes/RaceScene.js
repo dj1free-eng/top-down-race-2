@@ -1004,7 +1004,25 @@ if (typeof this.trackKey === 'string' && this.trackKey.startsWith('import:')) {
   }
 }
 // 1) Track meta primero (define world real)
-const meta = this._resolveTrackMeta(this.trackKey);
+let meta = null;
+
+try {
+  const raw = localStorage.getItem('trackstudio_project');
+  if (raw) {
+    const saved = JSON.parse(raw);
+    if (saved?.gameTrack?.centerline?.length > 2) {
+      meta = saved.gameTrack;
+      console.log('[RaceScene] usando track exportado desde TrackStudio');
+    }
+  }
+} catch (e) {
+  console.warn('[RaceScene] no se pudo leer trackstudio_project', e);
+}
+
+if (!meta) {
+  meta = this._resolveTrackMeta(this.trackKey);
+}
+
 const t01 = meta;
 
 // Reconstrucción mínima del track runtime a partir del JSON/meta
