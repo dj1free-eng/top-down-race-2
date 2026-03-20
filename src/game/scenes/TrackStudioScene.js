@@ -422,7 +422,6 @@ topX += 52;
 
     this.input.on('pointerdown', (pointer) => {
       if (!this._isPointerInViewMenu(pointer)) this._closeViewMenu();
-      if (!this._isPointerInSaveMenu(pointer)) this._closeSaveMenu();
       if (!this._isPointerInModeMenu(pointer)) this._closeModeMenu();
       if (!this._isPointerInTrackMenu(pointer)) this._closeTrackMenu();
       if (!this._isPointerInGuideMenu(pointer)) this._closeGuideMenu();
