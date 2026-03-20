@@ -1516,23 +1516,31 @@ _updatePianoDrag(part, world) {
     this._redrawEditor();
   }
 
-  _deleteSelectedNode() {
-    if (this._selectedNode < 0 || this._selectedNode >= this._nodes.length) return;
-
-    this._nodes.splice(this._selectedNode, 1);
-
-    if (this._nodes.length === 0) {
-      this._selectedNode = -1;
-      this._selectedPart = null;
-    } else {
-      this._selectedNode = Math.min(this._selectedNode, this._nodes.length - 1);
-      this._selectedPart = { type: 'node', index: this._selectedNode };
-    }
-
+_deleteSelectedNode() {
+  if (this._selectedPiano >= 0 && this._selectedPiano < this._pianos.length) {
+    this._pianos.splice(this._selectedPiano, 1);
+    this._selectedPiano = -1;
+    this._selectedPart = null;
     this._updatePanel();
     this._redrawEditor();
+    return;
   }
 
+  if (this._selectedNode < 0 || this._selectedNode >= this._nodes.length) return;
+
+  this._nodes.splice(this._selectedNode, 1);
+
+  if (this._nodes.length === 0) {
+    this._selectedNode = -1;
+    this._selectedPart = null;
+  } else {
+    this._selectedNode = Math.min(this._selectedNode, this._nodes.length - 1);
+    this._selectedPart = { type: 'node', index: this._selectedNode };
+  }
+
+  this._updatePanel();
+  this._redrawEditor();
+}
   _isPointerInViewport(pointer) {
     return (
       pointer.x >= this._viewX &&
