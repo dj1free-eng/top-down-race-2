@@ -122,13 +122,18 @@ this._viewH = height - this._topBarH - this._bottomPad - 16;
       0.85
     ).setOrigin(0, 0.5);
 
-    this._panelText = this.add.text(width - this._rightPanelW + 20, this._topBarH + 62, 'Sin nodo seleccionado', {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '13px',
-      color: '#ffffff',
-      lineSpacing: 2,
-      wordWrap: { width: this._rightPanelW - 40 }
-    });
+this._panelContentY = this._topBarH + 62;
+
+this._panelEmptyText = this.add.text(
+  width - this._rightPanelW + 20,
+  this._panelContentY,
+  'Selecciona un nodo o piano',
+  {
+    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+    fontSize: '13px',
+    color: '#7f8db3'
+  }
+);
 
     const back = this.add.text(width - 38, 18, '←', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
