@@ -274,31 +274,6 @@ topX += 52;
     }, '12px');
     topX += 56;
 
-    // nudge step
-    this._nudgeStepBtn = this._makeIconButton(topX, topToolsY, String(this._getNudgeStep()), () => {
-      this._cycleNudgeStep();
-    }, '16px');
-    topX += 48;
-
-    // cruceta
-    this._btnLeft = this._makeIconButton(topX, topToolsY, '←', () => {
-      this._nudgeSelectedNode(-this._getNudgeStep(), 0);
-    }, '18px');
-    topX += 40;
-
-    this._btnUp = this._makeIconButton(topX, topToolsY, '↑', () => {
-      this._nudgeSelectedNode(0, -this._getNudgeStep());
-    }, '18px');
-    topX += 40;
-
-    this._btnDown = this._makeIconButton(topX, topToolsY, '↓', () => {
-      this._nudgeSelectedNode(0, this._getNudgeStep());
-    }, '18px');
-    topX += 40;
-
-    this._btnRight = this._makeIconButton(topX, topToolsY, '→', () => {
-      this._nudgeSelectedNode(this._getNudgeStep(), 0);
-    }, '18px');
     // =================================================
     // Mundo de edición
     // =================================================
