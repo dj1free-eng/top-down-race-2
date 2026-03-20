@@ -1982,7 +1982,9 @@ _updatePanel() {
   if (this._panelEmptyText) {
     this._panelEmptyText.setVisible(false);
   }
-
+  if (this._panelDeleteBtn) {
+    this._panelDeleteBtn.setVisible(false);
+  }
   if (!this._panelInfoText) {
     this._panelInfoText = this.add.text(
       this.scale.width - this._rightPanelW + 20,
@@ -2000,6 +2002,9 @@ _updatePanel() {
 
   if (this._selectedPiano >= 0 && this._selectedPiano < this._pianos.length) {
     const p = this._pianos[this._selectedPiano];
+    if (this._panelDeleteBtn) {
+      this._panelDeleteBtn.setVisible(true);
+    }
     this._panelInfoText.setVisible(true);
     this._panelInfoText.setText(
       `Piano #${this._selectedPiano}\n` +
@@ -2015,7 +2020,9 @@ _updatePanel() {
   if (this._selectedNode >= 0 && this._selectedNode < this._nodes.length) {
     const n = this._nodes[this._selectedNode];
     const part = this._selectedPart?.type || 'node';
-
+    if (this._panelDeleteBtn) {
+      this._panelDeleteBtn.setVisible(true);
+    }
     this._panelInfoText.setVisible(true);
     this._panelInfoText.setText(
       `Nodo #${this._selectedNode}\n` +
