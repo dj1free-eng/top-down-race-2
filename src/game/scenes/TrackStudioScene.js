@@ -19,10 +19,10 @@ export class TrackStudioScene extends BaseScene {
     this._rightPanelW = 280;
     this._bottomPad = 14;
 
-    this._viewX = this._leftBarW;
-    this._viewY = this._topBarH;
-    this._viewW = width - this._leftBarW - this._rightPanelW;
-    this._viewH = height - this._topBarH - this._bottomPad;
+this._viewX = this._leftBarW + 8;
+this._viewY = this._topBarH + 8;
+this._viewW = width - this._leftBarW - this._rightPanelW - 16;
+this._viewH = height - this._topBarH - this._bottomPad - 16;
 
     // =================================================
     // Estado editor
@@ -96,8 +96,8 @@ export class TrackStudioScene extends BaseScene {
     this.add.rectangle(width - this._rightPanelW, this._topBarH, this._rightPanelW, height - this._topBarH, 0x0f1422).setOrigin(0);
 
     this.add.rectangle(this._viewX, this._viewY, this._viewW, this._viewH, 0x0a0d16)
-      .setOrigin(0)
-      .setStrokeStyle(2, 0x26324a, 0.95);
+  .setOrigin(0)
+  .setStrokeStyle(2, 0x2f3b5c, 0.6);
 
     this.add.text(22, 18, 'TRACK STUDIO', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
