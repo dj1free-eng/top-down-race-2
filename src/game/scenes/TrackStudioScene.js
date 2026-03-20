@@ -2159,6 +2159,27 @@ _loadTrack() {
     console.error('Error cargando track', e);
   }
 }  
+  _newTrack() {
+  try {
+    // limpiar nodos
+    this._nodes = [];
+
+    // reset básico
+    this._trackWidth = 140;
+    this._isClosed = false;
+
+    // limpiar selección
+    this._selectedNodeIndex = -1;
+
+    // refrescar vista
+    this._rebuildFromNodes?.();
+    this._redrawAll?.();
+
+    console.log('🆕 Nuevo track creado');
+  } catch (e) {
+    console.error('Error creando nuevo track', e);
+  }
+}
   _applyProjectData(data) {
     this._nodes = data.nodes || [];
     this._trackWidth = data.trackWidth ?? 140;
