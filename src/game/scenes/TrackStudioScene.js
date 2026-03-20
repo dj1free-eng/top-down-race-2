@@ -252,7 +252,13 @@ this._panelDeleteBtn.on('pointerup', () => {
       this._setTool('piano');
     }, '12px');
     topX += 52;
-
+this._loopBtn = this._makeIconButton(topX, topToolsY, this._isClosed ? '🔒' : '🔓', () => {
+  this._toggleClosed();
+  if (this._loopBtn?.txt) {
+    this._loopBtn.txt.setText(this._isClosed ? '🔒' : '🔓');
+  }
+}, '16px');
+topX += 52;
     // track directo
     this._trackMinusBtn = this._makeIconButton(topX, topToolsY, 'W-', () => {
       this._trackTool = 'widthDown';
