@@ -113,9 +113,18 @@ this._viewH = height - this._topBarH - this._bottomPad - 16;
       fontStyle: 'bold'
     });
 
-    this._panelText = this.add.text(width - this._rightPanelW + 20, this._topBarH + 58, 'Sin nodo seleccionado', {
+    this.add.rectangle(
+      width - this._rightPanelW + 20,
+      this._topBarH + 48,
+      this._rightPanelW - 40,
+      2,
+      0x26324a,
+      0.85
+    ).setOrigin(0, 0.5);
+
+    this._panelText = this.add.text(width - this._rightPanelW + 20, this._topBarH + 62, 'Sin nodo seleccionado', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-      fontSize: '14px',
+      fontSize: '13px',
       color: '#ffffff',
       lineSpacing: 2,
       wordWrap: { width: this._rightPanelW - 40 }
@@ -142,12 +151,25 @@ this._viewH = height - this._topBarH - this._bottomPad - 16;
     const leftCX = Math.floor(this._leftBarW / 2);
     const leftY = this._topBarH + 20;
 
-    this.add.text(leftCX, leftY, 'TOOLS', {
+    this.add.text(leftCX, leftY, 'NAV', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
       fontSize: '12px',
       color: '#90a4d4',
       fontStyle: 'bold'
     }).setOrigin(0.5, 0);
+
+    this._leftHomeBtn = this._makeIconButton(leftCX, this._topBarH + 76, '⌂', () => {
+      this._editCam.centerOn(this._editorWorldW / 2, this._editorWorldH / 2);
+      this._updatePanel();
+    }, '18px');
+
+    this._leftZoomInBtn = this._makeIconButton(leftCX, this._topBarH + 126, '+', () => {
+      this._applyZoomAtViewportCenter(1.15);
+    }, '20px');
+
+    this._leftZoomOutBtn = this._makeIconButton(leftCX, this._topBarH + 176, '−', () => {
+      this._applyZoomAtViewportCenter(1 / 1.15);
+    }, '22px');
 
     // =================================================
     // Barra superior
