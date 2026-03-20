@@ -1304,6 +1304,9 @@ _updateToolButtons() {
     this._saveMainBtn._bg.fillRoundedRect(-20, -20, 40, 40, 8);
     this._saveMainBtn._bg.strokeRoundedRect(-20, -20, 40, 40, 8);
   }
+  if (this._loopBtn?.txt) {
+  this._loopBtn.txt.setText(this._isClosed ? '🔒' : '🔓');
+}
 }
   _toggleClosed() {
     this._isClosed = !this._isClosed;
