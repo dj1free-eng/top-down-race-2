@@ -158,12 +158,12 @@ this.add.rectangle(
     padding: { x: 12, y: 8 }
   }
 )
+  .setVisible(false)
   .setInteractive({ useHandCursor: true });
 
 this._panelDeleteBtn.on('pointerup', () => {
   this._deleteSelectedNode();
 });
-
     const back = this.add.text(width - 38, 18, '←', {
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
       fontSize: '22px',
