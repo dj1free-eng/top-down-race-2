@@ -1004,64 +1004,6 @@ if (
   }
 
   // =================================================
-  // Grupo save
-  // =================================================
-  _getSaveToolLabel() {
-    if (this._saveTool === 'save') return '💾';
-    if (this._saveTool === 'load') return '📂';
-    return 'NEW';
-  }
-
-  _runActiveSaveTool() {
-    if (this._saveTool === 'save') return this._saveProject();
-    if (this._saveTool === 'load') return this._loadProject();
-    return this._newProject();
-  }
-
-  _toggleSaveMenu() {
-    if (this._saveMenu) return this._closeSaveMenu();
-
-    const allItems = [
-      { key: 'save', label: '💾' },
-      { key: 'load', label: '📂' },
-      { key: 'new', label: 'NEW' }
-    ];
-
-    const items = allItems.filter(item => item.key !== this._saveTool);
-
-    this._saveMenu = this._makeMenuPanel(this._saveBtnX, this._saveBtnY, items, (item, x, y) => {
-      return this._makeIconButton(
-        x,
-        y,
-        item.label,
-        () => {
-          this._saveTool = item.key;
-          this._saveMainBtn._txt.setText(this._getSaveToolLabel());
-          this._closeSaveMenu();
-          this._runActiveSaveTool();
-        },
-        item.key === 'new' ? '12px' : '16px'
-      );
-    });
-  }
-
-  _closeSaveMenu() {
-    if (!this._saveMenu) return;
-    this._saveMenu.destroy(true);
-    this._saveMenu = null;
-  }
-
-  _isPointerInSaveMenu(pointer) {
-    if (!this._saveMenu) return false;
-    return (
-      pointer.x >= this._saveMenu._x &&
-      pointer.x <= this._saveMenu._x + this._saveMenu._w &&
-      pointer.y >= this._saveMenu._y &&
-      pointer.y <= this._saveMenu._y + this._saveMenu._h
-    );
-  }
-
-  // =================================================
   // Grupo view
   // =================================================
   _getViewToolLabel() {
