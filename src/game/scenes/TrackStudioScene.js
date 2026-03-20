@@ -2141,13 +2141,31 @@ _updatePanel() {
 _exportToGameTrack() {
   const points = this._getBezierPoints();
 
-  if (!points || points.length < 2) return null;
+  if (!Array.isArray(points) || points.length < 2) return null;
 
-  return points.map(p => ({
-    x: Math.round(p.x),
-    y: Math.round(p.y),
-    width: this._trackWidth
-  }));
+  return {
+    name: 'TrackStudio Export',
+    worldW: this._editorWorldW,
+    worldH: this._editorWorldH,
+    trackWidth: this._trackWidth,
+    grassMargin: 120,
+    sampleStepPx: 12,
+    cellSize: 400,
+    shoulderPx: 10,
+    closed: this._isClosed !== false,
+    start: this._nodes[0]
+      ? {
+          x: Math.round(this._nodes[0].x),
+          y: Math.round(this._nodes[0].y),
+          r: 0
+        }
+      : { x: 400, y: 400, r: 0 },
+    centerline: points.map((p) => ({
+      x: Math.round(p.x),
+      y: Math.round(p.y),
+      width: this._trackWidth
+    }))
+  };
 }
   _applyProjectData(data) {
     this._nodes = data.nodes || [];
