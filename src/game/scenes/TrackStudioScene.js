@@ -1947,58 +1947,74 @@ _findControlAt(x, y) {
     this._nodeGfx.strokeCircle(x, y, selected ? 10 : 8);
   }
 
-  _updatePanel() {
-    const guideLoaded = !!this._guideImage;
+_updatePanel() {
+  const guideLoaded = !!this._guideImage;
 
-    if (this._selectedNode < 0 || this._selectedNode >= this._nodes.length) {
-      this._panelText.setText(
-        'Sin nodo seleccionado\n' +
-        `Herramienta: ${this._tool}\n` +
-        `Vista: ${this._getViewToolLabel()}\n` +
-        `Modo: ${this._getModeToolLabel()}\n` +
-        `Pista: ${this._getTrackToolLabel()}\n` +
-        `Guía: ${this._getGuideToolLabel()}\n` +
-        `Nodos: ${this._nodes.length}\n` +
-        `Loop: ${this._isClosed ? 'cerrado' : 'abierto'}\n` +
-        `Meta: ${this._finishLine ? 'sí' : 'no'}\n` +
-        `Checkpoints: ${this._checkpoints.length}\n` +
-        `Guía cargada: ${guideLoaded ? 'sí' : 'no'}\n` +
-        `Guía visible: ${this._guideVisible ? 'sí' : 'no'}\n` +
-        `Alpha guía: ${this._guideAlpha.toFixed(2)}\n` +
-        `Nudge: ${this._getNudgeStep()}px\n` +
-        `Zoom: ${this._editCam ? this._editCam.zoom.toFixed(2) : '0.00'}\n` +
-        `Ancho: ${this._trackWidth}px`
-      );
-      return;
-    }
+  if (this._panelEmptyText) {
+    this._panelEmptyText.setVisible(false);
+  }
 
+  if (!this._panelInfoText) {
+    this._panelInfoText = this.add.text(
+      this.scale.width - this._rightPanelW + 20,
+      this._panelContentY,
+      '',
+      {
+        fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+        fontSize: '13px',
+        color: '#ffffff',
+        lineSpacing: 4,
+        wordWrap: { width: this._rightPanelW - 40 }
+      }
+    );
+  }
+
+  if (this._selectedPiano >= 0 && this._selectedPiano < this._pianos.length) {
+    const p = this._pianos[this._selectedPiano];
+    this._panelInfoText.setVisible(true);
+    this._panelInfoText.setText(
+      `Piano #${this._selectedPiano}\n` +
+      `Centro: ${Math.round(p.point.x)}, ${Math.round(p.point.y)}\n` +
+      `A: ${Math.round(p.a.x)}, ${Math.round(p.a.y)}\n` +
+      `B: ${Math.round(p.b.x)}, ${Math.round(p.b.y)}\n` +
+      `Loop: ${this._isClosed ? 'cerrado' : 'abierto'}\n` +
+      `Zoom: ${this._editCam ? this._editCam.zoom.toFixed(2) : '0.00'}`
+    );
+    return;
+  }
+
+  if (this._selectedNode >= 0 && this._selectedNode < this._nodes.length) {
     const n = this._nodes[this._selectedNode];
     const part = this._selectedPart?.type || 'node';
 
-    this._panelText.setText(
+    this._panelInfoText.setVisible(true);
+    this._panelInfoText.setText(
       `Nodo #${this._selectedNode}\n` +
-      `Herramienta: ${this._tool}\n` +
-      `Vista: ${this._getViewToolLabel()}\n` +
-      `Modo toolbar: ${this._getModeToolLabel()}\n` +
-      `Pista toolbar: ${this._getTrackToolLabel()}\n` +
-      `Guía toolbar: ${this._getGuideToolLabel()}\n` +
       `Modo: ${part}\n` +
-      `Loop: ${this._isClosed ? 'cerrado' : 'abierto'}\n` +
-      `Meta: ${this._finishLine ? 'sí' : 'no'}\n` +
-      `Checkpoints: ${this._checkpoints.length}\n` +
-      `Guía cargada: ${guideLoaded ? 'sí' : 'no'}\n` +
-      `Guía visible: ${this._guideVisible ? 'sí' : 'no'}\n` +
-      `Alpha guía: ${this._guideAlpha.toFixed(2)}\n` +
-      `Nudge: ${this._getNudgeStep()}px\n` +
       `X: ${Math.round(n.x)}\n` +
       `Y: ${Math.round(n.y)}\n` +
       `In: ${Math.round(n.handleIn.x)}, ${Math.round(n.handleIn.y)}\n` +
       `Out: ${Math.round(n.handleOut.x)}, ${Math.round(n.handleOut.y)}\n` +
-      `Total: ${this._nodes.length}\n` +
       `Zoom: ${this._editCam ? this._editCam.zoom.toFixed(2) : '0.00'}\n` +
       `Ancho: ${this._trackWidth}px`
     );
+    return;
   }
+
+  this._panelInfoText.setVisible(false);
+
+  if (this._panelEmptyText) {
+    this._panelEmptyText.setVisible(true);
+    this._panelEmptyText.setText(
+      `Sin selección\n` +
+      `Nodos: ${this._nodes.length}\n` +
+      `Pianos: ${this._pianos.length}\n` +
+      `Meta: ${this._finishLine ? 'sí' : 'no'}\n` +
+      `Checkpoints: ${this._checkpoints.length}\n` +
+      `Guía: ${guideLoaded ? (this._guideVisible ? 'visible' : 'oculta') : 'no cargada'}`
+    );
+  }
+}
 
   _getProjectData() {
     return {
