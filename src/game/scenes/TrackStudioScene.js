@@ -153,8 +153,9 @@ export class TrackStudioScene extends BaseScene {
     // Barra superior
     // =================================================
     const topToolsY = 36;
-    let topX = 260;
+    let topX = 340;
 
+    // grupo archivo
     this._saveBtnX = topX;
     this._saveBtnY = topToolsY;
     this._saveMainBtn = this._makeGroupedMainButton(
@@ -167,6 +168,7 @@ export class TrackStudioScene extends BaseScene {
     );
     topX += 52;
 
+    // grupo vista
     this._viewBtnX = topX;
     this._viewBtnY = topToolsY;
     this._viewMainBtn = this._makeGroupedMainButton(
@@ -179,6 +181,7 @@ export class TrackStudioScene extends BaseScene {
     );
     topX += 52;
 
+    // grupo modo
     this._modeBtnX = topX;
     this._modeBtnY = topToolsY;
     this._modeMainBtn = this._makeGroupedMainButton(
@@ -191,6 +194,7 @@ export class TrackStudioScene extends BaseScene {
     );
     topX += 52;
 
+    // grupo pista
     this._trackBtnX = topX;
     this._trackBtnY = topToolsY;
     this._trackMainBtn = this._makeGroupedMainButton(
@@ -203,6 +207,7 @@ export class TrackStudioScene extends BaseScene {
     );
     topX += 52;
 
+    // grupo guía
     this._guideBtnX = topX;
     this._guideBtnY = topToolsY;
     this._guideMainBtn = this._makeGroupedMainButton(
@@ -213,8 +218,9 @@ export class TrackStudioScene extends BaseScene {
       () => this._toggleGuideMenu(),
       '12px'
     );
-    topX += 52;
+    topX += 60;
 
+    // alpha guía
     this._guideAlphaMinusBtn = this._makeIconButton(topX, topToolsY, 'A-', () => {
       this._changeGuideAlpha(-0.08);
     }, '13px');
@@ -223,13 +229,15 @@ export class TrackStudioScene extends BaseScene {
     this._guideAlphaPlusBtn = this._makeIconButton(topX, topToolsY, 'A+', () => {
       this._changeGuideAlpha(0.08);
     }, '13px');
-    topX += 50;
+    topX += 52;
 
+    // nudge
     this._nudgeStepBtn = this._makeIconButton(topX, topToolsY, String(this._getNudgeStep()), () => {
       this._cycleNudgeStep();
     }, '16px');
-    topX += 44;
+    topX += 48;
 
+    // cruceta
     this._btnLeft = this._makeIconButton(topX, topToolsY, '←', () => {
       this._nudgeSelectedNode(-this._getNudgeStep(), 0);
     }, '18px');
@@ -248,12 +256,12 @@ export class TrackStudioScene extends BaseScene {
     this._btnRight = this._makeIconButton(topX, topToolsY, '→', () => {
       this._nudgeSelectedNode(this._getNudgeStep(), 0);
     }, '18px');
-    topX += 40;
+    topX += 44;
 
+    // borrar
     this._deleteBtn = this._makeIconButton(topX, topToolsY, '🗑', () => {
       this._deleteSelectedNode();
     }, '16px');
-
     // =================================================
     // Mundo de edición
     // =================================================
