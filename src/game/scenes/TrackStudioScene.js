@@ -1915,6 +1915,7 @@ if (Phaser.Math.Distance.Between(x, y, n.handleOut.x, n.handleOut.y) < R_HANDLE)
     this._checkpointGfx.clear();
     this._finishGfx.clear();
     this._nodeGfx.clear();
+        const gridSlots = this._getVisualGridSlots();
 
     const bezier = this._getBezierPoints();
 
@@ -2025,7 +2026,34 @@ if (Phaser.Math.Distance.Between(x, y, n.handleOut.x, n.handleOut.y) < R_HANDLE)
       this._finishGfx.fillCircle(this._finishLine.a.x, this._finishLine.a.y, 5);
       this._finishGfx.fillCircle(this._finishLine.b.x, this._finishLine.b.y, 5);
     }
+    if (gridSlots.length > 0) {
+      for (const s of gridSlots) {
+        const hx = s.tx * (s.len * 0.5);
+        const hy = s.ty * (s.len * 0.5);
+        const wx = s.nx * (s.wid * 0.5);
+        const wy = s.ny * (s.wid * 0.5);
 
+        const p1 = { x: s.cx - hx - wx, y: s.cy - hy - wy };
+        const p2 = { x: s.cx + hx - wx, y: s.cy + hy - wy };
+        const p3 = { x: s.cx + hx + wx, y: s.cy + hy + wy };
+        const p4 = { x: s.cx - hx + wx, y: s.cy - hy + wy };
+
+        this._finishGfx.lineStyle(2, 0xf7f7f7, 0.9);
+        this._finishGfx.beginPath();
+        this._finishGfx.moveTo(p1.x, p1.y);
+        this._finishGfx.lineTo(p2.x, p2.y);
+        this._finishGfx.lineTo(p3.x, p3.y);
+        this._finishGfx.lineTo(p4.x, p4.y);
+        this._finishGfx.closePath();
+        this._finishGfx.strokePath();
+
+        this._finishGfx.fillStyle(0xffffff, 0.08);
+        this._finishGfx.fillPoints([p1, p2, p3, p4], true);
+
+        this._finishGfx.fillStyle(0xffffff, 0.95);
+        this._finishGfx.fillCircle(s.cx, s.cy, 2);
+      }
+    }
     for (let i = 0; i < this._nodes.length; i++) {
       const n = this._nodes[i];
       const selected = i === this._selectedNode;
