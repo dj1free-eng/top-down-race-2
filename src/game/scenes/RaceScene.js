@@ -1221,17 +1221,38 @@ if (t01?.grid?.slots?.length) {
     const p3 = { x: s.x + hx + wx, y: s.y + hy + wy };
     const p4 = { x: s.x - hx + wx, y: s.y - hy + wy };
 
+    // Cajón tipo U: frontal + dos laterales cortos
+    const sideCut = 0.42;
+
+    const l1 = {
+      x: p1.x + (p2.x - p1.x) * sideCut,
+      y: p1.y + (p2.y - p1.y) * sideCut
+    };
+
+    const r1 = {
+      x: p4.x + (p3.x - p4.x) * sideCut,
+      y: p4.y + (p3.y - p4.y) * sideCut
+    };
+
     g.lineStyle(2, 0xffffff, 0.95);
+
+    // lateral izquierdo
     g.beginPath();
     g.moveTo(p1.x, p1.y);
-    g.lineTo(p2.x, p2.y);
-    g.lineTo(p3.x, p3.y);
-    g.lineTo(p4.x, p4.y);
-    g.closePath();
+    g.lineTo(l1.x, l1.y);
     g.strokePath();
 
-    g.fillStyle(0xffffff, 0.08);
-    g.fillPoints([p1, p2, p3, p4], true);
+    // frontal
+    g.beginPath();
+    g.moveTo(p1.x, p1.y);
+    g.lineTo(p4.x, p4.y);
+    g.strokePath();
+
+    // lateral derecho
+    g.beginPath();
+    g.moveTo(p4.x, p4.y);
+    g.lineTo(r1.x, r1.y);
+    g.strokePath();
   }
 
   this.gridDebug = g;
