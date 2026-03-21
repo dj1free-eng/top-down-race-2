@@ -1193,6 +1193,50 @@ if (t01?.finishLine?.a && t01?.finishLine?.b) {
   this.finishLineDebug = g;
   this.uiCam?.ignore?.(g);
 }
+  // 5c) DEBUG VISUAL: parrilla de salida exportada desde TrackStudio
+if (t01?.grid?.slots?.length) {
+  this.gridDebug?.destroy?.();
+
+  const g = this.add.graphics();
+  g.setDepth(19);
+
+  for (const s of t01.grid.slots) {
+    if (!s) continue;
+
+    const len = 56;
+    const wid = 24;
+
+    const tx = Math.cos(s.r || 0);
+    const ty = Math.sin(s.r || 0);
+    const nx = -ty;
+    const ny = tx;
+
+    const hx = tx * (len * 0.5);
+    const hy = ty * (len * 0.5);
+    const wx = nx * (wid * 0.5);
+    const wy = ny * (wid * 0.5);
+
+    const p1 = { x: s.x - hx - wx, y: s.y - hy - wy };
+    const p2 = { x: s.x + hx - wx, y: s.y + hy - wy };
+    const p3 = { x: s.x + hx + wx, y: s.y + hy + wy };
+    const p4 = { x: s.x - hx + wx, y: s.y - hy + wy };
+
+    g.lineStyle(2, 0xffffff, 0.95);
+    g.beginPath();
+    g.moveTo(p1.x, p1.y);
+    g.lineTo(p2.x, p2.y);
+    g.lineTo(p3.x, p3.y);
+    g.lineTo(p4.x, p4.y);
+    g.closePath();
+    g.strokePath();
+
+    g.fillStyle(0xffffff, 0.08);
+    g.fillPoints([p1, p2, p3, p4], true);
+  }
+
+  this.gridDebug = g;
+  this.uiCam?.ignore?.(g);
+}
     // TT: métricas de centerline (progreso por distancia, corrige óvalo)
 this._initTTCenterlineMetrics();
 // ===============================
