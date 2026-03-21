@@ -2126,6 +2126,118 @@ _exportToGameTrack() {
 
   if (!Array.isArray(points) || points.length < 2) return null;
 
+  const finishLine = this._finishLine
+    ? {
+        a: {
+          x: Math.round(this._finishLine.a.x),
+          y: Math.round(this._finishLine.a.y)
+        },
+        b: {
+          x: Math.round(this._finishLine.b.x),
+          y: Math.round(this._finishLine.b.y)
+        },
+        normal: this._finishLine.normal
+          ? {
+              x: Number(this._finishLine.normal.x),
+              y: Number(this._finishLine.normal.y)
+            }
+          : undefined
+      }
+    : null;
+
+  const checkpoints = Array.isArray(this._checkpoints)
+    ? this._checkpoints.map((cp) => ({
+        a: {
+          x: Math.round(cp.a.x),
+          y: Math.round(cp.a.y)
+        },
+        b: {
+          x: Math.round(cp.b.x),
+          y: Math.round(cp.b.y)
+        },
+        normal: cp.normal
+          ? {
+              x: Number(cp.normal.x),
+              y: Number(cp.normal.y)
+            }
+          : undefined
+      }))
+    : [];
+
+  let start = this._nodes[0]
+    ? {
+        x: Math.round(this._nodes[0].x),
+        y: Math.round(this._nodes[0].y),
+        r: 0
+      }
+    : { x: 400, y: 400, r: 0 };
+
+  let grid = null;
+
+  if (finishLine?.a && finishLine?.b) {
+    const midX = (finishLine.a.x + finishLine.b.x) * 0.5;
+    const midY = (finishLine.a.y + finishLine.b.y) * 0.5;
+
+    let nx = finishLine.b.x - finishLine.a.x;
+    let ny = finishLine.b.y - finishLine.a.y;
+    const nLen = Math.hypot(nx, ny) || 1;
+    nx /= nLen;
+    ny /= nLen;
+
+    // tangente de la pista, perpendicular a la meta
+    let tx = -ny;
+    let ty = nx;
+
+    const tLen = Math.hypot(tx, ty) || 1;
+    tx /= tLen;
+    ty /= tLen;
+
+    // rotación base de parrilla
+    const gridRot = Math.atan2(ty, tx);
+
+    // parámetros de parrilla
+    const totalSlots = 20;
+    const rowSpacing = 90;
+    const colOffset = Math.min(this._trackWidth * 0.22, 70);
+    const backOffset = 140;
+
+    const slots = [];
+
+    for (let i = 0; i < totalSlots; i++) {
+      const row = Math.floor(i / 2);
+      const isLeft = i % 2 === 0;
+
+      const side = isLeft ? -1 : 1;
+
+      const x =
+        midX - tx * (backOffset + row * rowSpacing) + nx * (side * colOffset);
+
+      const y =
+        midY - ty * (backOffset + row * rowSpacing) + ny * (side * colOffset);
+
+      slots.push({
+        index: i + 1,
+        x: Math.round(x),
+        y: Math.round(y),
+        r: gridRot
+      });
+    }
+
+    grid = {
+      pole: 'left',
+      rowSpacing,
+      colOffset,
+      backOffset,
+      slots
+    };
+
+    start = {
+      x: slots[0].x,
+      y: slots[0].y,
+      r: slots[0].r
+    };
+  }
+
   return {
     name: 'TrackStudio Export',
     worldW: this._editorWorldW,
@@ -2137,13 +2249,7 @@ _exportToGameTrack() {
     shoulderPx: 10,
     closed: this._isClosed !== false,
 
-    start: this._nodes[0]
-      ? {
-          x: Math.round(this._nodes[0].x),
-          y: Math.round(this._nodes[0].y),
-          r: 0
-        }
-      : { x: 400, y: 400, r: 0 },
+    start,
 
     centerline: points.map((p) => ({
       x: Math.round(p.x),
@@ -2151,43 +2257,9 @@ _exportToGameTrack() {
       width: this._trackWidth
     })),
 
-    finishLine: this._finishLine
-      ? {
-          a: {
-            x: Math.round(this._finishLine.a.x),
-            y: Math.round(this._finishLine.a.y)
-          },
-          b: {
-            x: Math.round(this._finishLine.b.x),
-            y: Math.round(this._finishLine.b.y)
-          },
-          normal: this._finishLine.normal
-            ? {
-                x: Number(this._finishLine.normal.x),
-                y: Number(this._finishLine.normal.y)
-              }
-            : undefined
-        }
-      : null,
-
-    checkpoints: Array.isArray(this._checkpoints)
-      ? this._checkpoints.map((cp) => ({
-          a: {
-            x: Math.round(cp.a.x),
-            y: Math.round(cp.a.y)
-          },
-          b: {
-            x: Math.round(cp.b.x),
-            y: Math.round(cp.b.y)
-          },
-          normal: cp.normal
-            ? {
-                x: Number(cp.normal.x),
-                y: Number(cp.normal.y)
-              }
-            : undefined
-        }))
-      : []
+    finishLine,
+    checkpoints,
+    grid
   };
 }
 // =================================================
