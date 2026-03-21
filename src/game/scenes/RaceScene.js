@@ -1133,7 +1133,7 @@ const carSprite = this.add.sprite(0, 0, 'car');
 // 👇 Ancla el punto “ruedas delanteras” al (0,0) del container.
 // Como estás rotando el sprite con Math.PI/2, normalmente el “morro” queda hacia la derecha.
 // Este origin hace que el pivot esté adelantado (tren delantero).
-carSprite.setOrigin(0.78, 0.50);
+carSprite.setOrigin(0.50, 0.50);
 
 // Sin offsets: el pivot lo define el origin
 carSprite.x = 0;
@@ -1176,7 +1176,7 @@ this.ensureCarSkinTexture(specFinal).then((texKey) => {
   if (!texKey) return;
 
   carSprite.setTexture(texKey);
-  carSprite.setOrigin(0.78, 0.50);
+carSprite.setOrigin(0.50, 0.50);
   // El sprite sigue neutro: rota el rig
   carSprite.rotation = 0;
 
