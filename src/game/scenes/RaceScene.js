@@ -1221,38 +1221,35 @@ if (t01?.grid?.slots?.length) {
     const p3 = { x: s.x + hx + wx, y: s.y + hy + wy };
     const p4 = { x: s.x - hx + wx, y: s.y - hy + wy };
 
-    // Cajón tipo U: frontal + dos laterales cortos
-  const sideCut = 0.32;
+// --- U REAL (abierta hacia atrás) ---
 
-  const l1 = {
-    x: p2.x + (p1.x - p2.x) * sideCut,
-    y: p2.y + (p1.y - p2.y) * sideCut
-  };
+const sideLen = len * 0.35;
 
-  const r1 = {
-    x: p3.x + (p4.x - p3.x) * sideCut,
-    y: p3.y + (p4.y - p3.y) * sideCut
-  };
+// frontal (lado donde se para el coche)
+g.lineStyle(2, 0xffffff, 0.95);
 
-    g.lineStyle(2, 0xffffff, 0.95);
+g.beginPath();
+g.moveTo(p1.x, p1.y);
+g.lineTo(p4.x, p4.y);
+g.strokePath();
 
-  // lateral izquierdo
-  g.beginPath();
-  g.moveTo(p2.x, p2.y);
-  g.lineTo(l1.x, l1.y);
-  g.strokePath();
+// lateral izquierdo (desde frontal hacia atrás)
+g.beginPath();
+g.moveTo(p1.x, p1.y);
+g.lineTo(
+  p1.x - tx * sideLen,
+  p1.y - ty * sideLen
+);
+g.strokePath();
 
-  // frontal
-  g.beginPath();
-  g.moveTo(p1.x, p1.y);
-  g.lineTo(p4.x, p4.y);
-  g.strokePath();
-
-  // lateral derecho
-  g.beginPath();
-  g.moveTo(p3.x, p3.y);
-  g.lineTo(r1.x, r1.y);
-  g.strokePath();
+// lateral derecho (desde frontal hacia atrás)
+g.beginPath();
+g.moveTo(p4.x, p4.y);
+g.lineTo(
+  p4.x - tx * sideLen,
+  p4.y - ty * sideLen
+);
+g.strokePath();
   }
 
   this.gridDebug = g;
