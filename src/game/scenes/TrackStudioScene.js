@@ -1849,7 +1849,64 @@ if (Phaser.Math.Distance.Between(x, y, n.handleOut.x, n.handleOut.y) < R_HANDLE)
     this._updatePanel();
     this._redrawEditor();
   }
+  _getVisualGridSlots() {
+    if (!this._finishLine?.a || !this._finishLine?.b) return [];
 
+    const a = this._finishLine.a;
+    const b = this._finishLine.b;
+
+    const midX = (a.x + b.x) * 0.5;
+    const midY = (a.y + b.y) * 0.5;
+
+    // vector lateral a lo ancho de la meta
+    let nx = b.x - a.x;
+    let ny = b.y - a.y;
+    const nLen = Math.hypot(nx, ny) || 1;
+    nx /= nLen;
+    ny /= nLen;
+
+    // vector longitudinal de parrilla (hacia atrás desde meta)
+    let tx = ny;
+    let ty = -nx;
+    const tLen = Math.hypot(tx, ty) || 1;
+    tx /= tLen;
+    ty /= tLen;
+
+    const totalSlots = 20;
+    const rowSpacing = 90;
+    const colOffset = Math.min(this._trackWidth * 0.22, 70);
+    const backOffset = 140;
+    const slotLen = 56;
+    const slotWid = 24;
+
+    const slots = [];
+
+    for (let i = 0; i < totalSlots; i++) {
+      const row = Math.floor(i / 2);
+      const isLeft = i % 2 === 0;
+      const side = isLeft ? -1 : 1;
+
+      const cx =
+        midX - tx * (backOffset + row * rowSpacing) + nx * (side * colOffset);
+
+      const cy =
+        midY - ty * (backOffset + row * rowSpacing) + ny * (side * colOffset);
+
+      slots.push({
+        index: i + 1,
+        cx,
+        cy,
+        tx,
+        ty,
+        nx,
+        ny,
+        len: slotLen,
+        wid: slotWid
+      });
+    }
+
+    return slots;
+  }
   _redrawEditor() {
     this._trackGfx.clear();
     this._curveGfx.clear();
