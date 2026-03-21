@@ -1928,7 +1928,14 @@ if (Phaser.Math.Distance.Between(x, y, p.b.x, p.b.y) < R_HANDLE) {
       const isLeft = i % 2 === 0;
       const side = isLeft ? -1 : 1;
 
-      const targetS = finishS - (backOffset + row * rowSpacing);
+const lateralFactor = side * 0.5; // izquierda/derecha
+
+const correctedOffset =
+  backOffset +
+  row * rowSpacing +
+  lateralFactor * (rowSpacing * 0.25);
+
+const targetS = finishS - correctedOffset;
       const p = getPointAtS(targetS);
       if (!p) continue;
 
