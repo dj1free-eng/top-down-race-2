@@ -2301,7 +2301,19 @@ _exportToGameTrack() {
 
     const slots = [];
 
-    for (let i = 0; i < totalSlots; i++) {
+// 🔥 usamos la misma lógica que el editor (curva real)
+const visualSlots = this._getVisualGridSlots();
+
+for (let i = 0; i < visualSlots.length; i++) {
+  const s = visualSlots[i];
+
+  slots.push({
+    index: i + 1,
+    x: Math.round(s.cx),
+    y: Math.round(s.cy),
+    r: Math.atan2(s.ty, s.tx)
+  });
+}
       const row = Math.floor(i / 2);
       const isLeft = i % 2 === 0;
 
