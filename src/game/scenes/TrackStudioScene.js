@@ -1852,29 +1852,17 @@ if (Phaser.Math.Distance.Between(x, y, n.handleOut.x, n.handleOut.y) < R_HANDLE)
   _getVisualGridSlots() {
     if (!this._finishLine?.a || !this._finishLine?.b) return [];
 
-    const hit = this._findNearestCurvePoint(
-      (this._finishLine.a.x + this._finishLine.b.x) * 0.5,
-      (this._finishLine.a.y + this._finishLine.b.y) * 0.5
-    );
+    const finishMidX = (this._finishLine.a.x + this._finishLine.b.x) * 0.5;
+    const finishMidY = (this._finishLine.a.y + this._finishLine.b.y) * 0.5;
 
-    if (!hit?.point || !hit?.tangent || !hit?.normal) return [];
+    const baseHit = this._findNearestCurvePoint(finishMidX, finishMidY);
+    if (!baseHit?.point || !baseHit?.tangent || !baseHit?.normal) return [];
 
-    const midX = hit.point.x;
-    const midY = hit.point.y;
-
-    // normal a la pista (izquierda/derecha)
-    let nx = hit.normal.x;
-    let ny = hit.normal.y;
-    const nLen = Math.hypot(nx, ny) || 1;
-    nx /= nLen;
-    ny /= nLen;
-
-    // tangente real de la pista en la meta
-    let tx = hit.tangent.x;
-    let ty = hit.tangent.y;
-    const tLen = Math.hypot(tx, ty) || 1;
-    tx /= tLen;
-    ty /= tLen;
+    let baseTx = baseHit.tangent.x;
+    let baseTy = baseHit.tangent.y;
+    const baseTLen = Math.hypot(baseTx, baseTy) || 1;
+    baseTx /= baseTLen;
+    baseTy /= baseTLen;
 
     const totalSlots = 20;
     const rowSpacing = 90;
@@ -1890,14 +1878,36 @@ if (Phaser.Math.Distance.Between(x, y, n.handleOut.x, n.handleOut.y) < R_HANDLE)
       const isLeft = i % 2 === 0;
       const side = isLeft ? -1 : 1;
 
-      const cx =
-        midX - tx * (backOffset + row * rowSpacing) + nx * (side * colOffset);
+      // punto candidato hacia atrás desde meta
+      const probeX = finishMidX - baseTx * (backOffset + row * rowSpacing);
+      const probeY = finishMidY - baseTy * (backOffset + row * rowSpacing);
 
-      const cy =
-        midY - ty * (backOffset + row * rowSpacing) + ny * (side * colOffset);
+      // reanclar cada fila a la curva real
+      const hit = this._findNearestCurvePoint(probeX, probeY);
+      if (!hit?.point || !hit?.tangent || !hit?.normal) continue;
+
+      let tx = hit.tangent.x;
+      let ty = hit.tangent.y;
+      const tLen = Math.hypot(tx, ty) || 1;
+      tx /= tLen;
+      ty /= tLen;
+
+      let nx = hit.normal.x;
+      let ny = hit.normal.y;
+      const nLen = Math.hypot(nx, ny) || 1;
+      nx /= nLen;
+      ny /= nLen;
+
+      const cx = hit.point.x + nx * (side * colOffset);
+      const cy = hit.point.y + ny * (side * colOffset);
 
       slots.push({
         index: i + 1,
+        x: cx,
+        y: cy,
+        r: Math.atan2(ty, tx),
+
+        // compat con el editor
         cx,
         cy,
         tx,
