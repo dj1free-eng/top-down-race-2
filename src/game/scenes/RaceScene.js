@@ -3602,7 +3602,41 @@ if (this._topSpeedSaveT >= 500) {
 // =========================
 const x = this.car.x;
 const y = this.car.y;
+const prev = this._prevCarPos;
+const curr = { x, y };
 
+const finish = this.track?.meta?.finish || this.track?.meta?.finishLine;
+
+if (finish?.a && finish?.b && prev) {
+  const crossed = this._segmentsIntersect(
+    prev.x, prev.y,
+    curr.x, curr.y,
+    finish.a.x, finish.a.y,
+    finish.b.x, finish.b.y
+  );
+
+  if (crossed && !this._lapCrossCooldown) {
+    console.log('🏁 META CRUZADA');
+
+    this._lapCrossCooldown = true;
+
+    // aquí luego meteremos lógica de vuelta
+  }
+}
+
+// liberar cooldown cuando te alejas un poco
+if (this._lapCrossCooldown) {
+  const dx = x - (finish.a.x + finish.b.x) * 0.5;
+  const dy = y - (finish.a.y + finish.b.y) * 0.5;
+  const dist = Math.hypot(dx, dy);
+
+  if (dist > 200) {
+    this._lapCrossCooldown = false;
+  }
+}
+
+// guardar posición anterior
+this._prevCarPos = curr;
 // 1) Dentro de pista
 const onTrack = this._isOnTrack ? this._isOnTrack(x, y) : true;
 
@@ -5015,4 +5049,14 @@ const fl = j.finishLine || j.finish || j.__autoFinishLine || null;
       finish: finishLine
     };
   }
+  _segmentsIntersect(x1,y1,x2,y2, x3,y3,x4,y4) {
+  function ccw(ax,ay,bx,by,cx,cy) {
+    return (cy - ay) * (bx - ax) > (by - ay) * (cx - ax);
+  }
+
+  return (
+    ccw(x1,y1, x3,y3, x4,y4) !== ccw(x2,y2, x3,y3, x4,y4) &&
+    ccw(x1,y1, x2,y2, x3,y3) !== ccw(x1,y1, x2,y2, x4,y4)
+  );
+}
 }
