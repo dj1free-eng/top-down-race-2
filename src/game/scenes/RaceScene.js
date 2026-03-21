@@ -1091,8 +1091,25 @@ this.simTick = 0;
 this.lapStartTick = null;
 
 // 4) Coche (body físico + rig visual)
+// Spawn real: si hay parrilla exportada, usar slot 1; si no, usar start
+const spawnSlot = Array.isArray(t01?.grid?.slots) && t01.grid.slots.length > 0
+  ? t01.grid.slots[0]
+  : null;
+
+const spawn = spawnSlot
+  ? {
+      x: Number(spawnSlot.x),
+      y: Number(spawnSlot.y),
+      r: Number(spawnSlot.r)
+    }
+  : {
+      x: Number(t01.start.x),
+      y: Number(t01.start.y),
+      r: Number(t01.start.r)
+    };
+
 // Cuerpo físico SIN sprite (evita __MISSING)
-const body = this.physics.add.sprite(t01.start.x, t01.start.y, '__BODY__');
+const body = this.physics.add.sprite(spawn.x, spawn.y, '__BODY__');
 body.setVisible(false);
 
 // Escala del coche según spec FINAL (baseSpec ya incluye overrides del editor)
@@ -1108,7 +1125,7 @@ const VISUAL_SCALE_MULT = 1.35;
 body.setCollideWorldBounds(true);
 body.setBounce(0);
 body.setDrag(0, 0);
-body.rotation = t01.start.r;
+body.rotation = spawn.r;
 
 // Sprite visual: por defecto usa procedural 'car' (fallback seguro)
 const carSprite = this.add.sprite(0, 0, 'car');
