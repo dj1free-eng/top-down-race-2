@@ -1815,12 +1815,12 @@ if (finish?.a && finish?.b) {
     }
   }
 
-  this.finishGfx.setDepth(50);
+    this.finishGfx.setDepth(18);
   this.uiCam?.ignore?.(this.finishGfx);
 }
 this.cpGfx?.destroy?.();
 this.cpGfx = this.add.graphics();
-this.cpGfx.setDepth(49);
+this.cpGfx.setDepth(18);
 this.uiCam?.ignore?.(this.cpGfx);
 
 const _drawGate = (gate, color) => {
