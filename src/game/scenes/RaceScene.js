@@ -911,7 +911,10 @@ if (this._onResizeTouchControls) {
     this.speedHud.clockText = null;
     this.speedHud.built = false;
   }
-
+// cruce linea de meta
+  this._prevCarPos = { x: this.car.x, y: this.car.y };
+this._lapCrossCooldown = false;
+  
   // ===============================
   // FIX: destruir coche y cortar follow
   // ===============================
