@@ -126,8 +126,8 @@ this.carBody = null;
 this.carRig = null;
 
 // Zoom dinámico
-this._zoomGameplayMin = 0.86; // rápido = más lejos
-this._zoomGameplayMax = 1.20; // lento = más cerca
+this._zoomGameplayMin = 0.75; // rápido = más lejos
+this._zoomGameplayMax = 1.50; // lento = más cerca
 this._zoomKmhRef = 140;       // velocidad de referencia
 this._zoomLerp = 0.06;        // suavidad
 this._zoomCurrent = this.zoom;
