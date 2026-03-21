@@ -1850,17 +1850,36 @@ if (Phaser.Math.Distance.Between(x, y, p.b.x, p.b.y) < R_HANDLE) {
   _getVisualGridSlots() {
     if (!this._finishLine?.a || !this._finishLine?.b) return [];
 
+    const pts = this._getBezierPoints();
+    if (!Array.isArray(pts) || pts.length < 2) return [];
+
     const finishMidX = (this._finishLine.a.x + this._finishLine.b.x) * 0.5;
     const finishMidY = (this._finishLine.a.y + this._finishLine.b.y) * 0.5;
 
-    const baseHit = this._findNearestCurvePoint(finishMidX, finishMidY);
-    if (!baseHit?.point || !baseHit?.tangent || !baseHit?.normal) return [];
+    // 1) índice del punto de la centerline más cercano a la meta
+    let bestI = 0;
+    let bestD2 = Infinity;
 
-    let baseTx = baseHit.tangent.x;
-    let baseTy = baseHit.tangent.y;
-    const baseTLen = Math.hypot(baseTx, baseTy) || 1;
-    baseTx /= baseTLen;
-    baseTy /= baseTLen;
+    for (let i = 0; i < pts.length; i++) {
+      const dx = pts[i].x - finishMidX;
+      const dy = pts[i].y - finishMidY;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < bestD2) {
+        bestD2 = d2;
+        bestI = i;
+      }
+    }
+
+    // 2) acumulado de distancia a lo largo de la centerline
+    const cum = [0];
+    for (let i = 1; i < pts.length; i++) {
+      const dx = pts[i].x - pts[i - 1].x;
+      const dy = pts[i].y - pts[i - 1].y;
+      cum[i] = cum[i - 1] + Math.hypot(dx, dy);
+    }
+
+    const totalLen = cum[cum.length - 1] || 1;
+    const finishS = cum[bestI];
 
     const totalSlots = 20;
     const rowSpacing = 90;
@@ -1871,47 +1890,64 @@ if (Phaser.Math.Distance.Between(x, y, p.b.x, p.b.y) < R_HANDLE) {
 
     const slots = [];
 
+    const getPointAtS = (targetS) => {
+      if (!this._isClosed) {
+        targetS = Phaser.Math.Clamp(targetS, 0, totalLen);
+      } else {
+        while (targetS < 0) targetS += totalLen;
+        while (targetS > totalLen) targetS -= totalLen;
+      }
+
+      let idx = 0;
+      while (idx < cum.length - 1 && cum[idx + 1] < targetS) idx++;
+
+      const a = pts[idx];
+      const b = pts[Math.min(idx + 1, pts.length - 1)];
+      const s0 = cum[idx];
+      const s1 = cum[Math.min(idx + 1, cum.length - 1)];
+      const span = Math.max(1e-6, s1 - s0);
+      const t = Phaser.Math.Clamp((targetS - s0) / span, 0, 1);
+
+      const x = Phaser.Math.Linear(a.x, b.x, t);
+      const y = Phaser.Math.Linear(a.y, b.y, t);
+
+      let tx = b.x - a.x;
+      let ty = b.y - a.y;
+      const tl = Math.hypot(tx, ty) || 1;
+      tx /= tl;
+      ty /= tl;
+
+      const nx = -ty;
+      const ny = tx;
+
+      return { x, y, tx, ty, nx, ny };
+    };
+
     for (let i = 0; i < totalSlots; i++) {
       const row = Math.floor(i / 2);
       const isLeft = i % 2 === 0;
       const side = isLeft ? -1 : 1;
 
-      // punto candidato hacia atrás desde meta
-      const probeX = finishMidX - baseTx * (backOffset + row * rowSpacing);
-      const probeY = finishMidY - baseTy * (backOffset + row * rowSpacing);
+      const targetS = finishS - (backOffset + row * rowSpacing);
+      const p = getPointAtS(targetS);
+      if (!p) continue;
 
-      // reanclar cada fila a la curva real
-      const hit = this._findNearestCurvePoint(probeX, probeY);
-      if (!hit?.point || !hit?.tangent || !hit?.normal) continue;
-
-      let tx = hit.tangent.x;
-      let ty = hit.tangent.y;
-      const tLen = Math.hypot(tx, ty) || 1;
-      tx /= tLen;
-      ty /= tLen;
-
-      let nx = hit.normal.x;
-      let ny = hit.normal.y;
-      const nLen = Math.hypot(nx, ny) || 1;
-      nx /= nLen;
-      ny /= nLen;
-
-      const cx = hit.point.x + nx * (side * colOffset);
-      const cy = hit.point.y + ny * (side * colOffset);
+      const cx = p.x + p.nx * (side * colOffset);
+      const cy = p.y + p.ny * (side * colOffset);
 
       slots.push({
         index: i + 1,
         x: cx,
         y: cy,
-        r: Math.atan2(ty, tx),
+        r: Math.atan2(p.ty, p.tx),
 
-        // compat con el editor
+        // compat editor
         cx,
         cy,
-        tx,
-        ty,
-        nx,
-        ny,
+        tx: p.tx,
+        ty: p.ty,
+        nx: p.nx,
+        ny: p.ny,
         len: slotLen,
         wid: slotWid
       });
