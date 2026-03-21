@@ -1607,19 +1607,17 @@ if (Phaser.Math.Distance.Between(x, y, n.handleOut.x, n.handleOut.y) < R_HANDLE)
     if (!p || !p.a || !p.b || !p.point) continue;
 
     // centro lógico del piano
-    if (Phaser.Math.Distance.Between(x, y, p.point.x, p.point.y) < R) {
-      return { type: 'piano', index: i };
-    }
+    if (Phaser.Math.Distance.Between(x, y, p.point.x, p.point.y) < R_NODE) {
+  return { type: 'piano', index: i };
+}
 
-    // extremo A
-    if (Phaser.Math.Distance.Between(x, y, p.a.x, p.a.y) < R) {
-      return { type: 'pianoA', index: i };
-    }
+if (Phaser.Math.Distance.Between(x, y, p.a.x, p.a.y) < R_HANDLE) {
+  return { type: 'pianoA', index: i };
+}
 
-    // extremo B
-    if (Phaser.Math.Distance.Between(x, y, p.b.x, p.b.y) < R) {
-      return { type: 'pianoB', index: i };
-    }
+if (Phaser.Math.Distance.Between(x, y, p.b.x, p.b.y) < R_HANDLE) {
+  return { type: 'pianoB', index: i };
+}
   }
 
   return null;
