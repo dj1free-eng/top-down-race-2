@@ -2272,78 +2272,30 @@ _exportToGameTrack() {
   let grid = null;
 
   if (finishLine?.a && finishLine?.b) {
-    const midX = (finishLine.a.x + finishLine.b.x) * 0.5;
-    const midY = (finishLine.a.y + finishLine.b.y) * 0.5;
+    const visualSlots = this._getVisualGridSlots();
 
-    let nx = finishLine.b.x - finishLine.a.x;
-    let ny = finishLine.b.y - finishLine.a.y;
-    const nLen = Math.hypot(nx, ny) || 1;
-    nx /= nLen;
-    ny /= nLen;
-
-    // tangente de la pista, perpendicular a la meta
-    let tx = ny;
-    let ty = -nx;
-    const tLen = Math.hypot(tx, ty) || 1;
-    tx /= tLen;
-    ty /= tLen;
-
-    // rotación base de parrilla
-    const gridRot = Math.atan2(ty, tx);
-
-    // parámetros de parrilla
-    const totalSlots = 20;
-    const rowSpacing = 90;
-    const colOffset = Math.min(this._trackWidth * 0.22, 70);
-    const backOffset = 140;
-
-    const slots = [];
-
-// 🔥 usamos la misma lógica que el editor (curva real)
-const visualSlots = this._getVisualGridSlots();
-
-for (let i = 0; i < visualSlots.length; i++) {
-  const s = visualSlots[i];
-
-  slots.push({
-    index: i + 1,
-    x: Math.round(s.cx),
-    y: Math.round(s.cy),
-    r: Math.atan2(s.ty, s.tx)
-  });
-}
-      const row = Math.floor(i / 2);
-      const isLeft = i % 2 === 0;
-
-      const side = isLeft ? -1 : 1;
-
-      const x =
-        midX - tx * (backOffset + row * rowSpacing) + nx * (side * colOffset);
-
-      const y =
-        midY - ty * (backOffset + row * rowSpacing) + ny * (side * colOffset);
-
-      slots.push({
-        index: i + 1,
-        x: Math.round(x),
-        y: Math.round(y),
-        r: gridRot
-      });
-    }
+    const slots = visualSlots.map((s, idx) => ({
+      index: idx + 1,
+      x: Math.round(s.cx),
+      y: Math.round(s.cy),
+      r: Math.atan2(s.ty, s.tx)
+    }));
 
     grid = {
       pole: 'left',
-      rowSpacing,
-      colOffset,
-      backOffset,
+      rowSpacing: 90,
+      colOffset: Math.min(this._trackWidth * 0.22, 70),
+      backOffset: 140,
       slots
     };
 
-    start = {
-      x: slots[0].x,
-      y: slots[0].y,
-      r: slots[0].r
-    };
+    if (slots.length > 0) {
+      start = {
+        x: slots[0].x,
+        y: slots[0].y,
+        r: slots[0].r
+      };
+    }
   }
 
   return {
