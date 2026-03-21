@@ -2185,9 +2185,8 @@ _exportToGameTrack() {
     ny /= nLen;
 
     // tangente de la pista, perpendicular a la meta
-    let tx = -ny;
-    let ty = nx;
-
+    let tx = ny;
+    let ty = -nx;
     const tLen = Math.hypot(tx, ty) || 1;
     tx /= tLen;
     ty /= tLen;
