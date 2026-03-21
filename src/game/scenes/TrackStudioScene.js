@@ -1852,22 +1852,26 @@ if (Phaser.Math.Distance.Between(x, y, n.handleOut.x, n.handleOut.y) < R_HANDLE)
   _getVisualGridSlots() {
     if (!this._finishLine?.a || !this._finishLine?.b) return [];
 
-    const a = this._finishLine.a;
-    const b = this._finishLine.b;
+    const hit = this._findNearestCurvePoint(
+      (this._finishLine.a.x + this._finishLine.b.x) * 0.5,
+      (this._finishLine.a.y + this._finishLine.b.y) * 0.5
+    );
 
-    const midX = (a.x + b.x) * 0.5;
-    const midY = (a.y + b.y) * 0.5;
+    if (!hit?.point || !hit?.tangent || !hit?.normal) return [];
 
-    // vector lateral a lo ancho de la meta
-    let nx = b.x - a.x;
-    let ny = b.y - a.y;
+    const midX = hit.point.x;
+    const midY = hit.point.y;
+
+    // normal a la pista (izquierda/derecha)
+    let nx = hit.normal.x;
+    let ny = hit.normal.y;
     const nLen = Math.hypot(nx, ny) || 1;
     nx /= nLen;
     ny /= nLen;
 
-    // vector longitudinal de parrilla (hacia atrás desde meta)
-    let tx = ny;
-    let ty = -nx;
+    // tangente real de la pista en la meta
+    let tx = hit.tangent.x;
+    let ty = hit.tangent.y;
     const tLen = Math.hypot(tx, ty) || 1;
     tx /= tLen;
     ty /= tLen;
