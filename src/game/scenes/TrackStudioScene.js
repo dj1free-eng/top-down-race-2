@@ -2136,6 +2136,7 @@ _exportToGameTrack() {
     cellSize: 400,
     shoulderPx: 10,
     closed: this._isClosed !== false,
+
     start: this._nodes[0]
       ? {
           x: Math.round(this._nodes[0].x),
@@ -2143,11 +2144,50 @@ _exportToGameTrack() {
           r: 0
         }
       : { x: 400, y: 400, r: 0 },
+
     centerline: points.map((p) => ({
       x: Math.round(p.x),
       y: Math.round(p.y),
       width: this._trackWidth
-    }))
+    })),
+
+    finishLine: this._finishLine
+      ? {
+          a: {
+            x: Math.round(this._finishLine.a.x),
+            y: Math.round(this._finishLine.a.y)
+          },
+          b: {
+            x: Math.round(this._finishLine.b.x),
+            y: Math.round(this._finishLine.b.y)
+          },
+          normal: this._finishLine.normal
+            ? {
+                x: Number(this._finishLine.normal.x),
+                y: Number(this._finishLine.normal.y)
+              }
+            : undefined
+        }
+      : null,
+
+    checkpoints: Array.isArray(this._checkpoints)
+      ? this._checkpoints.map((cp) => ({
+          a: {
+            x: Math.round(cp.a.x),
+            y: Math.round(cp.a.y)
+          },
+          b: {
+            x: Math.round(cp.b.x),
+            y: Math.round(cp.b.y)
+          },
+          normal: cp.normal
+            ? {
+                x: Number(cp.normal.x),
+                y: Number(cp.normal.y)
+              }
+            : undefined
+        }))
+      : []
   };
 }
 // =================================================
