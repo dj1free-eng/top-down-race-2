@@ -4567,7 +4567,15 @@ if (Array.isArray(this.gridCars) && this.gridCars.length > 0) {
   gc._timer += dt;
 
   if (gc._timer > gc._reactionDelay) {
-    gc.targetSpeed = gc.maxFwd * 0.55 * gc._speedVar;
+let baseSpeed = gc.maxFwd * 0.55 * gc._speedVar;
+
+// 🎚️ Ajuste por distancia al coche de delante
+if (nearestFrontDist < 80) {
+  const factor = Phaser.Math.Clamp(nearestFrontDist / 80, 0.2, 1);
+  baseSpeed *= factor;
+}
+
+gc.targetSpeed = baseSpeed;
   } else {
     gc.targetSpeed = 0;
   }
