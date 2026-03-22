@@ -4644,7 +4644,7 @@ if (Array.isArray(this.gridCars) && this.gridCars.length > 0) {
 
       gc.speed = Math.min(gc.targetSpeed, gc.speed + gc.accel * dt);
 
-      // 5) Anti-colisión + evitación lateral
+      // 5) Anti-colisión + evitación lateral SUAVE
       let blocked = false;
       let avoidSide = 0;
 
@@ -4667,19 +4667,31 @@ if (Array.isArray(this.gridCars) && this.gridCars.length > 0) {
       if (blocked) {
         gc.targetSpeed *= 0.4;
 
-        const latX = -dirY;
-        const latY = dirX;
-
-        gc.body.setVelocity(
-          dirX * gc.speed + latX * avoidSide * 60,
-          dirY * gc.speed + latY * avoidSide * 60
+        // En vez de empujar lateralmente la velocidad,
+        // desplazamos suavemente su carril virtual.
+        gc._laneOffset = Phaser.Math.Clamp(
+          (gc._laneOffset || 0) + avoidSide * 0.8,
+          -36,
+          36
         );
       } else {
-        gc.body.setVelocity(
-          dirX * gc.speed,
-          dirY * gc.speed
+        // Cuando no hay bloqueo, vuelve poco a poco a su carril base
+        if (gc._baseLaneOffset === undefined) {
+          gc._baseLaneOffset = gc._laneOffset || 0;
+        }
+
+        gc._laneOffset = Phaser.Math.Linear(
+          gc._laneOffset || 0,
+          gc._baseLaneOffset,
+          0.04
         );
       }
+
+      // La velocidad SIEMPRE va en la dirección del coche
+      gc.body.setVelocity(
+        dirX * gc.speed,
+        dirY * gc.speed
+      );
     } else {
       gc.body.setVelocity(0, 0);
       gc.speed = 0;
