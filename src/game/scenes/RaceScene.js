@@ -4552,157 +4552,135 @@ if (this.carRig && this.carBody) {
   this.carRig.rotation = this.carBody.rotation + (this._carVisualRotOffset || 0);
 }
 
-// Coches de parrilla: avance recto básico + sync visual
 if (Array.isArray(this.gridCars) && this.gridCars.length > 0) {
   for (const gc of this.gridCars) {
     if (!gc?.rig || !gc?.body || gc.active === false) continue;
 
     if (this._raceStarted) {
-  if (gc._reactionDelay === undefined) {
-    gc._reactionDelay = Math.random() * 0.6;
-    gc._timer = 0;
-    gc._speedVar = 0.85 + Math.random() * 0.3;
-  }
-
-  gc._timer += dt;
-
-  if (gc._timer > gc._reactionDelay) {
-  const dirX = Math.cos(gc.body.rotation);
-  const dirY = Math.sin(gc.body.rotation);
-
-  let nearestFrontDist = Infinity;
-
-  for (const other of this.gridCars) {
-    if (other === gc || !other?.body) continue;
-
-    const dx = other.body.x - gc.body.x;
-    const dy = other.body.y - gc.body.y;
-
-    const forwardDot = dx * dirX + dy * dirY;
-
-    if (forwardDot > 0) {
-      const dist = Math.hypot(dx, dy);
-      if (dist < nearestFrontDist) {
-        nearestFrontDist = dist;
+      if (gc._reactionDelay === undefined) {
+        gc._reactionDelay = Math.random() * 0.6;
+        gc._timer = 0;
+        gc._speedVar = 0.85 + Math.random() * 0.3;
       }
-    }
-  }
 
-  let baseSpeed = gc.maxFwd * 0.55 * gc._speedVar;
+      gc._timer += dt;
 
-  // 🎚️ Ajuste por distancia al coche de delante
-  if (nearestFrontDist < 80) {
-    const factor = Phaser.Math.Clamp(nearestFrontDist / 80, 0.2, 1);
-    baseSpeed *= factor;
-  }
+      // 1) Seguimiento de pista
+      const idx = this._getNearestTrackPoint(gc.body.x, gc.body.y);
 
-  gc.targetSpeed = baseSpeed;
-} else {
-  gc.targetSpeed = 0;
-}
+      if (idx !== null) {
+        const pts = this.centerlinePoints;
+        const lookAhead = 12;
 
-  gc.speed = Math.min(gc.targetSpeed, gc.speed + gc.accel * dt);
+        const p0 = pts[idx];
+        const p1 = pts[(idx + lookAhead) % pts.length];
 
-  const dirX = Math.cos(gc.body.rotation);
-  const dirY = Math.sin(gc.body.rotation);
-let nearestFrontDist = Infinity;
+        if (p0 && p1) {
+          if (gc._laneOffset === undefined) {
+            const baseSpread = 22;
+            const slotBias = ((gc.slotIndex % 2 === 0) ? 1 : -1) * 10;
+            const randomBias = (Math.random() * 2 - 1) * baseSpread;
+            gc._laneOffset = slotBias + randomBias;
+          }
 
-for (const other of this.gridCars) {
-  if (other === gc) continue;
+          const dx = p1.x - p0.x;
+          const dy = p1.y - p0.y;
+          const len = Math.hypot(dx, dy) || 1;
 
-  const dx = other.body.x - gc.body.x;
-  const dy = other.body.y - gc.body.y;
+          const nx = -dy / len;
+          const ny = dx / len;
 
-  const forwardDot = dx * dirX + dy * dirY;
+          const targetX = p1.x + nx * gc._laneOffset;
+          const targetY = p1.y + ny * gc._laneOffset;
 
-  if (forwardDot > 0) {
-    const dist = Math.hypot(dx, dy);
-    if (dist < nearestFrontDist) {
-      nearestFrontDist = dist;
-    }
-  }
-}
-// 🎯 Seguimiento de pista (lookahead)
-const idx = this._getNearestTrackPoint(gc.body.x, gc.body.y);
+          const tx = targetX - gc.body.x;
+          const ty = targetY - gc.body.y;
 
-if (idx !== null) {
-  const pts = this.centerlinePoints;
-  const lookAhead = 12;
+          const desiredAngle = Math.atan2(ty, tx);
 
-  const p0 = pts[idx];
-  const p1 = pts[(idx + lookAhead) % pts.length];
+          let angleDiff = desiredAngle - gc.body.rotation;
+          angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
 
-  if (p0 && p1) {
-    if (gc._laneOffset === undefined) {
-      const baseSpread = 22;
-      const slotBias = ((gc.slotIndex % 2 === 0) ? 1 : -1) * 10;
-      const randomBias = (Math.random() * 2 - 1) * baseSpread;
-      gc._laneOffset = slotBias + randomBias;
-    }
+          gc.body.rotation += angleDiff * 0.08;
+        }
+      }
 
-    const dx = p1.x - p0.x;
-    const dy = p1.y - p0.y;
-    const len = Math.hypot(dx, dy) || 1;
+      // 2) Dirección actual tras el giro
+      const dirX = Math.cos(gc.body.rotation);
+      const dirY = Math.sin(gc.body.rotation);
 
-    const nx = -dy / len;
-    const ny = dx / len;
+      // 3) Distancia al coche delantero
+      let nearestFrontDist = Infinity;
 
-    const targetX = p1.x + nx * gc._laneOffset;
-    const targetY = p1.y + ny * gc._laneOffset;
+      for (const other of this.gridCars) {
+        if (other === gc || !other?.body) continue;
 
-    const tx = targetX - gc.body.x;
-    const ty = targetY - gc.body.y;
+        const dx = other.body.x - gc.body.x;
+        const dy = other.body.y - gc.body.y;
 
-    const desiredAngle = Math.atan2(ty, tx);
+        const forwardDot = dx * dirX + dy * dirY;
 
-    let angleDiff = desiredAngle - gc.body.rotation;
-    angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+        if (forwardDot > 0) {
+          const dist = Math.hypot(dx, dy);
+          if (dist < nearestFrontDist) {
+            nearestFrontDist = dist;
+          }
+        }
+      }
 
-    gc.body.rotation += angleDiff * 0.08;
-  }
-}
-      // 🚧 Anti-colisión + evitación lateral
-let blocked = false;
-let avoidSide = 0;
+      // 4) Velocidad objetivo
+      if (gc._timer > gc._reactionDelay) {
+        let baseSpeed = gc.maxFwd * 0.55 * gc._speedVar;
 
-for (const other of this.gridCars) {
-  if (other === gc) continue;
+        if (nearestFrontDist < 80) {
+          const factor = Phaser.Math.Clamp(nearestFrontDist / 80, 0.2, 1);
+          baseSpeed *= factor;
+        }
 
-  const dx = other.body.x - gc.body.x;
-  const dy = other.body.y - gc.body.y;
+        gc.targetSpeed = baseSpeed;
+      } else {
+        gc.targetSpeed = 0;
+      }
 
-  const dist = Math.hypot(dx, dy);
+      gc.speed = Math.min(gc.targetSpeed, gc.speed + gc.accel * dt);
 
-  const forwardDot = dx * dirX + dy * dirY;
+      // 5) Anti-colisión + evitación lateral
+      let blocked = false;
+      let avoidSide = 0;
 
-  if (forwardDot > 0 && dist < 70) {
-    blocked = true;
+      for (const other of this.gridCars) {
+        if (other === gc || !other?.body) continue;
 
-    // decidir hacia qué lado esquivar
-    const sideDot = dx * (-dirY) + dy * dirX;
-    avoidSide = sideDot > 0 ? -1 : 1;
+        const dx = other.body.x - gc.body.x;
+        const dy = other.body.y - gc.body.y;
+        const dist = Math.hypot(dx, dy);
+        const forwardDot = dx * dirX + dy * dirY;
 
-    break;
-  }
-}
+        if (forwardDot > 0 && dist < 70) {
+          blocked = true;
+          const sideDot = dx * (-dirY) + dy * dirX;
+          avoidSide = sideDot > 0 ? -1 : 1;
+          break;
+        }
+      }
 
-if (blocked) {
-  gc.targetSpeed *= 0.4;
+      if (blocked) {
+        gc.targetSpeed *= 0.4;
 
-  // vector lateral (perpendicular a la dirección)
-  const latX = -dirY;
-  const latY = dirX;
+        const latX = -dirY;
+        const latY = dirX;
 
-  // aplicar desplazamiento lateral suave
-  gc.body.setVelocity(
-    dirX * gc.speed + latX * avoidSide * 60,
-    dirY * gc.speed + latY * avoidSide * 60
-  );
-} else {
-  gc.body.setVelocity(dirX * gc.speed, dirY * gc.speed);
-}
-  gc.body.setVelocity(dirX * gc.speed, dirY * gc.speed);
-}else {
+        gc.body.setVelocity(
+          dirX * gc.speed + latX * avoidSide * 60,
+          dirY * gc.speed + latY * avoidSide * 60
+        );
+      } else {
+        gc.body.setVelocity(
+          dirX * gc.speed,
+          dirY * gc.speed
+        );
+      }
+    } else {
       gc.body.setVelocity(0, 0);
       gc.speed = 0;
       gc.targetSpeed = 0;
