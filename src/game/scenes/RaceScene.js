@@ -4547,7 +4547,16 @@ if (this.carRig && this.carBody) {
   this.carRig.rotation = this.carBody.rotation + (this._carVisualRotOffset || 0);
 }
 
+// Sincronizar rigs de coches de parrilla
+if (Array.isArray(this.gridCars) && this.gridCars.length > 0) {
+  for (const gc of this.gridCars) {
+    if (!gc?.rig || !gc?.body) continue;
 
+    gc.rig.x = gc.body.x;
+    gc.rig.y = gc.body.y;
+    gc.rig.rotation = gc.body.rotation + (this._carVisualRotOffset || 0);
+  }
+}
   }
 ensureOffTexture() {
   const key = 'off';
