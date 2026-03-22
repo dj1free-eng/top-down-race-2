@@ -1228,7 +1228,7 @@ const aiSpawn = {
 
   const aiRig = this.add.container(aiBody.x, aiBody.y, [aiSprite]);
   aiRig.setDepth(30);
-
+aiRig.rotation = aiBody.rotation + (this._carVisualRotOffset || 0);
   this.aiCarBody = aiBody;
   this.aiCarRig = aiRig;
 
