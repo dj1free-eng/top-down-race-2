@@ -4576,7 +4576,30 @@ if (Array.isArray(this.gridCars) && this.gridCars.length > 0) {
 
   const dirX = Math.cos(gc.body.rotation);
   const dirY = Math.sin(gc.body.rotation);
-// 🚧 Anti-colisión + evitación lateral
+
+// 🎯 Seguimiento de pista (lookahead)
+const idx = this._getNearestTrackPoint(gc.body.x, gc.body.y);
+
+if (idx !== null) {
+  const lookAhead = 12; // cuanto mayor, más suave
+  const target = this.centerlinePoints[(idx + lookAhead) % this.centerlinePoints.length];
+
+  if (target) {
+    const tx = target.x - gc.body.x;
+    const ty = target.y - gc.body.y;
+
+    const desiredAngle = Math.atan2(ty, tx);
+
+    let angleDiff = desiredAngle - gc.body.rotation;
+
+    // normalizar ángulo (-PI, PI)
+    angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+
+    // girar suavemente
+    gc.body.rotation += angleDiff * 0.08;
+  }
+}      
+      // 🚧 Anti-colisión + evitación lateral
 let blocked = false;
 let avoidSide = 0;
 
