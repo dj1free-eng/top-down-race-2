@@ -1092,9 +1092,7 @@ this.lapStartTick = null;
 
 // 4) Coche (body físico + rig visual)
 // Spawn real: si hay parrilla exportada, usar slot 1; si no, usar start
-const spawnSlot = Array.isArray(t01?.grid?.slots) && t01.grid.slots.length > 0
-  ? t01.grid.slots[0]
-  : null;
+const spawnSlot = this._getGridSpawnSlot(t01, 0);
 
 const GRID_SPAWN_BACK = 44; // antes 18
 
