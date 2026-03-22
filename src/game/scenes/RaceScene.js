@@ -4576,16 +4576,24 @@ if (Array.isArray(this.gridCars) && this.gridCars.length > 0) {
         const p1 = pts[(idx + lookAhead) % pts.length];
 
         if (p0 && p1) {
-          if (gc._laneOffset === undefined) {
-            const baseSpread = 22;
-            const slotBias = ((gc.slotIndex % 2 === 0) ? 1 : -1) * 10;
-            const randomBias = (Math.random() * 2 - 1) * baseSpread;
-            gc._laneOffset = slotBias + randomBias;
-          }
+  const safeHalfTrack = Math.max(18, ((p1.width || this.track?.trackWidth || 140) * 0.5) - 26);
 
-          const dx = p1.x - p0.x;
-          const dy = p1.y - p0.y;
-          const len = Math.hypot(dx, dy) || 1;
+  if (gc._laneOffset === undefined) {
+    const baseSpread = Math.min(16, safeHalfTrack * 0.45);
+    const slotBias = ((gc.slotIndex % 2 === 0) ? 1 : -1) * Math.min(8, safeHalfTrack * 0.25);
+    const randomBias = (Math.random() * 2 - 1) * baseSpread;
+    gc._laneOffset = Phaser.Math.Clamp(slotBias + randomBias, -safeHalfTrack, safeHalfTrack);
+    gc._baseLaneOffset = gc._laneOffset;
+  } else {
+    gc._laneOffset = Phaser.Math.Clamp(gc._laneOffset, -safeHalfTrack, safeHalfTrack);
+    if (gc._baseLaneOffset !== undefined) {
+      gc._baseLaneOffset = Phaser.Math.Clamp(gc._baseLaneOffset, -safeHalfTrack, safeHalfTrack);
+    }
+  }
+
+  const dx = p1.x - p0.x;
+  const dy = p1.y - p0.y;
+  const len = Math.hypot(dx, dy) || 1;
 
           const nx = -dy / len;
           const ny = dx / len;
