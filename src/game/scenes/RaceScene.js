@@ -4558,14 +4558,27 @@ if (Array.isArray(this.gridCars) && this.gridCars.length > 0) {
     if (!gc?.rig || !gc?.body || gc.active === false) continue;
 
     if (this._raceStarted) {
-      gc.targetSpeed = gc.maxFwd * 0.55;
-      gc.speed = Math.min(gc.targetSpeed, gc.speed + gc.accel * dt);
+  if (gc._reactionDelay === undefined) {
+    gc._reactionDelay = Math.random() * 0.6;
+    gc._timer = 0;
+    gc._speedVar = 0.85 + Math.random() * 0.3;
+  }
 
-      const dirX = Math.cos(gc.body.rotation);
-      const dirY = Math.sin(gc.body.rotation);
+  gc._timer += dt;
 
-      gc.body.setVelocity(dirX * gc.speed, dirY * gc.speed);
-    } else {
+  if (gc._timer > gc._reactionDelay) {
+    gc.targetSpeed = gc.maxFwd * 0.55 * gc._speedVar;
+  } else {
+    gc.targetSpeed = 0;
+  }
+
+  gc.speed = Math.min(gc.targetSpeed, gc.speed + gc.accel * dt);
+
+  const dirX = Math.cos(gc.body.rotation);
+  const dirY = Math.sin(gc.body.rotation);
+
+  gc.body.setVelocity(dirX * gc.speed, dirY * gc.speed);
+}else {
       gc.body.setVelocity(0, 0);
       gc.speed = 0;
       gc.targetSpeed = 0;
