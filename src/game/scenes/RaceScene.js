@@ -1201,7 +1201,8 @@ carSprite.setOrigin(0.50, 0.50);
 // ========================================
 // IA DEBUG (slot 2)
 // ========================================
-if (gridSpawns.length > 1) {
+this.gridCars = [];
+  if (gridSpawns.length > 1) {
 const aiSpawn0 = gridSpawns?.[1];
 if (!aiSpawn0) return;
 
@@ -1231,7 +1232,12 @@ const aiSpawn = {
 aiRig.rotation = aiBody.rotation + (this._carVisualRotOffset || 0);
   this.aiCarBody = aiBody;
   this.aiCarRig = aiRig;
-
+this.gridCars.push({
+  body: aiBody,
+  rig: aiRig,
+  sprite: aiSprite,
+  slotIndex: 1
+});
   this.ensureCarSkinTexture(specFinal).then((texKey) => {
     if (!texKey || !this.aiCarRig?.scene || !aiSprite?.scene) return;
 
