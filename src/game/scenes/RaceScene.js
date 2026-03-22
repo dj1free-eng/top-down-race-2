@@ -1096,11 +1096,13 @@ const spawnSlot = Array.isArray(t01?.grid?.slots) && t01.grid.slots.length > 0
   ? t01.grid.slots[0]
   : null;
 
+const GRID_SPAWN_BACK = 18;
+
 const spawn = spawnSlot
   ? {
-      x: Number(spawnSlot.x),
-      y: Number(spawnSlot.y),
-      r: Number(spawnSlot.r)
+      x: Number(spawnSlot.x) - Math.cos(Number(spawnSlot.r)) * GRID_SPAWN_BACK,
+      y: Number(spawnSlot.y) - Math.sin(Number(spawnSlot.r)) * GRID_SPAWN_BACK,
+      r: Number(spawnSlot.r) + Math.PI
     }
   : {
       x: Number(t01.start.x),
