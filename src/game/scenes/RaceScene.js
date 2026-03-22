@@ -4576,7 +4576,29 @@ if (Array.isArray(this.gridCars) && this.gridCars.length > 0) {
 
   const dirX = Math.cos(gc.body.rotation);
   const dirY = Math.sin(gc.body.rotation);
+// 🚧 Anti-colisión simple (coche delante)
+let blocked = false;
 
+for (const other of this.gridCars) {
+  if (other === gc) continue;
+
+  const dx = other.body.x - gc.body.x;
+  const dy = other.body.y - gc.body.y;
+
+  const dist = Math.hypot(dx, dy);
+
+  // coche delante (proyección en dirección de avance)
+  const forwardDot = dx * dirX + dy * dirY;
+
+  if (forwardDot > 0 && dist < 60) {
+    blocked = true;
+    break;
+  }
+}
+
+if (blocked) {
+  gc.targetSpeed *= 0.2; // frena fuerte
+}
   gc.body.setVelocity(dirX * gc.speed, dirY * gc.speed);
 }else {
       gc.body.setVelocity(0, 0);
