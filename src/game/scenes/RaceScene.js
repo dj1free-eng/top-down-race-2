@@ -1202,15 +1202,17 @@ carSprite.setOrigin(0.50, 0.50);
 // IA DEBUG (slot 2)
 // ========================================
 this.gridCars = [];
-  if (gridSpawns.length > 1) {
-const aiSpawn0 = gridSpawns?.[1];
-if (!aiSpawn0) return;
+const MAX_GRID_CARS = Math.min(gridSpawns.length, 6); // player + 5 coches visibles de prueba
 
-const aiSpawn = {
-  x: Number(aiSpawn0.x) - Math.cos(Number(aiSpawn0.r)) * GRID_SPAWN_BACK,
-  y: Number(aiSpawn0.y) - Math.sin(Number(aiSpawn0.r)) * GRID_SPAWN_BACK,
-  r: Number(aiSpawn0.r)
-};
+for (let i = 1; i < MAX_GRID_CARS; i++) {
+  const aiSpawn0 = gridSpawns[i];
+  if (!aiSpawn0) continue;
+
+  const aiSpawn = {
+    x: Number(aiSpawn0.x) - Math.cos(Number(aiSpawn0.r)) * GRID_SPAWN_BACK,
+    y: Number(aiSpawn0.y) - Math.sin(Number(aiSpawn0.r)) * GRID_SPAWN_BACK,
+    r: Number(aiSpawn0.r)
+  };
 
   const aiBody = this.physics.add.sprite(aiSpawn.x, aiSpawn.y, '__BODY__');
   aiBody.setVisible(false);
@@ -1229,17 +1231,17 @@ const aiSpawn = {
 
   const aiRig = this.add.container(aiBody.x, aiBody.y, [aiSprite]);
   aiRig.setDepth(30);
-aiRig.rotation = aiBody.rotation + (this._carVisualRotOffset || 0);
-  this.aiCarBody = aiBody;
-  this.aiCarRig = aiRig;
-this.gridCars.push({
-  body: aiBody,
-  rig: aiRig,
-  sprite: aiSprite,
-  slotIndex: 1
-});
+  aiRig.rotation = aiBody.rotation + (this._carVisualRotOffset || 0);
+
+  this.gridCars.push({
+    body: aiBody,
+    rig: aiRig,
+    sprite: aiSprite,
+    slotIndex: i
+  });
+
   this.ensureCarSkinTexture(specFinal).then((texKey) => {
-    if (!texKey || !this.aiCarRig?.scene || !aiSprite?.scene) return;
+    if (!texKey || !aiRig?.scene || !aiSprite?.scene) return;
 
     aiSprite.setTexture(texKey);
     aiSprite.setOrigin(0.50, 0.50);
