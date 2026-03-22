@@ -1198,7 +1198,48 @@ carSprite.setOrigin(0.50, 0.50);
     this.minimap.car.setScale(s);
   }
 });
+// ========================================
+// IA DEBUG (slot 2)
+// ========================================
+if (gridSpawns.length > 1) {
+  const aiSpawn0 = gridSpawns[1];
 
+  const aiSpawn = {
+    x: Number(aiSpawn0.x) - Math.cos(Number(aiSpawn0.r)) * GRID_SPAWN_BACK,
+    y: Number(aiSpawn0.y) - Math.sin(Number(aiSpawn0.r)) * GRID_SPAWN_BACK,
+    r: Number(aiSpawn0.r)
+  };
+
+  const aiBody = this.physics.add.sprite(aiSpawn.x, aiSpawn.y, '__BODY__');
+  aiBody.setVisible(false);
+  aiBody.setCircle(Math.round(baseRadius * vScale));
+  aiBody.setCollideWorldBounds(true);
+  aiBody.setBounce(0);
+  aiBody.setDrag(0, 0);
+  aiBody.rotation = aiSpawn.r;
+
+  const aiSprite = this.add.sprite(0, 0, 'car');
+  aiSprite.setOrigin(0.50, 0.50);
+  aiSprite.x = 0;
+  aiSprite.y = 0;
+  aiSprite.rotation = 0;
+  aiSprite.setScale(carSprite.scaleX, carSprite.scaleY);
+
+  const aiRig = this.add.container(aiBody.x, aiBody.y, [aiSprite]);
+  aiRig.setDepth(30);
+
+  this.aiCarBody = aiBody;
+  this.aiCarRig = aiRig;
+
+  this.ensureCarSkinTexture(specFinal).then((texKey) => {
+    if (!texKey || !this.aiCarRig?.scene || !aiSprite?.scene) return;
+
+    aiSprite.setTexture(texKey);
+    aiSprite.setOrigin(0.50, 0.50);
+    aiSprite.rotation = 0;
+    aiSprite.setScale(carSprite.scaleX, carSprite.scaleY);
+  });
+}
 // 5b) DEBUG VISUAL: dibujar finishLine del JSON importado
 if (t01?.finishLine?.a && t01?.finishLine?.b) {
   this.finishLineDebug?.destroy?.();
