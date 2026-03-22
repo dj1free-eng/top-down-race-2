@@ -1205,9 +1205,9 @@ if (gridSpawns.length > 1) {
 const aiSpawn0 = gridSpawns?.[1];
 if (!aiSpawn0) return;
 
-  const aiSpawn = {
-  x: Number(aiSpawn0.x),
-  y: Number(aiSpawn0.y),
+const aiSpawn = {
+  x: Number(aiSpawn0.x) - Math.cos(Number(aiSpawn0.r)) * GRID_SPAWN_BACK,
+  y: Number(aiSpawn0.y) - Math.sin(Number(aiSpawn0.r)) * GRID_SPAWN_BACK,
   r: Number(aiSpawn0.r)
 };
 
