@@ -1202,13 +1202,14 @@ carSprite.setOrigin(0.50, 0.50);
 // IA DEBUG (slot 2)
 // ========================================
 if (gridSpawns.length > 1) {
-  const aiSpawn0 = gridSpawns[1];
+const aiSpawn0 = gridSpawns?.[1];
+if (!aiSpawn0) return;
 
   const aiSpawn = {
-    x: Number(aiSpawn0.x) - Math.cos(Number(aiSpawn0.r)) * GRID_SPAWN_BACK,
-    y: Number(aiSpawn0.y) - Math.sin(Number(aiSpawn0.r)) * GRID_SPAWN_BACK,
-    r: Number(aiSpawn0.r)
-  };
+  x: Number(aiSpawn0.x),
+  y: Number(aiSpawn0.y),
+  r: Number(aiSpawn0.r)
+};
 
   const aiBody = this.physics.add.sprite(aiSpawn.x, aiSpawn.y, '__BODY__');
   aiBody.setVisible(false);
