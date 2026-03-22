@@ -5278,6 +5278,26 @@ const fl = j.finishLine || j.finish || j.__autoFinishLine || null;
       r: Number(s.r)
     };
   }
+  _getNearestTrackPoint(x, y) {
+  const pts = this.centerlinePoints;
+  if (!Array.isArray(pts) || pts.length < 2) return null;
+
+  let bestI = 0;
+  let bestD = Infinity;
+
+  for (let i = 0; i < pts.length; i++) {
+    const dx = pts[i].x - x;
+    const dy = pts[i].y - y;
+    const d = dx * dx + dy * dy;
+
+    if (d < bestD) {
+      bestD = d;
+      bestI = i;
+    }
+  }
+
+  return bestI;
+}
   _segmentsIntersect(x1,y1,x2,y2, x3,y3,x4,y4) {
   function ccw(ax,ay,bx,by,cx,cy) {
     return (cy - ay) * (bx - ax) > (by - ay) * (cx - ax);
