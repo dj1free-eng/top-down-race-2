@@ -4581,24 +4581,41 @@ if (Array.isArray(this.gridCars) && this.gridCars.length > 0) {
 const idx = this._getNearestTrackPoint(gc.body.x, gc.body.y);
 
 if (idx !== null) {
-  const lookAhead = 12; // cuanto mayor, más suave
-  const target = this.centerlinePoints[(idx + lookAhead) % this.centerlinePoints.length];
+  const pts = this.centerlinePoints;
+  const lookAhead = 12;
 
-  if (target) {
-    const tx = target.x - gc.body.x;
-    const ty = target.y - gc.body.y;
+  const p0 = pts[idx];
+  const p1 = pts[(idx + lookAhead) % pts.length];
+
+  if (p0 && p1) {
+    if (gc._laneOffset === undefined) {
+      const baseSpread = 22;
+      const slotBias = ((gc.slotIndex % 2 === 0) ? 1 : -1) * 10;
+      const randomBias = (Math.random() * 2 - 1) * baseSpread;
+      gc._laneOffset = slotBias + randomBias;
+    }
+
+    const dx = p1.x - p0.x;
+    const dy = p1.y - p0.y;
+    const len = Math.hypot(dx, dy) || 1;
+
+    const nx = -dy / len;
+    const ny = dx / len;
+
+    const targetX = p1.x + nx * gc._laneOffset;
+    const targetY = p1.y + ny * gc._laneOffset;
+
+    const tx = targetX - gc.body.x;
+    const ty = targetY - gc.body.y;
 
     const desiredAngle = Math.atan2(ty, tx);
 
     let angleDiff = desiredAngle - gc.body.rotation;
-
-    // normalizar ángulo (-PI, PI)
     angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
 
-    // girar suavemente
     gc.body.rotation += angleDiff * 0.08;
   }
-}      
+}
       // 🚧 Anti-colisión + evitación lateral
 let blocked = false;
 let avoidSide = 0;
