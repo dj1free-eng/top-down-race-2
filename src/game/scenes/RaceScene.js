@@ -1027,7 +1027,7 @@ if (!meta) {
 }
 
 const t01 = meta;
-
+this.centerlinePoints = Array.isArray(t01?.centerline) ? t01.centerline : [];
 // Reconstrucción mínima del track runtime a partir del JSON/meta
 const geom = buildTrackRibbon({
   centerline: t01.centerline || [],
