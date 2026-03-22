@@ -4552,10 +4552,24 @@ if (this.carRig && this.carBody) {
   this.carRig.rotation = this.carBody.rotation + (this._carVisualRotOffset || 0);
 }
 
-// Sincronizar rigs de coches de parrilla
+// Coches de parrilla: avance recto básico + sync visual
 if (Array.isArray(this.gridCars) && this.gridCars.length > 0) {
   for (const gc of this.gridCars) {
-    if (!gc?.rig || !gc?.body) continue;
+    if (!gc?.rig || !gc?.body || gc.active === false) continue;
+
+    if (this._raceStarted) {
+      gc.targetSpeed = gc.maxFwd * 0.55;
+      gc.speed = Math.min(gc.targetSpeed, gc.speed + gc.accel * dt);
+
+      const dirX = Math.cos(gc.body.rotation);
+      const dirY = Math.sin(gc.body.rotation);
+
+      gc.body.setVelocity(dirX * gc.speed, dirY * gc.speed);
+    } else {
+      gc.body.setVelocity(0, 0);
+      gc.speed = 0;
+      gc.targetSpeed = 0;
+    }
 
     gc.rig.x = gc.body.x;
     gc.rig.y = gc.body.y;
