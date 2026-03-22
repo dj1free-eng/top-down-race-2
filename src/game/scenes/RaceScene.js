@@ -1096,7 +1096,7 @@ const spawnSlot = Array.isArray(t01?.grid?.slots) && t01.grid.slots.length > 0
   ? t01.grid.slots[0]
   : null;
 
-const GRID_SPAWN_BACK = 32; // antes 18
+const GRID_SPAWN_BACK = 40; // antes 18
 
 const spawn = spawnSlot
   ? {
