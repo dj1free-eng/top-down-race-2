@@ -5130,6 +5130,22 @@ const fl = j.finishLine || j.finish || j.__autoFinishLine || null;
       finish: finishLine
     };
   }
+    _getGridSpawnSlot(trackMeta, slotIndex = 0) {
+    const slots = trackMeta?.grid?.slots;
+
+    if (!Array.isArray(slots) || slots.length === 0) return null;
+    if (slotIndex < 0 || slotIndex >= slots.length) return null;
+
+    const s = slots[slotIndex];
+    if (!s) return null;
+
+    return {
+      index: slotIndex,
+      x: Number(s.x),
+      y: Number(s.y),
+      r: Number(s.r)
+    };
+  }
   _segmentsIntersect(x1,y1,x2,y2, x3,y3,x4,y4) {
   function ccw(ax,ay,bx,by,cx,cy) {
     return (cy - ay) * (bx - ax) > (by - ay) * (cx - ax);
