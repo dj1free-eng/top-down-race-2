@@ -1240,8 +1240,8 @@ for (let i = 1; i < MAX_GRID_CARS; i++) {
     slotIndex: i,
     speed: 0,
     targetSpeed: 0,
-    accel: accel,
-    maxFwd: maxFwd,
+    accel: 600,
+maxFwd: 220,
     active: true
   });
 
