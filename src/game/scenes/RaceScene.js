@@ -4576,8 +4576,9 @@ if (Array.isArray(this.gridCars) && this.gridCars.length > 0) {
 
   const dirX = Math.cos(gc.body.rotation);
   const dirY = Math.sin(gc.body.rotation);
-// 🚧 Anti-colisión simple (coche delante)
+// 🚧 Anti-colisión + evitación lateral
 let blocked = false;
+let avoidSide = 0;
 
 for (const other of this.gridCars) {
   if (other === gc) continue;
@@ -4587,17 +4588,33 @@ for (const other of this.gridCars) {
 
   const dist = Math.hypot(dx, dy);
 
-  // coche delante (proyección en dirección de avance)
   const forwardDot = dx * dirX + dy * dirY;
 
-  if (forwardDot > 0 && dist < 60) {
+  if (forwardDot > 0 && dist < 70) {
     blocked = true;
+
+    // decidir hacia qué lado esquivar
+    const sideDot = dx * (-dirY) + dy * dirX;
+    avoidSide = sideDot > 0 ? -1 : 1;
+
     break;
   }
 }
 
 if (blocked) {
-  gc.targetSpeed *= 0.2; // frena fuerte
+  gc.targetSpeed *= 0.4;
+
+  // vector lateral (perpendicular a la dirección)
+  const latX = -dirY;
+  const latY = dirX;
+
+  // aplicar desplazamiento lateral suave
+  gc.body.setVelocity(
+    dirX * gc.speed + latX * avoidSide * 60,
+    dirY * gc.speed + latY * avoidSide * 60
+  );
+} else {
+  gc.body.setVelocity(dirX * gc.speed, dirY * gc.speed);
 }
   gc.body.setVelocity(dirX * gc.speed, dirY * gc.speed);
 }else {
