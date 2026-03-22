@@ -1233,11 +1233,16 @@ for (let i = 1; i < MAX_GRID_CARS; i++) {
   aiRig.setDepth(30);
   aiRig.rotation = aiBody.rotation + (this._carVisualRotOffset || 0);
 
-  this.gridCars.push({
+    this.gridCars.push({
     body: aiBody,
     rig: aiRig,
     sprite: aiSprite,
-    slotIndex: i
+    slotIndex: i,
+    speed: 0,
+    targetSpeed: 0,
+    accel: accel,
+    maxFwd: maxFwd,
+    active: true
   });
 
   this.ensureCarSkinTexture(specFinal).then((texKey) => {
