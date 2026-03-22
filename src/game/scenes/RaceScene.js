@@ -1097,7 +1097,7 @@ const gridSpawns = Array.isArray(t01?.grid?.slots)
       .map((_, i) => this._getGridSpawnSlot(t01, i))
       .filter(Boolean)
   : [];
-
+const spawnSlot = this._getGridSpawnSlot(t01, 0);
 const GRID_SPAWN_BACK = 44; // antes 18
 
 const spawn = spawnSlot
