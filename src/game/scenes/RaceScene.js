@@ -4570,53 +4570,60 @@ if (Array.isArray(this.gridCars) && this.gridCars.length > 0) {
 
       gc._timer += dt;
 
-      // 1) Seguimiento de pista
-      const idx = this._getNearestTrackPoint(gc.body.x, gc.body.y);
+// 1) Seguimiento de pista
+const idx = this._getNearestTrackPoint(gc.body.x, gc.body.y);
 
-      if (idx !== null) {
-        const pts = this.centerlinePoints;
-        const lookAhead = 12;
+if (idx !== null) {
+  const pts = this.centerlinePoints;
 
-        const p0 = pts[idx];
-        const p1 = pts[(idx + lookAhead) % pts.length];
-
-        if (p0 && p1) {
-  const safeHalfTrack = Math.max(18, ((p1.width || this.track?.trackWidth || 140) * 0.5) - 26);
-
-  if (gc._laneOffset === undefined) {
-    const baseSpread = Math.min(16, safeHalfTrack * 0.45);
-    const slotBias = ((gc.slotIndex % 2 === 0) ? 1 : -1) * Math.min(8, safeHalfTrack * 0.25);
-    const randomBias = (Math.random() * 2 - 1) * baseSpread;
-    gc._laneOffset = Phaser.Math.Clamp(slotBias + randomBias, -safeHalfTrack, safeHalfTrack);
-    gc._baseLaneOffset = gc._laneOffset;
-  } else {
-    gc._laneOffset = Phaser.Math.Clamp(gc._laneOffset, -safeHalfTrack, safeHalfTrack);
-    if (gc._baseLaneOffset !== undefined) {
-      gc._baseLaneOffset = Phaser.Math.Clamp(gc._baseLaneOffset, -safeHalfTrack, safeHalfTrack);
-    }
+  if (gc._driveStyle === undefined) {
+    gc._driveStyle = {
+      lookAhead: Phaser.Math.Between(9, 15),
+      steerGain: 0.06 + Math.random() * 0.05
+    };
   }
 
-  const dx = p1.x - p0.x;
-  const dy = p1.y - p0.y;
-  const len = Math.hypot(dx, dy) || 1;
+  const lookAhead = gc._driveStyle.lookAhead;
+  const p0 = pts[idx];
+  const p1 = pts[(idx + lookAhead) % pts.length];
 
-          const nx = -dy / len;
-          const ny = dx / len;
+  if (p0 && p1) {
+    const safeHalfTrack = Math.max(18, ((p1.width || this.track?.trackWidth || 140) * 0.5) - 26);
 
-          const targetX = p1.x + nx * gc._laneOffset;
-          const targetY = p1.y + ny * gc._laneOffset;
-
-          const tx = targetX - gc.body.x;
-          const ty = targetY - gc.body.y;
-
-          const desiredAngle = Math.atan2(ty, tx);
-
-          let angleDiff = desiredAngle - gc.body.rotation;
-          angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
-
-          gc.body.rotation += angleDiff * 0.08;
-        }
+    if (gc._laneOffset === undefined) {
+      const baseSpread = Math.min(16, safeHalfTrack * 0.45);
+      const slotBias = ((gc.slotIndex % 2 === 0) ? 1 : -1) * Math.min(8, safeHalfTrack * 0.25);
+      const randomBias = (Math.random() * 2 - 1) * baseSpread;
+      gc._laneOffset = Phaser.Math.Clamp(slotBias + randomBias, -safeHalfTrack, safeHalfTrack);
+      gc._baseLaneOffset = gc._laneOffset;
+    } else {
+      gc._laneOffset = Phaser.Math.Clamp(gc._laneOffset, -safeHalfTrack, safeHalfTrack);
+      if (gc._baseLaneOffset !== undefined) {
+        gc._baseLaneOffset = Phaser.Math.Clamp(gc._baseLaneOffset, -safeHalfTrack, safeHalfTrack);
       }
+    }
+
+    const dx = p1.x - p0.x;
+    const dy = p1.y - p0.y;
+    const len = Math.hypot(dx, dy) || 1;
+
+    const nx = -dy / len;
+    const ny = dx / len;
+
+    const targetX = p1.x + nx * gc._laneOffset;
+    const targetY = p1.y + ny * gc._laneOffset;
+
+    const tx = targetX - gc.body.x;
+    const ty = targetY - gc.body.y;
+
+    const desiredAngle = Math.atan2(ty, tx);
+
+    let angleDiff = desiredAngle - gc.body.rotation;
+    angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+
+    gc.body.rotation += angleDiff * gc._driveStyle.steerGain;
+  }
+}
 
       // 2) Dirección actual tras el giro
       const dirX = Math.cos(gc.body.rotation);
