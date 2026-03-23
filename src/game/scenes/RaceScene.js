@@ -1231,7 +1231,7 @@ for (let i = 1; i < MAX_GRID_CARS; i++) {
   const aiSpec = aiSkinPool.length > 0
     ? Phaser.Utils.Array.GetRandom(aiSkinPool)
     : specFinal;
-const aiParams = resolveCarParams(aiSpec, {});
+
   const aiSprite = this.add.sprite(0, 0, 'car');
   aiSprite.setOrigin(0.50, 0.50);
   aiSprite.x = 0;
@@ -1244,16 +1244,16 @@ const aiParams = resolveCarParams(aiSpec, {});
   aiRig.rotation = aiBody.rotation + (this._carVisualRotOffset || 0);
 
     this.gridCars.push({
-  body: aiBody,
-  rig: aiRig,
-  sprite: aiSprite,
-  slotIndex: i,
-  speed: 0,
-  targetSpeed: 0,
-  accel: aiParams.accel,
-  maxFwd: aiParams.maxFwd,
-  active: true
-});
+    body: aiBody,
+    rig: aiRig,
+    sprite: aiSprite,
+    slotIndex: i,
+    speed: 0,
+    targetSpeed: 0,
+    accel: 600,
+maxFwd: 220,
+    active: true
+  });
 
   this.ensureCarSkinTexture(aiSpec).then((texKey) => {
     if (!texKey || !aiRig?.scene || !aiSprite?.scene) return;
@@ -3514,8 +3514,17 @@ try { this.cameras.main.ignore(this._touchDbg); } catch (e) {}
   update(time, deltaMs) {
     const dt = Math.min(0.05, (deltaMs || 0) / 1000);
 
+// SIM TICK accumulator
+this._simAccMs = (this._simAccMs || 0) + (deltaMs || 0);
+const SIM_STEP_MS = 1000 / 60;
+if (this._simAccMs > 250) this._simAccMs = 250;
+while (this._simAccMs >= SIM_STEP_MS) {
+  this.simTick++;
+  this._simAccMs -= SIM_STEP_MS;
+}
 // ✅ SIM TICK (aprox) — base para cronómetro determinista
 // Por ahora: acumulamos tiempo y convertimos a ticks de 60 Hz.
+// Más adelante haremos timestep fijo real.
 this._simAccMs = (this._simAccMs || 0) + (deltaMs || 0);
 
 const simStep = 1000 / 60;
@@ -3526,6 +3535,7 @@ while (this._simAccMs >= simStep) {
   this.simTick++;
   this._simAccMs -= simStep;
 }
+    
     // ==============================
 // Time Trial HUD v1.2 — update (provisional)
 // (IMPORTANTE: el tiempo NO corre hasta lights out)
@@ -4558,26 +4568,13 @@ if (Array.isArray(this.gridCars) && this.gridCars.length > 0) {
 
     if (this._raceStarted) {
       if (gc._reactionDelay === undefined) {
-        gc._targetRival = null;
-gc._retargetTimer = 0;
         gc._reactionDelay = Math.random() * 0.6;
         gc._timer = 0;
         gc._speedVar = 0.85 + Math.random() * 0.3;
       }
 
       gc._timer += dt;
-// 🎯 Selección de rival aleatorio cada cierto tiempo
-gc._retargetTimer -= dt;
 
-if (gc._retargetTimer <= 0) {
-  const candidates = this.gridCars.filter(c => c !== gc && c.active !== false);
-
-  if (candidates.length > 0) {
-    gc._targetRival = Phaser.Utils.Array.GetRandom(candidates);
-  }
-
-  gc._retargetTimer = 2 + Math.random() * 3; // cambia cada 2–5s
-}
       // 1) Seguimiento de pista
       const idx = this._getNearestTrackPoint(gc.body.x, gc.body.y);
 
@@ -4677,20 +4674,14 @@ if (gc._retargetTimer <= 0) {
         const dist = Math.hypot(dx, dy);
         const forwardDot = dx * dirX + dy * dirY;
 
-if (forwardDot > 0 && dist < 70) {
-  blocked = true;
+        if (forwardDot > 0 && dist < 70) {
+          blocked = true;
+          const sideDot = dx * (-dirY) + dy * dirX;
+          avoidSide = sideDot > 0 ? -1 : 1;
+          break;
+        }
+      }
 
-  const sideDot = dx * (-dirY) + dy * dirX;
-  avoidSide = sideDot > 0 ? -1 : 1;
-
-  // 🎯 prioridad si es su rival
-  if (other === gc._targetRival) {
-    avoidSide = (Math.random() > 0.5 ? 1 : -1); // más agresivo
-  }
-
-  break;
-}
-}
       if (blocked) {
         gc.targetSpeed *= 0.55;
 
@@ -4740,6 +4731,7 @@ if (forwardDot > 0 && dist < 70) {
     gc.rig.rotation = gc.body.rotation + (this._carVisualRotOffset || 0);
   }
 }
+  }
 ensureOffTexture() {
   const key = 'off';
   const size = 1024;
