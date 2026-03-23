@@ -1231,7 +1231,7 @@ for (let i = 1; i < MAX_GRID_CARS; i++) {
   const aiSpec = aiSkinPool.length > 0
     ? Phaser.Utils.Array.GetRandom(aiSkinPool)
     : specFinal;
-
+const aiParams = resolveCarParams(aiSpec, {});
   const aiSprite = this.add.sprite(0, 0, 'car');
   aiSprite.setOrigin(0.50, 0.50);
   aiSprite.x = 0;
@@ -1244,16 +1244,16 @@ for (let i = 1; i < MAX_GRID_CARS; i++) {
   aiRig.rotation = aiBody.rotation + (this._carVisualRotOffset || 0);
 
     this.gridCars.push({
-    body: aiBody,
-    rig: aiRig,
-    sprite: aiSprite,
-    slotIndex: i,
-    speed: 0,
-    targetSpeed: 0,
-    accel: 600,
-maxFwd: 220,
-    active: true
-  });
+  body: aiBody,
+  rig: aiRig,
+  sprite: aiSprite,
+  slotIndex: i,
+  speed: 0,
+  targetSpeed: 0,
+  accel: aiParams.accel,
+  maxFwd: aiParams.maxFwd,
+  active: true
+});
 
   this.ensureCarSkinTexture(aiSpec).then((texKey) => {
     if (!texKey || !aiRig?.scene || !aiSprite?.scene) return;
