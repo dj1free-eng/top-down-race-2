@@ -1244,16 +1244,19 @@ for (let i = 1; i < MAX_GRID_CARS; i++) {
   aiRig.rotation = aiBody.rotation + (this._carVisualRotOffset || 0);
 
     this.gridCars.push({
-    body: aiBody,
-    rig: aiRig,
-    sprite: aiSprite,
-    slotIndex: i,
-    speed: 0,
-    targetSpeed: 0,
-    accel: 600,
-maxFwd: 220,
-    active: true
-  });
+  body: aiBody,
+  rig: aiRig,
+  sprite: aiSprite,
+  slotIndex: i,
+
+  speed: 0,
+  targetSpeed: 0,
+
+  // personalidad base por coche
+  accel: 520 + Math.random() * 180,
+  maxFwd: 205 + Math.random() * 45,
+  active: true
+});
 
   this.ensureCarSkinTexture(aiSpec).then((texKey) => {
     if (!texKey || !aiRig?.scene || !aiSprite?.scene) return;
@@ -3514,14 +3517,6 @@ try { this.cameras.main.ignore(this._touchDbg); } catch (e) {}
   update(time, deltaMs) {
     const dt = Math.min(0.05, (deltaMs || 0) / 1000);
 
-// SIM TICK accumulator
-this._simAccMs = (this._simAccMs || 0) + (deltaMs || 0);
-const SIM_STEP_MS = 1000 / 60;
-if (this._simAccMs > 250) this._simAccMs = 250;
-while (this._simAccMs >= SIM_STEP_MS) {
-  this.simTick++;
-  this._simAccMs -= SIM_STEP_MS;
-}
 // ✅ SIM TICK (aprox) — base para cronómetro determinista
 // Por ahora: acumulamos tiempo y convertimos a ticks de 60 Hz.
 // Más adelante haremos timestep fijo real.
