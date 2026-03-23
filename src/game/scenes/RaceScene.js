@@ -4652,7 +4652,7 @@ if (Array.isArray(this.gridCars) && this.gridCars.length > 0) {
 
       gc.speed = Math.min(gc.targetSpeed, gc.speed + gc.accel * dt);
 
-      // 5) Anti-colisión + evitación lateral SUAVE
+      // 5) Anti-colisión + adelantamiento simple
       let blocked = false;
       let avoidSide = 0;
 
@@ -4673,17 +4673,27 @@ if (Array.isArray(this.gridCars) && this.gridCars.length > 0) {
       }
 
       if (blocked) {
-        gc.targetSpeed *= 0.4;
+        gc.targetSpeed *= 0.55;
 
-        // En vez de empujar lateralmente la velocidad,
-        // desplazamos suavemente su carril virtual.
+        if (gc._overtakeSide === undefined || gc._overtakeTimer <= 0) {
+          gc._overtakeSide = avoidSide || (Math.random() > 0.5 ? 1 : -1);
+          gc._overtakeTimer = 45;
+        }
+
+        gc._overtakeTimer -= 1;
+
         gc._laneOffset = Phaser.Math.Clamp(
-          (gc._laneOffset || 0) + avoidSide * 0.8,
+          (gc._laneOffset || 0) + gc._overtakeSide * 1.2,
           -36,
           36
         );
       } else {
-        // Cuando no hay bloqueo, vuelve poco a poco a su carril base
+        gc._overtakeTimer = Math.max(0, (gc._overtakeTimer || 0) - 1);
+
+        if ((gc._overtakeTimer || 0) <= 0) {
+          gc._overtakeSide = 0;
+        }
+
         if (gc._baseLaneOffset === undefined) {
           gc._baseLaneOffset = gc._laneOffset || 0;
         }
