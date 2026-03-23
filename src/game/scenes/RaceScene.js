@@ -4568,13 +4568,26 @@ if (Array.isArray(this.gridCars) && this.gridCars.length > 0) {
 
     if (this._raceStarted) {
       if (gc._reactionDelay === undefined) {
+        gc._targetRival = null;
+gc._retargetTimer = 0;
         gc._reactionDelay = Math.random() * 0.6;
         gc._timer = 0;
         gc._speedVar = 0.85 + Math.random() * 0.3;
       }
 
       gc._timer += dt;
+// 🎯 Selección de rival aleatorio cada cierto tiempo
+gc._retargetTimer -= dt;
 
+if (gc._retargetTimer <= 0) {
+  const candidates = this.gridCars.filter(c => c !== gc && c.active !== false);
+
+  if (candidates.length > 0) {
+    gc._targetRival = Phaser.Utils.Array.GetRandom(candidates);
+  }
+
+  gc._retargetTimer = 2 + Math.random() * 3; // cambia cada 2–5s
+}
       // 1) Seguimiento de pista
       const idx = this._getNearestTrackPoint(gc.body.x, gc.body.y);
 
@@ -4674,13 +4687,19 @@ if (Array.isArray(this.gridCars) && this.gridCars.length > 0) {
         const dist = Math.hypot(dx, dy);
         const forwardDot = dx * dirX + dy * dirY;
 
-        if (forwardDot > 0 && dist < 70) {
-          blocked = true;
-          const sideDot = dx * (-dirY) + dy * dirX;
-          avoidSide = sideDot > 0 ? -1 : 1;
-          break;
-        }
-      }
+if (forwardDot > 0 && dist < 70) {
+  blocked = true;
+
+  const sideDot = dx * (-dirY) + dy * dirX;
+  avoidSide = sideDot > 0 ? -1 : 1;
+
+  // 🎯 prioridad si es su rival
+  if (other === gc._targetRival) {
+    avoidSide = (Math.random() > 0.5 ? 1 : -1); // más agresivo
+  }
+
+  break;
+}
 
       if (blocked) {
         gc.targetSpeed *= 0.55;
