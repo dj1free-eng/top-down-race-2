@@ -3514,17 +3514,8 @@ try { this.cameras.main.ignore(this._touchDbg); } catch (e) {}
   update(time, deltaMs) {
     const dt = Math.min(0.05, (deltaMs || 0) / 1000);
 
-// SIM TICK accumulator
-this._simAccMs = (this._simAccMs || 0) + (deltaMs || 0);
-const SIM_STEP_MS = 1000 / 60;
-if (this._simAccMs > 250) this._simAccMs = 250;
-while (this._simAccMs >= SIM_STEP_MS) {
-  this.simTick++;
-  this._simAccMs -= SIM_STEP_MS;
-}
 // ✅ SIM TICK (aprox) — base para cronómetro determinista
 // Por ahora: acumulamos tiempo y convertimos a ticks de 60 Hz.
-// Más adelante haremos timestep fijo real.
 this._simAccMs = (this._simAccMs || 0) + (deltaMs || 0);
 
 const simStep = 1000 / 60;
@@ -3535,7 +3526,6 @@ while (this._simAccMs >= simStep) {
   this.simTick++;
   this._simAccMs -= simStep;
 }
-    
     // ==============================
 // Time Trial HUD v1.2 — update (provisional)
 // (IMPORTANTE: el tiempo NO corre hasta lights out)
