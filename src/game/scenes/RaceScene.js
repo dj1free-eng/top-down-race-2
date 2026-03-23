@@ -4700,7 +4700,7 @@ if (forwardDot > 0 && dist < 70) {
 
   break;
 }
-
+}
       if (blocked) {
         gc.targetSpeed *= 0.55;
 
@@ -4750,7 +4750,6 @@ if (forwardDot > 0 && dist < 70) {
     gc.rig.rotation = gc.body.rotation + (this._carVisualRotOffset || 0);
   }
 }
-  }
 ensureOffTexture() {
   const key = 'off';
   const size = 1024;
