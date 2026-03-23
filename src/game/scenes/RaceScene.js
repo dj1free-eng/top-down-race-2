@@ -4578,7 +4578,7 @@ if (idx !== null) {
 
   if (gc._driveStyle === undefined) {
     gc._driveStyle = {
-      lookAhead: Phaser.Math.Between(9, 15),
+      lookAhead: Phaser.Math.Between(6, 9),
       steerGain: 0.06 + Math.random() * 0.05
     };
   }
