@@ -1201,7 +1201,13 @@ carSprite.setOrigin(0.50, 0.50);
 // ========================================
 // IA DEBUG (slot 2)
 // ========================================
-this.gridCars = [];
+const aiSkinPool = Object.values(CAR_SPECS).filter((s) =>
+  s &&
+  s.id &&
+  s.skin &&
+  s.id !== specFinal.id
+);
+  this.gridCars = [];
 const MAX_GRID_CARS = Math.min(gridSpawns.length, 6); // player + 5 coches visibles de prueba
 
 for (let i = 1; i < MAX_GRID_CARS; i++) {
@@ -1221,6 +1227,10 @@ for (let i = 1; i < MAX_GRID_CARS; i++) {
   aiBody.setBounce(0);
   aiBody.setDrag(0, 0);
   aiBody.rotation = aiSpawn.r;
+
+  const aiSpec = aiSkinPool.length > 0
+    ? Phaser.Utils.Array.GetRandom(aiSkinPool)
+    : specFinal;
 
   const aiSprite = this.add.sprite(0, 0, 'car');
   aiSprite.setOrigin(0.50, 0.50);
@@ -1245,7 +1255,7 @@ maxFwd: 220,
     active: true
   });
 
-  this.ensureCarSkinTexture(specFinal).then((texKey) => {
+  this.ensureCarSkinTexture(aiSpec).then((texKey) => {
     if (!texKey || !aiRig?.scene || !aiSprite?.scene) return;
 
     aiSprite.setTexture(texKey);
