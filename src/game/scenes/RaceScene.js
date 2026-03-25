@@ -1208,7 +1208,7 @@ const aiSkinPool = Object.values(CAR_SPECS).filter((s) =>
   s.id !== specFinal.id
 );
   this.gridCars = [];
-const MAX_GRID_CARS = Math.min(gridSpawns.length, 6); // player + 5 coches visibles de prueba
+const MAX_GRID_CARS = gridSpawns.length;
 
 for (let i = 1; i < MAX_GRID_CARS; i++) {
   const aiSpawn0 = gridSpawns[i];
