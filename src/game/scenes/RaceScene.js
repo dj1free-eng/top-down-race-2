@@ -4650,7 +4650,7 @@ if (idx !== null) {
 
       // 4) Velocidad objetivo
       if (gc._timer > gc._reactionDelay) {
-        let baseSpeed = gc.maxFwd * 0.55 * gc._speedVar;
+let baseSpeed = gc.maxFwd * 1 * gc._speedVar;
 
         if (nearestFrontDist < 80) {
           const factor = Phaser.Math.Clamp(nearestFrontDist / 80, 0.2, 1);
