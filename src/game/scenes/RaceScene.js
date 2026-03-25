@@ -4689,7 +4689,7 @@ if (idx !== null) {
 
         if (gc._overtakeSide === undefined || gc._overtakeTimer <= 0) {
           gc._overtakeSide = avoidSide || (Math.random() > 0.5 ? 1 : -1);
-          gc._overtakeTimer = 45;
+          gc._overtakeTimer = 90;
         }
 
         gc._overtakeTimer -= 1;
