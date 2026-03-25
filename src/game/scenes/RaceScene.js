@@ -4650,7 +4650,7 @@ if (idx !== null) {
 
       // 4) Velocidad objetivo
       if (gc._timer > gc._reactionDelay) {
-let baseSpeed = gc.maxFwd * 1 * gc._speedVar;
+        let baseSpeed = gc.maxFwd * 0.55 * gc._speedVar;
 
         if (nearestFrontDist < 80) {
           const factor = Phaser.Math.Clamp(nearestFrontDist / 80, 0.2, 1);
@@ -4676,7 +4676,7 @@ let baseSpeed = gc.maxFwd * 1 * gc._speedVar;
         const dist = Math.hypot(dx, dy);
         const forwardDot = dx * dirX + dy * dirY;
 
-        if (forwardDot > 0 && dist < 70) {
+        if (forwardDot > 0 && dist < 110) {
           blocked = true;
           const sideDot = dx * (-dirY) + dy * dirX;
           avoidSide = sideDot > 0 ? -1 : 1;
@@ -4685,7 +4685,7 @@ let baseSpeed = gc.maxFwd * 1 * gc._speedVar;
       }
 
       if (blocked) {
-        gc.targetSpeed *= 0.55;
+        gc.targetSpeed *= 0.85;
 
         if (gc._overtakeSide === undefined || gc._overtakeTimer <= 0) {
           gc._overtakeSide = avoidSide || (Math.random() > 0.5 ? 1 : -1);
