@@ -4695,7 +4695,7 @@ if (idx !== null) {
         gc._overtakeTimer -= 1;
 
         gc._laneOffset = Phaser.Math.Clamp(
-          (gc._laneOffset || 0) + gc._overtakeSide * 1.2,
+          (gc._laneOffset || 0) + gc._overtakeSide * 2.4,
           -36,
           36
         );
