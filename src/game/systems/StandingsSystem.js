@@ -42,9 +42,8 @@ const cars = new Map();
 - @returns {CarData}
   */
   function _normalise(raw) {
-  const id = String(raw?.id ?? ‘’);
-  if (!id) throw new Error(’[StandingsSystem] updateCar: id is required’);
-
+const id = String(raw?.id ?? '');
+if (!id) throw new Error('[StandingsSystem] updateCar: id is required');
 ```
 return {
   id,
