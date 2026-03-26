@@ -4561,7 +4561,14 @@ if (this.carRig && this.carBody) {
 if (Array.isArray(this.gridCars) && this.gridCars.length > 0) {
   for (const gc of this.gridCars) {
     if (!gc?.rig || !gc?.body || gc.active === false) continue;
+const idx = this._getNearestTrackPoint(gc.body.x, gc.body.y);
 
+this.standings.updateCar({
+  id: `ai_${gc.slotIndex}`,
+  lap: 0,
+  checkpointIndex: idx || 0,
+  progress: 0
+});
     if (this._raceStarted) {
       if (gc._reactionDelay === undefined) {
         gc._reactionDelay = Math.random() * 0.6;
@@ -4734,6 +4741,15 @@ if (idx !== null) {
     gc.rig.rotation = gc.body.rotation + (this._carVisualRotOffset || 0);
   }
 }
+    // ✅ STANDINGS (PLAYER)
+const playerIdx = this._getNearestTrackPoint(this.carBody.x, this.carBody.y);
+
+this.standings.updateCar({
+  id: 'player',
+  lap: this.lapCount || 0,
+  checkpointIndex: playerIdx || 0,
+  progress: 0
+});
   }
 ensureOffTexture() {
   const key = 'off';
