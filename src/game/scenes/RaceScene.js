@@ -4508,9 +4508,13 @@ if (this.hud?.setText) {
   const lapNow = (this.timing?.started && this.timing.lapStart != null)
     ? (performance.now() - this.timing.lapStart)
     : null;
+  
+const standings = this.standings.getStandings();
+const playerPos = this.standings.getPosition('player') || '-';
 
-  this.hud.setText(
-    `LAP ${this.lapCount || 0}\n` +
+this.hud.setText(
+  `POS ${playerPos}/${standings.length}\n` +
+  `LAP ${this.lapCount || 0}\n` +
     `NOW  ${fmtTime(lapNow)}\n` +
     `S1   ${fmtTime(this.timing?.s1)}\n` +
     `S2   ${fmtTime(this.timing?.s2)}\n` +
