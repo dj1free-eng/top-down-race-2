@@ -2238,69 +2238,7 @@ this.tweens.add({
 this.scale.on('resize', (gameSize) => {
   if (this.ttHud?.timeText) this.ttHud.timeText.setX(gameSize.width / 2);
 });
-// =================================================
-// SPEED HUD v1 (km/h) — bottom center
-// =================================================
-const spdPadB = 12;
-const spdY = this.scale.height - spdPadB;
 
-this.speedHudBg = this.add.rectangle(
-  this.scale.width / 2,
-  spdY,
-  140,
-  54,
-  0x000000,
-  0.55
-)
-  .setOrigin(0.5, 1)
-  .setScrollFactor(0)
-  .setDepth(1205);
-
-// Texto grande (velocidad)
-this.speedHudText = this.add.text(
-  this.scale.width / 2,
-  spdY - 36,
-  '0',
-  {
-    fontFamily: 'Orbitron, system-ui, -apple-system, Segoe UI, Roboto, Arial',
-    fontSize: '28px',
-    color: '#ffffff',
-    fontStyle: '800'
-  }
-)
-  .setOrigin(0.5, 0)
-  .setScrollFactor(0)
-  .setDepth(1206);
-
-// Unidad
-this.speedHudUnit = this.add.text(
-  this.scale.width / 2,
-  spdY - 14,
-  'km/h',
-  {
-    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial',
-    fontSize: '12px',
-    color: '#dfe6ff'
-  }
-)
-  .setOrigin(0.5, 0)
-  .setScrollFactor(0)
-  .setDepth(1206);
-
-// Reposicionar en resize / rotación
-this.scale.on('resize', (gs) => {
-  if (!this.speedHudBg) return;
-
-  const y = gs.height - spdPadB;
-
-  this.speedHudBg.setPosition(gs.width / 2, y);
-  this.speedHudText.setPosition(gs.width / 2, y - 36);
-  this.speedHudUnit.setPosition(gs.width / 2, y - 14);
-});
-    // ✅ Evitar “HUD fantasma” con zoom: el world cam no debe renderizar UI
-try {
-  this.cameras.main.ignore([this.speedHudBg, this.speedHudText, this.speedHudUnit]);
-} catch (e) {}
 // =================================================
 // DEV HUD (panel derecha) — solo para desarrollo
 // (sin botones: zoom/cull se operarán desde Config más adelante)
