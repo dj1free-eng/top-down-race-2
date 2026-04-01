@@ -869,7 +869,7 @@ this._onShutdownRaceScene = () => {
   try { this.events.removeAllListeners('postupdate'); } catch (e) {}
 
   // 1) Quitar listeners de resize (si no, se duplican al reentrar)
-  if (this._onResizeSpeedHud) this.scale.off('resize', this._onResizeSpeedHud);
+
   if (this._reflowStartModal) this.scale.off('resize', this._reflowStartModal);
   if (this._onResizeUiCam) this.scale.off('resize', this._onResizeUiCam);
   if (this._onResizeDevModal) this.scale.off('resize', this._onResizeDevModal);
@@ -893,25 +893,6 @@ if (this._onResizeTouchControls) {
   // 3) Modal semáforo refs
   this._startModalBg = null;
 
-  // 4) Destruir HUD GPS para evitar “doble HUD” / layouts rotos en 2ª entrada
-  if (this.speedHud) {
-    const list = [
-      this.speedHud.base,
-      this.speedHud.speedText,
-      this.speedHud.unitText,
-      this.speedHud.clockText,
-    ].filter(Boolean);
-
-    list.forEach(o => {
-      try { if (o.scene) o.destroy(); } catch (e) {}
-    });
-
-    this.speedHud.base = null;
-    this.speedHud.speedText = null;
-    this.speedHud.unitText = null;
-    this.speedHud.clockText = null;
-    this.speedHud.built = false;
-  }
 // cruce linea de meta
   this._prevCarPos = { x: this.car.x, y: this.car.y };
 this._lapCrossCooldown = false;
