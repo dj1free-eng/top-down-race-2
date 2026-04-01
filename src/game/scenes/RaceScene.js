@@ -2702,30 +2702,6 @@ this.scale.on('resize', this._onResizeDevModal);
 
 // UI de upgrades desactivada en carrera (se moverá a Shop/Garage)
 this.upUI = null;
-  // =================================================
-// BANNER INFERIOR (base visual)
-// =================================================
-this.load.image('banner-inferior', 'assets/ui/banner-inferior.webp');
-
-this.bottomBanner = this.add.image(
-  this.scale.width / 2,
-  this.scale.height,
-  'banner-inferior'
-)
-  .setOrigin(0.5, 1)
-  .setScrollFactor(0)
-  .setDepth(2000);
-
-{
-  const targetW = this.scale.width;
-  const sw = this.bottomBanner.width || 1;
-  const s = targetW / sw;
-  this.bottomBanner.setScale(s);
-}
-
-try {
-  this.cameras.main.ignore(this.bottomBanner);
-} catch (e) {}
 // =================================================
 // UI CAMERA (HUD no afectado por zoom del mundo)
 // =================================================
