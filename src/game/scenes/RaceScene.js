@@ -4426,21 +4426,6 @@ const kmh = speed * KMH_PER_PXSEC;
   this.zoom = this._zoomCurrent;
   this.cameras.main.setZoom(this.zoom);
 }
-// GPS HUD (abajo-centro) — safe (no tocar objetos destruidos)
-if (this.speedHud?.speedText?.scene) {
-  const v = Math.max(0, Math.round(kmh));
-  this.speedHud.speedText.setText(String(v));
-}
-
-if (this.speedHud?.clockText?.scene) {
-  const t = this.ttHud?.timeText?.text;
-  this.speedHud.clockText.setText(t || '0:00.00');
-}
-// SPEED HUD
-if (this.speedHudText) {
-  const k = Math.max(0, Math.round(kmh));
-  this.speedHudText.setText(String(k));
-}
 
 if (this.hud?.setText) {
   const lapNow = (this.timing?.started && this.timing.lapStart != null)
