@@ -100,6 +100,10 @@ function isPointOnTrackWorld(px, py, geom) {
 }
 
 export class RaceScene extends BaseScene {
+preload() {
+  // 🔥 Carga del banner
+  this.load.image('race_banner', 'assets/ui/race_banner.png');
+}
   constructor() {
     super('race');
 
@@ -1940,6 +1944,11 @@ this.cameras.main.centerOn(this.carBody.x, this.carBody.y);
 this.time.delayedCall(0, () => {
   if (!this.carRig || !this.carBody) return;
   this.cameras.main.startFollow(this.carBody, true, 0.12, 0.12);
+  // 🧠 Banner UI (encima de todo)
+const banner = this.add.image(0, 0, 'race_banner')
+  .setOrigin(0, 0)
+  .setScrollFactor(0)
+  .setDepth(9999);
   this.cameras.main.centerOn(this.carBody.x, this.carBody.y);
 });
 
