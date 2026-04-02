@@ -2888,7 +2888,25 @@ this.minimap?.car,
 
 // aplicar una vez aquí
 this._applyCameraIgnores();
+// =================================================
+// BANNER INFERIOR (base visual)
+// =================================================
+this.bottomBanner = this.add.image(
+  this.scale.width / 2,
+  this.scale.height,
+  'banner-inferior'
+)
+  .setOrigin(0.5, 1)
+  .setScrollFactor(0)
+  .setDepth(2100);
 
+{
+  const baseW = this.bottomBanner.width || 1;
+  const scale = this.scale.width / baseW;
+  this.bottomBanner.setScale(scale);
+}
+
+this.cameras.main.ignore(this.bottomBanner);
 // Mantener tamaño si rota/cambia viewport (SIN duplicar listeners)
 this.scale.off('resize', this._onResizeUiCam);
 this._onResizeUiCam = (gameSize) => {
