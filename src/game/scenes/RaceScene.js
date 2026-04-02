@@ -2891,13 +2891,13 @@ this._applyCameraIgnores();
 // =================================================
 // BANNER INFERIOR (TEST VISUAL)
 // =================================================
-this.bottomBanner = this.add.rectangle(
+const tex = this.textures.get('banner-inferior');
+console.log('BANNER TEX:', tex);
+
+this.bottomBanner = this.add.image(
   this.scale.width / 2,
   this.scale.height,
-  this.scale.width,
-  90,
-  0xff0000,
-  1
+  'banner-inferior'
 )
   .setOrigin(0.5, 1)
   .setScrollFactor(0)
