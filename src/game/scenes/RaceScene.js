@@ -2889,22 +2889,19 @@ this.minimap?.car,
 // aplicar una vez aquí
 this._applyCameraIgnores();
 // =================================================
-// BANNER INFERIOR (base visual)
+// BANNER INFERIOR (TEST VISUAL)
 // =================================================
-this.bottomBanner = this.add.image(
+this.bottomBanner = this.add.rectangle(
   this.scale.width / 2,
   this.scale.height,
-  'banner-inferior'
+  this.scale.width,
+  90,
+  0xff0000,
+  1
 )
   .setOrigin(0.5, 1)
   .setScrollFactor(0)
   .setDepth(2100);
-
-{
-  const baseW = this.bottomBanner.width || 1;
-  const scale = this.scale.width / baseW;
-  this.bottomBanner.setScale(scale);
-}
 
 this.cameras.main.ignore(this.bottomBanner);
 // Mantener tamaño si rota/cambia viewport (SIN duplicar listeners)
