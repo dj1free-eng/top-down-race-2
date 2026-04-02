@@ -101,8 +101,7 @@ function isPointOnTrackWorld(px, py, geom) {
 
 export class RaceScene extends BaseScene {
 preload() {
-  // 🔥 Carga del banner
-  this.load.image('race_banner', 'assets/ui/race_banner.png');
+  this.load.image('banner-inferior', 'assets/ui/banner-inferior.webp');
 }
   constructor() {
     super('race');
