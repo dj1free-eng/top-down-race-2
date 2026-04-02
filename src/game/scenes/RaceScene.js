@@ -2712,23 +2712,7 @@ this.uiCam = this.cameras.add(0, 0, this.scale.width, this.scale.height);
 this.uiCam.setScroll(0, 0);
 this.uiCam.setZoom(1);
 this.uiCam.roundPixels = true;
-  // =================================================
-// BANNER INFERIOR (base visual)
-// =================================================
-this.bottomBanner = this.add.image(
-  this.scale.width / 2,
-  this.scale.height,
-  'banner-inferior'
-)
-  .setOrigin(0.5, 1)
-  .setScrollFactor(0)
-  .setDepth(2100);
 
-{
-  const baseW = this.bottomBanner.width || 1;
-  const scale = this.scale.width / baseW;
-  this.bottomBanner.setScale(scale);
-}
 // UI cam: ignorar fondos del mundo y máscaras
 if (this.bgOff) this.uiCam.ignore(this.bgOff);
 if (this.bgGrass) this.uiCam.ignore(this.bgGrass);
